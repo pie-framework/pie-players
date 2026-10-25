@@ -17,9 +17,16 @@ import type {
 	TimedMediaSectionData,
 	TimedMediaSectionSessionSlice,
 } from "../timed-media/types.js";
+import type { AdaptationLink, LanguagePolicy } from "./interchange.js";
 
 export type { FormativeDeliveryPolicy, FormativeItemPolicy };
 export type { TimedMediaSectionData };
+export type {
+	AdaptationLink,
+	ContentSubstitution,
+	LanguagePolicy,
+	ServedContentIdentity,
+} from "./interchange.js";
 
 export interface BaseEntity {
 	id?: string;
@@ -85,6 +92,13 @@ export interface ConfigContainerEntity extends BaseEntity {
 
 export interface PassageEntity extends VersionEntity, ConfigContainerEntity {
 	name: string;
+	/**
+	 * BCP 47 tag of the content's language (QTI `xml:lang`). The players render
+	 * and score it under this language; absent, the section's `env.locale` holds.
+	 */
+	language?: string;
+	/** The source a translated version was adapted from. No player reads it. */
+	isAdaptationOf?: AdaptationLink;
 	/** QTI/APIP-style accessibility catalogs owned by this passage content. */
 	accessibilityCatalogs?: AccessibilityCatalog[];
 	retired?: boolean;
@@ -93,6 +107,13 @@ export interface PassageEntity extends VersionEntity, ConfigContainerEntity {
 
 export interface ItemEntity extends VersionEntity, ConfigContainerEntity {
 	name?: string;
+	/**
+	 * BCP 47 tag of the content's language (QTI `xml:lang`). The players render
+	 * and score it under this language; absent, the section's `env.locale` holds.
+	 */
+	language?: string;
+	/** The source a translated version was adapted from. No player reads it. */
+	isAdaptationOf?: AdaptationLink;
 	/**
 	 * `null` as well as absent, because importers write it: JSON has no
 	 * `undefined`, so an item transformed from another format carries an
@@ -592,6 +613,12 @@ export interface AssessmentEntity extends BaseEntity {
 	personalNeedsProfile?: PersonalNeedsProfile;
 
 	/**
+	 * The languages the assessment is offered in, read by a backend that
+	 * resolves language variants. No player reads it.
+	 */
+	languagePolicy?: LanguagePolicy;
+
+	/**
 	 * QTI 3.0: testParts structure (authoritative for QTI format).
 	 */
 	testParts?: TestPart[];
@@ -638,6 +665,11 @@ export interface ToolParameterMap {
 	calculator: { type?: "basic" | "scientific" | "graphing" };
 	answerEliminator: { strategy?: "strikethrough" | "mask" };
 	signLanguage: { signLang?: string };
+	/**
+	 * `language` is the BCP 47 content language the learner reads items in. A
+	 * host passes it to delivery as `requestedLanguages`.
+	 */
+	itemTranslation: { language?: string };
 	/**
 	 * `rate` multiplies every playback speed, 1 being the provider's normal
 	 * speed; `pitch` runs 0–2 with 1 normal; `volume` runs 0–1.

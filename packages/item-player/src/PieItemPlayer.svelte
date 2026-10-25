@@ -95,7 +95,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 @fires {CustomEvent<{ featureId: string; granted: boolean; rule: string; overrode?: "attribute" | "authored" }>} feature-decision-applied - Once per feature, before the elements render with a toolkit feature decision written onto their models; `<pie-item-scope>` relays it to its toolkit.
 @fires {CustomEvent<{ state: "retrying" | "completed" | "timeout" | "cancelled"; url: string; attempt: number; elapsedMs: number; timeoutMs: number; retryDelayMs?: number; reason?: string }>} bundle-retry-status - Under the `iife` strategy, as a bundle request is retried, completes, times out or is cancelled.
 @fires {CustomEvent<{ key: string; session: unknown; timestamp: number }>} session-snapshot-available - On load, when `session-snapshot` is enabled and device storage holds a snapshot for this sitting; the player never applies it.
-@fires {CustomEvent<{ scope: "delivery"; operation: "load"; metadata: Record<string, unknown>; session: unknown } | { scope: "authoring"; operation: "load"; contentId?: string; metadata: Record<string, unknown>; config: unknown }>} backend-load-complete - After the backend loads the delivery config and session, or the authoring content.
+@fires {CustomEvent<{ scope: "delivery"; operation: "load"; metadata: Record<string, unknown>; session: unknown; identity?: ServedContentIdentity } | { scope: "authoring"; operation: "load"; contentId?: string; metadata: Record<string, unknown>; config: unknown }>} backend-load-complete - After the backend loads the delivery config and session, or the authoring content.
 @fires {CustomEvent<{ scope: "delivery"; operation: "model"; metadata: Record<string, unknown> }>} backend-model-complete - After the delivery backend refreshes the item's models.
 @fires {CustomEvent<{ scope: "delivery"; operation: "saveSession"; sessionId: string; session: unknown }>} backend-session-saved - After `saveSession()` or an autosave persists the session, which also clears the device snapshot.
 @fires {CustomEvent<{ scope: "delivery"; operation: "score"; sessionId: string; score: unknown }>} backend-score-complete - After a server-backed `score()` completes.
@@ -618,6 +618,19 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	});
 
 	const effectiveConfig = $derived(backendOrchestrator.configOverride ?? config);
+	// The language a backend served this item in replaces `env.locale` for the
+	// elements, so they render and score the variant under its own language.
+	// Backend calls keep the host's `env`: a session pins its variant server side.
+	const servedLanguage = $derived(
+		backendOrchestrator.servedIdentity?.servedLanguage,
+	);
+	const servedEnv: Env = $derived.by(() => {
+		const parsed = parseEnvValue(env);
+		return servedLanguage ? { ...parsed, locale: servedLanguage } : parsed;
+	});
+	function elementEnv(): Env {
+		return servedEnv;
+	}
 	const effectiveSession = $derived(
 		backendOrchestrator.sessionOverride ?? session,
 	);
@@ -971,7 +984,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		defaultContentLanguage({ contentLanguage, interfaceLocale: locale }),
 	);
 	$effect(() => {
-		const currentEnv = env;
+		const currentEnv = elementEnv();
 		const target = hostElement;
 		stampContentLanguage(target, currentEnv, contentLanguageDefault);
 	});
@@ -982,7 +995,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	let directionMismatchReported = false;
 	function reportDirectionMismatch() {
 		if (directionMismatchReported || !hostElement) return;
-		const mismatch = undeclaredDirectionMismatch(hostElement, env);
+		const mismatch = undeclaredDirectionMismatch(hostElement, elementEnv());
 		if (!mismatch) return;
 		directionMismatchReported = true;
 		console.warn(
@@ -1764,7 +1777,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		void updatePieElements(
 			config,
 			rendererSession,
-			parseEnvValue(env),
+			elementEnv(),
 			hostElement ?? undefined,
 			handleElementSessionUpdate,
 			resolveBundleType(),
@@ -1848,7 +1861,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		if (!cfg?.models?.length) {
 			return false;
 		}
-		const currentEnv = parseEnvValue(env);
+		const currentEnv = elementEnv();
 		const { results } = await scorePieItem(cfg, rendererSession, {
 			container: hostElement ?? document,
 			env: {
@@ -2083,7 +2096,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 					bind:this={rendererElement}
 					{itemConfig}
 					passageConfig={renderStimulus ? passageConfig : null}
-					env={parseEnvValue(env)}
+					env={elementEnv()}
 					session={rendererSession}
 					{addCorrectResponse}
 					{allowedResize}

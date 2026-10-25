@@ -10,6 +10,7 @@ import {
 import {
 	DEFAULT_CONTENT_LANGUAGE,
 	findContentLanguage,
+	findHeldContentLanguage,
 	findLangAttribute,
 	resolveContentLanguage,
 } from "../src/runtime/content-language";
@@ -187,5 +188,36 @@ describe("resolveContentLanguage", () => {
 		);
 		expect(findLangAttribute(text)).toBe("it-IT");
 		expect(findLangAttribute(text, text)).toBeUndefined();
+	});
+});
+
+describe("findHeldContentLanguage", () => {
+	const region = (markup: string): Element => {
+		document.body.innerHTML = `<div id="region">${markup}</div>`;
+		return document.getElementById("region") as Element;
+	};
+
+	test("is the lang the content root stamps", () => {
+		expect(
+			findHeldContentLanguage(
+				region("<div lang='es'><p>Hola <span lang='en'>OK</span></p></div>"),
+			),
+		).toBe("es");
+	});
+
+	test("is shared by every outermost root", () => {
+		expect(
+			findHeldContentLanguage(region("<div lang='es'></div><div lang='ES'></div>")),
+		).toBe("es");
+		expect(
+			findHeldContentLanguage(region("<div lang='es'></div><div lang='fr'></div>")),
+		).toBeUndefined();
+	});
+
+	test("is undefined for undeclared content or none", () => {
+		expect(
+			findHeldContentLanguage(region("<div lang=''><p lang='es'>hola</p></div>")),
+		).toBeUndefined();
+		expect(findHeldContentLanguage(region("<p>text</p>"))).toBeUndefined();
 	});
 });

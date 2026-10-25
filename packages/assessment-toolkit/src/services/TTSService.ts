@@ -45,6 +45,7 @@ import type { HighlightCoordinatorApi, SpeakOptions } from "./interfaces.js";
 import {
 	DEFAULT_CONTENT_LANGUAGE,
 	findContentLanguage,
+	findHeldContentLanguage,
 	findLangAttribute,
 } from "../runtime/content-language.js";
 import { isSsmlDocument } from "./tts/ssml/spoken-text.js";
@@ -963,16 +964,19 @@ export class TTSService {
 
 	/**
 	 * The language a read of `node` is in. Its content language is the nearest
-	 * `lang` between it and its shell, else the language the speak names, else a
-	 * pinned `lang_id`. Its locale is that content language, else the host's
-	 * configured locale, else en-US.
+	 * `lang` between it and its shell, else for an element the `lang` the content
+	 * roots it holds share, else the language the speak names, else a pinned
+	 * `lang_id`. Its locale is that content language, else the host's configured
+	 * locale, else en-US.
 	 */
 	private resolveReadLanguage(
 		node: Node,
 		named: string | undefined,
 	): { contentLanguage?: string; locale: string } {
 		const contentLanguage =
-			findContentLanguage(node, { contentLanguage: named }) ??
+			findContentLanguage(node) ??
+			(node.nodeType === 1 ? findHeldContentLanguage(node as Element) : undefined) ??
+			(named?.trim() || undefined) ??
 			optionalString(this.providerOptions().lang_id);
 		return {
 			contentLanguage,

@@ -817,7 +817,7 @@
 						{
 							"name": "backend-load-complete",
 							"type": {
-								"text": "CustomEvent<{ scope: \"delivery\"; operation: \"load\"; metadata: Record<string, unknown>; session: unknown } | { scope: \"authoring\"; operation: \"load\"; contentId?: string; metadata: Record<string, unknown>; config: unknown }>"
+								"text": "CustomEvent<{ scope: \"delivery\"; operation: \"load\"; metadata: Record<string, unknown>; session: unknown; identity?: ServedContentIdentity } | { scope: \"authoring\"; operation: \"load\"; contentId?: string; metadata: Record<string, unknown>; config: unknown }>"
 							},
 							"description": "After the backend loads the delivery config and session, or the authoring content."
 						},

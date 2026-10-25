@@ -234,10 +234,91 @@ describe("delivery backend helpers", () => {
 				itemId: "item-1",
 				sessionId: "session-1",
 				assignmentId: "",
+				requestedLanguages: [],
 				hasClientLoad: false,
 				endpoint: null,
 			}),
 		);
+	});
+
+	test("reloads when the requested languages change", () => {
+		const delivery = { enabled: true, itemId: "item-1", baseUrl: "/api" };
+		expect(
+			getDeliveryBackendLoadSignature({
+				delivery: { ...delivery, requestedLanguages: ["es"] },
+			}),
+		).not.toBe(getDeliveryBackendLoadSignature({ delivery }));
+	});
+
+	test("sends requested languages and reads the served identity", async () => {
+		const originalFetch = globalThis.fetch;
+		const payloads: Array<Record<string, unknown>> = [];
+		const identity = {
+			baseId: "item-es",
+			version: { major: 1, minor: 0, patch: 0 },
+			family: "item-en",
+			servedLanguage: "es",
+		};
+		globalThis.fetch = (async (_url, init) => {
+			payloads.push(JSON.parse(String(init?.body ?? "{}")));
+			return new Response(
+				JSON.stringify({
+					item: config,
+					session: { id: "", data: [] },
+					identity,
+				}),
+				{ status: 200, headers: { "content-type": "application/json" } },
+			);
+		}) as typeof fetch;
+		const backend: BackendConfig = {
+			delivery: {
+				enabled: true,
+				itemId: "item-en",
+				baseUrl: "https://bff.example",
+				requestedLanguages: ["es-MX", "es"],
+			},
+		};
+		const env = { mode: "gather", role: "student" };
+		let loaded: Awaited<ReturnType<typeof loadFromDeliveryBackend>>;
+		try {
+			loaded = await loadFromDeliveryBackend(backend, env);
+			await modelFromDeliveryBackend(backend, {
+				itemId: "item-en",
+				requestedLanguages: ["es-MX", "es"],
+				session: { id: "", data: [] },
+				env,
+			});
+		} finally {
+			globalThis.fetch = originalFetch;
+		}
+
+		expect(payloads[0]?.requestedLanguages).toEqual(["es-MX", "es"]);
+		expect(payloads[1]?.requestedLanguages).toEqual(["es-MX", "es"]);
+		expect(loaded.identity).toEqual(identity);
+	});
+
+	test("omits requested languages and identity a backend does not use", async () => {
+		const originalFetch = globalThis.fetch;
+		const payloads: Array<Record<string, unknown>> = [];
+		globalThis.fetch = (async (_url, init) => {
+			payloads.push(JSON.parse(String(init?.body ?? "{}")));
+			return new Response(
+				JSON.stringify({ item: config, identity: { servedLanguage: "es" } }),
+				{ status: 200, headers: { "content-type": "application/json" } },
+			);
+		}) as typeof fetch;
+		let loaded: Awaited<ReturnType<typeof loadFromDeliveryBackend>>;
+		try {
+			loaded = await loadFromDeliveryBackend(
+				{ delivery: { enabled: true, itemId: "item-1", baseUrl: "/api" } },
+				{},
+			);
+		} finally {
+			globalThis.fetch = originalFetch;
+		}
+
+		expect("requestedLanguages" in (payloads[0] ?? {})).toBe(false);
+		expect(loaded.identity).toBeUndefined();
 	});
 
 	test("enables model refresh signatures only for configured model backends", () => {

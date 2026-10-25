@@ -130,3 +130,66 @@ describe("SectionController pending session commit", () => {
 		expect(commits).toBe(0);
 	});
 });
+
+describe("SectionController delivered content identity", () => {
+	// A live session is keyed by runtime item id, a restored one canonically.
+	function entry<T>(sessions: Record<string, T>, index: number): T | undefined {
+		return sessions[`canonical-${index}`] ?? sessions[`item-${index}`];
+	}
+
+	async function withSpanishItem() {
+		const section = makeSection("section-1", ["item-1", "item-2"]);
+		const first = section.assessmentItemRefs?.[0]?.item as ItemEntity;
+		Object.assign(first, {
+			baseId: "base-1",
+			version: { major: 2, minor: 0, patch: 0 },
+			language: "es",
+		});
+		const controller = new SectionController();
+		await controller.initialize({
+			section,
+			sectionId: "section-1",
+			assessmentId: "assessment-1",
+			view: ["candidate"],
+		});
+		return controller;
+	}
+
+	test("records the language an item declares, and nothing for one that declares none", async () => {
+		const controller = await withSpanishItem();
+		controller.updateItemSession("item-1", {
+			session: { id: "item-1", data: [{ id: "el-1", value: ["A"] }] },
+		});
+		controller.updateItemSession("item-2", {
+			session: { id: "item-2", data: [{ id: "el-1", value: ["B"] }] },
+		});
+
+		const sessions = controller.getSession()?.itemSessions as Record<
+			string,
+			{ content?: unknown }
+		>;
+		expect(entry(sessions, 1)?.content).toEqual({
+			baseId: "base-1",
+			version: { major: 2, minor: 0, patch: 0 },
+			servedLanguage: "es",
+		});
+		expect("content" in (entry(sessions, 2) ?? {})).toBe(false);
+	});
+
+	test("a restored session keeps the recorded identity", async () => {
+		const controller = await withSpanishItem();
+		controller.updateItemSession("item-1", {
+			session: { id: "item-1", data: [{ id: "el-1", value: ["A"] }] },
+		});
+		const snapshot = JSON.parse(JSON.stringify(controller.getSession()));
+
+		const restored = await withSpanishItem();
+		await restored.applySession(snapshot, { mode: "replace" });
+
+		const sessions = restored.getSession()?.itemSessions as Record<
+			string,
+			{ content?: { servedLanguage?: string } }
+		>;
+		expect(entry(sessions, 1)?.content?.servedLanguage).toBe("es");
+	});
+});

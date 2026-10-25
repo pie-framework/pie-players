@@ -170,9 +170,14 @@ The **content language** is the first of:
 1. the nearest `lang` attribute between the content and its player shell; an
    empty `lang`, which the players stamp on undeclared content, ends the climb
    with none;
-2. the language the read names, which the inline tool and the annotation
+2. for a read of an element, the `lang` its outermost `lang`-carrying
+   descendants share: a whole-item read targets a region above the content
+   root the item player stamps, so this is where an item's `env.locale`
+   reaches read-aloud. Descendants that disagree, or one with an empty `lang`,
+   give none;
+3. the language the read names, which the inline tool and the annotation
    toolbar take from the toolkit's `content-language` input;
-3. `providerOptions.lang_id`, which a host pins for the custom transport.
+4. `providerOptions.lang_id`, which a host pins for the custom transport.
 
 A host names the language of content whose markup carries none through the
 toolkit's `content-language`; a section-player host sets
@@ -435,10 +440,15 @@ on republish, and passes the locale to the `language` prop its libraries take.
 
 ### Content language
 
-Content language in `env` for elements is direction and has not shipped. The
-shipped path, the toolkit's `content-language` or the section player's
-`runtime.contentLanguage`, serves read-aloud and the players'
-[content direction](#content-direction) default.
+Content language reaches elements as `env.locale`. An item or passage entity's
+`language` narrows the section's `env` for that item or passage alone, so items
+in different languages share a section; a backend's served language overrides
+it inside the item player (`servedIdentity.servedLanguage`, see
+[backend support](../item-player/backend-support.md)). Content with no
+`language` keeps the section's `env`. The [content model](./content-model.md)
+types the field, and the toolkit's `content-language` or the section player's
+`runtime.contentLanguage` stays the default for undeclared content, for
+read-aloud and the players' [content direction](#content-direction).
 
 The design carries content language to elements in `env`, for the same reason `env`
 carries `mode`: both are delivery facts that legitimately filter authored content,
@@ -508,9 +518,8 @@ when `model.language` is present", or `env.locale` reaches `model.language` at t
 controller boundary. `passage` is the sharpest case: an English-chrome deployment
 showing a Spanish passage asserts `lang="en"` over Spanish prose.
 
-With the element default handled, this is the highest-leverage slice per unit of
-effort in this note, and it is blocked only on the item payload carrying a
-language.
+The element default is handled (see [Rollout](#rollout) step 2), and the item
+payload carries a language as the entity's `language`.
 
 ### In-item alternates and parameterized PNP
 
@@ -541,11 +550,13 @@ translation the same way. That is current practice and a standards alignment, an
 the framework does not impose it. Four models fit, and three of them need no new
 data model.
 
-**Parallel items with a family link.** Today's practice. Each variant is separately
-calibrated and selected at form assembly, with no runtime swap. It needs the
-content-language declaration on the payload and a family identifier that survives
-export. An authoring host's translation link reaches delivery, if at all, on a
-channel the player does not read.
+**Parallel items with a family link.** Today's practice, and the model PIE types.
+Each variant is separately calibrated and selected at form assembly or by a
+backend at load, with no runtime swap. A variant declares `language` and links
+its source with `isAdaptationOf`; the family is the source's `baseId`. Players
+read only `language`; the link and the assessment's `languagePolicy` are
+interchange fields for the backend that resolves a family to one variant
+([content model](./content-model.md)).
 
 The family link is derivable from authoring data, within limits. Where the link
 sits only on the translated item and names the source item's internal identifier,

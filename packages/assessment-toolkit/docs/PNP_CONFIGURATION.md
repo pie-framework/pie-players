@@ -367,6 +367,7 @@ Tool parameters are feature parameters keyed by support id, from three layers: t
 | --- | --- | --- |
 | `calculator` | `type` | The flavor it opens: `basic`, `scientific` or `graphing` |
 | `answerEliminator` | `strategy` | `strikethrough` or `mask` |
+| `itemTranslation` | `language` | The language the learner reads items in; a host passes it to delivery as `requestedLanguages` |
 | `signLanguage` | `signLang` | The requested sign language |
 | `textToSpeech` | `rate` | Multiplies every speed the control offers; 1 is normal |
 | `textToSpeech` | `pitch` | 0–2, 1 normal |
@@ -485,6 +486,7 @@ Each AfA feature's disposition:
 | `spoken`, `computer-read-aloud` | `textToSpeech`, with `speech-rate`, `pitch` and `volume` |
 | `spoken`, `screen-reader` or no `reading-type` | `screenReader`, which withholds `textToSpeech` and `autoplayAudio` ([support conflict](#support-conflict)) |
 | `calculator-on-screen` | `calculator`. `calculator-type` `basic`, `scientific` or `graphing` is its `type`; `standard` and `ext:` types leave the calculator's default |
+| `item-translation` | `itemTranslation`. `language` is its `language`, which a host passes to delivery as `requestedLanguages`; no packaged tool reads it |
 | `sign-language` | `signLanguage`, served once the host registers `@pie-players/pie-tool-sign-language`. `language` is its `signLang` |
 | `line-reader` | `lineReader`. The line reader takes no settings, so `highlight-color` is not read; its colors are the `--pie-tool-line-reader-*` custom properties |
 | `magnification` | `magnification`, served by `@pie-players/pie-tool-magnifier`. `all-content`'s `zoom-amount` above 1 is its starting `zoom`, the learner changing it from there. The lens magnifies text and non-text alike, so a `selectMagnification` record gives it the `text` amount, else the `non-text` one |
@@ -496,7 +498,7 @@ Each AfA feature's disposition:
 | `language-of-interface` | The player's `locale`. Not read |
 | `access-mode-required`, `adaptation-type-required`, `adaptation-detail-required`, `adaptation-media-required`, `at-interoperable`, `educational-complexity-of-adaptation`, `educational-level-of-adaptation`, `hazard-avoidance`, `input-requirements`, `language-of-adaptation` | Not read: they select among adapted resources by resource metadata, which PIE content does not carry |
 | `extensions` | Not read |
-| `additional-directions`, `alternative-text`, `audio-description`, `braille`, `captions`, `encouragement`, `item-translation`, `keyboard-directions`, `keyword-emphasis`, `keyword-translation`, `linguistic-guidance`, `long-description`, `simplified-graphics`, `simplified-language-portions`, `tactile` | No packaged capability. Passed through camelCased |
+| `additional-directions`, `alternative-text`, `audio-description`, `braille`, `captions`, `encouragement`, `keyboard-directions`, `keyword-emphasis`, `keyword-translation`, `linguistic-guidance`, `long-description`, `simplified-graphics`, `simplified-language-portions`, `tactile` | No packaged capability. Passed through camelCased |
 | `glossary-on-screen`, `homophone-checker-on-screen`, `note-taking-on-screen`, `outliner-on-screen`, `peer-interaction-on-screen`, `spell-checker-on-screen`, `thesaurus-on-screen`, `visual-organizer-on-screen` | No packaged tool. Passed through camelCased |
 
 ## Integration checklist

@@ -16,6 +16,17 @@
 		{ "requested": ["vi"], "available": ["en-US", "es"], "defaultLanguage": "en-US", "fallback": "none", "expected": null },
 		{ "requested": ["vi"], "available": ["en-US", "es"], "defaultLanguage": "en-US", "expected": { "language": "en-US", "substitution": "fallback" } },
 		{ "requested": [], "available": ["en-US", "es"], "defaultLanguage": "en-US", "expected": { "language": "en-US" } },
-		{ "requested": ["vi"], "available": ["en-US", "es"], "expected": null }
+		{ "requested": ["vi"], "available": ["en-US", "es"], "expected": null },
+		{ "requested": ["es-MX"], "available": ["en-US", "es-MX", "es"], "defaultLanguage": "en-US", "matching": "exact", "expected": { "language": "es-MX" } },
+		{ "requested": ["es_mx"], "available": ["en-US", "es-MX"], "defaultLanguage": "en-US", "matching": "exact", "expected": { "language": "es-MX" } },
+		{ "requested": ["es-MX"], "available": ["en-US", "es"], "defaultLanguage": "en-US", "matching": "exact", "expected": { "language": "en-US", "substitution": "fallback" } },
+		{ "requested": ["es-MX"], "available": ["en-US", "es"], "defaultLanguage": "en-US", "matching": "exact", "fallback": "none", "expected": null },
+		{ "requested": ["es-MX"], "available": ["en", "es"], "defaultLanguage": "en-US", "matching": "exact", "expected": { "language": "en", "substitution": "fallback" } },
+		{ "requested": ["es"], "available": ["en-GB", "fr"], "defaultLanguage": "en-US", "expected": { "language": "en-GB", "substitution": "fallback" } },
+		{ "requested": ["es"], "available": ["en", null], "defaultLanguage": "en-US", "expected": { "language": "en", "substitution": "fallback" } },
+		{ "requested": ["es"], "available": [null, "fr"], "defaultLanguage": "en-US", "source": "fr", "expected": { "language": null, "substitution": "fallback" } },
+		{ "requested": ["es"], "available": ["fr", "de"], "defaultLanguage": "en-US", "source": "fr", "expected": { "language": "fr", "substitution": "fallback" } },
+		{ "requested": ["es"], "available": ["fr"], "defaultLanguage": "en-US", "source": "fr", "fallback": "none", "expected": null },
+		{ "requested": [], "available": [null, "fr"], "defaultLanguage": "en-US", "expected": { "language": null } }
 	]
 }

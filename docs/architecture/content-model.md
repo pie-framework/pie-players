@@ -76,16 +76,29 @@ Content without `language` keeps the section's `env`.
 resolves variants:
 
 - `languages`: the BCP 47 tags the assessment may be served in;
-- `fallback`: `"default"` serves the section in each family's default language
-  when a family lacks the requested one, recording `substitution: "fallback"`;
-  `"none"` fails the load;
+- `fallback`: `"default"` serves an item whose family lacks the requested
+  language in the first of: the closest match for the platform default,
+  `en-US` (so `en`, then a sibling such as `en-GB`); a member that declares no
+  language; the source. It records `substitution: "fallback"`, and `matching`
+  does not narrow it. Fallback is per item, so a section may mix languages,
+  and items that share a passage fall back together so the passage renders in
+  one language. `"none"` fails the load. Without a policy, fallback is
+  `"default"`;
+- `matching`: `"closest"`, the default, serves the nearest variant in the
+  requested language, so `es-MX` is served `es` or `es-ES` when the family has
+  no `es-MX`; `"exact"` serves only the requested tag and leaves the rest to
+  `fallback`;
 - `staleness`: `"serve"` serves a variant whose source has a newer release,
   recording `substitution: "stale"`; `"require-current"` treats it as missing.
 
 **Language matching** is BCP 47 lookup that never crosses scripts:
 `negotiateContentLanguage` in `@pie-players/pie-players-shared/i18n/language-tags`
-walks `zh-TW → zh-Hant`, and skips a bare `zh` held in another script. A backend
-that negotiates on its own side matches the conformance fixtures in
+walks `zh-TW → zh-Hant`, skips a bare `zh` held in another script, and then
+widens to a sibling in the same language and script, `es-MX → es-ES`. Its
+`matching` option applies the policy's `matching`; a `null` entry in its
+`available` list stands for content that declares no language, and `source`
+names the family source the fallback chain ends at. A backend that negotiates
+on its own side matches the conformance fixtures in
 `packages/players-shared/tests/content-language-fixtures.json`.
 
 **Sessions.** The section player records an item session's `content` from the

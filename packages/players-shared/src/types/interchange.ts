@@ -23,10 +23,19 @@ export interface LanguagePolicy {
 	/** BCP 47 tags the assessment may be served in. */
 	languages: string[];
 	/**
-	 * `"default"` serves the section in each family's default language;
-	 * `"none"` fails the load.
+	 * `"default"` serves an item whose family lacks the requested language in
+	 * the closest match for the platform default, `en-US` (so `en` or `en-GB`),
+	 * then its content that declares no language, then its source. Fallback is
+	 * per item; items sharing a passage fall back together. `"none"` fails the
+	 * load.
 	 */
 	fallback: "default" | "none";
+	/**
+	 * `"closest"`, the default, serves the nearest variant in the requested
+	 * language, so `es-MX` reaches `es` or `es-ES`; `"exact"` serves only an
+	 * equal tag and leaves anything else to `fallback`.
+	 */
+	matching?: "closest" | "exact";
 	/**
 	 * `"serve"` serves a variant whose source has a newer release and records
 	 * it as stale; `"require-current"` treats that variant as missing.

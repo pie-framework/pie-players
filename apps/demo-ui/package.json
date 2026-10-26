@@ -69,12 +69,12 @@
 		"svelte": "^5.57.2"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.15",
+		"@biomejs/biome": "^2.6.2",
 		"@pie-players/tts-server-google": "workspace:*",
 		"@pie-players/tts-server-polly": "workspace:*",
 		"@types/semver": "^7.8.0",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3",
-		"@types/bun": "^1.4.3"
+		"@types/bun": "^1.4.4"
 	}
 }

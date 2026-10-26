@@ -16,6 +16,6 @@
 		// declaration the protractor image is imported through.
 		"types": ["@types/bun", "vite/client"]
 	},
-	"include": ["index.ts", "tool-protractor.svelte"],
+	"include": ["index.ts", "element-props.ts", "tool-protractor.svelte"],
 	"exclude": ["node_modules", "dist"]
 }

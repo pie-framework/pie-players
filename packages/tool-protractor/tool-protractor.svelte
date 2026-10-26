@@ -21,6 +21,7 @@ shown while it has focus move and turn it without dragging.
 -->
 
 <script lang="ts">
+	import type { ProtractorProps } from "./element-props.js";
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {
 		connectToolRuntimeContext,
@@ -40,7 +41,7 @@ shown while it has focus move and turn it without dragging.
 	import { onMount } from 'svelte';
 	import protractorSvg from './protractor.svg';
 
-	let { visible = false, toolId = 'protractor' }: { visible?: boolean; toolId?: string } = $props();
+	let { visible = false, toolId = 'protractor' }: ProtractorProps = $props();
 
 	const isBrowser = typeof window !== 'undefined';
 

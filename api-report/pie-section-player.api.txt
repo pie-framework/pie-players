@@ -7,6 +7,8 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
+  type PieSectionPlayerElement
+  type PieSectionPlayerSplitPaneElement
   type SectionItemScore
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
@@ -31,6 +33,8 @@
   DEFAULT_TOOL_MODULE_LOADERS
   type ItemSection
   type ItemSectionOptions
+  type PieSectionPlayerElement
+  type PieSectionPlayerSplitPaneElement
   type SectionItemScore
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
@@ -56,6 +60,8 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
+  type PieSectionPlayerElement
+  type PieSectionPlayerSplitPaneElement
   type SectionItemScore
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext

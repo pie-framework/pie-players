@@ -33,6 +33,12 @@ const { nodeSafe: NODE_IMPORT_TARGETS, browserOnly: BROWSER_ONLY_TARGETS } =
 	getNodeConsumerImportTargets(policy);
 const ALL_TARGETS = [...NODE_IMPORT_TARGETS, ...BROWSER_ONLY_TARGETS];
 const TTS_SERVER_CORE = "@pie-players/tts-server-core";
+const NATIVE_ELEMENT_PACKAGES = [
+	"@pie-players/pie-tool-ruler",
+	"@pie-players/pie-tool-protractor",
+	"@pie-players/pie-tool-tts-inline",
+	"@pie-players/pie-assessment-player",
+];
 
 const isNodeEntryTargetShapeSafe = (target) =>
 	target.startsWith("./dist/") &&
@@ -270,6 +276,59 @@ const typecheckFixture = (fixtureDir, source, compilerOptions) => {
 	}
 };
 
+const typecheckNativeElements = (fixtureDir) =>
+	typecheckFixture(
+		fixtureDir,
+		`import type { PieToolRulerElement } from "@pie-players/pie-tool-ruler";
+import type { PieToolProtractorElement } from "@pie-players/pie-tool-protractor";
+import type { PieToolTtsInlineElement } from "@pie-players/pie-tool-tts-inline";
+import "@pie-players/pie-section-player/components/section-player-splitpane-element";
+import type { PieSectionPlayerElement, PieSectionPlayerSplitPaneElement } from "@pie-players/pie-section-player";
+import "@pie-players/pie-assessment-player/components/assessment-player-default-element";
+import type { PieAssessmentPlayerDefaultElement } from "@pie-players/pie-assessment-player";
+
+const ruler: PieToolRulerElement = document.createElement("pie-tool-ruler");
+ruler.visible = true;
+ruler.toolId = "ruler";
+const protractor: PieToolProtractorElement = document.createElement("pie-tool-protractor");
+protractor.visible = true;
+const tts: PieToolTtsInlineElement = document.createElement("pie-tool-tts-inline");
+tts.speedOptions = [1, { rate: 1.5, ariaLabel: "Fast" }];
+tts.baseRate = 0.8;
+tts.pitch = 1;
+tts.volume = 0.5;
+// @ts-expect-error A stale archived property is not part of this element's API.
+tts.language = "fr";
+// @ts-expect-error Preserve the current speed option contract.
+tts.speedOptions = ["fast"];
+
+const section: PieSectionPlayerSplitPaneElement = document.createElement("pie-section-player-splitpane");
+section.runtime = { playerType: "preloaded" };
+section.sectionId = "section-1";
+section.splitPaneInitialPassageWidth = 40;
+section.navigateNext();
+section.waitForSectionController(10);
+const vertical: PieSectionPlayerElement = document.createElement("pie-section-player-vertical");
+vertical.navigatePrevious();
+document.createElement("pie-section-player-tabbed").getSectionController();
+const snapshot = section.getSnapshot();
+// @ts-expect-error A layout may have no snapshot before its kernel is bound.
+snapshot.composition;
+// @ts-expect-error Split-pane settings do not belong to the vertical layout.
+vertical.splitPaneInitialPassageWidth = 40;
+
+const assessment: PieAssessmentPlayerDefaultElement = document.createElement("pie-assessment-player-default");
+assessment.assessmentId = "assessment-1";
+assessment.assessment = null;
+assessment.navigateNext();
+// @ts-expect-error Implementation state is private.
+assessment.controller;
+const selected: PieToolRulerElement | null = document.querySelector("pie-tool-ruler");
+selected?.remove();
+`,
+		{ types: [], noUncheckedSideEffectImports: true },
+	);
+
 const typecheckToolkitWithoutOptionalPeers = (fixtureDir, optionalPeers) => {
 	for (const specifier of optionalPeers) {
 		rmSync(path.join(fixtureDir, "node_modules", ...specifier.split("/")), {
@@ -364,6 +423,7 @@ const run = async () => {
 
 	const fixturePackageNames = collectFixturePackageNames(packageMap, [
 		...ALL_TARGETS.map((specifier) => splitPackageSpecifier(specifier).name),
+		...NATIVE_ELEMENT_PACKAGES,
 		TTS_SERVER_CORE,
 	]);
 	let ttsServerCoreTarball = "";
@@ -455,6 +515,12 @@ const run = async () => {
 				`[node-consumer] ${toolkitPackageName}/tools/registration failed TypeScript consumption without optional peers: ${typecheckResult.message}`,
 			);
 		}
+		const nativeElementResult = typecheckNativeElements(fixtureDir);
+		if (!nativeElementResult.ok) {
+			failures.push(
+				`[node-consumer] native custom elements failed TypeScript consumption: ${nativeElementResult.message}`,
+			);
+		}
 	} catch (error) {
 		failures.push(
 			`[node-consumer] fixture setup failed: ${error?.stderr?.toString?.()?.trim?.() || error?.message || error}`,
@@ -476,7 +542,7 @@ const run = async () => {
 	}
 
 	console.log(
-		`[check-node-consumer-imports] OK: validated ${NODE_IMPORT_TARGETS.length} Node-import targets and ${BROWSER_ONLY_TARGETS.length} browser-only boundaries from installed node_modules packages`,
+		`[check-node-consumer-imports] OK: validated ${NODE_IMPORT_TARGETS.length} Node-import targets and ${BROWSER_ONLY_TARGETS.length} browser-only boundaries and native element typings from installed node_modules packages`,
 	);
 };
 

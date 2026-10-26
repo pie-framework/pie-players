@@ -166,6 +166,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		createExternalStyleScopeClass,
 		ensureCrossOriginExternalStyle,
 	} from "./utils/external-styles.js";
+	import { describeExternalStyleUrl } from "./utils/external-style-css.js";
 	import type { DeliveryModelRefreshConfigResult } from "./backend/model-refresh.js";
 	import {
 		callbackIdentityForKey,
@@ -1426,13 +1427,14 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		const currentScopeClass = stylesheetScopeClass;
 		for (const url of requestedUrls) {
 			if (!url) continue;
+			const diagnosticUrl = describeExternalStyleUrl(url, window.location.href);
 			const validation = validateExternalStyleUrl(url, {
 				baseUrl: window.location.href,
 				allowedOrigins: allowedStyleOriginList,
 			});
 			if (!validation.ok) {
 				logger.error(
-					`[pie-item-player] ${validation.message} (url=${url})`,
+					`[pie-item-player] ${validation.message} (url=${diagnosticUrl})`,
 				);
 				continue;
 			}
@@ -1453,6 +1455,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 				scopeClass: currentScopeClass,
 				signal: abortController.signal,
 				sourceUrl: url,
+				allowedOrigins: allowedStyleOriginList,
 			})
 				.then((release) => {
 					if (!release) return;
@@ -1462,9 +1465,9 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 					}
 					releases.add(release);
 				})
-				.catch((err) => {
+				.catch(() => {
 					if (!abortController.signal.aborted) {
-						logger.error(`Failed to load external stylesheet: ${url}`, err);
+						logger.error(`Failed to load external stylesheet: ${diagnosticUrl}`);
 					}
 				});
 		}

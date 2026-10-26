@@ -141,3 +141,11 @@ describe("parseAllowedStyleOrigins", () => {
 		expect(parseAllowedStyleOrigins(42 as unknown)).toEqual([]);
 	});
 });
+
+test("does not echo invalid stylesheet URL credentials in its parse error", () => {
+	const result = validateExternalStyleUrl("http://[private-url-token", {
+		baseUrl: "https://player.example/item",
+	});
+	expect(result.ok).toBe(false);
+	expect(JSON.stringify(result)).not.toContain("private-url-token");
+});

@@ -59,11 +59,11 @@ export function validateExternalStyleUrl(
 		resolvedUrl = options.baseUrl
 			? new URL(url, options.baseUrl)
 			: new URL(url);
-	} catch (err) {
+	} catch {
 		return {
 			ok: false,
 			reason: "invalid-url",
-			message: `External stylesheet URL could not be parsed: ${String(err)}`,
+			message: "External stylesheet URL could not be parsed.",
 		};
 	}
 	if (resolvedUrl.protocol !== "http:" && resolvedUrl.protocol !== "https:") {

@@ -1,5 +1,32 @@
 # @pie-players/pie-section-player
 
+## 1.0.0-beta.7
+
+### Patch Changes
+
+- fedd6a0: Content that declares no language no longer takes the interface locale's `lang` and `dir` once a host sets `locale`: the item player stamps it `lang=""` with `dir="auto"`, so Arabic chrome over English content lays the content out left to right. A new `content-language` attribute on `pie-item-player` names the language instead, and a section passes `runtime.contentLanguage` to its item and passage players the same way. A host that sets neither `locale` nor a content language renders as before. The item player logs one warning when undeclared content's script contradicts a named default's direction, and read-aloud's `lang` lookup stops at an empty `lang`.
+- 584a754: Items and passages can be language variants. `ItemEntity` and `PassageEntity` add `language` (BCP 47) and `isAdaptationOf`, `AssessmentEntity` adds `languagePolicy`, and `./types` exports `AdaptationLink`, `LanguagePolicy`, `ContentSubstitution` and `ServedContentIdentity`. The section player sets `env.locale` to an item's or passage's `language` for that content alone and records it as the item session's `content`, which `TestAttemptItemSession` keeps. Item player delivery sends `backend.delivery.requestedLanguages` and, when a load response names the served version as `identity`, renders and scores under its `servedLanguage` and adds `identity` to `backend-load-complete`. `./i18n/language-tags` adds `negotiateContentLanguage`, `findClosestLanguageMatch` and `languageTagScriptLookupSequence`. Content and delivery configs without these fields behave as before.
+- cf50df9: Expose native element types and tag-name inference for ruler, protractor, inline TTS, section layouts and the assessment player. Tool and layout inputs share their implementation's property types; section host methods come from a declared interface, which keeps the published declarations compatible with TypeScript 5.4, and assessment members derive from their implementation. Section snapshots remain nullable before the kernel binds. Existing host assignments, registration, package entrypoints and runtime exports are unchanged; hosts configuring these elements can replace local casts with the exported types.
+- Updated dependencies [885b07e]
+- Updated dependencies [584a754]
+- Updated dependencies [fedd6a0]
+- Updated dependencies [c931537]
+- Updated dependencies [8259692]
+- Updated dependencies [75f1716]
+- Updated dependencies [067cf18]
+- Updated dependencies [6da86de]
+- Updated dependencies [5c6cbe8]
+- Updated dependencies [8bd5891]
+- Updated dependencies [584a754]
+- Updated dependencies [584a754]
+- Updated dependencies [b607537]
+- Updated dependencies [cb55fee]
+- Updated dependencies [584a754]
+  - @pie-players/pie-players-shared@1.0.0-beta.7
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.7
+  - @pie-players/pie-item-player@1.0.0-beta.7
+  - @pie-players/pie-default-tool-loaders@1.0.0-beta.7
+
 ## 1.0.0-beta.6
 
 ### Patch Changes

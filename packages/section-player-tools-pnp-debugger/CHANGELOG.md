@@ -1,5 +1,24 @@
 # @pie-players/pie-section-player-tools-pnp-debugger
 
+## 1.0.0-beta.7
+
+### Patch Changes
+
+- 9450b4b: Publish native HTMLElement interfaces and tag-name inference for the remaining tool
+  and debugger custom elements, sharing their inputs with the current Svelte components.
+  Properties remain optional until mount. The calculator wrapper re-exports the
+  provider-neutral calculator element interface.
+  
+  Existing tags, inputs, runtime exports and filenames stay the same. Hosts can import
+  the native types and use document.createElement/querySelector without requiring
+  Svelte declarations or casting to copied interfaces.
+- Updated dependencies [584a754]
+- Updated dependencies [fedd6a0]
+- Updated dependencies [584a754]
+- Updated dependencies [b607537]
+- Updated dependencies [584a754]
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.7
+
 ## 1.0.0-beta.6
 
 ### Patch Changes

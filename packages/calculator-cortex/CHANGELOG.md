@@ -1,5 +1,11 @@
 # @pie-players/pie-calculator-cortex
 
+## 1.0.0-beta.7
+
+### Patch Changes
+
+- @pie-players/pie-calculator@1.0.0-beta.7
+
 ## 1.0.0-beta.6
 
 ### Patch Changes

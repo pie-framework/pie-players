@@ -1,5 +1,9 @@
 # @pie-players/tts-server-core
 
+## 1.0.0-beta.7
+
+No changes in this release.
+
 ## 1.0.0-beta.6
 
 No changes in this release.

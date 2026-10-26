@@ -182,10 +182,12 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      # The Playwright image contains browser dependencies but not Bun's zip extractor.
-      - name: Install Bun Setup Prerequisite
+      # Bun needs unzip; Firefox requires the mounted home to belong to its user.
+      - name: Prepare Container Environment
         if: env.RUN_HEAVY == 'true'
-        run: apt-get update -qq && apt-get install -y --no-install-recommends unzip
+        run: |
+          apt-get update -qq && apt-get install -y --no-install-recommends unzip
+          chown "$(id -u):$(id -g)" "$HOME"
 
       - name: Setup Bun
         if: env.RUN_HEAVY == 'true'
@@ -254,10 +256,12 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      # The Playwright image contains browser dependencies but not Bun's zip extractor.
-      - name: Install Bun Setup Prerequisite
+      # Bun needs unzip; Firefox requires the mounted home to belong to its user.
+      - name: Prepare Container Environment
         if: env.RUN_HEAVY == 'true'
-        run: apt-get update -qq && apt-get install -y --no-install-recommends unzip
+        run: |
+          apt-get update -qq && apt-get install -y --no-install-recommends unzip
+          chown "$(id -u):$(id -g)" "$HOME"
 
       - name: Setup Bun
         if: env.RUN_HEAVY == 'true'
@@ -333,10 +337,12 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      # The Playwright image contains browser dependencies but not Bun's zip extractor.
-      - name: Install Bun Setup Prerequisite
+      # Bun needs unzip; Firefox requires the mounted home to belong to its user.
+      - name: Prepare Container Environment
         if: env.RUN_HEAVY == 'true'
-        run: apt-get update -qq && apt-get install -y --no-install-recommends unzip
+        run: |
+          apt-get update -qq && apt-get install -y --no-install-recommends unzip
+          chown "$(id -u):$(id -g)" "$HOME"
 
       - name: Setup Bun
         if: env.RUN_HEAVY == 'true'
@@ -405,9 +411,11 @@ jobs:
         with:
           node-version-file: .nvmrc
 
-      # The Playwright image contains browser dependencies but not Bun's zip extractor.
-      - name: Install Bun Setup Prerequisite
-        run: apt-get update -qq && apt-get install -y --no-install-recommends unzip
+      # Bun needs unzip; Firefox requires the mounted home to belong to its user.
+      - name: Prepare Container Environment
+        run: |
+          apt-get update -qq && apt-get install -y --no-install-recommends unzip
+          chown "$(id -u):$(id -g)" "$HOME"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2

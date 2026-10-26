@@ -59,6 +59,7 @@ const requiredCiLintTypecheckCommands = [
 	// itself, so that step above is redundant at runtime but kept explicit because
 	// this list is the readable contract for what the gate covers.
 	"check:bundle-safety",
+	"check:portable-build-paths",
 	"check:publint",
 	"check:types-publish",
 	"check:svelte-type-imports",

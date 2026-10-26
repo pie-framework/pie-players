@@ -43,7 +43,9 @@ export type ElementMap = { [tagName: string]: string };
  * // }
  * ```
  */
-export function aggregateElements(items: ItemEntity[]): ElementMap {
+export function aggregateElements(
+	items: ReadonlyArray<Pick<ItemEntity, "config">>,
+): ElementMap {
 	const elementMap: Record<string, string> = {};
 
 	items.forEach((item) => {

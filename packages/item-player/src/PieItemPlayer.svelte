@@ -186,6 +186,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	import {
 		BundleType,
 		alignPreloadedElementVersions,
+		aggregateElements,
 		assertElementPackagesAllowed,
 		assertPieConfigContract,
 		assertRegistered,
@@ -913,16 +914,6 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		return { config: makeUniqueTags({ config }).config, applied };
 	}
 
-	function mergeElementMaps(...configs: Array<ConfigEntity | null>): Record<string, string> {
-		return configs.reduce(
-			(acc, cfg) => {
-				if (!cfg?.elements) return acc;
-				return { ...acc, ...(cfg.elements as Record<string, string>) };
-			},
-			{} as Record<string, string>,
-		);
-	}
-
 	function parseEnvValue(input: unknown): Env {
 		if (typeof input === "string") {
 			try {
@@ -1227,10 +1218,10 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 				? runtimeSupportCheck
 				: "off";
 			const runtimeSupportView = resolveEffectiveEsmView();
-			const elementMap = mergeElementMaps(
-				transformedConfig,
-				transformedPassageConfig,
-			);
+			const elementMap = aggregateElements([
+				{ config: transformedConfig },
+				...(transformedPassageConfig ? [{ config: transformedPassageConfig }] : []),
+			]);
 			assertElementPackagesAllowed(
 				elementMap,
 				loaderOptions?.elementPackagePolicy,

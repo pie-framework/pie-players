@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
+import type { PieItemPlayerElement } from "../src/types.js";
 
 const DEMO_ID = "multiple-choice-radio-simple";
 const PRELOADED_DELIVERY_PATH = `/demo/${DEMO_ID}/delivery?mode=gather&role=student&player=preloaded`;
@@ -133,6 +134,39 @@ async function assertMediaRetryBridge(
 }
 
 test.describe("item-player strategy regressions", () => {
+	for (const strategy of ["iife", "esm", "preloaded"] as const) {
+		test(`${strategy} rejects conflicting item/passage packages before loading`, async ({ page }) => {
+			await page.goto(PRELOADED_DELIVERY_PATH, { waitUntil: "networkidle" });
+			await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({ timeout: 20_000 });
+			const packageRequests: string[] = [];
+			page.on("request", (request) => {
+				if (request.url().includes("ownership-conflict-")) packageRequests.push(request.url());
+			});
+			await page.evaluate((strategy) => {
+				const player = document.createElement("pie-item-player") as PieItemPlayerElement;
+				player.id = "pie-ownership-conflict-fixture";
+				player.strategy = strategy;
+				player.env = { mode: "gather", role: "student" };
+				player.session = { id: "ownership-conflict", data: [] };
+				player.loaderOptions = { runtimeSupportCheck: "on" };
+				const config = (pkg: string, id: string) => ({
+					markup: `<pie-ownership-conflict id="${id}"></pie-ownership-conflict>`,
+					elements: { "pie-ownership-conflict": pkg },
+					models: [{ id, element: "pie-ownership-conflict" }],
+				});
+				player.config = {
+					id: "ownership-conflict",
+					pie: config("@pie-element/ownership-conflict-item@1.0.0", "item-model"),
+					passage: config("@pie-element/ownership-conflict-passage@1.0.0", "passage-model"),
+				};
+				document.body.append(player);
+			}, strategy);
+			await expect(page.locator("#pie-ownership-conflict-fixture .pie-player-error p"))
+				.toContainText("Error loading elements (normalize-config): Element version conflict");
+			expect(packageRequests).toEqual([]);
+		});
+	}
+
 	test("ignores stale iife failures after newer iife config succeeds", async ({
 		page,
 	}) => {

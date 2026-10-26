@@ -253,9 +253,9 @@ test("backend demo accepts answer input after directly refreshing an existing se
 		),
 	).toBeVisible({ timeout: 30_000 });
 
-	const answerGroup = page.getByRole("radiogroup", {
-		name: /largest planet in our solar system/,
-	});
+	// multiple-choice names its group "Answer choices" and renders the prompt
+	// before it, so the group's name no longer holds the question.
+	const answerGroup = page.getByRole("radiogroup", { name: "Answer choices" });
 	await expect(answerGroup.getByRole("radio", { name: /Mars/ })).toBeChecked({
 		timeout: 10_000,
 	});
@@ -289,9 +289,9 @@ test("backend demo keeps the first selected answer in a fresh backend session", 
 		),
 	).toBeVisible({ timeout: 30_000 });
 
-	const answerGroup = page.getByRole("radiogroup", {
-		name: /largest planet in our solar system/,
-	});
+	// multiple-choice names its group "Answer choices" and renders the prompt
+	// before it, so the group's name no longer holds the question.
+	const answerGroup = page.getByRole("radiogroup", { name: "Answer choices" });
 	await answerGroup.locator("label", { hasText: "Jupiter" }).click();
 	await expect(answerGroup.getByRole("radio", { name: /Jupiter/ })).toBeChecked(
 		{
@@ -341,9 +341,9 @@ test("backend demo updates an existing answer from the default tool state", asyn
 		),
 	).toBeVisible({ timeout: 30_000 });
 
-	const answerGroup = page.getByRole("radiogroup", {
-		name: /largest planet in our solar system/,
-	});
+	// multiple-choice names its group "Answer choices" and renders the prompt
+	// before it, so the group's name no longer holds the question.
+	const answerGroup = page.getByRole("radiogroup", { name: "Answer choices" });
 	await expect(answerGroup.getByRole("radio", { name: /Earth/ })).toBeChecked({
 		timeout: 10_000,
 	});

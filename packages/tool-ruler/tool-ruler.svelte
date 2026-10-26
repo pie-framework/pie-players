@@ -21,6 +21,7 @@ without dragging.
 -->
 
 <script lang="ts">
+	import type { RulerProps } from "./element-props.js";
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {
 		connectToolRuntimeContext,
@@ -41,7 +42,7 @@ without dragging.
 	import rulerCm from './ruler-cm.svg';
 	import rulerInches from './ruler-inches.svg';
 
-	let { visible = false, toolId = 'ruler' }: { visible?: boolean; toolId?: string } = $props();
+	let { visible = false, toolId = 'ruler' }: RulerProps = $props();
 
 	const isBrowser = typeof window !== 'undefined';
 

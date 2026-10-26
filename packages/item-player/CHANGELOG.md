@@ -1,5 +1,28 @@
 # @pie-players/pie-item-player
 
+## 1.0.0-beta.7
+
+### Patch Changes
+
+- fedd6a0: Content that declares no language no longer takes the interface locale's `lang` and `dir` once a host sets `locale`: the item player stamps it `lang=""` with `dir="auto"`, so Arabic chrome over English content lays the content out left to right. A new `content-language` attribute on `pie-item-player` names the language instead, and a section passes `runtime.contentLanguage` to its item and passage players the same way. A host that sets neither `locale` nor a content language renders as before. The item player logs one warning when undeclared content's script contradicts a named default's direction, and read-aloud's `lang` lookup stops at an empty `lang`.
+- 8bd5891: Reject an item and passage that assign different executable packages to the same full element tag, before metadata requests or loading. Previously the passage silently replaced the item's package. Both now use the shared aggregation contract; identical declarations still deduplicate and distinct versioned tags remain independent. Existing ItemEntity arrays remain accepted by aggregateElements.
+- 584a754: Items and passages can be language variants. `ItemEntity` and `PassageEntity` add `language` (BCP 47) and `isAdaptationOf`, `AssessmentEntity` adds `languagePolicy`, and `./types` exports `AdaptationLink`, `LanguagePolicy`, `ContentSubstitution` and `ServedContentIdentity`. The section player sets `env.locale` to an item's or passage's `language` for that content alone and records it as the item session's `content`, which `TestAttemptItemSession` keeps. Item player delivery sends `backend.delivery.requestedLanguages` and, when a load response names the served version as `identity`, renders and scores under its `servedLanguage` and adds `identity` to `backend-load-complete`. `./i18n/language-tags` adds `negotiateContentLanguage`, `findClosestLanguageMatch` and `languageTagScriptLookupSequence`. Content and delivery configs without these fields behave as before.
+- cb55fee: Resolve fetched stylesheet asset URLs against their stylesheet location before scoping, reject failed requests and redirects, and redact signed stylesheet URLs from diagnostics while logging the failure reason. Validate CSS resources against the host origin policy; reject @import and image-set forms that could load unchecked resources. Keep shared fetches, per-instance style cleanup, existing selector scoping and host-opted-in cross-origin stylesheet links.
+- Updated dependencies [885b07e]
+- Updated dependencies [fedd6a0]
+- Updated dependencies [c931537]
+- Updated dependencies [8259692]
+- Updated dependencies [75f1716]
+- Updated dependencies [067cf18]
+- Updated dependencies [6da86de]
+- Updated dependencies [5c6cbe8]
+- Updated dependencies [8bd5891]
+- Updated dependencies [584a754]
+- Updated dependencies [584a754]
+- Updated dependencies [cb55fee]
+  - @pie-players/pie-players-shared@1.0.0-beta.7
+  - @pie-players/pie-context@1.0.0-beta.7
+
 ## 1.0.0-beta.6
 
 ### Patch Changes

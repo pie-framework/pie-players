@@ -1,5 +1,26 @@
 # @pie-players/tts-client-server
 
+## 1.0.0-beta.7
+
+### Patch Changes
+
+- 5579fba: Keep synthesis failures status-only in errors, logs and telemetry, and release failed response streams without waiting for their bodies. Settle stopped or superseded playback and release audio URLs when playback fails. Preserve pause and resume during synthesis and buffering. Hosts configuring server text-to-speech retain their request and telemetry shapes; provider-supplied failure text is replaced by sanitized messages that keep standard error names such as `NotAllowedError`.
+- Updated dependencies [885b07e]
+- Updated dependencies [fedd6a0]
+- Updated dependencies [c931537]
+- Updated dependencies [8259692]
+- Updated dependencies [75f1716]
+- Updated dependencies [067cf18]
+- Updated dependencies [6da86de]
+- Updated dependencies [5c6cbe8]
+- Updated dependencies [8bd5891]
+- Updated dependencies [584a754]
+- Updated dependencies [584a754]
+- Updated dependencies [cb55fee]
+  - @pie-players/pie-players-shared@1.0.0-beta.7
+  - @pie-players/pie-tts@1.0.0-beta.7
+  - @pie-players/tts-server-core@1.0.0-beta.7
+
 ## 1.0.0-beta.6
 
 ### Patch Changes

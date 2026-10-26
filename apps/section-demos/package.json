@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/section-demos",
-	"version": "0.1.89-beta.6",
+	"version": "0.1.89-beta.7",
 	"description": "Progressive demos for PIE Section Player",
 	"type": "module",
 	"private": true,

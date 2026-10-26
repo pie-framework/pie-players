@@ -1,5 +1,24 @@
 # @pie-players/pie-i18n-generated
 
+## 1.0.0-beta.7
+
+### Patch Changes
+
+- 885b07e: The answer eliminator's `button-alignment` now takes `start`, `end` and `inline`, defaulting to `inline`. `start` and `end` resolve against the choice's direction, and `left` and `right` remain as their aliases. A standalone element that left the attribute unset moves from `right` to `inline`; set `button-alignment="end"` to keep the old placement. The toggle's accessible name and the "(eliminated)" announcement now come from the players' catalog in the interface locale, and carry its `lang` and `dir`.
+- Updated dependencies [885b07e]
+- Updated dependencies [fedd6a0]
+- Updated dependencies [c931537]
+- Updated dependencies [8259692]
+- Updated dependencies [75f1716]
+- Updated dependencies [067cf18]
+- Updated dependencies [6da86de]
+- Updated dependencies [5c6cbe8]
+- Updated dependencies [8bd5891]
+- Updated dependencies [584a754]
+- Updated dependencies [584a754]
+- Updated dependencies [cb55fee]
+  - @pie-players/pie-players-shared@1.0.0-beta.7
+
 ## 1.0.0-beta.6
 
 ### Patch Changes

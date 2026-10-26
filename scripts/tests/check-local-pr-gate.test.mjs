@@ -21,7 +21,7 @@ const basePackageJson = {
 		"verify:pre-commit":
 			"bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:resolution-boundary && bun run check:deps && bun run check:lock-consistency && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:source-exports && bun run check:api-report && bun run check:consumer-boundaries && bun run check:scripts && bun run lint:biome && bun run check",
 		"verify:ci-lint-typecheck":
-			"bun run check:local-pr-gate && bun run check:resolution-boundary && bun run check:deps && bun run check:lock-consistency && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:api-report && bun run check:scripts && bun run build && bun run check:custom-elements:dist && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:publint && bun run check:types-publish && bun run check:svelte-type-imports && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:ce-composition && bun run check:consumer-boundaries && bun run lint:all",
+			"bun run check:local-pr-gate && bun run check:resolution-boundary && bun run check:deps && bun run check:lock-consistency && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:api-report && bun run check:scripts && bun run build && bun run check:custom-elements:dist && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:portable-build-paths && bun run check:publint && bun run check:types-publish && bun run check:svelte-type-imports && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:ce-composition && bun run check:consumer-boundaries && bun run lint:all",
 		"verify:local-pr":
 			"bun run check:changeset-patch-only && bun run verify:ci-lint-typecheck && bun run test:e2e:local-gate",
 		"verify:pre-push": "bun run verify:local-pr",
@@ -74,6 +74,20 @@ describe("check-local-pr-gate policy", () => {
 		expect(failures).toContain(
 			'verify:pre-push is missing "bun run verify:local-pr".',
 		);
+	});
+
+	test("requires the portable-path scan after built-artifact checks", () => {
+		const failures = collectGateFailures({
+			packageJson: { scripts: {
+				...basePackageJson.scripts,
+				"verify:ci-lint-typecheck": basePackageJson.scripts["verify:ci-lint-typecheck"].replace(" && bun run check:portable-build-paths", ""),
+			} },
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow,
+			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
+		});
+		expect(failures).toContain('verify:ci-lint-typecheck is missing "bun run check:portable-build-paths".');
 	});
 
 	test("requires packed custom-element consumer checks after the build", () => {

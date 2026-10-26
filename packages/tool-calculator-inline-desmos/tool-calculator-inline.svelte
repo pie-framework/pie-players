@@ -22,6 +22,7 @@ target toolbar renders a calculator.
 -->
 
 <script lang="ts">
+	import type { CalculatorInlineProps } from "./element-props.js";
 	import { CalculatorInlineTool } from '@pie-players/pie-tool-calculator-shared/components';
 
 	let {
@@ -29,12 +30,7 @@ target toolbar renders a calculator.
 		calculatorType = 'basic',
 		availableTypes = 'basic,scientific,graphing',
 		size = 'md' as 'sm' | 'md' | 'lg',
-	}: {
-		targetToolId?: string;
-		calculatorType?: string;
-		availableTypes?: string;
-		size?: 'sm' | 'md' | 'lg';
-	} = $props();
+	}: CalculatorInlineProps = $props();
 </script>
 
 <CalculatorInlineTool

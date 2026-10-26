@@ -1,8 +1,15 @@
 /**
- * pie-tool-periodic-table - PIE Assessment Tool
- *
- * This package exports a web component built from Svelte.
- * Import the built version for CDN usage, or the .svelte source for Svelte projects.
+ * Importing this package registers `<pie-tool-periodic-table>`.
+ * The built component supplies the runtime; this entry declares its native host type.
  */
 
-// Re-export any TypeScript types defined in the package
+import type { PeriodicTableProps } from "./element-props.js";
+
+/** Native host interface for `<pie-tool-periodic-table>`. Properties may be unset until it mounts. */
+export interface PieToolPeriodicTableElement extends HTMLElement, PeriodicTableProps {}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-tool-periodic-table": PieToolPeriodicTableElement;
+	}
+}

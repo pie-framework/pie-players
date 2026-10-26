@@ -8,6 +8,11 @@
 		"composite": true,
 		"moduleResolution": "NodeNext"
 	},
-	"include": ["index.ts", "tool-graph.svelte", "svelte-shims.d.ts"],
+	"include": [
+		"element-props.ts",
+		"index.ts",
+		"tool-graph.svelte",
+		"svelte-shims.d.ts"
+	],
 	"exclude": ["node_modules", "dist"]
 }

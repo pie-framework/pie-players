@@ -30,6 +30,21 @@ const { nodeSafe: NODE_IMPORT_TARGETS, browserOnly: BROWSER_ONLY_TARGETS } =
 const ALL_TARGETS = [...NODE_IMPORT_TARGETS, ...BROWSER_ONLY_TARGETS];
 const TTS_SERVER_CORE = "@pie-players/tts-server-core";
 const NATIVE_ELEMENT_PACKAGES = [
+	"@pie-players/pie-tool-annotation-toolbar",
+	"@pie-players/pie-tool-graph",
+	"@pie-players/pie-tool-periodic-table",
+	"@pie-players/pie-tool-answer-eliminator",
+	"@pie-players/pie-tool-theme",
+	"@pie-players/pie-tool-line-reader",
+	"@pie-players/pie-tool-calculator-shared",
+	"@pie-players/pie-tool-calculator-desmos",
+	"@pie-players/pie-tool-calculator-inline-desmos",
+	"@pie-players/pie-section-player-tools-event-debugger",
+	"@pie-players/pie-section-player-tools-instrumentation-debugger",
+	"@pie-players/pie-section-player-tools-session-debugger",
+	"@pie-players/pie-section-player-tools-tts-settings",
+	"@pie-players/pie-section-player-tools-pnp-debugger",
+
 	"@pie-players/pie-tool-ruler",
 	"@pie-players/pie-tool-protractor",
 	"@pie-players/pie-tool-tts-inline",
@@ -135,6 +150,104 @@ import "@pie-players/pie-section-player/components/section-player-splitpane-elem
 import type { PieSectionPlayerElement, PieSectionPlayerSplitPaneElement } from "@pie-players/pie-section-player";
 import "@pie-players/pie-assessment-player/components/assessment-player-default-element";
 import type { PieAssessmentPlayerDefaultElement } from "@pie-players/pie-assessment-player";
+
+import type { PieToolAnnotationToolbarElement } from "@pie-players/pie-tool-annotation-toolbar";
+import type { PieToolGraphElement } from "@pie-players/pie-tool-graph";
+import type { PieToolPeriodicTableElement } from "@pie-players/pie-tool-periodic-table";
+import type { PieToolAnswerEliminatorElement } from "@pie-players/pie-tool-answer-eliminator";
+import type { PieToolThemeElement } from "@pie-players/pie-tool-theme";
+import type { PieToolLineReaderElement } from "@pie-players/pie-tool-line-reader";
+import type { PieToolCalculatorElement } from "@pie-players/pie-tool-calculator-shared/calculator-element";
+import type { PieToolCalculatorElement as DesmosCalculatorElement } from "@pie-players/pie-tool-calculator-desmos";
+import type { PieToolCalculatorInlineElement } from "@pie-players/pie-tool-calculator-inline-desmos";
+import type { PieSectionPlayerToolsEventDebuggerElement } from "@pie-players/pie-section-player-tools-event-debugger";
+import type { PieSectionPlayerToolsInstrumentationDebuggerElement } from "@pie-players/pie-section-player-tools-instrumentation-debugger";
+import type { PieSectionPlayerToolsSessionDebuggerElement } from "@pie-players/pie-section-player-tools-session-debugger";
+import type { PieSectionPlayerToolsTtsSettingsElement } from "@pie-players/pie-section-player-tools-tts-settings";
+import type { PieSectionPlayerToolsPnpDebuggerElement } from "@pie-players/pie-section-player-tools-pnp-debugger";
+import type { ToolkitCoordinatorApi } from "@pie-players/pie-assessment-toolkit";
+
+const annotation: PieToolAnnotationToolbarElement = document.createElement("pie-tool-annotation-toolbar");
+annotation.enabled = true;
+annotation.selectionActions = null;
+// @ts-expect-error Component defaults are unavailable before mount.
+const initialEnabled: boolean = document.createElement("pie-tool-annotation-toolbar").enabled;
+// @ts-expect-error The current toolbar receives selection actions, not a coordinator property.
+annotation.highlightCoordinator = {};
+const graph: PieToolGraphElement = document.createElement("pie-tool-graph");
+graph.visible = true;
+graph.toolId = "graph";
+// @ts-expect-error Native boolean input must stay typed.
+graph.visible = "yes";
+const periodic: PieToolPeriodicTableElement = document.createElement("pie-tool-periodic-table");
+periodic.visible = true;
+periodic.toolId = "periodicTable";
+const eliminator: PieToolAnswerEliminatorElement = document.createElement("pie-tool-answer-eliminator");
+eliminator.strategy = "mask";
+eliminator.buttonAlignment = "inline";
+eliminator.elementStateKeys = {};
+// @ts-expect-error Only supported eliminator strategies are accepted.
+eliminator.strategy = "hide";
+const theme: PieToolThemeElement = document.createElement("pie-tool-theme");
+theme.visible = true;
+theme.toolId = "theme";
+const reader: PieToolLineReaderElement = document.createElement("pie-tool-line-reader");
+reader.visible = true;
+reader.toolId = "lineReader";
+const calculator: PieToolCalculatorElement = document.createElement("pie-tool-calculator");
+const desmosCalculator: DesmosCalculatorElement = calculator;
+desmosCalculator.calculatorType = "scientific";
+calculator.availableTypes = ["basic", "graphing"];
+calculator.availableTypes = "basic,graphing";
+calculator.calculatorConfig = {};
+// @ts-expect-error Calculator types come from the provider-neutral contract.
+calculator.calculatorType = "finance";
+const inlineCalculator: PieToolCalculatorInlineElement = document.createElement("pie-tool-calculator-inline");
+inlineCalculator.targetToolId = "calculator";
+inlineCalculator.calculatorType = "basic";
+inlineCalculator.availableTypes = "basic,scientific";
+inlineCalculator.size = "sm";
+// @ts-expect-error Only current button sizes are supported.
+inlineCalculator.size = "huge";
+
+declare const coordinator: ToolkitCoordinatorApi;
+const events: PieSectionPlayerToolsEventDebuggerElement = document.createElement("pie-section-player-tools-event-debugger");
+events.toolkitCoordinator = coordinator;
+events.sectionId = "section-1";
+events.maxEvents = 100;
+events.maxEventsByLevel = { item: 50, section: 50 };
+events.persistencePanelId = "events";
+// @ts-expect-error Event limits are per item/section level, not event type.
+events.maxEventsByLevel = { "content-loaded": 10 };
+const instrumentation: PieSectionPlayerToolsInstrumentationDebuggerElement = document.createElement("pie-section-player-tools-instrumentation-debugger");
+instrumentation.maxRecords = 100;
+instrumentation.maxRecordsByKind = { event: 30, metric: 20 };
+instrumentation.persistenceScope = "attempt-1";
+// @ts-expect-error Record kinds match the instrumentation stream.
+instrumentation.maxRecordsByKind = { item: 10 };
+const sessions: PieSectionPlayerToolsSessionDebuggerElement = document.createElement("pie-section-player-tools-session-debugger");
+sessions.toolkitCoordinator = coordinator;
+sessions.sectionId = "section-1";
+sessions.attemptId = "attempt-1";
+// @ts-expect-error A required component input is still unset on a fresh native element.
+const initialSectionId: string = document.createElement("pie-section-player-tools-session-debugger").sectionId;
+const settings: PieSectionPlayerToolsTtsSettingsElement = document.createElement("pie-section-player-tools-tts-settings");
+settings.toolkitCoordinator = coordinator;
+settings.apiEndpoint = "/api/tts";
+settings.storageKey = "tts-settings";
+settings.customProviders = [];
+// @ts-expect-error Current custom providers require their full descriptor.
+settings.customProviders = [{ id: "custom" }];
+const pnp: PieSectionPlayerToolsPnpDebuggerElement = document.createElement("pie-section-player-tools-pnp-debugger");
+pnp.roleType = "candidate";
+pnp.sectionData = {};
+pnp.editable = false;
+// @ts-expect-error Role defaults are unavailable before the component mounts.
+const initialRole: "candidate" | "scorer" = document.createElement("pie-section-player-tools-pnp-debugger").roleType;
+// @ts-expect-error Preserve the current role contract.
+pnp.roleType = "student";
+const selectedGraph: PieToolGraphElement | null = document.querySelector("pie-tool-graph");
+selectedGraph?.remove();
 
 const ruler: PieToolRulerElement = document.createElement("pie-tool-ruler");
 ruler.visible = true;

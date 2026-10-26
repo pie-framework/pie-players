@@ -1,10 +1,15 @@
 /**
- * pie-section-player-tools-instrumentation-debugger
- *
- * Importing this package registers
- * `<pie-section-player-tools-instrumentation-debugger>`. The build entry is the
- * component, so this file is the type entry alone and declares nothing: a
- * runtime export here would not exist in the built bundle.
+ * Importing this package registers `<pie-section-player-tools-instrumentation-debugger>`.
+ * The built component supplies the runtime; this entry declares its native host type.
  */
 
-export type {};
+import type { InstrumentationDebuggerProps } from "./element-props.js";
+
+/** Native host interface for `<pie-section-player-tools-instrumentation-debugger>`. Properties may be unset until it mounts. */
+export interface PieSectionPlayerToolsInstrumentationDebuggerElement extends HTMLElement, InstrumentationDebuggerProps {}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-section-player-tools-instrumentation-debugger": PieSectionPlayerToolsInstrumentationDebuggerElement;
+	}
+}

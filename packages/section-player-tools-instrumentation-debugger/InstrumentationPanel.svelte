@@ -22,6 +22,7 @@ Developer panel for the section player demos that lists the instrumentation reco
 -->
 
 <script lang="ts">
+	import type { InstrumentationDebuggerProps } from "./element-props.js";
 	import {
 		type AssessmentToolkitRuntimeContext,
 		connectToolRuntimeContext,
@@ -40,7 +41,6 @@ Developer panel for the section player demos that lists the instrumentation reco
 		haveSamePanelKeys,
 		pruneAndSortRecords,
 		type PanelRecord,
-		type RecordLimitOverrides,
 		type RecordLimits,
 	} from "./panel-records.js";
 
@@ -57,12 +57,7 @@ Developer panel for the section player demos that lists the instrumentation reco
 		maxRecordsByKind = {},
 		persistenceScope = "",
 		persistencePanelId = "instrumentation-events",
-	}: {
-		maxRecords?: number;
-		maxRecordsByKind?: RecordLimitOverrides;
-		persistenceScope?: string;
-		persistencePanelId?: string;
-	} = $props();
+	}: InstrumentationDebuggerProps = $props();
 	let isPaused = $state(false);
 	let selectedKind = $state<InstrumentationDebugRecord["kind"] | "all">("all");
 	let selectedRecordKey = $state<number | null>(null);

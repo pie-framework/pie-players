@@ -5,3 +5,4 @@
 
 ./calculator-element
   type CalculatorType
+  type PieToolCalculatorElement

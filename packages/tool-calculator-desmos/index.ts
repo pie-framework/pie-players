@@ -12,3 +12,5 @@ import "@pie-players/pie-tool-calculator-shared/calculator-element";
 
 // Export TypeScript types (if any)
 export type { CalculatorType } from "@pie-players/pie-calculator";
+
+export type { PieToolCalculatorElement } from "@pie-players/pie-tool-calculator-shared/calculator-element";

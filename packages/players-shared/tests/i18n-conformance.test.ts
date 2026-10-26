@@ -16,6 +16,7 @@ import type { MessageCatalog } from "../src/i18n/types.js";
 
 interface Fixtures {
 	lookupSequence: { tag: string; expected: string[] }[];
+	catalogMatch: { locale: string; available: string[]; expected: string }[];
 	direction: { tag: string; expected: "ltr" | "rtl" }[];
 	plural: {
 		catalogs: Record<string, MessageCatalog>;
@@ -68,6 +69,15 @@ describe("i18n conformance", () => {
 	test("lookup sequence", () => {
 		for (const { tag, expected } of fixtures.lookupSequence) {
 			expect(languageTagLookupSequence(tag), tag).toEqual(expected);
+		}
+	});
+
+	test("catalog match: script-aware lookup, then widening within the script", () => {
+		for (const { locale, available, expected } of fixtures.catalogMatch) {
+			const i18n = new SimpleI18n({ availableLocales: available, locale });
+			expect(i18n.getLocale(), `${locale} in ${available.join(", ")}`).toBe(
+				expected,
+			);
 		}
 	});
 

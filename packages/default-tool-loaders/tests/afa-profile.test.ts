@@ -81,12 +81,14 @@ describe("AfA PNP 3.0 adapter", () => {
 				},
 				"calculator-on-screen": { "calculator-type": "graphing" },
 				"sign-language": { language: "ase" },
+				"item-translation": { language: "es" },
 				magnification: { "all-content": { "zoom-amount": 2.5 } },
 			}).toolParameters,
 		).toEqual({
 			textToSpeech: { rate: 1.5, pitch: 0.5, volume: 0.8 },
 			calculator: { type: "graphing" },
 			signLanguage: { signLang: "ase" },
+			itemTranslation: { language: "es" },
 			magnification: { zoom: 2.5 },
 		});
 	});

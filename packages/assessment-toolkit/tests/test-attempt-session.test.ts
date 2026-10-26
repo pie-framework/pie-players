@@ -49,4 +49,21 @@ describe("test attempt session", () => {
 			data: [{ value: "C" }],
 		});
 	});
+
+	test("upsert keeps the delivered content identity across later changes", () => {
+		const content = { baseId: "base-1", servedLanguage: "es" };
+		const first = upsertItemSessionFromPieSessionChange(newSession(), {
+			itemIdentifier: "item-1",
+			pieSessionId: "pie-session-1",
+			session: { id: "pie-session-1", data: [] },
+			content,
+		});
+		const next = upsertItemSessionFromPieSessionChange(first, {
+			itemIdentifier: "item-1",
+			pieSessionId: "pie-session-1",
+			session: { id: "pie-session-1", data: [{ value: "A" }] },
+		});
+
+		expect(next.itemSessions["item-1"]?.content).toEqual(content);
+	});
 });

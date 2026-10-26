@@ -117,4 +117,31 @@ describe("catalog language matching", () => {
 
 		expect(resolver.getAllAlternatives("prompt-1")).toHaveLength(1);
 	});
+
+	test("a request reaches a card in its own script and passes one in another by", () => {
+		const resolver = new AccessibilityCatalogResolver(
+			catalogWith(
+				spoken("en-US", "hello"),
+				spoken("zh", "简体"),
+				spoken("zh-Hant", "繁體"),
+			),
+		);
+		const lookup = (language: string) =>
+			resolver.getAlternative("prompt-1", { type: "spoken", language })
+				?.content;
+
+		expect(lookup("zh-TW")).toBe("繁體");
+		expect(lookup("zh-CN")).toBe("简体");
+	});
+
+	test("a request in another script falls to the default ahead of a bare card", () => {
+		const resolver = new AccessibilityCatalogResolver(
+			catalogWith(spoken("zh", "简体"), spoken("en-US", "hello")),
+		);
+
+		expect(
+			resolver.getAlternative("prompt-1", { type: "spoken", language: "zh-TW" })
+				?.content,
+		).toBe("hello");
+	});
 });

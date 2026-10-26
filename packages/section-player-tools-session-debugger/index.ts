@@ -1,10 +1,15 @@
 /**
- * pie-section-player-tools-session-debugger
- *
- * Importing this package registers
- * `<pie-section-player-tools-session-debugger>`. The build entry is the
- * component, so this file is the type entry alone and declares nothing: a
- * runtime export here would not exist in the built bundle.
+ * Importing this package registers `<pie-section-player-tools-session-debugger>`.
+ * The built component supplies the runtime; this entry declares its native host type.
  */
 
-export type {};
+import type { SessionDebuggerProps } from "./element-props.js";
+
+/** Native host interface for `<pie-section-player-tools-session-debugger>`. Properties may be unset until it mounts. */
+export interface PieSectionPlayerToolsSessionDebuggerElement extends HTMLElement, Partial<SessionDebuggerProps> {}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-section-player-tools-session-debugger": PieSectionPlayerToolsSessionDebuggerElement;
+	}
+}

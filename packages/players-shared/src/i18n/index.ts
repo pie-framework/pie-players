@@ -42,11 +42,15 @@ export { BUNDLED_LOCALES, loadBundledCatalog } from "./catalogs.js";
 export {
 	canonicalLanguageTag,
 	findBestLanguageMatch,
+	findClosestLanguageMatch,
 	languageTagLookupSequence,
+	languageTagScriptLookupSequence,
 	languageTagsEqual,
+	negotiateContentLanguage,
 	normalizeLanguageTag,
 	toLanguageTag,
 } from "./language-tags.js";
+export type { ContentLanguageMatch } from "./language-tags.js";
 export {
 	DEFAULT_LOCALE,
 	detectBrowserLocale,
@@ -60,7 +64,11 @@ export {
 export {
 	type ContentLanguageAttributes,
 	contentLanguageAttributes,
+	defaultContentLanguage,
+	firstStrongDirection,
 	stampContentLanguage,
+	UNDECLARED_CONTENT_LANGUAGE,
+	undeclaredDirectionMismatch,
 } from "./content-language.js";
 export {
 	type InterfaceLocaleLoadErrorModel,

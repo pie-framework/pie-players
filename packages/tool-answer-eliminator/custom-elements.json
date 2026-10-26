@@ -43,9 +43,10 @@
 							"kind": "field",
 							"name": "buttonAlignment",
 							"type": {
-								"text": "'left' | 'right' | 'inline'"
+								"text": "'start' | 'end' | 'inline' | 'left' | 'right'"
 							},
-							"default": "'right'",
+							"default": "'inline'",
+							"description": "Toggle placement: `inline` in the flow after the choice, or `start`/`end` beside it, mirrored under right-to-left content; `left` and `right` alias `start` and `end`.",
 							"attribute": "button-alignment"
 						},
 						{
@@ -89,7 +90,8 @@
 							"type": {
 								"text": "string"
 							},
-							"default": "'right'",
+							"default": "'inline'",
+							"description": "Toggle placement: `inline` in the flow after the choice, or `start`/`end` beside it, mirrored under right-to-left content; `left` and `right` alias `start` and `end`.",
 							"fieldName": "buttonAlignment"
 						},
 						{

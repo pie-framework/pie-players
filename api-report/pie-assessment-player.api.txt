@@ -29,6 +29,7 @@
   type AssessmentSessionPersistenceFactoryDefaults
   type AssessmentSessionPersistenceStrategy
   type AssessmentSubmissionStateChangedDetail
+  type PieAssessmentPlayerDefaultElement
 
 ./components/assessment-player-default-element
   ASSESSMENT_PLAYER_PUBLIC_EVENTS
@@ -56,3 +57,4 @@
   type AssessmentSessionPersistenceFactoryDefaults
   type AssessmentSessionPersistenceStrategy
   type AssessmentSubmissionStateChangedDetail
+  type PieAssessmentPlayerDefaultElement

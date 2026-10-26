@@ -79,18 +79,21 @@ passage titles and `kds-*` markup render unstyled, and content the author marked
 
 On each `config` assignment the player:
 
-1. Resolves each entry of `item.elements` through `resolve(tagName, pkg, loaderOptions)`. The
+1. Validates the element tags, rejects HTML `pie-*` tags missing from `item.elements`,
+   and checks `loaderOptions.elementPackagePolicy` when supplied. Invalid configs
+   throw synchronously before invoking a resolver or replacing the active job.
+2. Resolves each entry of `item.elements` through `resolve(tagName, pkg, loaderOptions)`. The
    print tag is `<tagName>-print-<hash of url>`, unless the resolution sets
    `printTagName`.
-2. Sanitizes `item.markup` and replaces each element tag that has an `id` with
+3. Sanitizes `item.markup` and replaces each element tag that has an `id` with
    its print tag, keeping the authored attributes and children and setting
    `id`, `pie-id` and `data-original-tag`.
-3. Renders the markup, then the floaters, and mounts the
+4. Renders the markup, then the floaters, and mounts the
    [accessibility alternates](#accessibility-alternates) above the markup.
-4. Checks each module `url` with a HEAD request and registers the module under
+5. Checks each module `url` with a HEAD request and registers the module under
    its print tag. A missing or failing module registers the `missingElement`
    placeholder instead.
-5. Sets `options` and `model` on each element. Print elements receive no
+6. Sets `options` and `model` on each element. Print elements receive no
    session.
 
 ## API
@@ -100,7 +103,7 @@ On each `config` assignment the player:
 | Property | Type | Description |
 |---|---|---|
 | `config` | `Config` | The item (markup, elements map, models), rendering options, and the accessibility inputs |
-| `loaderOptions` | `PrintLoaderOptions` | `{ esmCdnUrl?, esmCdnProvider? }`, the ESM CDN the default resolver loads print modules from, named as on `<pie-item-player>`'s `loaderOptions`; jsDelivr when unset. Read when `config` is set, so set it first |
+| `loaderOptions` | `PrintLoaderOptions` | `{ esmCdnUrl?, esmCdnProvider?, elementPackagePolicy? }`, the ESM CDN and optional package allowlist, named as on `<pie-item-player>`'s `loaderOptions`; jsDelivr when unset. Read when `config` is set, so set it first |
 | `resolve` | `ResolverFn` | Maps each element to its print module ([Custom Resolution](#custom-resolution)); the default resolves the browser print build on `loaderOptions`' ESM CDN |
 | `missingElement` | `MissingElFn` | `(pkg, message) => CustomElementConstructor`, the placeholder registered for a module that failed to load. The default shows the tag and the message in the theme's `--pie-incorrect` color |
 | `trustMarkup` (attr `trust-markup`) | `boolean` | Render authored markup without sanitizing it. Defaults to `false` |
@@ -126,6 +129,25 @@ scroll wrappers the screen players put around overwide images and tables:
 
 Both may be set before or after `config`; the markup is reprocessed when they
 change.
+
+Every HTML `pie-*` tag must be declared in `item.elements`, including when
+`trustMarkup` or a custom sanitizer is used. This prevents an already-registered
+PIE element from executing outside the declared package map. Hosts can also
+restrict which packages may execute, before either the default or a custom
+resolver runs:
+
+```javascript
+player.loaderOptions = {
+  elementPackagePolicy: {
+    allowedPackages: ['@pie-element/multiple-choice@12.0.0'],
+  },
+};
+player.config = config;
+```
+
+The allowlist accepts package names or exact `name@version` specs. Versions must
+be exact by default; `requireExactVersions: false` relaxes that requirement.
+Omitting the policy preserves package resolution for trusted host applications.
 
 ### Config
 

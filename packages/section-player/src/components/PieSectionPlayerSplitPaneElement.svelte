@@ -87,6 +87,7 @@ Section player layout that renders a section's passages and items side by side w
 -->
 
 <script lang="ts">
+	import type { SectionPlayerSplitPaneElementProps } from "../contracts/elements.js";
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import {
 		attachInstrumentationEventBridge,
@@ -107,20 +108,7 @@ Section player layout that renders a section's passages and items side by side w
 	import SectionSplitDivider from "./shared/SectionSplitDivider.svelte";
 	import { useInterfaceI18n } from "./shared/use-interface-i18n.svelte.js";
 	import { untrack } from "svelte";
-	import type {
-		ToolConfigStrictness,
-		ToolRegistry,
-		ToolbarItem,
-	} from "@pie-players/pie-assessment-toolkit";
-	import type {
-		AssessmentEntity,
-		AssessmentSection,
-		SectionControllerSessionState,
-	} from "@pie-players/pie-players-shared/types";
-	import {
-		resolveSectionId,
-		type RuntimeConfig,
-	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
+	import { resolveSectionId } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type {
 		SectionItemScore,
 		SectionPlayerRuntimeHostContract,
@@ -128,7 +116,6 @@ Section player layout that renders a section's passages and items side by side w
 	} from "../contracts/runtime-host-contract.js";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
 	import { resolveSectionPlayerPolicies } from "../policies/index.js";
-	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
 	import {
 		clampNarrowBreakpoint,
 		createNarrowLayoutWatch,
@@ -219,33 +206,33 @@ Section player layout that renders a section's passages and items side by side w
 	}
 
 	let {
-		runtime = null as RuntimeConfig | null,
-		ndsIcons = undefined as boolean | undefined,
+		runtime = null,
+		ndsIcons = undefined,
 		locale = "",
-		section = null as AssessmentSection | null,
-		session = null as SectionControllerSessionState | null,
-		assessment = null as AssessmentEntity | null,
+		section = null,
+		session = null,
+		assessment = null,
 		sectionId = "",
 		attemptId = "",
 		iifeBundleHost,
-		debug = undefined as string | boolean | undefined,
-		baseHeadingLevel = undefined as number | undefined,
-		showToolbar = "false" as boolean | string | null | undefined,
+		debug = undefined,
+		baseHeadingLevel = undefined,
+		showToolbar = "false",
 		toolbarPosition = "right",
-		toolRegistry = null as ToolRegistry | null,
-		sectionHostButtons = [] as ToolbarItem[],
-		itemHostButtons = [] as ToolbarItem[],
-		passageHostButtons = [] as ToolbarItem[],
-		policies = undefined as Partial<SectionPlayerPolicies> | undefined,
-		hooks = undefined as SectionPlayerHostHooks | undefined,
-		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
-		narrowLayoutBreakpoint = undefined as number | undefined,
-		contentMaxWidthNoPassage = undefined as number | undefined,
-		contentMaxWidthWithPassage = undefined as number | undefined,
-		splitPaneMinRegionWidth = undefined as number | undefined,
-		splitPaneInitialPassageWidth = undefined as number | string | undefined,
-		splitPaneCollapseStrategy = "tabbed" as "vertical" | "tabbed" | string,
-	} = $props();
+		toolRegistry = null,
+		sectionHostButtons = [],
+		itemHostButtons = [],
+		passageHostButtons = [],
+		policies = undefined,
+		hooks = undefined,
+		toolConfigStrictness = undefined,
+		narrowLayoutBreakpoint = undefined,
+		contentMaxWidthNoPassage = undefined,
+		contentMaxWidthWithPassage = undefined,
+		splitPaneMinRegionWidth = undefined,
+		splitPaneInitialPassageWidth = undefined,
+		splitPaneCollapseStrategy = "tabbed",
+	}: SectionPlayerSplitPaneElementProps = $props();
 
 	// Snapshot of the resolved prop at mount. Renders the divider in the
 	// right place on the first frame (so consumers don't see a 50% flash

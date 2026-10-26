@@ -1,0 +1,32 @@
+{
+	"$comment": "Content-language negotiation spec (PIE-1393) shared by pie-players' negotiateContentLanguage and pie-api-aws' port in packages/services/src/language-negotiation.ts, which mirrors it because the pie-players entry is ESM-only. Keep the two copies byte-identical: pie-players packages/players-shared/tests/content-language-fixtures.json and pie-api-aws packages/services/src/language-negotiation.fixtures.json. A case that only one side passes is drift, and the fix goes to the implementation, not the fixture.",
+	"scriptLookupSequence": [
+		{ "tag": "zh-TW", "expected": ["zh-tw", "zh-hant", "zh"] },
+		{ "tag": "es-MX", "expected": ["es-mx", "es-latn", "es"] },
+		{ "tag": "sr-Latn-RS", "expected": ["sr-latn-rs", "sr-latn", "sr"] },
+		{ "tag": "es", "expected": ["es"] }
+	],
+	"negotiate": [
+		{ "requested": ["es"], "available": ["en-US", "es"], "defaultLanguage": "en-US", "expected": { "language": "es" } },
+		{ "requested": ["es-MX"], "available": ["en-US", "es"], "defaultLanguage": "en-US", "expected": { "language": "es" } },
+		{ "requested": ["es_MX"], "available": ["en-US", "es-ES"], "defaultLanguage": "en-US", "expected": { "language": "es-ES" } },
+		{ "requested": ["fr", "es"], "available": ["en-US", "es"], "defaultLanguage": "en-US", "expected": { "language": "es" } },
+		{ "requested": ["zh-TW"], "available": ["en-US", "zh"], "defaultLanguage": "en-US", "expected": { "language": "en-US", "substitution": "fallback" } },
+		{ "requested": ["zh-TW"], "available": ["en-US", "zh", "zh-Hant"], "defaultLanguage": "en-US", "expected": { "language": "zh-Hant" } },
+		{ "requested": ["vi"], "available": ["en-US", "es"], "defaultLanguage": "en-US", "fallback": "none", "expected": null },
+		{ "requested": ["vi"], "available": ["en-US", "es"], "defaultLanguage": "en-US", "expected": { "language": "en-US", "substitution": "fallback" } },
+		{ "requested": [], "available": ["en-US", "es"], "defaultLanguage": "en-US", "expected": { "language": "en-US" } },
+		{ "requested": ["vi"], "available": ["en-US", "es"], "expected": null },
+		{ "requested": ["es-MX"], "available": ["en-US", "es-MX", "es"], "defaultLanguage": "en-US", "matching": "exact", "expected": { "language": "es-MX" } },
+		{ "requested": ["es_mx"], "available": ["en-US", "es-MX"], "defaultLanguage": "en-US", "matching": "exact", "expected": { "language": "es-MX" } },
+		{ "requested": ["es-MX"], "available": ["en-US", "es"], "defaultLanguage": "en-US", "matching": "exact", "expected": { "language": "en-US", "substitution": "fallback" } },
+		{ "requested": ["es-MX"], "available": ["en-US", "es"], "defaultLanguage": "en-US", "matching": "exact", "fallback": "none", "expected": null },
+		{ "requested": ["es-MX"], "available": ["en", "es"], "defaultLanguage": "en-US", "matching": "exact", "expected": { "language": "en", "substitution": "fallback" } },
+		{ "requested": ["es"], "available": ["en-GB", "fr"], "defaultLanguage": "en-US", "expected": { "language": "en-GB", "substitution": "fallback" } },
+		{ "requested": ["es"], "available": ["en", null], "defaultLanguage": "en-US", "expected": { "language": "en", "substitution": "fallback" } },
+		{ "requested": ["es"], "available": [null, "fr"], "defaultLanguage": "en-US", "source": "fr", "expected": { "language": null, "substitution": "fallback" } },
+		{ "requested": ["es"], "available": ["fr", "de"], "defaultLanguage": "en-US", "source": "fr", "expected": { "language": "fr", "substitution": "fallback" } },
+		{ "requested": ["es"], "available": ["fr"], "defaultLanguage": "en-US", "source": "fr", "fallback": "none", "expected": null },
+		{ "requested": [], "available": [null, "fr"], "defaultLanguage": "en-US", "expected": { "language": null } }
+	]
+}

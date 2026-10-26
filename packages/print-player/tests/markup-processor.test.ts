@@ -29,7 +29,11 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 
-import { processMarkup } from "../src/markup-processor.js";
+import {
+	processMarkup,
+	mkItem,
+	printItemAndFloaters,
+} from "../src/markup-processor.js";
 import type { PkgResolution } from "../src/types.js";
 
 beforeAll(() => {
@@ -287,4 +291,44 @@ describe("processMarkup sanitization", () => {
 		expect(html).toBe("");
 		expect(nodes).toEqual([]);
 	});
+});
+
+// Regressions recovered from the archived CE hardening work.
+test("printing floater models preserves the caller's authored element tags", () => {
+	const model = {
+		id: "rubric",
+		element: "multiple-choice",
+		prompt: "Guidance",
+	};
+	const item = {
+		markup: "<p>Prompt</p>",
+		elements: { "multiple-choice": resolutions[0].pkg },
+		models: [model],
+	};
+	const separated = printItemAndFloaters(item, resolutions, {
+		trustMarkup: true,
+	});
+	const output = mkItem(
+		separated.floaters,
+		resolutions,
+		separated.item.elements,
+	);
+	expect(model.element).toBe("multiple-choice");
+	expect(output.models[0]?.element).toBe(PRINT_TAG);
+	expect(
+		mkItem(item.models, resolutions, item.elements).models[0]?.element,
+	).toBe(PRINT_TAG);
+	expect(model.element).toBe("multiple-choice");
+});
+
+test("matches dotted source tags literally", () => {
+	const result = processMarkup(
+		'<pie-choice.input id="q1"></pie-choice.input>',
+		[{ ...resolutions[0], tagName: "pie-choice.input" }],
+		{ trustMarkup: true },
+	);
+	expect(result.nodes).toEqual([
+		{ id: "q1", pieId: "q1", originalTag: "pie-choice.input" },
+	]);
+	expect(result.html).toContain(PRINT_TAG);
 });

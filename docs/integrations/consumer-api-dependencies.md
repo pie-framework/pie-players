@@ -695,6 +695,39 @@ retries. `@pie-players/pie-players-shared/i18n` gained
 `reportInterfaceLocaleLoadError` and the `InterfaceLocaleLoadErrorModel` type,
 additive.
 
+On 2026-10-24 content that declares no language stopped inheriting the
+interface locale's `lang` and `dir` when a host opts in: `pie-item-player`
+gained an optional `content-language` attribute and `contentLanguage`
+property, the toolkit runtime context an optional `contentLanguageDefault`
+member, and the item player stamps `lang=""` with `dir="auto"` on undeclared
+content once `locale` is set, or the named language once `content-language`
+(on a section, `runtime.contentLanguage`) is. Read-aloud's `lang` climb ends at
+that empty `lang`. A host that sets neither renders what it did before. A grep
+of every recorded checkout's source, outside vendored player bundles and build
+output, finds no `locale`, `content-language` or `contentLanguage` passed to a
+`pie-*` element or a section `runtime`, and none of the item-player property
+names of Hosts V, P, M and R collides with `contentLanguage`. The item player
+also logs one `console.warn` when undeclared content's script contradicts a
+named default's direction.
+
+Also on 2026-10-24 language variants landed as additive surfaces: optional
+`language` and `isAdaptationOf` on `ItemEntity` and `PassageEntity`, optional
+`languagePolicy` on `AssessmentEntity`, optional `requestedLanguages` on the
+item player's delivery identity, an optional `identity` on the delivery
+`backend-load-complete` detail, and an optional `content` on
+`TestAttemptItemSession`. The rendering change needs an entity that declares
+`language`: the section player then narrows `env.locale` for that item or
+passage alone, and the item player applies a backend's served language as
+`env.locale`. No backend serves either today. Accessibility-catalog lookup no
+longer crosses scripts, so a `zh-TW` request stops reaching a bare `zh` card;
+Spanish resolves as before. A grep of every recorded checkout's source, and of
+Hosts P and S on their preloaded-player branches, finds `backend-load-complete`
+only inside vendored player bundles and no `TestAttemptItemSession`,
+`ToolParameterMap`, `requestedLanguages` or `itemTranslation`. Host R imports
+the three entity types without extending or narrowing them, and its `language`
+hits are element model fields, so nothing collides. Assessed against the changed
+surfaces, so it does not advance the verification date.
+
 On 2026-10-18 `@pie-players/pie-context` gained `interfaceLocaleContext`
 (`Symbol.for("pie.interfaceLocale")`, value `{ locale, direction }`), which
 `pie-assessment-toolkit` and `pie-item-player` now answer for the PIE elements
@@ -1655,7 +1688,9 @@ Host A builds a `runtime` object with:
 - `tools.placement.item` and `tools.placement.passage` — arrays of
   `"calculator"` / `"textToSpeech"`
 - `toolContextResolvers.calculator` — host resolver returning
-  `{ visible, reason?, params: { calculatorType, availableTypes } }`
+  `{ visible, reason?, params: { calculatorType, availableTypes } }`. It reads
+  the host's own item fields off `context.item`, so the section player's
+  pass-through of item fields it does not type is load-bearing
 
 Every one of these keys is live in production delivery. The custom TTS transport
 combination in particular (`transportMode: "custom"` +
@@ -1697,8 +1732,9 @@ pad previously recorded:
   starts at the first read-aloud instead of at composition, unless policy grants
   it. Until 0.3.75 the flag was ignored
 - `tools` — a `createToolsConfig` output, not a literal
-- `toolContextResolvers` — a host resolver map for `calculator`, built from
-  item metadata
+- `assessmentItemRefs[].settings`, derived from item metadata: `requiredTools`
+  plus `toolParameters.calculator.type` on an item tagged for a calculator,
+  `restrictedTools` on the rest
 - `player.loaderConfig` — `trackPageActions` plus the constructed
   `instrumentationProvider`
 - `env` — `{ mode: "gather" | "evaluate", role: "student" | "instructor" }`
@@ -2214,6 +2250,19 @@ already rendered, with one visible exception: legacy `kds-*` table headers take
 Hosts V and A both load a copy of this stylesheet and neither sets `--pie-text`
 or `--pie-white`, so both see it on upgrade.
 
+## Authored stylesheet resources
+
+`itemConfig.resources.stylesheets[*].url` reaches hosts through content, and
+one host also fills it from source. Host C carries QTI `<stylesheet>` references
+through its staged preview config and rewrites asset references to its asset
+service's preview URLs, which sit on another origin. It sets no
+`allowed-style-origins`, so since the same-origin default (`9868ee1`) the player
+rejects those stylesheets and logs why. Content imported from Learnosity custom
+questions carries CDN stylesheet URLs the same way, and every host renders it
+under the same rejection. No host sets `external-style-urls` or
+`allowed-style-origins`. Re-derived 2026-10-25; this corrects the `9868ee1`
+changelog entry, which recorded no consumer of either surface.
+
 ## Host-served endpoint contracts
 
 A surface class no other host has. PIE ships no dictionary
@@ -2262,6 +2311,8 @@ shipping.**
   emission cardinality
 - Removing a controller method that hosts call with optional-call syntax
 - Filtering unknown keys out of `env`
+- Filtering untyped fields off the item a tool context resolver receives as
+  `context.item`: Host A's calculator resolver reads its own item fields there
 - Changing which item-id form appears in session maps or session events
 - Retyping `show-toolbar` or `debug` to `Boolean`, or dropping either the string
   or the boolean form of `show-toolbar`

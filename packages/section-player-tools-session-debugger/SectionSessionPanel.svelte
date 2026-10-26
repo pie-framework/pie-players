@@ -20,6 +20,7 @@ Developer panel for the section player demos that shows the session state of one
 -->
 
 <script lang="ts">
+	import type { SessionDebuggerProps, SectionControllerLike } from "./element-props.js";
 	import {
 		type AssessmentToolkitRuntimeContext,
 		connectToolRuntimeContext,
@@ -31,7 +32,6 @@ Developer panel for the section player demos that shows the session state of one
 		getSectionControllerFromCoordinator
 	} from '@pie-players/pie-section-player-tools-shared';
 	import { untrack } from 'svelte';
-
 
 	type SessionPanelSnapshot = {
 		currentItemIndex: number | null;
@@ -48,60 +48,13 @@ Developer panel for the section player demos that shows the session state of one
 		itemSessions: Record<string, unknown>;
 	};
 
-	type SectionAttemptSliceLike = {
-		currentItemIndex?: number;
-		currentItemId?: string;
-		visitedItemIdentifiers?: string[];
-		itemSessions?: Record<string, unknown>;
-		loadingComplete?: boolean;
-		totalRegistered?: number;
-		totalLoaded?: number;
-		itemsComplete?: boolean;
-		completedCount?: number;
-		totalItems?: number;
-	};
-
-	type SectionSessionStateLike = {
-		itemSessions?: Record<string, unknown>;
-	};
-
-	type SectionControllerLike = {
-		getRuntimeState?: () => SectionAttemptSliceLike | null;
-		getSession?: () => SectionSessionStateLike | null;
-		subscribe?: (listener: (event: { itemId?: string; timestamp?: number }) => void) => () => void;
-	};
-
-	type ToolkitCoordinatorLike = {
-		getSectionController?: (args: { sectionId: string; attemptId?: string }) => SectionControllerLike | undefined;
-		// Phase D (>=0.3.35): subscribe* helpers follow the toolkit's
-		// active section cohort automatically and do not accept
-		// sectionId / attemptId arguments. The session panel keeps
-		// `sectionId` + `attemptId` in the shared subscription manager purely
-		// to gate same-target re-subscribe and to drive `getSectionController`.
-		subscribeItemEvents?: (args: {
-			listener: (event: { itemId?: string; timestamp?: number }) => void;
-		}) => () => void;
-		subscribeSectionLifecycleEvents?: (args: {
-			listener: (event: { itemId?: string; timestamp?: number }) => void;
-		}) => () => void;
-	onSectionControllerLifecycle?: (
-		listener: (event: { type: 'ready' | 'disposed'; key?: { sectionId?: string; attemptId?: string } }) => void
-	) => () => void;
-	};
-
 	let {
 		toolkitCoordinator = null,
 		sectionId = '',
 		attemptId = undefined,
 		persistenceScope = "",
 		persistencePanelId = "session-debugger"
-	}: {
-		toolkitCoordinator?: ToolkitCoordinatorLike | null;
-		sectionId: string;
-		attemptId?: string;
-		persistenceScope?: string;
-		persistencePanelId?: string;
-	} = $props();
+	}: SessionDebuggerProps = $props();
 
 	let sessionPanelSnapshot = $state<SessionPanelSnapshot>({
 		currentItemIndex: null,

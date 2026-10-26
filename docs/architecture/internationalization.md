@@ -94,7 +94,8 @@ over English content.
 - The players' `locale` attribute sets the interface locale.
 - The toolkit's `content-language` input (`RuntimeConfig.contentLanguage`, set
   through the section player's `runtime.contentLanguage`) names the content
-  language for read-aloud, its only consumer.
+  language for read-aloud, and the default the section's players stamp on
+  undeclared content ([Content direction](#content-direction)).
 - `accessibility.language` on `ToolkitCoordinatorConfig` feeds the catalog
   resolver's default and means content-alternate language.
 
@@ -151,7 +152,7 @@ source item, yet publish neither to delivery:
 - Its QTI export declares no content language. The one language value it writes
   is LOM `metametadata/language` in `imsmanifest.xml`, once per package, which
   declares the language of the metadata record, and it emits no `xml:lang`.
-- Its PIE export carries locale only in search metadata (`searchMetaData`), which
+- Its PIE export carries locale only in its backend's search metadata, which
   no player reads. The **PIE item content JSON carries no locale at all**: the
   search index knows the language, the player never does.
 
@@ -166,10 +167,17 @@ point: the inline tool, the annotation toolbar and any host call.
 
 The **content language** is the first of:
 
-1. the nearest `lang` attribute between the content and its player shell;
-2. the language the read names, which the inline tool and the annotation
+1. the nearest `lang` attribute between the content and its player shell; an
+   empty `lang`, which the players stamp on undeclared content, ends the climb
+   with none;
+2. for a read of an element, the `lang` its outermost `lang`-carrying
+   descendants share: a whole-item read targets a region above the content
+   root the item player stamps, so this is where an item's `env.locale`
+   reaches read-aloud. Descendants that disagree, or one with an empty `lang`,
+   give none;
+3. the language the read names, which the inline tool and the annotation
    toolbar take from the toolkit's `content-language` input;
-3. `providerOptions.lang_id`, which a host pins for the custom transport.
+4. `providerOptions.lang_id`, which a host pins for the custom transport.
 
 A host names the language of content whose markup carries none through the
 toolkit's `content-language`; a section-player host sets
@@ -286,7 +294,7 @@ so they read as chosen rather than overlooked.
 | Content language is a separate fact, declared on each run | QTI 3.0 `xml:lang`; WCAG 2.2 3.1.2 Language of Parts (AA); HTML `dir` and UAX #9 for direction | `env` carries it ([Content language](#content-language)); `lang` and `dir` go on the content subtree, and on the chrome subtree where the interface locale differs |
 | The page owns its language | WCAG 2.2 3.1.1 Language of Page (A) | no player or element writes `document.documentElement` |
 | Tags are BCP 47, canonicalized | RFC 5646 (BCP 47); W3C *Language tags in HTML and XML* | `normalizeLanguageTag` and `toLanguageTag`: `es_ES.UTF-8` compares as `es-es` and renders as `es-ES` |
-| Lookup, then primary-subtag widening | RFC 4647 §3.4 | `languageTagLookupSequence` never stops on a singleton; `sv-SE` reaches `sv`, bare `en` the bundled `en-US` |
+| Lookup, then primary-subtag widening, within the request's script | RFC 4647 §3.4; UTS #35 likely subtags, through ECMA-402 `Intl.Locale.maximize()` | `languageTagLookupSequence` never stops on a singleton; `sv-SE` reaches `sv`, bare `en` the bundled `en-US`; catalog lookup tries the language and likely script before the bare language, so `zh-TW` reaches `zh-Hant`, and a bare-tag catalog declares its likely script, so `zh-TW` passes the Simplified `zh` by and `sr-ME` the Cyrillic `sr`. The accessibility catalog resolver keeps plain truncation |
 | Plural forms are CLDR categories | UTS #35 plural rules, through ECMA-402 `Intl.PluralRules` | `other` is required; a catalog carries its locale's set (`cy` and `ar` six, `pt` `one`/`many`/`other`); a category the catalog lacks resolves to `other` |
 | Numbers and dates follow the locale | UTS #35 numbering systems and formats, through ECMA-402 `Intl.NumberFormat` and `Intl.DateTimeFormat` | numeric placeholders, `formatNumber` and `formatDate` format at the resolved locale; current CLDR resolves bare `ar` to Western digits and `ar-SA` to Arabic-Indic, so a regional request that widens to the `ar` catalog renders Western digits unless the host registers a regional catalog |
 | A control is never unnamed | WCAG 2.2 4.1.2 Name, Role, Value | lookup falls from host messages to the locale's catalog to `en-US` to the key itself; a failed catalog load is reported and renders English |
@@ -387,7 +395,7 @@ hand-written mapping tables in its place.
 
 `@pie-players/pie-players-shared/i18n/language-tags` provides
 `normalizeLanguageTag`, `toLanguageTag`, `languageTagsEqual`,
-`languageTagLookupSequence` and `findBestLanguageMatch`. It replaces exact comparison with RFC 4647 lookup,
+`languageTagLookupSequence`, `findBestLanguageMatch`, `languageTagScript` and `languageTagScriptsMatch`. It replaces exact comparison with RFC 4647 lookup,
 normalizes POSIX `es_ES` to `es-ES`, and gives `es-MX` → `es` → default a defined
 answer. The catalog resolver expands each requested tag into its lookup sequence,
 and `getAllAlternatives` keys on the normalized tag, so two spellings of one
@@ -432,9 +440,15 @@ on republish, and passes the locale to the `language` prop its libraries take.
 
 ### Content language
 
-Content language for elements is direction and has not shipped. The shipped path,
-the toolkit's `content-language` or the section player's `runtime.contentLanguage`,
-serves read-aloud only.
+Content language reaches elements as `env.locale`. An item or passage entity's
+`language` narrows the section's `env` for that item or passage alone, so items
+in different languages share a section; a backend's served language overrides
+it inside the item player (`servedIdentity.servedLanguage`, see
+[backend support](../item-player/backend-support.md)). Content with no
+`language` keeps the section's `env`. The [content model](./content-model.md)
+types the field, and the toolkit's `content-language` or the section player's
+`runtime.contentLanguage` stays the default for undeclared content, for
+read-aloud and the players' [content direction](#content-direction).
 
 The design carries content language to elements in `env`, for the same reason `env`
 carries `mode`: both are delivery facts that legitimately filter authored content,
@@ -451,10 +465,38 @@ already survives the pipeline. A new custom-element attribute must be
 `type: "String"`, because hosts pass `show-toolbar` as both the literal `"false"`
 and boolean `true`, and both must keep working.
 
-The design also has the player reflect the resolved content language to `lang`,
-and direction to `dir`, on the content subtree. Interface-locale adoption already stamps both on the
-chrome subtree. For content, only pie-elements-ng's `multiple-choice` writes `dir`,
-on its own host, so an RTL content language does not render right to left elsewhere.
+#### Content direction
+
+The item player stamps `lang` and `dir` on its content root from the nearest
+declared content language, so the interface locale's `lang` and `dir` on the
+chrome never claim the content. The resolution order:
+
+1. the element's `model.language`, which the element stamps on its own host;
+2. a `lang` in the content's markup;
+3. the item's `env.locale`;
+4. the player's `content-language`, which a section sets from
+   `runtime.contentLanguage`;
+5. with an interface `locale` set and nothing above, `lang=""` with
+   `dir="auto"`: the language unknown, the direction from the content's first
+   strong character.
+
+Steps 4 and 5 apply only when the host sets `locale` or names a content
+language, so a host that sets neither leaves undeclared content inheriting the
+page's language and direction, as before. The players' `contentLanguageDefault`
+on the toolkit context carries the section's step 4–5 default to the item and
+passage players a section mounts, which carry no `locale` of their own.
+
+A default that names a direction — step 4 — is a guess about content that
+declared nothing. When the content's first strong character contradicts it, the
+item player logs one `console.warn` per player, in every build: a library build
+cannot tell a development page from a production one.
+
+`dir="auto"` reads light-DOM text only: a browser skips text inside a shadow
+root when it picks the direction. pie-elements-ng elements render in light DOM;
+an element that renders its text in a shadow root declares its direction.
+
+For content, only pie-elements-ng's `multiple-choice` writes `dir` on its own
+host.
 
 Six elements write `lang` onto their own host: `explicit-constructed-response`,
 `extended-text-entry`, `inline-dropdown`, `math-inline`, `multiple-choice` and
@@ -476,9 +518,8 @@ when `model.language` is present", or `env.locale` reaches `model.language` at t
 controller boundary. `passage` is the sharpest case: an English-chrome deployment
 showing a Spanish passage asserts `lang="en"` over Spanish prose.
 
-With the element default handled, this is the highest-leverage slice per unit of
-effort in this note, and it is blocked only on the item payload carrying a
-language.
+The element default is handled (see [Rollout](#rollout) step 2), and the item
+payload carries a language as the entity's `language`.
 
 ### In-item alternates and parameterized PNP
 
@@ -509,11 +550,13 @@ translation the same way. That is current practice and a standards alignment, an
 the framework does not impose it. Four models fit, and three of them need no new
 data model.
 
-**Parallel items with a family link.** Today's practice. Each variant is separately
-calibrated and selected at form assembly, with no runtime swap. It needs the
-content-language declaration on the payload and a family identifier that survives
-export. An authoring host's translation link reaches delivery, if at all, on a
-channel the player does not read.
+**Parallel items with a family link.** Today's practice, and the model PIE types.
+Each variant is separately calibrated and selected at form assembly or by a
+backend at load, with no runtime swap. A variant declares `language` and links
+its source with `isAdaptationOf`; the family is the source's `baseId`. Players
+read only `language`; the link and the assessment's `languagePolicy` are
+interchange fields for the backend that resolves a family to one variant
+([content model](./content-model.md)).
 
 The family link is derivable from authoring data, within limits. Where the link
 sits only on the translated item and names the source item's internal identifier,
@@ -577,12 +620,15 @@ behavior-preserving until a host opts in by supplying a locale.
    [Language resolution at three scopes](#language-resolution-at-three-scopes).
 2. **Content language end to end.** In part landed. The player half:
    `Env.locale` is typed and the item player reflects it as `lang`/`dir` on the
-   content subtree, asserting nothing for undeclared content. The element half:
+   content subtree; undeclared content takes the
+   [Content direction](#content-direction) default. The element half:
    all six elements that stamped `lang` off `model.language` now stamp a
    canonical declared language with its direction and nothing otherwise — the
    `'en'` default is gone. Still open: authoring hosts emitting locale on the
    PIE content channel and `xml:lang` on the QTI channel; the
    [Current state](#current-state) records what they emit today.
+   [Language variants](../prds/language-variants.md) sets the cross-repo
+   contract for serving translated versions and what remains in each repo.
 3. **Interface locale as composition context.** Done; see
    [Interface locale](#interface-locale).
 4. **Consolidate the i18n layer.** Done. `SimpleI18n` is the only implementation,

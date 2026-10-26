@@ -29,6 +29,7 @@ the runtime context supplies a TTS service.
 -->
 
 <script lang="ts">
+	import type { TtsInlineProps } from "./element-props.js";
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {
 		connectToolRegionScopeContext,
@@ -42,8 +43,6 @@ the runtime context supplies a TTS service.
 		type CatalogLookupContext,
 		type HighlightCoordinatorApi,
 		type NormalizedTTSSpeedOption,
-		type TTSLayoutMode,
-		type TTSSpeedOption,
 		type TtsServiceApi,
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import {
@@ -65,26 +64,14 @@ the runtime context supplies a TTS service.
 
 	let {
 		catalogId = '', // Explicit catalog ID
-		size = 'md' as 'sm' | 'md' | 'lg',
+		size = 'md',
 		speedOptions = undefined,
 		showSingleSpeedOption = false,
-		layoutMode = 'left-aligned' as TTSLayoutMode,
+		layoutMode = 'left-aligned',
 		baseRate = 1,
 		pitch = undefined,
 		volume = undefined
-	}: {
-		catalogId?: string;
-		size?: 'sm' | 'md' | 'lg';
-		speedOptions?: TTSSpeedOption[];
-		showSingleSpeedOption?: boolean;
-		layoutMode?: TTSLayoutMode;
-		/** Multiplies every speed choice's rate, so 1× reads at this rate. */
-		baseRate?: number;
-		/** The pitch each read starts at, 0–2 with 1 normal. */
-		pitch?: number;
-		/** The volume each read starts at, 0–1. */
-		volume?: number;
-	} = $props();
+	}: TtsInlineProps = $props();
 
 	const isBrowser = typeof window !== 'undefined';
 

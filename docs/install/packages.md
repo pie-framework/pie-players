@@ -136,7 +136,7 @@ the packed tarball.
 | `@pie-players/pie-section-player` | `./contracts/runtime-host-contract`, `./contracts/host-hooks`, `./policies`, `./item-section` |
 | `@pie-players/pie-item-list` | `./summarize` |
 | `@pie-players/pie-default-tool-loaders` | `.` |
-| `@pie-players/pie-players-shared` | `.` |
+| `@pie-players/pie-players-shared` | `.`, `./i18n/language-tags` |
 | `@pie-players/pie-context` | `.` |
 | `@pie-players/pie-calculator`, `@pie-players/pie-calculator-cortex`, `@pie-players/pie-calculator-desmos` | `.` |
 | `@pie-players/pie-tts`, `@pie-players/tts-client-server`, `@pie-players/tts-server-core`, `@pie-players/tts-server-google`, `@pie-players/tts-server-polly` | `.` |

@@ -33,6 +33,7 @@ itself there once a scheme is chosen.
 -->
 
 <script lang="ts">
+	import type { ThemeProps } from "./element-props.js";
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {
 		connectToolRuntimeContext,
@@ -58,10 +59,7 @@ itself there once a scheme is chosen.
 	let {
 		visible = false,
 		toolId = 'theme'
-	}: {
-		visible?: boolean;
-		toolId?: string;
-	} = $props();
+	}: ThemeProps = $props();
 
 	let contextHostElement = $state<HTMLDivElement | undefined>();
 	let containerEl = $state<HTMLDivElement | undefined>();

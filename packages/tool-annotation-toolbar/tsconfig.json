@@ -9,6 +9,7 @@
 		"moduleResolution": "NodeNext"
 	},
 	"include": [
+		"element-props.ts",
 		"index.ts",
 		"selection-actions.ts",
 		"selection-keyboard.ts",

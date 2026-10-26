@@ -75,6 +75,7 @@ Section player layout that renders a section's passages and items as two tabs, a
 -->
 
 <script lang="ts">
+	import type { SectionPlayerElementProps } from "../contracts/elements.js";
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import {
 		attachInstrumentationEventBridge,
@@ -89,20 +90,7 @@ Section player layout that renders a section's passages and items as two tabs, a
 	import SectionPlayerLayoutKernel from "./shared/SectionPlayerLayoutKernel.svelte";
 	import { withHostMethods } from "./shared/layout-host-methods.js";
 	import SectionPlayerTabbedContent from "./shared/SectionPlayerTabbedContent.svelte";
-	import type {
-		ToolConfigStrictness,
-		ToolRegistry,
-		ToolbarItem,
-	} from "@pie-players/pie-assessment-toolkit";
-	import type {
-		AssessmentEntity,
-		AssessmentSection,
-		SectionControllerSessionState,
-	} from "@pie-players/pie-players-shared/types";
-	import {
-		resolveSectionId,
-		type RuntimeConfig,
-	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
+	import { resolveSectionId } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import type {
 		SectionItemScore,
 		SectionPlayerRuntimeHostContract,
@@ -110,7 +98,6 @@ Section player layout that renders a section's passages and items as two tabs, a
 	} from "../contracts/runtime-host-contract.js";
 	import type { SectionPlayerPolicies } from "../policies/types.js";
 	import { resolveSectionPlayerPolicies } from "../policies/index.js";
-	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
 	import {
 		clampNarrowBreakpoint,
 		createNarrowLayoutWatch,
@@ -120,30 +107,30 @@ Section player layout that renders a section's passages and items as two tabs, a
 
 
 	let {
-		runtime = null as RuntimeConfig | null,
-		ndsIcons = undefined as boolean | undefined,
+		runtime = null,
+		ndsIcons = undefined,
 		locale = "",
-		section = null as AssessmentSection | null,
-		session = null as SectionControllerSessionState | null,
-		assessment = null as AssessmentEntity | null,
+		section = null,
+		session = null,
+		assessment = null,
 		sectionId = "",
 		attemptId = "",
 		iifeBundleHost,
-		debug = undefined as string | boolean | undefined,
-		baseHeadingLevel = undefined as number | undefined,
-		showToolbar = "false" as boolean | string | null | undefined,
+		debug = undefined,
+		baseHeadingLevel = undefined,
+		showToolbar = "false",
 		toolbarPosition = "right",
-		toolRegistry = null as ToolRegistry | null,
-		sectionHostButtons = [] as ToolbarItem[],
-		itemHostButtons = [] as ToolbarItem[],
-		passageHostButtons = [] as ToolbarItem[],
-		policies = undefined as Partial<SectionPlayerPolicies> | undefined,
-		hooks = undefined as SectionPlayerHostHooks | undefined,
-		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
-		narrowLayoutBreakpoint = undefined as number | undefined,
-		contentMaxWidthNoPassage = undefined as number | undefined,
-		contentMaxWidthWithPassage = undefined as number | undefined,
-	} = $props();
+		toolRegistry = null,
+		sectionHostButtons = [],
+		itemHostButtons = [],
+		passageHostButtons = [],
+		policies = undefined,
+		hooks = undefined,
+		toolConfigStrictness = undefined,
+		narrowLayoutBreakpoint = undefined,
+		contentMaxWidthNoPassage = undefined,
+		contentMaxWidthWithPassage = undefined,
+	}: SectionPlayerElementProps = $props();
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);
 	const paneIdBase = $derived.by(() =>

@@ -45,6 +45,7 @@ export interface AfaPnpRecord {
 	spoken?: AfaSpoken;
 	"calculator-on-screen"?: { "calculator-type"?: string; [setting: string]: unknown };
 	"sign-language"?: { language?: string; [setting: string]: unknown };
+	"item-translation"?: { language?: string; [setting: string]: unknown };
 	/** One selection: the amount for all content, or for text and non-text apart. */
 	magnification?: {
 		"all-content"?: AfaZoomAmount;
@@ -192,6 +193,10 @@ export function createPersonalNeedsProfileFromAfa(
 	const signLang = record["sign-language"]?.language;
 	if (typeof signLang === "string" && signLang.length > 0) {
 		toolParameters.signLanguage = { signLang };
+	}
+	const translationLang = record["item-translation"]?.language;
+	if (typeof translationLang === "string" && translationLang.length > 0) {
+		toolParameters.itemTranslation = { language: translationLang };
 	}
 	const zoom = magnifierZoom(record.magnification);
 	if (zoom !== undefined && zoom > 1) {

@@ -18,8 +18,8 @@ export default defineConfig({
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",
-			insertTypesEntry: true,
-			include: ["index.ts"],
+			insertTypesEntry: false,
+			include: ["index.ts", "element-props.ts"],
 		}),
 	],
 	build: {

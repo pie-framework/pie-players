@@ -18,6 +18,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 -->
 
 <script lang="ts">
+	import type { TtsSettingsProps } from "./element-props.js";
 	import {
 		type AssessmentToolkitRuntimeContext,
 		browserVoiceMatchesLanguage,
@@ -29,7 +30,6 @@ Developer dialog for the section player demos that configures the toolkit's text
 		BrowserTTSProvider,
 		PlaybackState,
 		type TextToSpeechToolProviderConfig,
-		type ToolkitCoordinatorApi,
 		TTSService,
 	} from "@pie-players/pie-assessment-toolkit";
 	import { createFocusTrap } from "@pie-players/pie-players-shared";
@@ -97,12 +97,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 		apiEndpoint = DEFAULT_API_ENDPOINT,
 		storageKey = DEFAULT_STORAGE_KEY,
 		customProviders = []
-	}: {
-		toolkitCoordinator?: ToolkitCoordinatorApi | null;
-		apiEndpoint?: string;
-		storageKey?: string;
-		customProviders?: CustomProviderDescriptor[];
-	} = $props();
+	}: TtsSettingsProps = $props();
 
 	/**
 	 * The stored record: the config the tab applied, without the provider options

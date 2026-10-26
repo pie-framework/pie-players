@@ -4,4 +4,5 @@
 @pie-players/pie-tool-line-reader
 
 .
+  type PieToolLineReaderElement
   default

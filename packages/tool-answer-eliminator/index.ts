@@ -1,11 +1,15 @@
 /**
- * pie-tool-answer-eliminator - PIE Assessment Tool
- *
- * Importing this package registers `<pie-tool-answer-eliminator>`. The build
- * entry is the component, so this file is the type entry alone.
+ * Importing this package registers `<pie-tool-answer-eliminator>`.
+ * The built component supplies the runtime; this entry declares its native host type.
  */
 
-// No re-export here. The root entry a consumer imports is the built bundle,
-// which exports the component and nothing named, so a value re-exported from
-// this file would type-check and then be undefined at runtime.
-export type {};
+import type { AnswerEliminatorProps } from "./element-props.js";
+
+/** Native host interface for `<pie-tool-answer-eliminator>`. Properties may be unset until it mounts. */
+export interface PieToolAnswerEliminatorElement extends HTMLElement, AnswerEliminatorProps {}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-tool-answer-eliminator": PieToolAnswerEliminatorElement;
+	}
+}

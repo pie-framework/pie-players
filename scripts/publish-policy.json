@@ -42,6 +42,7 @@
 			"@pie-players/pie-assessment-toolkit/runtime/engine",
 			"@pie-players/pie-default-tool-loaders",
 			"@pie-players/pie-players-shared",
+			"@pie-players/pie-players-shared/i18n/language-tags",
 			"@pie-players/pie-context",
 			"@pie-players/pie-calculator",
 			"@pie-players/pie-calculator-cortex",

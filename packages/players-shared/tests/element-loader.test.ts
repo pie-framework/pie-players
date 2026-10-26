@@ -2,6 +2,22 @@ import { describe, expect, test } from "bun:test";
 import { aggregateElements } from "../src/loaders/ElementLoader.js";
 
 describe("aggregateElements", () => {
+	test("rejects conflicting item/passage owners of the same full tag", () => {
+		const config = (pkg: string) => ({
+			markup: '<pie-example--version-1-0-0 id="m1"></pie-example--version-1-0-0>',
+			elements: { "pie-example--version-1-0-0": pkg },
+			models: [{ id: "m1", element: "pie-example--version-1-0-0" }],
+		});
+		expect(() => aggregateElements([
+			{ config: config("@pie-element/example-a@1.0.0") },
+			{ config: config("@pie-element/example-b@1.0.0") },
+		])).toThrow("Element version conflict");
+		expect(aggregateElements([
+			{ config: config("@pie-element/example-a@1.0.0") },
+			{ config: config("@pie-element/example-a@1.0.0") },
+		])).toEqual({ "pie-example--version-1-0-0": "@pie-element/example-a@1.0.0" });
+	});
+
 	test("normalizes element tags to versioned names", () => {
 		const elements = aggregateElements([
 			{

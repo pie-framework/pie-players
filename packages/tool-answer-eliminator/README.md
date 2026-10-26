@@ -89,7 +89,7 @@ For a custom layout inside the toolkit. The tool detects choices under the item 
 | `visible` | `visible` | `boolean` | `false` | Shows the elimination buttons; the toolbar toggle sets it |
 | `alwaysOn` | `always-on` | `boolean` | `false` | Shows the buttons regardless of `visible`, for a profile-based accommodation |
 | `strategy` | `strategy` | `'strikethrough' \| 'mask'` | `'strikethrough'` | Elimination styling; any other value uses `strikethrough` |
-| `buttonAlignment` | `button-alignment` | `'left' \| 'right' \| 'inline'` | `'right'` | Button placement relative to the choice |
+| `buttonAlignment` | `button-alignment` | `'start' \| 'end' \| 'inline'` | `'inline'` | Toggle placement: `inline` in the flow after the choice, or `start`/`end` beside it, resolved against the choice's own direction so they mirror under right-to-left content. `left` and `right` are aliases of `start` and `end`; any other value is `inline` |
 | `elementStateKeys` | | `Record<string, string>` | `{}` | Composite key `assessmentId:sectionId:attemptId:itemId:elementId` per PIE element, by model id, into the runtime context's element tool state store. A choice is tracked under its nearest ancestor with a listed id and persists under that key; choices outside a listed element are kept in memory only |
 
 ## Global Element ID Format
@@ -262,6 +262,8 @@ For browsers without the Highlight API, each strategy falls back to a class on t
 ### 4. Toggle Behavior
 
 Each choice gets its own elimination toggle button (class `pie-answer-eliminator-toggle`, rendered as `⊗`) appended to its `container`. Clicking the button toggles that choice through the active strategy and calls `setEliminated`. Eliminating is blocked while `isEliminable()` returns false. An active button is marked with `pie-answer-eliminator-toggle--active` and `aria-pressed="true"`; clicking again restores the choice.
+
+The toggle's accessible name ("Toggle elimination for {choice}", with "Unlabeled choice" standing in for a choice without text) and the "(eliminated)" announcement come from the players' catalog under `tools.answerEliminator`, in the interface locale of the runtime context. Both carry that locale's `lang` and `dir` while the choice content keeps its own, and a locale change relabels them in place without dropping eliminations.
 
 ## Cleanup
 

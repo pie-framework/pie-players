@@ -17,9 +17,16 @@ import type {
 	TimedMediaSectionData,
 	TimedMediaSectionSessionSlice,
 } from "../timed-media/types.js";
+import type { AdaptationLink, LanguagePolicy } from "./interchange.js";
 
 export type { FormativeDeliveryPolicy, FormativeItemPolicy };
 export type { TimedMediaSectionData };
+export type {
+	AdaptationLink,
+	ContentSubstitution,
+	LanguagePolicy,
+	ServedContentIdentity,
+} from "./interchange.js";
 
 export interface BaseEntity {
 	id?: string;
@@ -43,14 +50,6 @@ export interface VersionEntity extends BaseEntity {
 	baseId: string;
 	signature?: string;
 	version: SemVer;
-}
-
-export interface SearchMetaData {
-	[key: string]: any;
-}
-
-export interface SearchMetaDataEntity extends BaseEntity {
-	searchMetaData?: SearchMetaData;
 }
 
 export interface ConfigElements {
@@ -91,24 +90,30 @@ export interface ConfigContainerEntity extends BaseEntity {
 	config: ConfigEntity;
 }
 
-export interface PassageEntity
-	extends VersionEntity,
-		ConfigContainerEntity,
-		SearchMetaDataEntity {
+export interface PassageEntity extends VersionEntity, ConfigContainerEntity {
 	name: string;
+	/**
+	 * BCP 47 tag of the content's language (QTI `xml:lang`). The players render
+	 * and score it under this language; absent, the section's `env.locale` holds.
+	 */
+	language?: string;
+	/** The source a translated version was adapted from. No player reads it. */
+	isAdaptationOf?: AdaptationLink;
 	/** QTI/APIP-style accessibility catalogs owned by this passage content. */
 	accessibilityCatalogs?: AccessibilityCatalog[];
 	retired?: boolean;
 	published?: boolean;
-	// Search result highlights from OpenSearch (keyed by field name)
-	highlights?: Record<string, string[]>;
 }
 
-export interface ItemEntity
-	extends VersionEntity,
-		ConfigContainerEntity,
-		SearchMetaDataEntity {
+export interface ItemEntity extends VersionEntity, ConfigContainerEntity {
 	name?: string;
+	/**
+	 * BCP 47 tag of the content's language (QTI `xml:lang`). The players render
+	 * and score it under this language; absent, the section's `env.locale` holds.
+	 */
+	language?: string;
+	/** The source a translated version was adapted from. No player reads it. */
+	isAdaptationOf?: AdaptationLink;
 	/**
 	 * `null` as well as absent, because importers write it: JSON has no
 	 * `undefined`, so an item transformed from another format carries an
@@ -120,8 +125,6 @@ export interface ItemEntity
 	retired?: boolean;
 	published?: boolean;
 	configuration?: any;
-	// Search result highlights from OpenSearch (keyed by field name)
-	highlights?: Record<string, string[]>;
 }
 
 /**
@@ -153,22 +156,6 @@ export type ReferencedItemEntity = Omit<
 > & {
 	passage?: string | ReferencedPassageEntity | null;
 };
-
-/**
- * Metadata specifically for interpretation by clients, typically containing
- * options that are relevant for the user interface. This is not indexed for search.
- */
-export interface SettingsMetaData {
-	[key: string]: any;
-}
-
-/**
- * Objects that contain metadata in the settings property, which is NOT indexed for search
- * but typically only relevant for particular client cases.
- */
-export interface SettingsMetaDataEntity {
-	settings?: SettingsMetaData;
-}
 
 // ============================================================================
 // QTI-aligned assessment model (QTI 2.x compatible shape)
@@ -212,7 +199,7 @@ export interface RubricBlock {
  * References an item within a section. The item property contains the resolved
  * ItemEntity with its PIE config.
  */
-export interface AssessmentItemRef extends SearchMetaDataEntity {
+export interface AssessmentItemRef extends BaseEntity {
 	id?: string;
 	identifier: string;
 	title?: string;
@@ -242,9 +229,7 @@ export interface AssessmentItemRef extends SearchMetaDataEntity {
 	formative?: FormativeItemPolicy;
 }
 
-export interface AssessmentSection
-	extends SearchMetaDataEntity,
-		SettingsMetaDataEntity {
+export interface AssessmentSection extends BaseEntity {
 	id?: string;
 	identifier: string;
 	title?: string;
@@ -606,7 +591,7 @@ export interface PersonalNeedsProfile {
 	toolParameters?: ToolParameters;
 }
 
-export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
+export interface AssessmentEntity extends BaseEntity {
 	name?: string;
 	title?: string;
 	identifier?: string;
@@ -626,6 +611,12 @@ export interface AssessmentEntity extends BaseEntity, SearchMetaDataEntity {
 
 	/** QTI 3.0: Personal Needs Profile (PNP 3.0) */
 	personalNeedsProfile?: PersonalNeedsProfile;
+
+	/**
+	 * The languages the assessment is offered in, read by a backend that
+	 * resolves language variants. No player reads it.
+	 */
+	languagePolicy?: LanguagePolicy;
 
 	/**
 	 * QTI 3.0: testParts structure (authoritative for QTI format).
@@ -674,6 +665,11 @@ export interface ToolParameterMap {
 	calculator: { type?: "basic" | "scientific" | "graphing" };
 	answerEliminator: { strategy?: "strikethrough" | "mask" };
 	signLanguage: { signLang?: string };
+	/**
+	 * `language` is the BCP 47 content language the learner reads items in. A
+	 * host passes it to delivery as `requestedLanguages`.
+	 */
+	itemTranslation: { language?: string };
 	/**
 	 * `rate` multiplies every playback speed, 1 being the provider's normal
 	 * speed; `pitch` runs 0–2 with 1 normal; `volume` runs 0–1.

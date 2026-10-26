@@ -1,5 +1,6 @@
 import {
-	languageTagLookupSequence,
+	languageTagScriptLookupSequence,
+	languageTagScriptsMatch,
 	normalizeLanguageTag,
 } from "@pie-players/pie-players-shared/i18n/language-tags";
 import type {
@@ -832,15 +833,20 @@ export class AccessibilityCatalogResolver {
 		// Language rungs, most specific first: the requested language, then the
 		// default language, then any.
 		//
-		// Each requested tag expands into its RFC 4647 lookup sequence over
+		// Each requested tag expands into its script-aware lookup sequence over
 		// normalized tags, so `es-MX` tries `es-mx` and then `es` before falling
 		// through to the default, and a POSIX `es_ES` card (what the Learnosity
-		// transform emits) matches an `es-ES` request on its own rung.
+		// transform emits) matches an `es-ES` request on its own rung. A shorter
+		// card serves only in the request's script: `zh-TW` tries `zh-hant`, and
+		// passes a bare `zh` card by, which is Simplified.
 		const languageRungs: Array<(card: CatalogCard) => boolean> = [];
 		const pushLookupRungs = (tag: string) => {
-			for (const step of languageTagLookupSequence(tag)) {
+			const exact = normalizeLanguageTag(tag);
+			for (const step of languageTagScriptLookupSequence(tag)) {
 				languageRungs.push(
-					(card) => normalizeLanguageTag(card.language) === step,
+					(card) =>
+						normalizeLanguageTag(card.language) === step &&
+						(step === exact || languageTagScriptsMatch(tag, card.language)),
 				);
 			}
 		};

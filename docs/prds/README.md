@@ -160,6 +160,22 @@ unbuilt framework-completing capabilities.
   mounts. Architecture:
   [Interface locale](../architecture/internationalization.md#interface-locale).
 
+- [`content-extensions.md`](./content-extensions.md) - `Ready`. The contract
+  tier of every metadata surface on PIE content, and `extensions`, a host-owned
+  key/value bag that players carry unread and pie-qti round-trips through the QTI
+  manifest as LOM.
+
+- [`language-variants.md`](./language-variants.md) - `Ready`. Serving one item
+  or passage in several languages: `language` and `isAdaptationOf` on content,
+  `requestedLanguages` and the served `identity` on delivery, the backend's
+  negotiation and session obligations, and per-item `env.locale`. Architecture:
+  [Content model](../architecture/content-model.md#language-variants).
+
+- [`curriculum-standards-alignment.md`](./curriculum-standards-alignment.md) -
+  `Draft`. `curriculumStandards` and `skillLevels` on items and passages:
+  interchange fields named after QTI 3 CSM 1.1 and LOM, keyed by provider and
+  issued GUID, that players carry unread and pie-qti round-trips.
+
 Decisions that span PRDs — sequencing, rejected alternatives, trade-offs a reader
 would otherwise have to reconstruct — live in [`../adr/`](../adr/).
 

@@ -8,6 +8,7 @@ import {
 	normalizeItemSessionChange,
 	type ItemSessionUpdateIntent,
 } from "@pie-players/pie-players-shared";
+import type { ServedContentIdentity } from "@pie-players/pie-players-shared/types";
 import type { SectionControllerInput, SessionChangedResult } from "./types.js";
 
 export class SectionSessionService {
@@ -63,6 +64,8 @@ export class SectionSessionService {
 		sessionDetail: any;
 		testAttemptSession: TestAttemptSession;
 		itemSessions: Record<string, any>;
+		/** The content version the item was delivered as, when known. */
+		content?: ServedContentIdentity;
 	}): SessionChangedResult {
 		const normalizedChange = normalizeItemSessionChange({
 			itemId: args.itemId,
@@ -81,6 +84,7 @@ export class SectionSessionService {
 					pieSessionId: String(normalizedSession.id || safeItemId),
 					isCompleted: Boolean(normalizedChange.complete),
 					session: normalizedSession,
+					content: args.content,
 				},
 			);
 		}

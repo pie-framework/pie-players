@@ -1,6 +1,7 @@
 import type {
 	DeleteDone,
 	ImageHandler,
+	ServedContentIdentity,
 	SoundHandler,
 } from "@pie-players/pie-players-shared/types";
 
@@ -45,6 +46,11 @@ export type BackendDeliveryIdentity = {
 	itemId?: string;
 	sessionId?: string;
 	assignmentId?: string;
+	/**
+	 * BCP 47 tags the learner reads, most preferred first. A backend that
+	 * resolves language variants serves the closest one; changing it reloads.
+	 */
+	requestedLanguages?: string[];
 };
 
 export type BackendDeliveryEndpoints = {
@@ -144,6 +150,8 @@ export type BackendDeliveryLoadResult = {
 	item?: unknown;
 	session?: unknown;
 	metadata?: Record<string, unknown>;
+	/** The content version served; its `servedLanguage` becomes `env.locale`. */
+	identity?: ServedContentIdentity;
 };
 
 export type BackendDeliveryModelResult =
@@ -198,4 +206,5 @@ export type BackendLoadResult = {
 	config: unknown;
 	session: unknown;
 	metadata?: Record<string, unknown>;
+	identity?: ServedContentIdentity;
 };

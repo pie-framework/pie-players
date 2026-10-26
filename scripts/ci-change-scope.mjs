@@ -11,9 +11,11 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, readFileSync } from "node:fs";
 
 import { ciScope } from "./lib/change-scope.mjs";
+import { parseLock } from "./check-lock-consistency.mjs";
+import { playwrightImage } from "./lib/playwright-ci.mjs";
 
 const LABEL = "[ci-change-scope]";
 
@@ -50,6 +52,10 @@ const outputs = {
 	skip_docs: scope.skipDocs,
 	skip_audit: scope.skipAudit,
 	skip_cortex: scope.skipCortex,
+	// An empty image leaves lightweight skip jobs on the host, without a pull.
+	playwright_image: scope.skipCode ? "" : playwrightImage(
+		parseLock(readFileSync(new URL("../bun.lock", import.meta.url), "utf8")),
+	),
 };
 const lines = Object.entries(outputs).map(([key, value]) => `${key}=${value}`);
 for (const line of lines) console.log(`${LABEL} ${line}`);

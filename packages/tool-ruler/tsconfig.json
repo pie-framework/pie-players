@@ -16,6 +16,6 @@
 		// declaration the ruler images are imported through.
 		"types": ["@types/bun", "vite/client"]
 	},
-	"include": ["index.ts", "tool-ruler.svelte"],
+	"include": ["index.ts", "element-props.ts", "tool-ruler.svelte"],
 	"exclude": ["node_modules", "dist"]
 }

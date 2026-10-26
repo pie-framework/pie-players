@@ -45,6 +45,7 @@ Escape closes it, wherever on the page it is pressed.
 		type OverlayPlacementNudge,
 		type OverlaySizeControl,
 		type OverlayTapTarget,
+		isComposingKeyEvent,
 		resolveContainingBlockRect
 	} from '@pie-players/pie-players-shared';
 	import { OverlayPlacementControls } from '@pie-players/pie-players-shared/components/overlay-placement';
@@ -600,7 +601,7 @@ Escape closes it, wherever on the page it is pressed.
 	$effect(() => {
 		if (!isBrowser || !visible) return;
 		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing) return;
+			if (e.key !== 'Escape' || e.defaultPrevented || isComposingKeyEvent(e)) return;
 			e.preventDefault();
 			dismiss();
 		};

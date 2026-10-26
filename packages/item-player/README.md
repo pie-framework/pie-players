@@ -423,7 +423,7 @@ A backend method rejects its promise on failure and dispatches no
 - `session-snapshot-available`: `{ key, session, timestamp }`. On load, with
   `session-snapshot` enabled, device storage holds a snapshot for this sitting.
   The player never applies it; the host decides.
-- `backend-load-complete`: `{ scope, operation: "load", metadata, ... }`.
+- `backend-load-complete`: `{ scope, operation: "load", metadata, ... }`; a delivery load adds `identity` when the backend named the version it served.
   `backend.delivery` loaded the item, with `session` in the detail, or
   `backend.authoring` loaded content, with `contentId` and `config`.
 - `backend-model-complete`: `{ scope: "delivery", operation: "model", metadata }`.

@@ -33,6 +33,8 @@ import {
 } from "@pie-players/pie-players-shared/pie/tag-names";
 import { mkItem, printItemAndFloaters } from "./markup-processor.js";
 import { defaultMissingElement } from "./missing-element.js";
+import { findRenderedModelElement } from "./model-element-lookup.js";
+import { assertPrintConfigAllowed } from "./print-config-policy.js";
 
 import type {
 	Config,
@@ -91,6 +93,9 @@ export class PiePrint extends LitElement {
 	private _sanitizeMarkup: ItemMarkupSanitizer | null = null;
 	private _alternates: MountedAlternates | null = null;
 	private _loaderOptions: PrintLoaderOptions | undefined = undefined;
+	private _activeConfigRequest: object = {};
+	private _resolvedConfigRequest: object | undefined =
+		this._activeConfigRequest;
 
 	/**
 	 * Custom resolver function for determining element URLs
@@ -100,7 +105,8 @@ export class PiePrint extends LitElement {
 	}
 
 	/**
-	 * Where print modules load from, read when `config` is set, so set it first.
+	 * Where print modules load from and the optional element package policy.
+	 * Read when `config` is set, so set it first.
 	 * Declared ahead of `config` so a value set before upgrade is applied first.
 	 */
 	@property({ attribute: false })
@@ -169,27 +175,55 @@ export class PiePrint extends LitElement {
 
 	set config(value: Config) {
 		const oldValue = this._config;
+		const request = {};
+		const resolveElement = this._resolve;
+		const loaderOptions = this.loaderOptions;
+		assertPrintConfigAllowed(value, loaderOptions?.elementPackagePolicy);
+		this._activeConfigRequest = request;
+		this._resolvedConfigRequest = undefined;
 		this._config = value;
+		// The previous job's output stays until this one resolves.
+		this.requestUpdate("config", oldValue);
 
-		// Resolve all element packages to URLs and print tag names
-		Promise.all(
-			Object.entries(this.config.item.elements).map(([tagName, pkg]) => {
+		void Promise.all(
+			Object.entries(value.item.elements).map(async ([tagName, pkg]) => {
 				const validatedTag = validateCustomElementTag(
 					tagName,
-					`item element tag for ${pkg}`,
+					"print element tag",
 				);
-				return this._resolve(validatedTag, pkg, this.loaderOptions).then((res) => {
-					if (!res.printTagName) {
-						res.printTagName = toPrintHashedTag(res.tagName, res.url, hashCode);
-					}
-					return res;
-				});
+				const resolution = await resolveElement(
+					validatedTag,
+					pkg,
+					loaderOptions,
+				);
+				return {
+					...resolution,
+					printTagName:
+						resolution.printTagName ||
+						toPrintHashedTag(resolution.tagName, resolution.url, hashCode),
+				};
 			}),
-		).then((resolutions) => {
-			this._resolutions = resolutions;
-			this._rebuildPrintItems();
-			this.requestUpdate("config", oldValue);
-		});
+		)
+			.then((resolutions) => {
+				if (this._activeConfigRequest !== request) return;
+				this._resolutions = resolutions;
+				this._resolvedConfigRequest = request;
+				this._rebuildPrintItems();
+				this.requestUpdate("config", oldValue);
+			})
+			.catch(() => {
+				if (this._activeConfigRequest !== request) return;
+				this._clearResolvedConfig();
+				this._resolvedConfigRequest = request;
+				this.requestUpdate("config", oldValue);
+				console.error("[pie-print] Failed to resolve print elements");
+			});
+	}
+
+	private _clearResolvedConfig() {
+		this._resolutions = [];
+		this._printItem = { markup: "", elements: {}, models: [] };
+		this._floatItem = { markup: "", elements: {}, models: [] };
 	}
 
 	/**
@@ -202,7 +236,7 @@ export class PiePrint extends LitElement {
 	 * setter calls it once they have.
 	 */
 	private _rebuildPrintItems() {
-		if (this._resolutions.length === 0) return;
+		if (this._resolvedConfigRequest !== this._activeConfigRequest) return;
 
 		const pif = printItemAndFloaters(this._config.item, this._resolutions, {
 			trustMarkup: this._trustMarkup,
@@ -219,15 +253,17 @@ export class PiePrint extends LitElement {
 	/**
 	 * Apply model data to rendered elements
 	 */
-	private _applyData(item: Item) {
+	private _applyData(item: Item, options: Config["options"]) {
 		item.models.forEach((m) => {
-			const el: any = this.querySelector(`${m.element}[id="${m.id}"]`);
+			const el = findRenderedModelElement(this, m) as
+				| (HTMLElement & { options?: Config["options"]; model?: typeof m })
+				| null;
 			if (!el) {
 				console.warn(`[pie-print] Missing element: ${m.element}[id="${m.id}"]`);
 				return;
 			}
 
-			el.options = this.config.options;
+			el.options = options;
 			el.model = m;
 		});
 	}
@@ -265,11 +301,19 @@ export class PiePrint extends LitElement {
 		}
 
 		if (changedProperties.has("config") && this.config.item.elements) {
+			const request = this._activeConfigRequest;
+			if (this._resolvedConfigRequest !== request) return;
+			const resolutions = this._resolutions;
+			const printItem = this._printItem;
+			const floatItem = this._floatItem;
+			const options = this._config.options;
 			try {
 				// Load all print modules
 				const results = await Promise.all(
-					this._resolutions.map((r) => this._loadResolutions(r)),
+					resolutions.map((r) => this._loadResolutions(r)),
 				);
+
+				if (this._activeConfigRequest !== request) return;
 
 				// Register missing element placeholders for failed loads
 				const failed = results.filter((r) => !r.success);
@@ -280,14 +324,16 @@ export class PiePrint extends LitElement {
 					}),
 				);
 
-				// Apply data to all elements
-				this._applyData(this._printItem);
+				if (this._activeConfigRequest !== request) return;
 
-				if (this._floatItem && this._floatItem.markup) {
-					this._applyData(this._floatItem);
+				// Apply data to all elements
+				this._applyData(printItem, options);
+
+				if (floatItem.markup) {
+					this._applyData(floatItem, options);
 				}
-			} catch (e) {
-				console.error("[pie-print] Error during update", e);
+			} catch {
+				console.error("[pie-print] Error during update");
 			}
 		}
 	}

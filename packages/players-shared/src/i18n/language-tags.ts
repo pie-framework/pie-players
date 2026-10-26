@@ -88,23 +88,161 @@ export function languageTagLookupSequence(
 	return sequence;
 }
 
+/** `maximize()` runs on every resolution, for each candidate catalog. */
+const scripts = new Map<string, string | undefined>();
+
 /**
- * Best available tag for a request, by RFC 4647 lookup, or `undefined` when
- * nothing matches. Ranking is by the request's specificity rather than the
- * candidates' order, so `es-MX` prefers an `es-MX` candidate over an `es` one
- * however they were authored.
+ * The script a tag is written in, lowercased: explicit (`sr-Latn`), or the
+ * CLDR likely script (`zh-TW` maximizes to Hant, `sr` to Cyrl). `undefined`
+ * when the tag has no script data or the runtime has no `Intl.Locale`.
+ */
+export function languageTagScript(
+	tag: string | null | undefined,
+): string | undefined {
+	const normalized = normalizeLanguageTag(tag);
+	if (
+		!normalized ||
+		typeof Intl === "undefined" ||
+		typeof Intl.Locale !== "function"
+	) {
+		return undefined;
+	}
+	if (scripts.has(normalized)) return scripts.get(normalized);
+	let script: string | undefined;
+	try {
+		script = new Intl.Locale(normalized).maximize().script?.toLowerCase();
+	} catch {
+		// Not a tag `Intl.Locale` parses: no script data.
+	}
+	scripts.set(normalized, script);
+	return script;
+}
+
+/**
+ * Whether a catalog reached by widening serves a request in the same script.
+ * A tag without script data passes, so a runtime without `Intl.Locale`
+ * resolves as plain RFC 4647 lookup.
+ */
+export function languageTagScriptsMatch(
+	requested: string | null | undefined,
+	candidate: string | null | undefined,
+): boolean {
+	const requestedScript = languageTagScript(requested);
+	const candidateScript = languageTagScript(candidate);
+	return (
+		!requestedScript || !candidateScript || requestedScript === candidateScript
+	);
+}
+
+/**
+ * The script-aware lookup sequence: the RFC 4647 sequence with the language
+ * and likely script inserted before the bare language, so `zh-TW` yields
+ * `["zh-tw", "zh-hant", "zh"]`. A bare-language step serves the request only
+ * in the same script, which `findBestLanguageMatch` checks.
+ */
+export function languageTagScriptLookupSequence(
+	tag: string | null | undefined,
+): string[] {
+	const sequence = languageTagLookupSequence(tag);
+	const script = languageTagScript(tag);
+	if (!script || sequence.length < 2) return sequence;
+	const language = sequence[sequence.length - 1];
+	const withScript = `${language}-${script}`;
+	if (sequence.includes(withScript)) return sequence;
+	return [...sequence.slice(0, -1), withScript, language];
+}
+
+/**
+ * Best available tag for a request, or `undefined` when nothing matches.
+ * Ranking is by the request's specificity rather than the candidates' order,
+ * so `es-MX` prefers an `es-MX` candidate over an `es` one however they were
+ * authored, and `zh-TW` reaches `zh-Hant`. A catalog shorter than the request
+ * serves it only in the same script: a bare `zh` catalog is Simplified, so
+ * `zh-TW` passes it by.
  */
 export function findBestLanguageMatch(
 	requested: string | null | undefined,
 	available: readonly (string | null | undefined)[],
 ): string | undefined {
-	for (const step of languageTagLookupSequence(requested)) {
+	const exact = normalizeLanguageTag(requested);
+	for (const step of languageTagScriptLookupSequence(requested)) {
 		const hit = available.find(
-			(candidate) => normalizeLanguageTag(candidate) === step,
+			(candidate) =>
+				normalizeLanguageTag(candidate) === step &&
+				(step === exact || languageTagScriptsMatch(requested, candidate)),
 		);
 		if (hit != null) return hit;
 	}
 	return undefined;
+}
+
+/**
+ * `findBestLanguageMatch`, then primary-subtag widening, so `nl-BE` and a bare
+ * `nl` reach a regional `nl-NL` and `es-MX` reaches `es-ES`. Both stay within
+ * the request's script: `zh` never reaches `zh-TW`, and `sr-Latn` may reach
+ * `sr-ME`. The rule that picks an interface catalog and a content variant alike.
+ */
+export function findClosestLanguageMatch(
+	requested: string | null | undefined,
+	available: readonly (string | null | undefined)[],
+): string | undefined {
+	const best = findBestLanguageMatch(requested, available);
+	if (best !== undefined) return best;
+	const language = normalizeLanguageTag(requested).split("-")[0];
+	if (!language) return undefined;
+	const sibling = available.find(
+		(candidate) =>
+			normalizeLanguageTag(candidate).split("-")[0] === language &&
+			languageTagScriptsMatch(requested, candidate),
+	);
+	return sibling ?? undefined;
+}
+
+/** The content language a backend serves, and whether it is a substitute. */
+export interface ContentLanguageMatch {
+	/** The `available` entry served, as authored; `null` for content that declares no language. */
+	language: string | null;
+	/** `"fallback"` when the served content stands in for the request. */
+	substitution?: "fallback";
+}
+
+/**
+ * The language to serve content in: the closest `available` match for the
+ * first `requested` tag that has one, under `findClosestLanguageMatch`, or with
+ * `matching: "exact"` only an equal tag, so `es-MX` then passes an `es`
+ * variant by. With no match and `fallback` other than `"none"`, the fallback
+ * chain serves the closest match for `defaultLanguage` (`en-US` reaches `en`),
+ * then content that declares no language (a `null` entry), then `source`;
+ * `matching` does not narrow it. `undefined` means nothing can be served. No
+ * requested languages run the chain without a substitution.
+ */
+export function negotiateContentLanguage(
+	requested: readonly string[],
+	available: readonly (string | null)[],
+	options: {
+		defaultLanguage?: string;
+		fallback?: "default" | "none";
+		matching?: "closest" | "exact";
+		/** The family source's `available` entry. */
+		source?: string | null;
+	} = {},
+): ContentLanguageMatch | undefined {
+	const { defaultLanguage, fallback = "default", matching = "closest", source } = options;
+	for (const tag of requested) {
+		const language =
+			matching === "exact"
+				? available.find((candidate) => languageTagsEqual(candidate, tag))
+				: findClosestLanguageMatch(tag, available);
+		if (language != null) return { language };
+	}
+	if (requested.length > 0 && fallback === "none") return undefined;
+	let language: string | null | undefined = findClosestLanguageMatch(defaultLanguage, available);
+	if (language === undefined && available.includes(null)) language = null;
+	if (language === undefined && source !== undefined && available.includes(source)) {
+		language = source;
+	}
+	if (language === undefined) return undefined;
+	return requested.length > 0 ? { language, substitution: "fallback" } : { language };
 }
 
 /**

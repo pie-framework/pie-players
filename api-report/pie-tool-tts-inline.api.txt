@@ -4,4 +4,8 @@
 @pie-players/pie-tool-tts-inline
 
 .
+  type PieToolTtsInlineElement
+  type PieToolTtsInlineLayoutMode
+  type PieToolTtsInlineSize
+  type PieToolTtsInlineSpeedOption
   default

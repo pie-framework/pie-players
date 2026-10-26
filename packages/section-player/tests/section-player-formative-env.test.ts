@@ -10,9 +10,8 @@ import type { SectionCompositionModel } from "../src/controllers/types";
 // the item-player custom-element bundle, which needs a DOM to define itself.
 await import("./support/item-player-load.js");
 
-const { getFormativeItemView, getItemPlayerParams } = await import(
-	"../src/components/shared/section-player-view-state"
-);
+const { getFormativeItemView, getItemPlayerParams, getPassagePlayerParams } =
+	await import("../src/components/shared/section-player-view-state");
 
 const policy = (
 	overrides: Partial<ResolvedFormativePolicy> = {},
@@ -204,5 +203,67 @@ describe("formative env projection", () => {
 			}),
 		});
 		expect(seenEnv).toEqual(SECTION_ENV);
+	});
+});
+
+describe("content language narrowing", () => {
+	const SECTION_ENV_EN = { mode: "gather", role: "student", locale: "en-US" };
+
+	function itemParams(
+		item: ItemEntity,
+		projection: FormativeSectionProjection | null = null,
+	) {
+		const compositionModel = makeComposition({ formative: projection });
+		return getItemPlayerParams({
+			item,
+			compositionModel,
+			resolvedPlayerEnv: SECTION_ENV_EN,
+			resolvedPlayerAttributes: {},
+			resolvedPlayerProps: {},
+			playerStrategy: "preloaded",
+			formativeView: getFormativeItemView({
+				compositionModel,
+				canonicalItemId: "q1",
+			}),
+		});
+	}
+
+	test("two items in one section each render under their own language", () => {
+		const spanish = { ...makeItem("q1-item"), language: "es" } as ItemEntity;
+		const english = makeItem("q2-item");
+		expect(itemParams(spanish).env).toEqual({
+			...SECTION_ENV_EN,
+			locale: "es",
+		});
+		expect(itemParams(english).env).toBe(SECTION_ENV_EN);
+	});
+
+	test("a formative reveal keeps the item's language", () => {
+		const spanish = { ...makeItem("q1-item"), language: "es" } as ItemEntity;
+		const params = itemParams(
+			spanish,
+			projectionWith({
+				version: 1,
+				itemIdentifier: "q1",
+				tryCount: 1,
+				revealed: true,
+			}),
+		);
+		expect(params.env).toEqual({
+			mode: "evaluate",
+			role: "student",
+			locale: "es",
+		});
+	});
+
+	test("a passage renders under its own language", () => {
+		const params = getPassagePlayerParams({
+			passage: { id: "p1", language: "es", config: {} },
+			resolvedPlayerEnv: SECTION_ENV_EN,
+			resolvedPlayerAttributes: {},
+			resolvedPlayerProps: {},
+			playerStrategy: "preloaded",
+		});
+		expect(params.env).toEqual({ ...SECTION_ENV_EN, locale: "es" });
 	});
 });

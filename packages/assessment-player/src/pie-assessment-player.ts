@@ -1,6 +1,7 @@
 import "./components/assessment-player-default-element.js";
 import "./components/assessment-player-shell-element.js";
 
+export type { PieAssessmentPlayerDefaultElement } from "./contracts/elements.js";
 export {
 	ASSESSMENT_PLAYER_PUBLIC_EVENTS,
 	type AssessmentPlayerPublicEventName,

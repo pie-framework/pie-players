@@ -59,11 +59,13 @@ const requiredCiLintTypecheckCommands = [
 	// itself, so that step above is redundant at runtime but kept explicit because
 	// this list is the readable contract for what the gate covers.
 	"check:bundle-safety",
+	"check:portable-build-paths",
 	"check:publint",
 	"check:types-publish",
 	"check:svelte-type-imports",
 	"check:pack-integrity",
 	"check:node-consumer-imports",
+	"check:ce-composition",
 	"check:consumer-boundaries",
 	"lint:all",
 ];
@@ -102,6 +104,9 @@ const requiredCiE2eCommands = [
  */
 const requiredCiSectionPlayerCommand =
 	/run:\s*bun run test:e2e:section-player --shard=\$\{\{ matrix\.shard \}\}\/\$\{\{ strategy\.job-total \}\}\s*$/m;
+
+const requiredCiItemPlayerCommand =
+	/run:\s*bun run test:e2e:item-player:critical --shard=\$\{\{ matrix\.shard \}\}\/\$\{\{ strategy\.job-total \}\}\s*$/m;
 
 function collectMissingOrderedCommands({
 	scripts,
@@ -241,6 +246,12 @@ export function collectGateFailures({
 	if (!requiredCiSectionPlayerCommand.test(ciWorkflow)) {
 		failures.push(
 			'CI must run the full section-player suite across its shards ("bun run test:e2e:section-player --shard=${{ matrix.shard }}/${{ strategy.job-total }}"), not a subset.',
+		);
+	}
+
+	if (!requiredCiItemPlayerCommand.test(ciWorkflow)) {
+		failures.push(
+			"CI must run the complete critical item-player suite across every shard in its matrix.",
 		);
 	}
 

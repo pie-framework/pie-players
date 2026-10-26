@@ -364,6 +364,9 @@ const zh = {
 			description: "划掉答案选项",
 			buttonA11y: "划掉，排除答案选项",
 			tooltip: "划掉",
+			toggleA11y: "切换划除{choice}",
+			eliminatedA11y: "（已划除）",
+			unlabeledChoice: "无标签选项",
 		},
 		highlighter: {
 			name: "荧光笔",

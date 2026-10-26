@@ -1,5 +1,30 @@
 # @pie-players/pie-assessment-player
 
+## 1.0.0-beta.7
+
+### Patch Changes
+
+- cf50df9: Expose native element types and tag-name inference for ruler, protractor, inline TTS, section layouts and the assessment player. Tool and layout inputs share their implementation's property types; section host methods come from a declared interface, which keeps the published declarations compatible with TypeScript 5.4, and assessment members derive from their implementation. Section snapshots remain nullable before the kernel binds. Existing host assignments, registration, package entrypoints and runtime exports are unchanged; hosts configuring these elements can replace local casts with the exported types.
+- Updated dependencies [885b07e]
+- Updated dependencies [584a754]
+- Updated dependencies [fedd6a0]
+- Updated dependencies [c931537]
+- Updated dependencies [8259692]
+- Updated dependencies [75f1716]
+- Updated dependencies [067cf18]
+- Updated dependencies [6da86de]
+- Updated dependencies [5c6cbe8]
+- Updated dependencies [8bd5891]
+- Updated dependencies [584a754]
+- Updated dependencies [584a754]
+- Updated dependencies [cf50df9]
+- Updated dependencies [b607537]
+- Updated dependencies [cb55fee]
+- Updated dependencies [584a754]
+  - @pie-players/pie-players-shared@1.0.0-beta.7
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.7
+  - @pie-players/pie-section-player@1.0.0-beta.7
+
 ## 1.0.0-beta.6
 
 ### Patch Changes

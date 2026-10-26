@@ -1,5 +1,49 @@
 # @pie-players/pie-default-tool-loaders
 
+## 1.0.0-beta.7
+
+### Patch Changes
+
+- 584a754: An AfA profile's `item-translation` `language` becomes the `itemTranslation` tool parameter's `language`, typed on `ToolParameterMap`, for a host to pass to delivery as `requestedLanguages`.
+- Updated dependencies [885b07e]
+- Updated dependencies [584a754]
+- Updated dependencies [fedd6a0]
+- Updated dependencies [c931537]
+- Updated dependencies [8259692]
+- Updated dependencies [75f1716]
+- Updated dependencies [067cf18]
+- Updated dependencies [6da86de]
+- Updated dependencies [5c6cbe8]
+- Updated dependencies [8bd5891]
+- Updated dependencies [584a754]
+- Updated dependencies [584a754]
+- Updated dependencies [cf50df9]
+- Updated dependencies [9450b4b]
+- Updated dependencies [54c2841]
+- Updated dependencies [b607537]
+- Updated dependencies [cb55fee]
+- Updated dependencies [584a754]
+- Updated dependencies [5579fba]
+  - @pie-players/pie-tool-answer-eliminator@1.0.0-beta.7
+  - @pie-players/pie-players-shared@1.0.0-beta.7
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.7
+  - @pie-players/pie-tool-annotation-toolbar@1.0.0-beta.7
+  - @pie-players/pie-tool-magnifier@1.0.0-beta.7
+  - @pie-players/pie-tool-ruler@1.0.0-beta.7
+  - @pie-players/pie-tool-protractor@1.0.0-beta.7
+  - @pie-players/pie-tool-tts-inline@1.0.0-beta.7
+  - @pie-players/pie-tool-graph@1.0.0-beta.7
+  - @pie-players/pie-tool-periodic-table@1.0.0-beta.7
+  - @pie-players/pie-tool-theme@1.0.0-beta.7
+  - @pie-players/pie-tool-line-reader@1.0.0-beta.7
+  - @pie-players/pie-tool-calculator-shared@1.0.0-beta.7
+  - @pie-players/tts-client-server@1.0.0-beta.7
+  - @pie-players/pie-tool-dictionary@1.0.0-beta.7
+  - @pie-players/pie-tool-picture-dictionary@1.0.0-beta.7
+  - @pie-players/pie-calculator@1.0.0-beta.7
+  - @pie-players/pie-calculator-desmos@1.0.0-beta.7
+  - @pie-players/pie-calculator-geogebra@1.0.0-beta.7
+
 ## 1.0.0-beta.6
 
 ### Patch Changes

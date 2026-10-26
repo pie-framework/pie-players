@@ -1,5 +1,23 @@
 # @pie-players/pie-players-cli
 
+## 0.3.9-beta.7
+
+### Patch Changes
+
+- Updated dependencies [885b07e]
+- Updated dependencies [fedd6a0]
+- Updated dependencies [c931537]
+- Updated dependencies [8259692]
+- Updated dependencies [75f1716]
+- Updated dependencies [067cf18]
+- Updated dependencies [6da86de]
+- Updated dependencies [5c6cbe8]
+- Updated dependencies [8bd5891]
+- Updated dependencies [584a754]
+- Updated dependencies [584a754]
+- Updated dependencies [cb55fee]
+  - @pie-players/pie-players-shared@1.0.0-beta.7
+
 ## 0.3.9-beta.6
 
 ### Patch Changes

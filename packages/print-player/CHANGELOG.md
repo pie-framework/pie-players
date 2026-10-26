@@ -1,5 +1,38 @@
 # @pie-players/pie-print-player
 
+## 1.0.0-beta.7
+
+### Patch Changes
+
+- 85e1fb6: Keep the latest print config authoritative when asynchronous resolutions finish out of order, keep the previous output until the next config resolves and clear it on resolver failure, and retain plain markup when a config has no elements. Preserve authored floater models and match model IDs and element tags literally. The print resolver/config contract and the defaultResolve return fields used by the reference host remain unchanged.
+- e6764d4: Validate print configs before invoking resolvers or changing the active job.
+  HTML `pie-*` tags must be declared in the item's element map, even with trusted
+  markup or a custom sanitizer, so already-registered undeclared PIE elements cannot
+  execute. Invalid replacements throw synchronously and preserve valid pending or
+  rendered output.
+  
+  Add the optional `loaderOptions.elementPackagePolicy` allowlist using the same
+  policy as the item player. Existing resolver signatures and CDN entry filenames
+  remain unchanged; hosts using declared element maps need no changes unless they
+  choose to restrict packages.
+- Updated dependencies [885b07e]
+- Updated dependencies [584a754]
+- Updated dependencies [fedd6a0]
+- Updated dependencies [c931537]
+- Updated dependencies [8259692]
+- Updated dependencies [75f1716]
+- Updated dependencies [067cf18]
+- Updated dependencies [6da86de]
+- Updated dependencies [5c6cbe8]
+- Updated dependencies [8bd5891]
+- Updated dependencies [584a754]
+- Updated dependencies [584a754]
+- Updated dependencies [b607537]
+- Updated dependencies [cb55fee]
+- Updated dependencies [584a754]
+  - @pie-players/pie-players-shared@1.0.0-beta.7
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.7
+
 ## 1.0.0-beta.6
 
 ### Patch Changes

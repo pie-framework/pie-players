@@ -446,7 +446,13 @@ role such as `radio` or `option`) with SRE's speech, and the browser puts that
 registered item and passage shell, so a container MathJax replaces, as a menu
 rerender does, is labeled again. The label replaces the elements' own English
 one and stays when SRE cannot speak the math. Math outside controls stays
-unlabeled, so screen readers keep navigating its MathML.
+unlabeled, so screen readers keep navigating its MathML. So does math in a
+control named by `aria-labelledby` from elements that do not hold it:
+multiple-choice names a choice holding math from its key and a note ("A. Pick
+the answer below"), and leaves the formula for the screen reader to read,
+explore and show as math braille in the content. A label there would be read
+instead of the MathML in browse mode and reach a braille display as words.
+Read-aloud speaks math from the MathML, so it never reads these labels.
 
 Names read ClearSpeak in English and MathSpeak elsewhere, in the language of
 the nearest `lang` attribute, English without one. ClearSpeak reads fractions

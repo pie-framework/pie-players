@@ -409,7 +409,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.15",
         "@happy-dom/global-registrator": "^20.14.5",
-        "@pie-element/shared-math-rendering-mathjax": "0.1.7",
+        "@pie-element/shared-math-rendering-mathjax": "0.1.8",
         "@playwright/test": "^1.64.1",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "@types/node": "^26.6.5",
@@ -476,7 +476,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.5.15",
         "@happy-dom/global-registrator": "^20.14.5",
-        "@pie-element/shared-math-rendering-mathjax": "0.1.7",
+        "@pie-element/shared-math-rendering-mathjax": "0.1.8",
         "@playwright/test": "^1.64.1",
         "@types/semver": "^7.8.0",
         "es-module-shims": "^2.8.4",
@@ -1447,7 +1447,7 @@
 
     "@pie-element/shared-lodash": ["@pie-element/shared-lodash@0.1.3-next.20261012213240", "", {}, "sha512-ho3dVtfgLlxrRqe4/vp56ZWnXeOThpg40WbXdOwLU2APNToLpTw62Q/5EhJW6WCLBVHEkVgDEYRCbIgDqxnSyw=="],
 
-    "@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.7", "", {}, "sha512-A/LDZaQBdEWkGZkVqSLY6XboQ8hr3zA+wt4w2oxtzM84ahPeuStalZLQeqy8i2WzzjW3ptHJBUn+f4BkujlMrQ=="],
+    "@pie-element/shared-math-rendering-mathjax": ["@pie-element/shared-math-rendering-mathjax@0.1.8", "", {}, "sha512-y04mwiNa3Yyg+zk25SeHma00+ZoJQ47GgI4ARguti3rvO0as7Dant4FZ7QLvu1DBzBnqITjphdgg9OEWs8PBTw=="],
 
     "@pie-element/shared-player-events": ["@pie-element/shared-player-events@0.2.1-next.20261015154938", "", {}, "sha512-OYTyIaZ5pLpqd+NhgpSrLJSjQtvYQFnnHZrlp4mI7uO1SqB5E6rWLTwYMiP02ASjs0PhFQa+GYoUEHT6DmP6Yw=="],
 

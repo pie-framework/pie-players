@@ -9,7 +9,7 @@ and the `itemTranslation` tool parameter (#867, #870). Outstanding in
 pie-players: the section player reading the item player's served identity, and
 `keyword-translation` card languages. pie-api-aws landed a read-adapter seam with
 no language derivations; derived fields, variant resolution, the player endpoint
-fields, session recording and the version-pinning preconditions are outstanding.
+fields and session recording are outstanding.
 No authoring tool emits `language` or `isAdaptationOf` yet.
 
 Owner: PIE Players maintainers
@@ -176,12 +176,8 @@ family on import.
    `item-translation-parameter` changesets.
 2. Backend read path: derived fields, resolution and endpoint fields, all off
    until a request names `requestedLanguages`.
-3. Version pinning: released versions refuse in-place edits. This precedes any
-   assessment opting in, since a score is only traceable to an immutable item
-   version. Passages keep floating: a passage's language is base-level, and
-   scoring reads no passage.
-4. Assessments opt in by `languagePolicy`.
-5. Authoring tools emit `language` and `isAdaptationOf` on publish.
+3. Assessments opt in by `languagePolicy`.
+4. Authoring tools emit `language` and `isAdaptationOf` on publish.
 
 ## Open Questions
 

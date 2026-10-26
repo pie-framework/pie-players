@@ -1,33 +1,29 @@
 #!/usr/bin/env node
 
-import { execFile, execFileSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import {
 	existsSync,
-	mkdirSync,
-	mkdtempSync,
-	readFileSync,
-	readdirSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
-import os from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
 import {
 	getImportTarget,
 	getNodeConsumerImportTargets,
-	mapConcurrent,
 	readPublishPolicy,
-	runPack,
 	splitPackageSpecifier,
 } from "./lib/pack-inspection.mjs";
 
-const execFileAsync = promisify(execFile);
+import {
+	workspacePackageMap,
+	collectFixturePackageNames,
+	createFixtureProject,
+	installTarballs,
+	packFixturePackages,
+} from "./lib/packed-consumer-fixture.mjs";
 
 const ROOT = process.cwd();
-const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
 
-const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
 const policy = readPublishPolicy(ROOT);
 const { nodeSafe: NODE_IMPORT_TARGETS, browserOnly: BROWSER_ONLY_TARGETS } =
 	getNodeConsumerImportTargets(policy);
@@ -44,158 +40,11 @@ const isNodeEntryTargetShapeSafe = (target) =>
 	target.startsWith("./dist/") &&
 	(/\.(mjs|cjs|js)$/.test(target) || target.endsWith("/index"));
 
-const workspacePackageMap = () => {
-	const rootPkg = readJson(ROOT_PACKAGE_JSON);
-	const workspaces = Array.isArray(rootPkg.workspaces)
-		? rootPkg.workspaces
-		: [];
-	const map = new Map();
-
-	for (const workspace of workspaces) {
-		if (typeof workspace !== "string" || !workspace.endsWith("/*")) continue;
-		const parent = path.join(ROOT, workspace.slice(0, -2));
-		if (!existsSync(parent)) continue;
-		for (const dirent of readdirSync(parent, { withFileTypes: true })) {
-			if (!dirent.isDirectory()) continue;
-			const dir = path.join(parent, dirent.name);
-			const manifestPath = path.join(dir, "package.json");
-			if (!existsSync(manifestPath)) continue;
-			const pkg = readJson(manifestPath);
-			if (pkg?.name) {
-				map.set(pkg.name, { dir, pkg });
-			}
-		}
-	}
-
-	return map;
-};
-
 const isLikelyBrowserGlobalError = (error) => {
 	const message =
 		typeof error === "string" ? error : String(error?.message || error || "");
 	return /(customElements|window|document|HTMLElement|navigator|Class extends value undefined|superclass is not a constructor)/i.test(
 		message,
-	);
-};
-
-const getInternalWorkspaceDeps = (pkg) => {
-	const names = new Set();
-	const depBuckets = [
-		pkg.dependencies,
-		pkg.peerDependencies,
-		pkg.optionalDependencies,
-	];
-	for (const deps of depBuckets) {
-		if (!deps || typeof deps !== "object") continue;
-		for (const depName of Object.keys(deps)) {
-			if (depName.startsWith("@pie-players/")) {
-				names.add(depName);
-			}
-		}
-	}
-	return [...names];
-};
-
-const collectFixturePackageNames = (packageMap, initialSpecifiers) => {
-	const included = new Set();
-	const queue = [...initialSpecifiers];
-	while (queue.length > 0) {
-		const specifier = queue.shift();
-		if (included.has(specifier)) continue;
-		const entry = packageMap.get(specifier);
-		if (!entry || entry.pkg?.private) continue;
-		included.add(specifier);
-		for (const depName of getInternalWorkspaceDeps(entry.pkg)) {
-			if (!included.has(depName)) {
-				queue.push(depName);
-			}
-		}
-	}
-	return [...included].sort();
-};
-
-const rewriteWorkspaceRangesForFixture = (manifest, packageMap) => {
-	const depBuckets = [
-		"dependencies",
-		"peerDependencies",
-		"optionalDependencies",
-	];
-	for (const bucket of depBuckets) {
-		const deps = manifest[bucket];
-		if (!deps || typeof deps !== "object") continue;
-		for (const [depName, depRange] of Object.entries(deps)) {
-			if (
-				typeof depRange === "string" &&
-				depRange.startsWith("workspace:") &&
-				depName.startsWith("@pie-players/")
-			) {
-				const depEntry = packageMap.get(depName);
-				if (depEntry?.pkg?.version) {
-					deps[depName] = depEntry.pkg.version;
-				}
-			}
-		}
-	}
-};
-
-const createPatchedFixtureTarball = async (
-	fixtureDir,
-	sourceTarball,
-	packageMap,
-) => {
-	const unpackDir = mkdtempSync(path.join(fixtureDir, "pack-unpack-"));
-	const tarballsDir = path.join(fixtureDir, "tarballs");
-	mkdirSync(tarballsDir, { recursive: true });
-
-	try {
-		await execFileAsync("tar", ["-xzf", sourceTarball, "-C", unpackDir]);
-		const manifestPath = path.join(unpackDir, "package", "package.json");
-		const manifest = readJson(manifestPath);
-		rewriteWorkspaceRangesForFixture(manifest, packageMap);
-		writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-		const patchedTarballPath = path.join(
-			tarballsDir,
-			path.basename(sourceTarball),
-		);
-		await execFileAsync("tar", [
-			"-czf",
-			patchedTarballPath,
-			"-C",
-			unpackDir,
-			"package",
-		]);
-		return patchedTarballPath;
-	} finally {
-		rmSync(unpackDir, { recursive: true, force: true });
-	}
-};
-
-const createFixtureProject = () => {
-	const fixtureDir = mkdtempSync(path.join(os.tmpdir(), "pie-node-consumer-"));
-	writeFileSync(
-		path.join(fixtureDir, "package.json"),
-		JSON.stringify(
-			{
-				name: "pie-node-consumer-fixture",
-				private: true,
-				type: "module",
-				version: "0.0.0",
-			},
-			null,
-			2,
-		),
-	);
-	return fixtureDir;
-};
-
-const installTarballs = (fixtureDir, tarballs) => {
-	execFileSync(
-		"npm",
-		["install", "--no-package-lock", "--legacy-peer-deps", ...tarballs],
-		{
-			cwd: fixtureDir,
-			stdio: ["ignore", "pipe", "pipe"],
-		},
 	);
 };
 
@@ -290,9 +139,16 @@ import type { PieAssessmentPlayerDefaultElement } from "@pie-players/pie-assessm
 const ruler: PieToolRulerElement = document.createElement("pie-tool-ruler");
 ruler.visible = true;
 ruler.toolId = "ruler";
+const unmountedRuler = document.createElement("pie-tool-ruler");
+// @ts-expect-error Svelte has not supplied the component's defaults before mount.
+const initialVisible: boolean = unmountedRuler.visible;
+// @ts-expect-error The tool id can also be unset until mount.
+const initialToolId: string = unmountedRuler.toolId;
 const protractor: PieToolProtractorElement = document.createElement("pie-tool-protractor");
 protractor.visible = true;
 const tts: PieToolTtsInlineElement = document.createElement("pie-tool-tts-inline");
+// @ts-expect-error The base rate default is supplied when the component mounts.
+const initialRate: number = tts.baseRate;
 tts.speedOptions = [1, { rate: 1.5, ariaLabel: "Fast" }];
 tts.baseRate = 0.8;
 tts.pitch = 1;
@@ -431,41 +287,9 @@ const run = async () => {
 
 	try {
 		fixtureDir = createFixtureProject();
-		// Packed into the fixture, so removing it removes every tarball.
-		const sourceTarballsDir = path.join(fixtureDir, "source-tarballs");
-		mkdirSync(sourceTarballsDir);
-
-		const fixtureEntries = [];
-		for (const packageName of fixturePackageNames) {
-			const entry = packageMap.get(packageName);
-			if (!entry) {
-				failures.push(
-					`[node-consumer] missing workspace package: ${packageName}`,
-				);
-				continue;
-			}
-			fixtureEntries.push({ packageName, entry });
-		}
-
-		const fixtureTarballs = await mapConcurrent(
-			fixtureEntries,
-			async ({ packageName, entry }) => {
-				const { tarballPath } = await runPack(entry.dir, {
-					destination: sourceTarballsDir,
-				});
-				const patchedTarballPath = await createPatchedFixtureTarball(
-					fixtureDir,
-					tarballPath,
-					packageMap,
-				);
-				if (packageName === TTS_SERVER_CORE) {
-					ttsServerCoreTarball = patchedTarballPath;
-				}
-				return patchedTarballPath;
-			},
-		);
-
-		installTarballs(fixtureDir, fixtureTarballs);
+		const tarballs = await packFixturePackages(fixtureDir, packageMap, fixturePackageNames);
+		ttsServerCoreTarball = tarballs.get(TTS_SERVER_CORE);
+		installTarballs(fixtureDir, [...tarballs.values()]);
 
 		for (const specifier of NODE_IMPORT_TARGETS) {
 			const result = importSpecifierFromFixture(fixtureDir, specifier);

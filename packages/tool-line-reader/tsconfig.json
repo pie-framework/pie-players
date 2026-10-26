@@ -13,6 +13,6 @@
 			]
 		}
 	},
-	"include": ["index.ts", "tool-line-reader.svelte"],
+	"include": ["element-props.ts", "index.ts", "tool-line-reader.svelte"],
 	"exclude": ["node_modules", "dist"]
 }

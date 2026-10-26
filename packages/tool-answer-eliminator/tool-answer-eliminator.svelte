@@ -52,6 +52,7 @@ persist in the runtime context's element tool state store, under the key
 -->
 
 <script lang="ts">
+	import type { AnswerEliminatorProps, ElementStateKeys } from "./element-props.js";
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 
@@ -66,7 +67,6 @@ persist in the runtime context's element tool state store, under the key
 	import { untrack } from 'svelte';
 	import {
 		AnswerEliminatorCore,
-		type ElementStateKeys,
 	} from './answer-eliminator-core.js';
 
 	let {
@@ -78,13 +78,7 @@ persist in the runtime context's element tool state store, under the key
 		// alias `start` and `end`.
 		buttonAlignment = 'inline' as 'start' | 'end' | 'inline' | 'left' | 'right',
 		elementStateKeys = {} as ElementStateKeys // Store key per PIE element, by model id
-	}: {
-		visible?: boolean;
-		strategy?: 'strikethrough' | 'mask';
-		alwaysOn?: boolean;
-		buttonAlignment?: 'start' | 'end' | 'inline' | 'left' | 'right';
-		elementStateKeys?: ElementStateKeys;
-	} = $props();
+	}: AnswerEliminatorProps = $props();
 
 	let contextHostElement = $state<HTMLElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);

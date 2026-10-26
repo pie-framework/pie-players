@@ -21,6 +21,7 @@ capability's registration supplies `enabled` and `selectionActions`.
 -->
 
 <script lang="ts">
+	import type { AnnotationToolbarProps } from "./element-props.js";
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import { tick, untrack } from 'svelte';
 	import type {
@@ -57,23 +58,10 @@ capability's registration supplies `enabled` and `selectionActions`.
 	import { offersReadAloud, usableSelectionActions } from './selection-actions.js';
 	import { contentRegionHolding, readSelection } from './selection-range.js';
 
-	interface Props {
-		enabled?: boolean;
-		/**
-		 * Actions on the current selection, supplied by whoever mounts this gateway.
-		 *
-		 * This strip does not know what they do — it renders the buttons and hands each
-		 * one the selection. Pairing an action to a capability is the composer's job,
-		 * which is what keeps a highlighter from naming a dictionary and lets a host
-		 * contribute an action for a capability PIE does not ship.
-		 */
-		selectionActions?: ToolSelectionAction[] | null;
-	}
-
 	let {
 		enabled = true,
 		selectionActions = null
-	}: Props = $props();
+	}: AnnotationToolbarProps = $props();
 
 	const isBrowser = typeof window !== 'undefined';
 

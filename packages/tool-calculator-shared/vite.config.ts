@@ -24,7 +24,7 @@ export default defineConfig({
 		dts({
 			tsconfigPath: resolve(import.meta.dirname, "tsconfig.json"),
 			outDirs: "dist",
-			include: ["calculator-element.ts", "svelte-shims.d.ts"],
+			include: ["calculator-element.ts", "element-props.ts", "svelte-shims.d.ts"],
 		}),
 	],
 	build: {

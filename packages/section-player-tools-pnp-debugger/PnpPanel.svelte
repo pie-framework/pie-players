@@ -22,6 +22,7 @@ Developer panel for the section player demos that shows how the toolkit coordina
 -->
 
 <script lang="ts">
+	import type { PnpDebuggerProps } from "./element-props.js";
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import {
 		type AssessmentToolkitRuntimeContext,
@@ -41,15 +42,6 @@ Developer panel for the section player demos that shows how the toolkit coordina
 		type PolicyPanelCoordinator
 	} from './derive-panel-data.js';
 
-	interface Props {
-		sectionData: any;
-		roleType: 'candidate' | 'scorer';
-		editable?: boolean;
-		toolkitCoordinator?: any;
-		persistenceScope?: string;
-		persistencePanelId?: string;
-	}
-
 	let {
 		sectionData,
 		roleType,
@@ -57,7 +49,7 @@ Developer panel for the section player demos that shows how the toolkit coordina
 		toolkitCoordinator = null,
 		persistenceScope = "",
 		persistencePanelId = "pnp-debugger"
-	}: Props = $props();
+	}: PnpDebuggerProps = $props();
 
 	let floatingTools = $state<string[]>([]);
 	// Bumped from `coordinator.onPolicyChange(...)` so the

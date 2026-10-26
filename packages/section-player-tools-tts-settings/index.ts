@@ -1,9 +1,6 @@
 /**
- * pie-section-player-tools-tts-settings
- *
  * Importing this package registers `<pie-section-player-tools-tts-settings>`.
- * The build entry is the component, so this file is the type entry alone and
- * exports types only: a runtime export here would not exist in the built bundle.
+ * The built component supplies the runtime; this entry declares its native host type.
  */
 
 export type {
@@ -15,3 +12,14 @@ export type {
 	ProviderApplyResult,
 	ProviderAvailabilityResult,
 } from "./types.js";
+
+import type { TtsSettingsProps } from "./element-props.js";
+
+/** Native host interface for `<pie-section-player-tools-tts-settings>`. Properties may be unset until it mounts. */
+export interface PieSectionPlayerToolsTtsSettingsElement extends HTMLElement, TtsSettingsProps {}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-section-player-tools-tts-settings": PieSectionPlayerToolsTtsSettingsElement;
+	}
+}

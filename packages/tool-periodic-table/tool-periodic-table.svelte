@@ -20,6 +20,7 @@ filter the table by de-emphasising the other elements. The host shows it with
 -->
 
 <script lang="ts">
+	import type { PeriodicTableProps } from "./element-props.js";
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 
 	// The import attribute is required under `module: NodeNext`; a JSON import
@@ -52,10 +53,7 @@ filter the table by de-emphasising the other elements. The host shows it with
 	let {
 		visible = false,
 		toolId = 'periodicTable'
-	}: {
-		visible?: boolean;
-		toolId?: string;
-	} = $props();
+	}: PeriodicTableProps = $props();
 
 	// All elements from the bundled periodic-table-data.json
 	const allElements: Element[] = (periodicTableData as any).elements;

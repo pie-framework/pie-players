@@ -28,6 +28,7 @@ calculator mounts, then the provider's attribution link when it declares one.
 </script>
 
 <script lang="ts">
+	import type { CalculatorProps } from "./element-props.js";
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import type {
 		CalculatorProviderConfig,
@@ -41,13 +42,7 @@ calculator mounts, then the provider's attribution link when it declares one.
 		calculatorType = 'basic' as CalculatorType,
 		availableTypes = ['basic', 'scientific', 'graphing'] as CalculatorType[],
 		calculatorConfig = {} as CalculatorProviderConfig,
-	}: {
-		visible?: boolean;
-		toolId?: string;
-		calculatorType?: CalculatorType;
-		availableTypes?: CalculatorType[] | string;
-		calculatorConfig?: CalculatorProviderConfig;
-	} = $props();
+	}: CalculatorProps = $props();
 </script>
 
 <CalculatorTool

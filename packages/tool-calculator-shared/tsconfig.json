@@ -9,6 +9,7 @@
 		"moduleResolution": "NodeNext"
 	},
 	"include": [
+		"element-props.ts",
 		"components.ts",
 		"CalculatorTool.svelte",
 		"CalculatorInlineTool.svelte",

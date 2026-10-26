@@ -4,4 +4,5 @@
 @pie-players/pie-section-player-tools-session-debugger
 
 .
+  type PieSectionPlayerToolsSessionDebuggerElement
   default

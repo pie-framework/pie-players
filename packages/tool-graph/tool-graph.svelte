@@ -20,6 +20,7 @@ cursor along the minor grid and Enter or Space applies the current mode at it.
 -->
 
 <script lang="ts">
+	import type { GraphProps } from "./element-props.js";
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 
 	import {
@@ -31,10 +32,7 @@ cursor along the minor grid and Enter or Space applies the current mode at it.
 	let {
 		visible = false,
 		toolId = 'graph'
-	}: {
-		visible?: boolean;
-		toolId?: string;
-	} = $props();
+	}: GraphProps = $props();
 
 	type Tool = 'selector' | 'point' | 'line' | 'delete';
 

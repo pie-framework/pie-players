@@ -11,6 +11,7 @@ import {
 import type { EliminationStrategy } from "./strategies/elimination-strategy.js";
 import { MaskStrategy } from "./strategies/mask-strategy.js";
 import { StrikethroughStrategy } from "./strategies/strikethrough-strategy.js";
+import type { ElementStateKeys } from "./element-props.js";
 
 /**
  * Where eliminations persist: the toolkit's element tool state store, keyed per
@@ -20,12 +21,6 @@ export interface EliminatorStateStore {
 	getState(globalElementId: string, toolId: string): unknown;
 	setState(globalElementId: string, toolId: string, state: unknown): void;
 }
-
-/**
- * Store key per PIE element, by the element's model id (which is also its DOM
- * id). A choice persists under the key of the nearest ancestor listed here.
- */
-export type ElementStateKeys = Readonly<Record<string, string>>;
 
 /**
  * Where a choice's toggle sits. `start` and `end` are logical: they resolve

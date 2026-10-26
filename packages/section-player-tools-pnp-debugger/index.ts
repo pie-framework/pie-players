@@ -1,9 +1,15 @@
 /**
- * pie-section-player-tools-pnp-debugger
- *
  * Importing this package registers `<pie-section-player-tools-pnp-debugger>`.
- * The build entry is the component, so this file is the type entry alone and
- * declares nothing: a runtime export here would not exist in the built bundle.
+ * The built component supplies the runtime; this entry declares its native host type.
  */
 
-export type {};
+import type { PnpDebuggerProps } from "./element-props.js";
+
+/** Native host interface for `<pie-section-player-tools-pnp-debugger>`. Properties may be unset until it mounts. */
+export interface PieSectionPlayerToolsPnpDebuggerElement extends HTMLElement, Partial<PnpDebuggerProps> {}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-section-player-tools-pnp-debugger": PieSectionPlayerToolsPnpDebuggerElement;
+	}
+}

@@ -41,7 +41,7 @@
 		"prepack": "bun run build"
 	},
 	"dependencies": {
-		"@oclif/core": "^5.1.8",
+		"@oclif/core": "^5.1.9",
 		"@oclif/plugin-help": "^7.0.2",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"esbuild": "^0.28.2",

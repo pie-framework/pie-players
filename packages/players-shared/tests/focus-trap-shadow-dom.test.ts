@@ -76,4 +76,27 @@ describe("createFocusTrap in a shadow root", () => {
 		expect(passed.defaultPrevented).toBe(false);
 		withoutHandler();
 	});
+
+	test("leaves an Escape that cancels an IME composition to the IME", () => {
+		const container = document.createElement("div");
+		const control = document.createElement("button");
+		container.append(control);
+		document.body.append(container);
+
+		let escapes = 0;
+		const release = createFocusTrap(container, { onEscape: () => escapes++ });
+		for (const init of [{ isComposing: true }, { keyCode: 229 }]) {
+			const composing = new KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+				composed: true,
+				cancelable: true,
+				...init,
+			});
+			control.dispatchEvent(composing);
+			expect(composing.defaultPrevented).toBe(false);
+		}
+		expect(escapes).toBe(0);
+		release();
+	});
 });

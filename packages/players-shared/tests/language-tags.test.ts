@@ -1,8 +1,13 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "bun:test";
 import {
 	findBestLanguageMatch,
 	languageTagLookupSequence,
+	languageTagScript,
+	languageTagScriptLookupSequence,
+	languageTagScriptsMatch,
 	languageTagsEqual,
+	negotiateContentLanguage,
 	normalizeLanguageTag,
 	toLanguageTag,
 } from "../src/i18n/language-tags.js";
@@ -107,4 +112,87 @@ describe("findBestLanguageMatch", () => {
 	it("returns the candidate as authored, not normalized", () => {
 		expect(findBestLanguageMatch("EN-us", ["en_US"])).toBe("en_US");
 	});
+
+	it("reaches the language and likely script before the bare language", () => {
+		expect(findBestLanguageMatch("zh-TW", ["zh", "zh-Hant"])).toBe("zh-Hant");
+		expect(findBestLanguageMatch("sr-ME", ["sr", "sr-Latn"])).toBe("sr-Latn");
+	});
+
+	it("passes a bare-language catalog by when its likely script differs", () => {
+		expect(findBestLanguageMatch("zh-TW", ["en-US", "zh"])).toBeUndefined();
+		expect(findBestLanguageMatch("zh-Hant", ["zh"])).toBeUndefined();
+		expect(findBestLanguageMatch("sr-Latn-RS", ["sr"])).toBeUndefined();
+		expect(findBestLanguageMatch("zh-SG", ["zh"])).toBe("zh");
+		expect(findBestLanguageMatch("sr-Cyrl", ["sr"])).toBe("sr");
+	});
+
+	it("accepts an exact match whatever its script data", () => {
+		expect(findBestLanguageMatch("zh", ["zh"])).toBe("zh");
+		expect(findBestLanguageMatch("es_es", ["es-ES"])).toBe("es-ES");
+	});
+});
+
+describe("languageTagScript", () => {
+	it("reads an explicit script, then the CLDR likely script", () => {
+		expect(languageTagScript("sr-Latn")).toBe("latn");
+		expect(languageTagScript("zh-TW")).toBe("hant");
+		expect(languageTagScript("zh")).toBe("hans");
+		expect(languageTagScript("ar_SA")).toBe("arab");
+	});
+
+	it("has no script for a blank or unparseable tag", () => {
+		expect(languageTagScript("")).toBeUndefined();
+		expect(languageTagScript("not a tag!")).toBeUndefined();
+	});
+});
+
+describe("languageTagScriptsMatch", () => {
+	it("passes when either side has no script data", () => {
+		expect(languageTagScriptsMatch("zh-TW", "not a tag!")).toBe(true);
+		expect(languageTagScriptsMatch("zh-TW", "zh")).toBe(false);
+	});
+
+	it("passes every tag when the runtime has no Intl.Locale", () => {
+		const intl = Intl as { Locale?: typeof Intl.Locale };
+		const { Locale } = intl;
+		delete intl.Locale;
+		try {
+			expect(languageTagScriptsMatch("zh-HK", "zh-CN")).toBe(true);
+			expect(findBestLanguageMatch("zh-HK", ["zh"])).toBe("zh");
+		} finally {
+			intl.Locale = Locale;
+		}
+	});
+});
+
+describe("content-language negotiation conformance", () => {
+	interface Fixtures {
+		scriptLookupSequence: { tag: string; expected: string[] }[];
+		negotiate: {
+			requested: string[];
+			available: (string | null)[];
+			defaultLanguage?: string;
+			fallback?: "default" | "none";
+			matching?: "closest" | "exact";
+			source?: string | null;
+			expected: { language: string | null; substitution?: "fallback" } | null;
+		}[];
+	}
+	const fixtures: Fixtures = JSON.parse(
+		readFileSync(new URL("./content-language-fixtures.json", import.meta.url), "utf8"),
+	);
+
+	for (const { tag, expected } of fixtures.scriptLookupSequence) {
+		it(`script lookup sequence for ${tag}`, () => {
+			expect(languageTagScriptLookupSequence(tag)).toEqual(expected);
+		});
+	}
+
+	for (const { requested, available, defaultLanguage, fallback, matching, source, expected } of fixtures.negotiate) {
+		it(`negotiates [${requested.join(", ")}] over [${available.map((tag) => tag ?? "unlabeled").join(", ")}]${fallback ? ` with fallback ${fallback}` : ""}${matching ? ` matching ${matching}` : ""}${source !== undefined ? ` from source ${source ?? "unlabeled"}` : ""}`, () => {
+			expect(
+				negotiateContentLanguage(requested, available, { defaultLanguage, fallback, matching, source }) ?? null,
+			).toEqual(expected);
+		});
+	}
 });

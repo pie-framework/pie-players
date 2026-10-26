@@ -21,6 +21,7 @@ tool layer, and the close control hides it there. Arrow keys move it, `+` and
 -->
 
 <script lang="ts">
+	import type { LineReaderProps } from "./element-props.js";
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	
 	import {
@@ -49,7 +50,7 @@ tool layer, and the close control hides it there. Arrow keys move it, `+` and
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { onMount, untrack } from 'svelte';
 
-	let { visible = false, toolId = 'lineReader' }: { visible?: boolean; toolId?: string } = $props();
+	let { visible = false, toolId = 'lineReader' }: LineReaderProps = $props();
 
 	const isBrowser = typeof window !== 'undefined';
 

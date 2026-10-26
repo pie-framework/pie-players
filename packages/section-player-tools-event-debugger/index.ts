@@ -1,9 +1,15 @@
 /**
- * pie-section-player-tools-event-debugger
- *
  * Importing this package registers `<pie-section-player-tools-event-debugger>`.
- * The build entry is the component, so this file is the type entry alone and
- * declares nothing: a runtime export here would not exist in the built bundle.
+ * The built component supplies the runtime; this entry declares its native host type.
  */
 
-export type {};
+import type { EventDebuggerProps } from "./element-props.js";
+
+/** Native host interface for `<pie-section-player-tools-event-debugger>`. Properties may be unset until it mounts. */
+export interface PieSectionPlayerToolsEventDebuggerElement extends HTMLElement, EventDebuggerProps {}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-section-player-tools-event-debugger": PieSectionPlayerToolsEventDebuggerElement;
+	}
+}

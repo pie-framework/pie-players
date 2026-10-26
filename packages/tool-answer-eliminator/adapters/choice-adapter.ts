@@ -12,7 +12,10 @@ export interface ChoiceAdapter {
 	/** Get unique identifier for this choice (for persistence) */
 	getChoiceId(choice: HTMLElement): string;
 
-	/** Get human-readable label (for screen readers) */
+	/**
+	 * Get human-readable label (for screen readers); empty when the choice has
+	 * none, which the toggle names from the interface catalog.
+	 */
 	getChoiceLabel(choice: HTMLElement): string;
 
 	/** Whether the student has selected the choice (radio/checkbox checked). */

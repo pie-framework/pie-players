@@ -168,7 +168,8 @@ const toggles = (root: ParentNode) =>
 
 const start = (root: HTMLElement, keys: Record<string, string> = {}) => {
 	const states = new Map<string, unknown>();
-	core = new AnswerEliminatorCore();
+	// A side placement, so an inline choice's own fallback to `inline` shows.
+	core = new AnswerEliminatorCore("strikethrough", "end");
 	core.setStoreIntegration(
 		{
 			getState: (key, toolId) => states.get(`${key}|${toolId}`),

@@ -1,4 +1,7 @@
-import type { EliminationStrategy } from "./elimination-strategy.js";
+import type {
+	EliminationChrome,
+	EliminationStrategy,
+} from "./elimination-strategy.js";
 
 /**
  * Strikethrough strategy using CSS Custom Highlight API
@@ -77,6 +80,10 @@ export class StrikethroughStrategy implements EliminationStrategy {
 	private fallbackContainers = new Map<string, HTMLElement>();
 	private imageWrappers = new Map<string, HTMLElement[]>();
 	private mathTargets = new Map<string, HTMLElement[]>();
+	private chrome: EliminationChrome = {
+		eliminatedText: "(eliminated)",
+		stamp: () => {},
+	};
 
 	initialize(): void {
 		if (!this.isSupported()) {
@@ -86,6 +93,29 @@ export class StrikethroughStrategy implements EliminationStrategy {
 
 	destroy(): void {
 		this.clearAll();
+	}
+
+	setChrome(chrome: EliminationChrome): void {
+		this.chrome = chrome;
+		const containers = [
+			...Array.from(this.ranges.values(), (range) =>
+				this.findChoiceContainer(range),
+			),
+			...this.fallbackContainers.values(),
+		];
+		for (const container of containers) {
+			const announcement = container?.querySelector(
+				`.${StrikethroughStrategy.SR_CLASS}`,
+			);
+			if (announcement) this.labelAnnouncement(announcement);
+		}
+	}
+
+	private labelAnnouncement(announcement: Element): void {
+		// The leading space separates it from the label text it follows; the
+		// stamp's `dir` isolates it from that text's direction.
+		announcement.textContent = ` ${this.chrome.eliminatedText}`;
+		this.chrome.stamp(announcement);
 	}
 
 	apply(choiceId: string, range: Range): void {
@@ -213,7 +243,7 @@ export class StrikethroughStrategy implements EliminationStrategy {
 		if (label && !label.querySelector(`.${StrikethroughStrategy.SR_CLASS}`)) {
 			const announcement = document.createElement("span");
 			announcement.className = StrikethroughStrategy.SR_CLASS;
-			announcement.textContent = " (eliminated)";
+			this.labelAnnouncement(announcement);
 			label.appendChild(announcement);
 		}
 	}

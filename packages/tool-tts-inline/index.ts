@@ -1,9 +1,19 @@
-/**
- * pie-tool-tts-inline
- *
- * Importing this package registers `<pie-tool-tts-inline>`. The build entry is
- * the component, so this file is the type entry alone and declares nothing: a
- * runtime export here would not exist in the built bundle.
- */
+import type {
+	TTSLayoutMode,
+	TTSSpeedOption,
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
 
-export type {};
+import type { TtsInlineProps, TtsInlineSize } from "./element-props.js";
+
+export type PieToolTtsInlineSize = TtsInlineSize;
+export type PieToolTtsInlineLayoutMode = TTSLayoutMode;
+export type PieToolTtsInlineSpeedOption = TTSSpeedOption;
+
+/** Native host interface for `<pie-tool-tts-inline>`. Properties may be unset until it mounts. */
+export interface PieToolTtsInlineElement extends HTMLElement, TtsInlineProps {}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-tool-tts-inline": PieToolTtsInlineElement;
+	}
+}

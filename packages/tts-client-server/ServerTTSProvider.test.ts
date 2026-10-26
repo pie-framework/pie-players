@@ -3,6 +3,8 @@ import { ServerTTSProvider } from "./src/ServerTTSProvider";
 
 class MockAudio {
 	static instances: MockAudio[] = [];
+	static autoEnd = true;
+	static playError: Error | null = null;
 	src = "";
 	currentTime = 0;
 	playbackRate = 1;
@@ -21,11 +23,12 @@ class MockAudio {
 	}
 
 	play(): Promise<void> {
+		if (MockAudio.playError) return Promise.reject(MockAudio.playError);
 		this.paused = false;
 		this.onplay?.();
 		this.onplaying?.();
 		setTimeout(() => {
-			if (!this.paused) {
+			if (MockAudio.autoEnd && !this.paused) {
 				this.ended = true;
 				this.onended?.();
 			}
@@ -53,6 +56,8 @@ describe("ServerTTSProvider", () => {
 
 	beforeEach(() => {
 		MockAudio.instances = [];
+		MockAudio.autoEnd = true;
+		MockAudio.playError = null;
 		(globalThis as Record<string, unknown>).Audio = MockAudio;
 		URL.createObjectURL = vi.fn(() => "blob:mock-audio");
 		URL.revokeObjectURL = vi.fn();
@@ -67,7 +72,312 @@ describe("ServerTTSProvider", () => {
 		}
 		URL.createObjectURL = originalCreateObjectURL;
 		URL.revokeObjectURL = originalRevokeObjectURL;
+		vi.restoreAllMocks();
 		vi.clearAllMocks();
+	});
+
+	test("does not log spoken text or response bodies on synthesis failure", async () => {
+		const spokenSecret = "student private accommodation text";
+		const responseSecret = "upstream echoed a confidential request body";
+		globalThis.fetch = vi.fn(
+			async () =>
+				new Response(JSON.stringify({ message: responseSecret }), {
+					status: 429,
+					headers: { "Content-Type": "application/json" },
+				}),
+		) as unknown as typeof fetch;
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+		await expect(impl.speak(spokenSecret)).rejects.toThrow(
+			"Server returned 429",
+		);
+
+		const serializedLogs = JSON.stringify([
+			errorSpy.mock.calls,
+			warnSpy.mock.calls,
+		]);
+		expect(serializedLogs).not.toContain(spokenSecret);
+		expect(serializedLogs).not.toContain(responseSecret);
+		expect(serializedLogs).not.toContain("textPreview");
+		expect(serializedLogs).not.toContain("responseBody");
+	});
+
+	test("does not wait for failed response-body cancellation before reporting the error", async () => {
+		const order: string[] = [];
+		const cancel = vi.fn(() => {
+			order.push("cancel");
+			return new Promise<void>(() => {});
+		});
+		const telemetry = vi.fn((eventName: string) => {
+			if (eventName === "pie-tool-backend-call-error") {
+				order.push("telemetry");
+			}
+		});
+		globalThis.fetch = vi.fn(
+			async () =>
+				new Response(
+					new ReadableStream({
+						cancel,
+					}),
+					{ status: 503 },
+				),
+		) as unknown as typeof fetch;
+		vi.spyOn(console, "error").mockImplementation(() => {});
+
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "/api/tts",
+			providerOptions: { __pieTelemetry: telemetry },
+		} as any);
+		await expect(impl.speak("hello")).rejects.toThrow("Server returned 503");
+
+		expect(cancel).toHaveBeenCalledOnce();
+		expect(order).toEqual(["cancel", "telemetry"]);
+	});
+
+	test("redacts network failure details from public errors and telemetry", async () => {
+		const networkSecret = "signed-network-token-123";
+		const spokenSecret = "private student response";
+		const telemetry = vi.fn();
+		globalThis.fetch = vi.fn(async () => {
+			throw new Error(
+				`request to https://tts.example/synthesize?token=${networkSecret} failed`,
+			);
+		}) as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "https://tts.example",
+			providerOptions: { __pieTelemetry: telemetry },
+		} as any);
+		await expect(impl.speak(spokenSecret)).rejects.toThrow(
+			"TTS synthesis network request failed",
+		);
+
+		const serializedTelemetry = JSON.stringify(telemetry.mock.calls);
+		expect(serializedTelemetry).not.toContain(networkSecret);
+		expect(serializedTelemetry).not.toContain(spokenSecret);
+		expect(serializedTelemetry).toContain(
+			"TTS synthesis network request failed",
+		);
+	});
+
+	test("does not log telemetry reporter exception details", async () => {
+		const reporterSecret = "telemetry-reporter-secret";
+		const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [],
+			}),
+		) as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "/api/tts",
+			providerOptions: {
+				__pieTelemetry: async () => {
+					throw new Error(reporterSecret);
+				},
+			},
+		} as any);
+		await impl.speak("hello");
+
+		expect(JSON.stringify(warnSpy.mock.calls)).not.toContain(reporterSecret);
+		expect(warnSpy).toHaveBeenCalledWith(
+			"[server-tts-provider]",
+			"telemetry callback failed",
+		);
+	});
+
+	test("does not expose signed endpoint URLs when validation fails", async () => {
+		const endpointSecret = "signed-endpoint-token";
+		const telemetry = vi.fn();
+		globalThis.fetch = vi.fn(
+			async () => new Response(null, { status: 503 }),
+		) as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		await expect(
+			provider.initialize({
+				apiEndpoint: `https://tts.example/api?token=${endpointSecret}`,
+				endpointValidationMode: "voices",
+				providerOptions: { __pieTelemetry: telemetry },
+			} as any),
+		).rejects.toThrow("Server TTS API is not available");
+
+		expect(JSON.stringify(telemetry.mock.calls)).not.toContain(endpointSecret);
+	});
+
+	test("stays cancelled when response parsing completes after stop", async () => {
+		let releaseResponse!: (data: unknown) => void;
+		let parsingStarted!: () => void;
+		const parsing = new Promise<void>((resolve) => {
+			parsingStarted = resolve;
+		});
+		globalThis.fetch = vi.fn(
+			async () =>
+				({
+					ok: true,
+					status: 200,
+					json: async () => {
+						parsingStarted();
+						return new Promise((resolve) => {
+							releaseResponse = resolve;
+						});
+					},
+				}) as Response,
+		) as unknown as typeof fetch;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+
+		const speakPromise = impl.speak("content being parsed");
+		await parsing;
+		impl.stop();
+		releaseResponse({
+			audio: btoa("audio-bytes"),
+			contentType: "audio/mpeg",
+			speechMarks: [],
+		});
+
+		await expect(speakPromise).resolves.toBeUndefined();
+		expect(URL.createObjectURL).not.toHaveBeenCalled();
+	});
+
+	test("stays cancelled when success telemetry completes after stop", async () => {
+		let releaseTelemetry!: () => void;
+		let telemetryStarted!: () => void;
+		const pendingTelemetry = new Promise<void>((resolve) => {
+			telemetryStarted = resolve;
+		});
+		const telemetry = vi.fn(
+			async (eventName: string, payload?: Record<string, unknown>) => {
+				if (
+					eventName === "pie-tool-backend-call-success" &&
+					payload?.operation === "synthesize-speech"
+				) {
+					telemetryStarted();
+					await new Promise<void>((resolve) => {
+						releaseTelemetry = resolve;
+					});
+				}
+			},
+		);
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [],
+			}),
+		) as unknown as typeof fetch;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "/api/tts",
+			providerOptions: { __pieTelemetry: telemetry },
+		} as any);
+
+		const speakPromise = impl.speak("content awaiting telemetry");
+		await pendingTelemetry;
+		impl.stop();
+		releaseTelemetry();
+
+		await expect(speakPromise).resolves.toBeUndefined();
+		expect(URL.createObjectURL).not.toHaveBeenCalled();
+		expect(MockAudio.instances).toHaveLength(0);
+	});
+
+	test("settles active playback when stopped", async () => {
+		MockAudio.autoEnd = false;
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [],
+			}),
+		) as unknown as typeof fetch;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+
+		const speakPromise = impl.speak("long playback");
+		await vi.waitFor(() => expect(MockAudio.instances).toHaveLength(1));
+		impl.stop();
+
+		await expect(speakPromise).resolves.toBeUndefined();
+		expect(MockAudio.instances[0]?.paused).toBe(true);
+		expect(MockAudio.instances[0]?.src).toBe("");
+		expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-audio");
+	});
+
+	test("redacts playback-start failures and releases synthesized audio", async () => {
+		const playbackSecret = "signed-playback-url-token";
+		MockAudio.playError = new Error(
+			`media failed at https://cdn.example/audio?token=${playbackSecret}`,
+		);
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [],
+			}),
+		) as unknown as typeof fetch;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+
+		let caught: unknown;
+		try {
+			await impl.speak("private playback content");
+		} catch (error) {
+			caught = error;
+		}
+
+		expect((caught as Error).message).toBe("Failed to start audio playback");
+		expect((caught as Error).message).not.toContain(playbackSecret);
+		expect(MockAudio.instances[0]?.paused).toBe(true);
+		expect(MockAudio.instances[0]?.src).toBe("");
+		expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-audio");
+	});
+
+	test("keeps the error name of a blocked playback start", async () => {
+		MockAudio.playError = new DOMException(
+			"play() failed at https://cdn.example/audio?token=secret",
+			"NotAllowedError",
+		);
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [],
+			}),
+		) as unknown as typeof fetch;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+
+		const caught = await impl.speak("hello").catch((error: unknown) => error);
+
+		expect((caught as Error).name).toBe("NotAllowedError");
+		expect((caught as Error).message).toBe("Failed to start audio playback");
+		expect((caught as Error).cause).toBeUndefined();
+	});
+
+	test("keeps the error name of a failed synthesis request", async () => {
+		globalThis.fetch = vi.fn(async () => {
+			throw new TypeError("request to https://tts.example?token=secret failed");
+		}) as unknown as typeof fetch;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "https://tts.example",
+		} as any);
+
+		const caught = await impl.speak("hello").catch((error: unknown) => error);
+
+		expect((caught as Error).name).toBe("TypeError");
+		expect((caught as Error).message).toBe(
+			"TTS synthesis network request failed",
+		);
 	});
 
 	test("uses PIE transport defaults with /synthesize endpoint", async () => {
@@ -243,7 +553,9 @@ describe("ServerTTSProvider", () => {
 		const provider = new ServerTTSProvider();
 		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
 		const bodyOf = (call: number) => {
-			const options = fetchMock.mock.calls[call]?.[1] as RequestInit | undefined;
+			const options = fetchMock.mock.calls[call]?.[1] as
+				| RequestInit
+				| undefined;
 			return JSON.parse(String(options?.body));
 		};
 
@@ -311,12 +623,10 @@ describe("ServerTTSProvider", () => {
 		await impl.speak("Él comió más");
 
 		expect(
-			timings.map(
-				(timing: { charIndex: number; length: number }) => [
-					timing.charIndex,
-					timing.length,
-				],
-			),
+			timings.map((timing: { charIndex: number; length: number }) => [
+				timing.charIndex,
+				timing.length,
+			]),
 		).toEqual([
 			[0, 2],
 			[3, 5],
@@ -531,7 +841,8 @@ describe("ServerTTSProvider", () => {
 			config: Record<string, unknown>,
 		): Promise<Record<string, Record<string, string>>> => {
 			const captured: Record<string, Record<string, string>> = {};
-			for (const key of Object.keys(credentialsSeen)) delete credentialsSeen[key];
+			for (const key of Object.keys(credentialsSeen))
+				delete credentialsSeen[key];
 			const fetchMock = vi.fn(
 				async (input: RequestInfo | URL, init?: RequestInit) => {
 					const url = String(input);
@@ -739,6 +1050,7 @@ describe("ServerTTSProvider", () => {
 			},
 		} as any);
 		const speakPromise = impl.speak("long running synthesis");
+		await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
 		impl.stop();
 		await expect(speakPromise).resolves.toBeUndefined();
 		expect(aborted).toBe(true);
@@ -818,7 +1130,9 @@ describe("ServerTTSProvider", () => {
 					}),
 			) as unknown as typeof fetch;
 			const provider = new ServerTTSProvider();
-			const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+			const impl = await provider.initialize({
+				apiEndpoint: "/api/tts",
+			} as any);
 			const starts: string[] = [];
 			impl.onPlaybackStart = () => starts.push("start");
 
@@ -859,7 +1173,9 @@ describe("ServerTTSProvider", () => {
 			}
 			(globalThis as Record<string, unknown>).Audio = BufferingAudio;
 			const provider = new ServerTTSProvider();
-			const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+			const impl = await provider.initialize({
+				apiEndpoint: "/api/tts",
+			} as any);
 
 			const speaking = impl.speak("hello");
 			await vi.waitFor(() => expect(MockAudio.instances).toHaveLength(1));
@@ -872,7 +1188,9 @@ describe("ServerTTSProvider", () => {
 	});
 
 	test("probes nothing at initialize unless endpointValidationMode names a probe", async () => {
-		const fetchMock = vi.fn(async () => createJSONResponse({ voices: [] }, 200));
+		const fetchMock = vi.fn(async () =>
+			createJSONResponse({ voices: [] }, 200),
+		);
 		globalThis.fetch = fetchMock as unknown as typeof fetch;
 
 		for (const config of [
@@ -978,7 +1296,7 @@ describe("ServerTTSProvider", () => {
 			provider.initialize({
 				apiEndpoint: "/api/tts",
 				provider: "google",
-					endpointValidationMode: "voices",
+				endpointValidationMode: "voices",
 			} as any),
 		).rejects.toThrow();
 		expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -1180,7 +1498,9 @@ describe("ServerTTSProvider", () => {
 
 		test("keeps spoken text out of the console", async () => {
 			const consoleLog = vi.spyOn(console, "log").mockImplementation(() => {});
-			const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => {});
+			const consoleInfo = vi
+				.spyOn(console, "info")
+				.mockImplementation(() => {});
 			const { audio, tick } = await startHighlighting(denseTimings);
 
 			audio.currentTime = 0.095;

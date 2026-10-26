@@ -36,7 +36,7 @@
 		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.15",
+		"@biomejs/biome": "^2.6.2",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/pie-i18n-generated#readme",

@@ -1,8 +1,15 @@
 /**
- * pie-tool-line-reader - PIE Assessment Tool
- *
- * This package exports a web component built from Svelte.
- * Import the built version for CDN usage, or the .svelte source for Svelte projects.
+ * Importing this package registers `<pie-tool-line-reader>`.
+ * The built component supplies the runtime; this entry declares its native host type.
  */
 
-// Re-export any TypeScript types defined in the package
+import type { LineReaderProps } from "./element-props.js";
+
+/** Native host interface for `<pie-tool-line-reader>`. Properties may be unset until it mounts. */
+export interface PieToolLineReaderElement extends HTMLElement, LineReaderProps {}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-tool-line-reader": PieToolLineReaderElement;
+	}
+}

@@ -12,6 +12,8 @@ import {
 	type ItemMarkupSanitizer,
 } from "@pie-players/pie-players-shared/security";
 
+import { validateCustomElementTag } from "@pie-players/pie-players-shared/pie/tag-names";
+
 import type {
 	Elements,
 	Item,
@@ -86,7 +88,8 @@ export const mkItem = (
 ): Item => {
 	const f = document.createDocumentFragment();
 
-	models.forEach((o) => {
+	const printModels = models.map((model) => ({ ...model }));
+	printModels.forEach((o) => {
 		const res = resolutions.find(
 			(r) => r.tagName === o.element || r.printTagName === o.element,
 		);
@@ -100,7 +103,7 @@ export const mkItem = (
 
 	const root = document.createElement("div");
 	root.appendChild(f);
-	return { markup: root.innerHTML, models, elements };
+	return { markup: root.innerHTML, models: printModels, elements };
 };
 
 /**
@@ -131,7 +134,11 @@ export const processMarkup = (
 		const results: NodeResult[] = [];
 
 		resolutions.forEach((r) => {
-			const nl = doc.body.querySelectorAll(r.tagName);
+			const tag = validateCustomElementTag(
+				r.tagName,
+				"print source element tag",
+			);
+			const nl = Array.from(doc.body.getElementsByTagName(tag));
 			nl.forEach((n) => {
 				if (!r.printTagName) {
 					throw new Error("Missing a printTagName");
@@ -171,7 +178,7 @@ export const processMarkup = (
 
 		return { html: doc.body.innerHTML, nodes: results };
 	} catch {
-		throw new Error(`Failed to parse the markup - is it valid html: ${markup}`);
+		throw new Error("Failed to process print markup or element tags.");
 	}
 };
 

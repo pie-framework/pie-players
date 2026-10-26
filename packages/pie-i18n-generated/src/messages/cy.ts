@@ -392,6 +392,9 @@ const cy = {
 			description: "Taro'r opsiynau ateb drwodd",
 			buttonA11y: "Taro Trwodd, dileu opsiynau ateb",
 			tooltip: "Taro Trwodd",
+			toggleA11y: "Toglo taro trwodd ar gyfer {choice}",
+			eliminatedA11y: "(wedi'i daro trwodd)",
+			unlabeledChoice: "Dewis heb label",
 		},
 		highlighter: {
 			name: "Amlygydd",

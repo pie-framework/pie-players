@@ -5,8 +5,11 @@ import { findShellScopeHost } from "./content-region.js";
 export const DEFAULT_CONTENT_LANGUAGE = "en-US";
 
 /**
- * The nearest non-empty `lang` attribute at or above `node`, climbing through
- * shadow hosts, and ending after `boundary` when one is given.
+ * The nearest `lang` attribute at or above `node`, climbing through shadow
+ * hosts, and ending after `boundary` when one is given. An empty `lang` names
+ * the language unknown and ends the climb with no language, as it ends the
+ * browser's own inheritance: the players stamp it on content that declares
+ * none, so the interface's `lang` above never reads as the content's.
  */
 export const findLangAttribute = (
 	node: Node | null | undefined,
@@ -18,12 +21,32 @@ export const findLangAttribute = (
 			? (node as Element)
 			: composedParentElement(node);
 	while (current) {
-		const lang = current.getAttribute("lang")?.trim();
-		if (lang) return lang;
+		const lang = current.getAttribute("lang");
+		if (lang !== null) return lang.trim() || undefined;
 		if (boundary && current === boundary) return undefined;
 		current = composedParentElement(current);
 	}
 	return undefined;
+};
+
+/**
+ * The language the content `root` holds is declared in: the `lang` its
+ * outermost `lang`-carrying descendants share, or undefined when they disagree,
+ * one is empty, or there are none. The players stamp `lang` on the content root
+ * they render, below the shell a whole-item read targets, so this is how such
+ * a read finds the language an item declared through `env.locale`.
+ */
+export const findHeldContentLanguage = (root: Element): string | undefined => {
+	let language: string | undefined;
+	for (const element of root.querySelectorAll("[lang]")) {
+		const outer = element.parentElement?.closest("[lang]");
+		if (outer && outer !== root && root.contains(outer)) continue;
+		const lang = element.getAttribute("lang")?.trim();
+		if (!lang) return undefined;
+		if (language === undefined) language = lang;
+		else if (language.toLowerCase() !== lang.toLowerCase()) return undefined;
+	}
+	return language;
 };
 
 export interface ContentLanguageOptions {

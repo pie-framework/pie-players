@@ -38,7 +38,11 @@ import {
 	createEsmBackend,
 	type EsmBackendConfig,
 } from "./esm-adapter.js";
-import { createIifeBackend, type IifeBackendConfig } from "./iife-adapter.js";
+import {
+	createIifeBackend,
+	findIifeElementMapConflict,
+	type IifeBackendConfig,
+} from "./iife-adapter.js";
 import {
 	assertElementPackagesAllowed,
 	type ElementPackagePolicy,
@@ -217,9 +221,10 @@ export type EnsureRegisteredOptions = {
 const DEFAULT_WHEN_DEFINED_TIMEOUT_MS = 5000;
 const DEFAULT_LOAD_TIMEOUT_MS = DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.timeoutMs;
 
-// Module-scoped in-flight cache. Key: backend signature + sorted elements.
-// Keeps concurrent identical requests collapsed to one backend call.
+// Requests share a backend call by both the original map and the unresolved
+// subset, so incremental registration does not change an in-flight identity.
 const inFlightRequests = new Map<string, Promise<void>>();
+const inFlightKeysByPromise = new Map<Promise<void>, Set<string>>();
 // An ESM backend keeps page state that later loads build on (the import maps it
 // injected, the shared dependency versions they fixed), so every load with the
 // same config reuses one backend. IIFE backends are created per call.
@@ -232,7 +237,10 @@ const resolvedBackendOverrides = new Map<string, ElementLoaderBackend>();
  *
  * The primitive is the sole authority on registration state:
  * - Empty element map resolves immediately (no backend call).
- * - Already-registered tags resolve immediately (no backend call).
+ * - Already-registered tags resolve immediately (no backend call). A request
+ *   that loads other tags through an IIFE or ESM backend that loads controllers
+ *   also loads its registered tags with no controller, so their controllers
+ *   fill in.
  * - Concurrent identical requests share one backend call.
  * - After the adapter's `load` settles, a post-load verification pass
  *   (bounded `customElements.whenDefined`) checks every tag. Any missing
@@ -249,24 +257,40 @@ export async function ensureRegistered(
 	// the registry must not turn a disallowed authored package into valid input.
 	assertElementPackagesAllowed(elements, options.elementPackagePolicy);
 
-	const tags = Object.keys(elements);
+	// Preserve the original request identity while tags register mid-flight.
+	const originalDedupKey = buildDedupKey(options.backend, elements);
+	const originalRequest = inFlightRequests.get(originalDedupKey);
+	if (originalRequest) return originalRequest;
+
+	if (Object.keys(elements).every(isRegistered)) return;
+	const loadsControllers = backendLoadsControllers(options.backend);
+	const unresolvedElements: ElementMap = {};
+	for (const [tag, packageSpec] of Object.entries(elements)) {
+		if (!isRegistered(tag) || (loadsControllers && awaitsController(tag))) {
+			unresolvedElements[tag] = packageSpec;
+		}
+	}
+	const tags = Object.keys(unresolvedElements);
 	const timeoutMs =
 		options.whenDefinedTimeoutMs ?? DEFAULT_WHEN_DEFINED_TIMEOUT_MS;
 	const loadTimeoutMs = options.loadTimeoutMs ?? DEFAULT_LOAD_TIMEOUT_MS;
 
-	// Fast path: everything already registered. Skip backend and dedup
-	// bookkeeping entirely.
-	if (allAlreadyRegistered(tags)) return;
-
-	const dedupKey = buildDedupKey(options.backend, elements);
+	const dedupKey = buildDedupKey(options.backend, unresolvedElements);
 	const existing = inFlightRequests.get(dedupKey);
-	if (existing) return existing;
+	if (existing) {
+		aliasInFlightRequest(originalDedupKey, existing);
+		return existing;
+	}
 
 	const backend = resolveBackend(options.backend);
 	const doc = resolveDoc(options.doc);
 
+	const loadElements = isIifeConfig(options.backend)
+		? iifeLoadElements(elements, unresolvedElements)
+		: unresolvedElements;
+
 	const promise = runEnsureRegistered(
-		elements,
+		loadElements,
 		tags,
 		backend,
 		{ doc, whenDefinedTimeoutMs: timeoutMs },
@@ -274,14 +298,23 @@ export async function ensureRegistered(
 		loadTimeoutMs,
 	);
 
-	inFlightRequests.set(dedupKey, promise);
+	aliasInFlightRequest(originalDedupKey, promise);
+	aliasInFlightRequest(dedupKey, promise);
 	try {
 		await promise;
 	} finally {
-		if (inFlightRequests.get(dedupKey) === promise) {
-			inFlightRequests.delete(dedupKey);
+		for (const key of inFlightKeysByPromise.get(promise) ?? []) {
+			if (inFlightRequests.get(key) === promise) inFlightRequests.delete(key);
 		}
+		inFlightKeysByPromise.delete(promise);
 	}
+}
+
+function aliasInFlightRequest(key: string, promise: Promise<void>): void {
+	inFlightRequests.set(key, promise);
+	const keys = inFlightKeysByPromise.get(promise) ?? new Set<string>();
+	keys.add(key);
+	inFlightKeysByPromise.set(promise, keys);
 }
 
 async function runEnsureRegistered(
@@ -407,11 +440,11 @@ export function assertRegistered(tags: ElementTag[] | ElementMap): void {
 function resolveBackend(backend: BackendOption): ElementLoaderBackend {
 	if (isDirectBackend(backend)) return backend;
 	if ("kind" in backend) {
+		const backendKey = backendKeyOf(backend);
+		const override = resolvedBackendOverrides.get(backendKey);
+		if (override) return override;
 		if (backend.kind === "iife") return createIifeBackend(backend);
 		if (backend.kind === "esm") {
-			const backendKey = backendKeyOf(backend);
-			const override = resolvedBackendOverrides.get(backendKey);
-			if (override) return override;
 			const existing = resolvedEsmBackends.get(backendKey);
 			if (existing) return existing;
 			const created = createEsmBackend(backend);
@@ -572,8 +605,35 @@ function getOpaqueObjectRefId(value: object): string {
 	return id;
 }
 
-function allAlreadyRegistered(tags: ElementTag[]): boolean {
-	return tags.every((tag) => isRegistered(tag));
+function isIifeConfig(backend: BackendOption): backend is IifeBackendConfig {
+	return !isDirectBackend(backend) && "kind" in backend && backend.kind === "iife";
+}
+
+/**
+ * An IIFE bundle URL names its packages, so the full map keeps it the URL a
+ * host already fetched. Two specs of one package cannot share a bundle, so a
+ * conflict narrows the map: first to the unresolved tags, then to the undefined.
+ */
+function iifeLoadElements(
+	elements: ElementMap,
+	unresolvedElements: ElementMap,
+): ElementMap {
+	if (!findIifeElementMapConflict(elements)) return elements;
+	if (!findIifeElementMapConflict(unresolvedElements)) return unresolvedElements;
+	return Object.fromEntries(
+		Object.entries(unresolvedElements).filter(([tag]) => !isRegistered(tag)),
+	);
+}
+
+function backendLoadsControllers(backend: BackendOption): boolean {
+	if (isDirectBackend(backend) || !("kind" in backend)) return false;
+	if (backend.kind === "iife") return backend.needsControllers ?? true;
+	if (backend.kind === "esm") return backend.loadControllers ?? true;
+	return false;
+}
+
+function awaitsController(tag: ElementTag): boolean {
+	return typeof window !== "undefined" && !pieRegistry()[tag]?.controller;
 }
 
 function isRegistered(tag: ElementTag): boolean {
@@ -637,6 +697,7 @@ function extractAdapterReason(
 export const __testing = {
 	resetDedupState(): void {
 		inFlightRequests.clear();
+		inFlightKeysByPromise.clear();
 		resolvedEsmBackends.clear();
 		resolvedBackendOverrides.clear();
 		clearPackageMetadataRequests();

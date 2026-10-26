@@ -85,6 +85,14 @@ export interface AssessmentToolkitRuntimeContext {
 	 */
 	contentLanguage?: string;
 	/**
+	 * The content language the item and passage players stamp on content that
+	 * declares none: {@link contentLanguage} when the host names one, else
+	 * `auto` (`lang=""` with `dir="auto"`) when the host sets an interface
+	 * locale, else unset, which leaves undeclared content inheriting the page's
+	 * language and direction. See `defaultContentLanguage`.
+	 */
+	contentLanguageDefault?: string;
+	/**
 	 * Reports a failure that keeps the section's content from loading as the
 	 * section controller's `section-error`, with source `section-runtime`.
 	 */

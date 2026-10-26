@@ -2,7 +2,10 @@
  * Type definitions for PIE Print Player
  */
 
-import type { EsmCdnProviderOption } from "@pie-players/pie-players-shared/loaders";
+import type {
+	ElementPackagePolicy,
+	EsmCdnProviderOption,
+} from "@pie-players/pie-players-shared/loaders";
 import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
 import type { PrintAccessibilityConfig } from "./accessibility-alternates.js";
 
@@ -96,6 +99,8 @@ export interface PrintLoaderOptions {
 	esmCdnUrl?: string;
 	/** CDN URL strategy; inferred from `esmCdnUrl` when absent */
 	esmCdnProvider?: EsmCdnProviderOption;
+	/** Optional host-controlled package allowlist, checked before any resolver. */
+	elementPackagePolicy?: ElementPackagePolicy;
 }
 
 /**

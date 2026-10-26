@@ -1065,7 +1065,7 @@
 							"kind": "field",
 							"name": "runtime",
 							"type": {
-								"text": "RuntimeConfig | null"
+								"text": "SectionPlayerRuntimeConfig | null"
 							},
 							"default": "null",
 							"attribute": "runtime"
@@ -1074,7 +1074,7 @@
 							"kind": "field",
 							"name": "ndsIcons",
 							"type": {
-								"text": "boolean | undefined"
+								"text": "boolean"
 							},
 							"description": "Presentation flag: opt in to NDS icon buttons. Unset renders plain <button>s.",
 							"attribute": "nds-icons"
@@ -1148,7 +1148,7 @@
 							"kind": "field",
 							"name": "debug",
 							"type": {
-								"text": "string | boolean | undefined"
+								"text": "string | boolean"
 							},
 							"attribute": "debug"
 						},
@@ -1156,7 +1156,7 @@
 							"kind": "field",
 							"name": "baseHeadingLevel",
 							"type": {
-								"text": "number | undefined"
+								"text": "number"
 							},
 							"description": "Composition context: the level this player's card headings occupy. Descendants derive their own outline from it — see docs/architecture/composition-context.md.",
 							"attribute": "base-heading-level"
@@ -1165,7 +1165,7 @@
 							"kind": "field",
 							"name": "showToolbar",
 							"type": {
-								"text": "boolean | string | null | undefined"
+								"text": "boolean | string | null"
 							},
 							"default": "\"false\"",
 							"attribute": "show-toolbar"
@@ -1219,7 +1219,7 @@
 							"kind": "field",
 							"name": "policies",
 							"type": {
-								"text": "Partial<SectionPlayerPolicies> | undefined"
+								"text": "Partial<SectionPlayerPolicies>"
 							},
 							"attribute": "policies"
 						},
@@ -1227,7 +1227,7 @@
 							"kind": "field",
 							"name": "hooks",
 							"type": {
-								"text": "SectionPlayerHostHooks | undefined"
+								"text": "SectionPlayerHostHooks"
 							},
 							"attribute": "hooks"
 						},
@@ -1235,7 +1235,7 @@
 							"kind": "field",
 							"name": "toolConfigStrictness",
 							"type": {
-								"text": "ToolConfigStrictness | undefined"
+								"text": "ToolConfigStrictness"
 							},
 							"attribute": "tool-config-strictness"
 						},
@@ -1243,7 +1243,7 @@
 							"kind": "field",
 							"name": "narrowLayoutBreakpoint",
 							"type": {
-								"text": "number | undefined"
+								"text": "number"
 							},
 							"attribute": "narrow-layout-breakpoint"
 						},
@@ -1251,7 +1251,7 @@
 							"kind": "field",
 							"name": "contentMaxWidthNoPassage",
 							"type": {
-								"text": "number | undefined"
+								"text": "number"
 							},
 							"attribute": "content-max-width-no-passage"
 						},
@@ -1259,7 +1259,7 @@
 							"kind": "field",
 							"name": "contentMaxWidthWithPassage",
 							"type": {
-								"text": "number | undefined"
+								"text": "number"
 							},
 							"attribute": "content-max-width-with-passage"
 						},
@@ -1267,7 +1267,7 @@
 							"kind": "field",
 							"name": "splitPaneMinRegionWidth",
 							"type": {
-								"text": "number | undefined"
+								"text": "number"
 							},
 							"attribute": "split-pane-min-region-width"
 						},
@@ -1275,7 +1275,7 @@
 							"kind": "field",
 							"name": "splitPaneInitialPassageWidth",
 							"type": {
-								"text": "number | string | undefined"
+								"text": "number | string"
 							},
 							"attribute": "split-pane-initial-passage-width"
 						},
@@ -1283,7 +1283,7 @@
 							"kind": "field",
 							"name": "splitPaneCollapseStrategy",
 							"type": {
-								"text": "\"vertical\" | \"tabbed\" | string"
+								"text": "string"
 							},
 							"default": "\"tabbed\"",
 							"attribute": "split-pane-collapse-strategy"
@@ -1374,7 +1374,7 @@
 						{
 							"name": "runtime",
 							"type": {
-								"text": "RuntimeConfig | null"
+								"text": "SectionPlayerRuntimeConfig | null"
 							},
 							"default": "null",
 							"fieldName": "runtime"
@@ -1511,14 +1511,14 @@
 						{
 							"name": "policies",
 							"type": {
-								"text": "Partial<SectionPlayerPolicies> | undefined"
+								"text": "Partial<SectionPlayerPolicies>"
 							},
 							"fieldName": "policies"
 						},
 						{
 							"name": "hooks",
 							"type": {
-								"text": "SectionPlayerHostHooks | undefined"
+								"text": "SectionPlayerHostHooks"
 							},
 							"fieldName": "hooks"
 						},
@@ -1758,7 +1758,7 @@
 							"kind": "field",
 							"name": "runtime",
 							"type": {
-								"text": "RuntimeConfig | null"
+								"text": "SectionPlayerRuntimeConfig | null"
 							},
 							"default": "null",
 							"attribute": "runtime"
@@ -1767,7 +1767,7 @@
 							"kind": "field",
 							"name": "ndsIcons",
 							"type": {
-								"text": "boolean | undefined"
+								"text": "boolean"
 							},
 							"description": "Presentation flag: opt in to NDS icon buttons. Unset renders plain <button>s.",
 							"attribute": "nds-icons"
@@ -1841,7 +1841,7 @@
 							"kind": "field",
 							"name": "debug",
 							"type": {
-								"text": "string | boolean | undefined"
+								"text": "string | boolean"
 							},
 							"attribute": "debug"
 						},
@@ -1849,7 +1849,7 @@
 							"kind": "field",
 							"name": "baseHeadingLevel",
 							"type": {
-								"text": "number | undefined"
+								"text": "number"
 							},
 							"description": "Composition context: the level this player's card headings occupy. Descendants derive their own outline from it — see docs/architecture/composition-context.md.",
 							"attribute": "base-heading-level"
@@ -1858,7 +1858,7 @@
 							"kind": "field",
 							"name": "showToolbar",
 							"type": {
-								"text": "boolean | string | null | undefined"
+								"text": "boolean | string | null"
 							},
 							"default": "\"false\"",
 							"attribute": "show-toolbar"
@@ -1912,7 +1912,7 @@
 							"kind": "field",
 							"name": "policies",
 							"type": {
-								"text": "Partial<SectionPlayerPolicies> | undefined"
+								"text": "Partial<SectionPlayerPolicies>"
 							},
 							"attribute": "policies"
 						},
@@ -1920,7 +1920,7 @@
 							"kind": "field",
 							"name": "hooks",
 							"type": {
-								"text": "SectionPlayerHostHooks | undefined"
+								"text": "SectionPlayerHostHooks"
 							},
 							"attribute": "hooks"
 						},
@@ -1928,7 +1928,7 @@
 							"kind": "field",
 							"name": "toolConfigStrictness",
 							"type": {
-								"text": "ToolConfigStrictness | undefined"
+								"text": "ToolConfigStrictness"
 							},
 							"attribute": "tool-config-strictness"
 						},
@@ -1936,7 +1936,7 @@
 							"kind": "field",
 							"name": "narrowLayoutBreakpoint",
 							"type": {
-								"text": "number | undefined"
+								"text": "number"
 							},
 							"attribute": "narrow-layout-breakpoint"
 						},
@@ -1944,7 +1944,7 @@
 							"kind": "field",
 							"name": "contentMaxWidthNoPassage",
 							"type": {
-								"text": "number | undefined"
+								"text": "number"
 							},
 							"attribute": "content-max-width-no-passage"
 						},
@@ -1952,7 +1952,7 @@
 							"kind": "field",
 							"name": "contentMaxWidthWithPassage",
 							"type": {
-								"text": "number | undefined"
+								"text": "number"
 							},
 							"attribute": "content-max-width-with-passage"
 						},
@@ -2042,7 +2042,7 @@
 						{
 							"name": "runtime",
 							"type": {
-								"text": "RuntimeConfig | null"
+								"text": "SectionPlayerRuntimeConfig | null"
 							},
 							"default": "null",
 							"fieldName": "runtime"
@@ -2179,14 +2179,14 @@
 						{
 							"name": "policies",
 							"type": {
-								"text": "Partial<SectionPlayerPolicies> | undefined"
+								"text": "Partial<SectionPlayerPolicies>"
 							},
 							"fieldName": "policies"
 						},
 						{
 							"name": "hooks",
 							"type": {
-								"text": "SectionPlayerHostHooks | undefined"
+								"text": "SectionPlayerHostHooks"
 							},
 							"fieldName": "hooks"
 						},
@@ -2396,7 +2396,7 @@
 							"kind": "field",
 							"name": "runtime",
 							"type": {
-								"text": "RuntimeConfig | null"
+								"text": "SectionPlayerRuntimeConfig | null"
 							},
 							"default": "null",
 							"attribute": "runtime"
@@ -2405,7 +2405,7 @@
 							"kind": "field",
 							"name": "ndsIcons",
 							"type": {
-								"text": "boolean | undefined"
+								"text": "boolean"
 							},
 							"description": "Presentation flag: opt in to NDS icon buttons. Unset renders plain <button>s.",
 							"attribute": "nds-icons"
@@ -2479,7 +2479,7 @@
 							"kind": "field",
 							"name": "debug",
 							"type": {
-								"text": "string | boolean | undefined"
+								"text": "string | boolean"
 							},
 							"attribute": "debug"
 						},
@@ -2487,7 +2487,7 @@
 							"kind": "field",
 							"name": "baseHeadingLevel",
 							"type": {
-								"text": "number | undefined"
+								"text": "number"
 							},
 							"description": "Composition context: the level this player's card headings occupy. Descendants derive their own outline from it — see docs/architecture/composition-context.md.",
 							"attribute": "base-heading-level"
@@ -2496,7 +2496,7 @@
 							"kind": "field",
 							"name": "showToolbar",
 							"type": {
-								"text": "boolean | string | null | undefined"
+								"text": "boolean | string | null"
 							},
 							"default": "\"false\"",
 							"attribute": "show-toolbar"
@@ -2550,7 +2550,7 @@
 							"kind": "field",
 							"name": "policies",
 							"type": {
-								"text": "Partial<SectionPlayerPolicies> | undefined"
+								"text": "Partial<SectionPlayerPolicies>"
 							},
 							"attribute": "policies"
 						},
@@ -2558,7 +2558,7 @@
 							"kind": "field",
 							"name": "hooks",
 							"type": {
-								"text": "SectionPlayerHostHooks | undefined"
+								"text": "SectionPlayerHostHooks"
 							},
 							"attribute": "hooks"
 						},
@@ -2566,7 +2566,7 @@
 							"kind": "field",
 							"name": "toolConfigStrictness",
 							"type": {
-								"text": "ToolConfigStrictness | undefined"
+								"text": "ToolConfigStrictness"
 							},
 							"attribute": "tool-config-strictness"
 						},
@@ -2574,7 +2574,7 @@
 							"kind": "field",
 							"name": "narrowLayoutBreakpoint",
 							"type": {
-								"text": "number | undefined"
+								"text": "number"
 							},
 							"attribute": "narrow-layout-breakpoint"
 						},
@@ -2582,7 +2582,7 @@
 							"kind": "field",
 							"name": "contentMaxWidthNoPassage",
 							"type": {
-								"text": "number | undefined"
+								"text": "number"
 							},
 							"attribute": "content-max-width-no-passage"
 						},
@@ -2590,7 +2590,7 @@
 							"kind": "field",
 							"name": "contentMaxWidthWithPassage",
 							"type": {
-								"text": "number | undefined"
+								"text": "number"
 							},
 							"attribute": "content-max-width-with-passage"
 						},
@@ -2680,7 +2680,7 @@
 						{
 							"name": "runtime",
 							"type": {
-								"text": "RuntimeConfig | null"
+								"text": "SectionPlayerRuntimeConfig | null"
 							},
 							"default": "null",
 							"fieldName": "runtime"
@@ -2817,14 +2817,14 @@
 						{
 							"name": "policies",
 							"type": {
-								"text": "Partial<SectionPlayerPolicies> | undefined"
+								"text": "Partial<SectionPlayerPolicies>"
 							},
 							"fieldName": "policies"
 						},
 						{
 							"name": "hooks",
 							"type": {
-								"text": "SectionPlayerHostHooks | undefined"
+								"text": "SectionPlayerHostHooks"
 							},
 							"fieldName": "hooks"
 						},

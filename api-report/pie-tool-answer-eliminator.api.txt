@@ -4,4 +4,5 @@
 @pie-players/pie-tool-answer-eliminator
 
 .
+  type PieToolAnswerEliminatorElement
   default

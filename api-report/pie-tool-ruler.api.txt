@@ -4,4 +4,5 @@
 @pie-players/pie-tool-ruler
 
 .
+  type PieToolRulerElement
   default

@@ -177,6 +177,39 @@ describe("section player view state", () => {
 		expect(params.props?.i18n).toBe(provider);
 	});
 
+	test("forwards the section's content-language default to item and passage players", async () => {
+		// A nested player carries no `locale`, so the section names the default
+		// its undeclared content stamps; a host's `runtime.player` still wins.
+		const { getItemPlayerParams, getPassagePlayerParams } =
+			await loadViewStateModule();
+		const item = (contentLanguage?: string, resolvedPlayerProps = {}) =>
+			getItemPlayerParams({
+				item: { id: "item-1", config: {} } as any,
+				compositionModel: { itemSessions: {}, itemViewModels: [] } as any,
+				resolvedPlayerEnv: {},
+				resolvedPlayerAttributes: {},
+				resolvedPlayerProps,
+				playerStrategy: "iife",
+				contentLanguage,
+			});
+
+		expect(item("auto").props?.contentLanguage).toBe("auto");
+		expect(item(undefined).props?.contentLanguage).toBeUndefined();
+		expect(item("auto", { contentLanguage: "ar" }).props?.contentLanguage).toBe(
+			"ar",
+		);
+		expect(
+			getPassagePlayerParams({
+				passage: { config: {} } as any,
+				resolvedPlayerEnv: {},
+				resolvedPlayerAttributes: {},
+				resolvedPlayerProps: {},
+				playerStrategy: "esm",
+				contentLanguage: "ar-SA",
+			}).props?.contentLanguage,
+		).toBe("ar-SA");
+	});
+
 	test("derives concrete backend delivery identity for embedded items", async () => {
 		const { getItemPlayerParams } = await loadViewStateModule();
 		const params = getItemPlayerParams({

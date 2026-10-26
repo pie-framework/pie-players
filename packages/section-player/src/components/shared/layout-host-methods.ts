@@ -21,6 +21,7 @@ import type {
 	SectionControllerHandle,
 	SectionControllerSessionState,
 } from "@pie-players/pie-assessment-toolkit";
+import type { SectionPlayerHostMethods } from "../../contracts/elements.js";
 import type {
 	SectionItemScore,
 	SectionPlayerRuntimeHostContract,
@@ -48,7 +49,11 @@ type HostMethodName = keyof SectionPlayerRuntimeHostContract;
  * that element's `getSnapshot` returns while its kernel is not bound.
  */
 export function withHostMethods(unmountedSnapshot: SectionPlayerSnapshot | null) {
-	return <Base extends CustomElementConstructor>(ElementClass: Base) => {
+	// The explicit return type keeps the subclass's inferred DOM members out of
+	// published declarations.
+	return <Base extends CustomElementConstructor>(
+		ElementClass: Base,
+	): Base & (new (...args: unknown[]) => SectionPlayerHostMethods) => {
 		const mountedMethod = (
 			element: HTMLElement,
 			name: HostMethodName,

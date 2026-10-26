@@ -185,6 +185,16 @@
 						},
 						{
 							"kind": "field",
+							"name": "contentLanguage",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "The language of content whose `env` declares none, as a BCP-47 tag, or `auto` for `lang=\"\"` with `dir=\"auto\"`. Unset, it is `auto` once `locale` is set — so undeclared content takes neither the interface's language nor its direction — and otherwise nothing, which leaves undeclared content inheriting the page's. A section sets it on the item players it mounts, which carry no `locale` of their own.",
+							"attribute": "content-language"
+						},
+						{
+							"kind": "field",
 							"name": "includeSrHeading",
 							"type": {
 								"text": "boolean"
@@ -603,6 +613,15 @@
 							"fieldName": "i18n"
 						},
 						{
+							"name": "content-language",
+							"type": {
+								"text": "string"
+							},
+							"default": "\"\"",
+							"description": "The language of content whose `env` declares none, as a BCP-47 tag, or `auto` for `lang=\"\"` with `dir=\"auto\"`. Unset, it is `auto` once `locale` is set — so undeclared content takes neither the interface's language nor its direction — and otherwise nothing, which leaves undeclared content inheriting the page's. A section sets it on the item players it mounts, which carry no `locale` of their own.",
+							"fieldName": "contentLanguage"
+						},
+						{
 							"name": "include-sr-heading",
 							"type": {
 								"text": "boolean"
@@ -798,7 +817,7 @@
 						{
 							"name": "backend-load-complete",
 							"type": {
-								"text": "CustomEvent<{ scope: \"delivery\"; operation: \"load\"; metadata: Record<string, unknown>; session: unknown } | { scope: \"authoring\"; operation: \"load\"; contentId?: string; metadata: Record<string, unknown>; config: unknown }>"
+								"text": "CustomEvent<{ scope: \"delivery\"; operation: \"load\"; metadata: Record<string, unknown>; session: unknown; identity?: ServedContentIdentity } | { scope: \"authoring\"; operation: \"load\"; contentId?: string; metadata: Record<string, unknown>; config: unknown }>"
 							},
 							"description": "After the backend loads the delivery config and session, or the authoring content."
 						},

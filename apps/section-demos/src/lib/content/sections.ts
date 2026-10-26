@@ -32,6 +32,7 @@ import {
 } from "./demo-magnifier";
 import { demoReadAloudAccommodationsSection } from "./demo-read-aloud-accommodations";
 import { demoShadowReadingSection } from "./demo-shadow-reading";
+import { demoContentLanguageSection } from "./demo-content-language";
 import { demoTwoPassagesSection } from "./demo-two-passages";
 import { demoPrintShowcaseSection } from "./demo-print-showcase";
 import { demoFormativeDeliverySection } from "./demo-formative-delivery";
@@ -903,6 +904,22 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"The annotation toolbar opens for a selection inside a card's content region, shadow text included, and stays closed for one in the card header.",
 		],
 		section: demoShadowReadingSection,
+	},
+	"content-language": {
+		id: "content-language",
+		name: "Content Language: language variants",
+		description:
+			"An English item and its Spanish variant in one section, each rendered, read aloud and scored in its own language",
+		integrationLevel: 2,
+		integrationTheme: "Content language",
+		focus:
+			"Shows each item's declared `language` narrowing `env.locale` for that item alone.",
+		whatMakesItTick: [
+			'Item 1 declares `language: "en"`; item 2 declares `language: "es"` and names item 1 as its source through `isAdaptationOf`. Neither markup carries `lang`.',
+			'The section player narrows `env.locale` per item, so each `<pie-item-player>` stamps its own `lang` on its content and read-aloud speaks item 2 as Spanish.',
+			"A backend that serves variants does the same through the identity it returns: the served language replaces `env.locale` inside the item player.",
+		],
+		section: demoContentLanguageSection,
 	},
 	"tts-generated-ssml": {
 		id: "tts-generated-ssml",

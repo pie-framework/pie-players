@@ -7,8 +7,12 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import {
 	contentLanguageAttributes,
+	defaultContentLanguage,
+	firstStrongDirection,
 	reportInterfaceLocaleLoadError,
 	stampContentLanguage,
+	UNDECLARED_CONTENT_LANGUAGE,
+	undeclaredDirectionMismatch,
 } from "../src/i18n/index.js";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { BUNDLED_LOCALES, loadBundledCatalog } from "../src/i18n/catalogs.js";
@@ -473,6 +477,79 @@ describe("content language attributes", () => {
 		expect(target.getAttribute("dir")).toBeNull();
 
 		expect(() => stampContentLanguage(null, { locale: "es-MX" })).not.toThrow();
+	});
+});
+
+describe("content language default", () => {
+	const stamp = (env: unknown, interfaceLocale?: string, contentLanguage?: string) => {
+		const target = document.createElement("div");
+		stampContentLanguage(
+			target,
+			env,
+			defaultContentLanguage({ contentLanguage, interfaceLocale }),
+		);
+		return { lang: target.getAttribute("lang"), dir: target.getAttribute("dir") };
+	};
+
+	test("declared content keeps its language under either interface locale", () => {
+		expect(stamp({ locale: "en-US" }, "ar")).toEqual({ lang: "en-US", dir: "ltr" });
+		expect(stamp({ locale: "ar-SA" }, "en-US")).toEqual({ lang: "ar-SA", dir: "rtl" });
+	});
+
+	test("undeclared content claims neither the interface's language nor its direction", () => {
+		expect(stamp({ mode: "gather" }, "ar")).toEqual({ lang: "", dir: "auto" });
+		expect(stamp({ mode: "gather" }, "en-US")).toEqual({ lang: "", dir: "auto" });
+	});
+
+	test("with no interface locale undeclared content inherits, as before", () => {
+		expect(stamp({ mode: "gather" })).toEqual({ lang: null, dir: null });
+		expect(stamp({ mode: "gather" }, "  ")).toEqual({ lang: null, dir: null });
+		expect(defaultContentLanguage({})).toBeUndefined();
+	});
+
+	test("a named content language is the default, behind the env's", () => {
+		expect(stamp({ mode: "gather" }, "en-US", "ar_SA")).toEqual({ lang: "ar-SA", dir: "rtl" });
+		expect(stamp({ mode: "gather" }, undefined, "fr")).toEqual({ lang: "fr", dir: "ltr" });
+		expect(stamp({ locale: "en-US" }, "ar", "ar")).toEqual({ lang: "en-US", dir: "ltr" });
+		expect(
+			stamp({ mode: "gather" }, undefined, UNDECLARED_CONTENT_LANGUAGE),
+		).toEqual({ lang: "", dir: "auto" });
+	});
+
+	test("an unusable default counts as absent", () => {
+		expect(stamp({ mode: "gather" }, undefined, "Arabic")).toEqual({ lang: null, dir: null });
+	});
+});
+
+describe("direction mismatch", () => {
+	const root = (markup: string, dir?: string) => {
+		const element = document.createElement("div");
+		element.innerHTML = markup;
+		if (dir) element.setAttribute("dir", dir);
+		return element;
+	};
+
+	test("the first letter decides, past digits, punctuation and scripts", () => {
+		expect(firstStrongDirection(root("<style>a{}</style><p>12. مرحبا world</p>"))).toBe("rtl");
+		expect(firstStrongDirection(root("<p>— hello שלום</p>"))).toBe("ltr");
+		expect(firstStrongDirection(root("<p>42 + 7</p>"))).toBeNull();
+	});
+
+	test("reports RTL script under a stamped LTR default, and nothing else", () => {
+		expect(undeclaredDirectionMismatch(root("<p>مرحبا</p>", "ltr"), {})).toEqual({
+			stamped: "ltr",
+			script: "rtl",
+		});
+		expect(undeclaredDirectionMismatch(root("<p>hello</p>", "rtl"), {})).toEqual({
+			stamped: "rtl",
+			script: "ltr",
+		});
+		expect(undeclaredDirectionMismatch(root("<p>مرحبا</p>", "rtl"), {})).toBeNull();
+		expect(undeclaredDirectionMismatch(root("<p>مرحبا</p>", "auto"), {})).toBeNull();
+		expect(undeclaredDirectionMismatch(root("<p>مرحبا</p>"), {})).toBeNull();
+		expect(
+			undeclaredDirectionMismatch(root("<p>مرحبا</p>", "ltr"), { locale: "en-US" }),
+		).toBeNull();
 	});
 });
 

@@ -412,6 +412,52 @@ test.describe("item-player demo multiple-choice", () => {
 		expect(scopedClassName).toContain("canonical-current-class");
 	});
 
+	test("rebases stylesheet images against the stylesheet location", async ({ page }) => {
+		await page.route("**/__pie-style-assets/nested/theme.css", (route) => route.fulfill({
+			contentType: "text/css",
+			body: '.pie-style-probe { background-image: url("../images/probe.svg"); }',
+		}));
+		await page.route("**/__pie-style-assets/images/probe.svg", (route) => route.fulfill({
+			contentType: "image/svg+xml", body: '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"></svg>',
+		}));
+		await gotoRoute(page, DELIVERY_PATH);
+		await mountExternalStyleProbes(page, "relative-style-probes", [
+			{ id: "relative-style", styleUrl: "/__pie-style-assets/nested/theme.css" },
+		]);
+		const expectedUrl = new URL("/__pie-style-assets/images/probe.svg", page.url()).href;
+		await expect.poll(() => page.locator('[data-style-probe="relative-style"]').evaluate(
+			(element) => getComputedStyle(element).backgroundImage,
+		)).toBe(`url("${expectedUrl}")`);
+	});
+
+	test("rejects failed stylesheet responses before materializing CSS", async ({ page }) => {
+		await page.route("**/__pie-style-failed.css", (route) => route.fulfill({
+			status: 404, contentType: "text/css", body: ".pie-style-probe { color: red; }",
+		}));
+		await gotoRoute(page, DELIVERY_PATH);
+		const failure = page.waitForEvent("console", (message) => message.type() === "error" && message.text().includes("Failed to load external stylesheet"));
+		await mountExternalStyleProbes(page, "failed-style-probes", [{ id: "failed-style", styleUrl: "/__pie-style-failed.css" }]);
+		expect((await failure).text()).toContain("Stylesheet request failed with status 404.");
+		await expect(page.locator('style[data-pie-style="/__pie-style-failed.css"]')).toHaveCount(0);
+	});
+
+	test("does not follow stylesheet redirects", async ({ page }) => {
+		let targetRequests = 0;
+		await page.route("**/__pie-style-redirect-target.css", (route) => {
+			targetRequests += 1;
+			return route.fulfill({ contentType: "text/css", body: ".pie-style-probe { color: red; }" });
+		});
+		await page.route("**/__pie-style-redirect.css", (route) => route.fulfill({
+			status: 302, headers: { location: "/__pie-style-redirect-target.css" },
+		}));
+		await gotoRoute(page, DELIVERY_PATH);
+		const failure = page.waitForEvent("console", (message) => message.type() === "error" && message.text().includes("Failed to load external stylesheet"));
+		await mountExternalStyleProbes(page, "redirect-style-probes", [{ id: "redirect-style", styleUrl: "/__pie-style-redirect.css" }]);
+		await failure;
+		expect(targetRequests).toBe(0);
+		await expect(page.locator('style[data-pie-style="/__pie-style-redirect.css"]')).toHaveCount(0);
+	});
+
 	test("isolates different same-origin stylesheets between default player instances", async ({
 		page,
 	}) => {

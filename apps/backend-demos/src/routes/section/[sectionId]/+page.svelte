@@ -3,7 +3,7 @@
 	import { page } from "$app/state";
 	import { tick, untrack } from "svelte";
 	import "@pie-players/pie-section-player/components/section-player-splitpane-element";
-	import "@pie-players/pie-section-player";
+	import type { PieSectionPlayerElement } from "@pie-players/pie-section-player";
 	import BackendToolBar from "#lib/components/BackendToolBar.svelte";
 	import BackendToolWindow from "#lib/components/BackendToolWindow.svelte";
 	import BackendTrafficPanel from "#lib/components/BackendTrafficPanel.svelte";
@@ -34,16 +34,6 @@
 		response?: unknown;
 		error?: string;
 	};
-	type SectionPlayerElement = HTMLElement & {
-		waitForSectionController?: (
-			timeoutMs?: number,
-		) => Promise<{
-			applySession?: (
-				session: unknown,
-				options?: { mode?: "replace" | "merge" },
-			) => Promise<void>;
-		} | null>;
-	};
 
 	const defaultSectionId = "backend-section-basic";
 	const defaultAttemptId = "backend-section-attempt-1";
@@ -55,7 +45,7 @@
 	const toolIds = ["traffic", "session"] as const;
 	const env = { mode: "gather", role: "student" };
 
-	let sectionPlayerEl: SectionPlayerElement | null = $state(null);
+	let sectionPlayerEl: PieSectionPlayerElement | null = $state(null);
 	let sectionEventHost: HTMLDivElement | null = $state(null);
 	let sectionId = $state(defaultSectionId);
 	let attemptId = $state(defaultAttemptId);

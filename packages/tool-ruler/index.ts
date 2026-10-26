@@ -1,8 +1,10 @@
-/**
- * pie-tool-ruler - PIE Assessment Tool
- *
- * This package exports a web component built from Svelte.
- * Import the built version for CDN usage, or the .svelte source for Svelte projects.
- */
+import type { RulerProps } from "./element-props.js";
 
-// Re-export any TypeScript types defined in the package
+/** Native host interface for `<pie-tool-ruler>`. Properties may be unset until it mounts. */
+export interface PieToolRulerElement extends HTMLElement, RulerProps {}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-tool-ruler": PieToolRulerElement;
+	}
+}

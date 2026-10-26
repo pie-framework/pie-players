@@ -63,6 +63,47 @@ const fractionStyle = (math: Element): string =>
 const isEnglish = (language: string | undefined): boolean =>
 	!language || language.toLowerCase().split("-")[0] === "en";
 
+/** The element a control names: the control a `label` labels, or the control itself. */
+const namedElement = (control: Element): Element | null => {
+	if (control.localName !== "label") return control;
+	const label = control as HTMLLabelElement;
+	if (label.control) return label.control;
+	const forId = label.getAttribute("for");
+	const root = label.getRootNode() as Document | ShadowRoot;
+	return (
+		(forId ? root.getElementById?.(forId) : null) ??
+		label.querySelector("input, select, textarea, button")
+	);
+};
+
+/**
+ * Whether the control's name leaves `container` out: the control is named by
+ * `aria-labelledby` from elements that do not hold the math. multiple-choice
+ * names a choice holding math that way, from its key and a note ("A. Pick the
+ * answer below"), so the screen reader reads the MathML in the content, where
+ * the student can explore it and a braille display shows it as math. A label
+ * there would be read in browse mode instead. Ids that resolve to nothing say
+ * nothing about the name, so they leave the math labelled.
+ */
+const isNamedFromElsewhere = (
+	control: Element,
+	container: Element,
+): boolean => {
+	const named = namedElement(control);
+	const ids = named
+		?.getAttribute("aria-labelledby")
+		?.split(/\s+/)
+		.filter(Boolean);
+	if (!named || !ids?.length) return false;
+	const root = named.getRootNode() as Document | ShadowRoot;
+	const labels = ids
+		.map((id) => root.getElementById?.(id) ?? null)
+		.filter((element): element is HTMLElement => element !== null);
+	return (
+		labels.length > 0 && !labels.some((element) => element.contains(container))
+	);
+};
+
 export interface MathControlNamesOptions {
 	/**
 	 * The host's math speech options. Names take only `engineOptions`, where
@@ -81,7 +122,9 @@ export interface MathControlNamesOptions {
  * that speech in the name of the control around it, among the control's other
  * text. English reads ClearSpeak, other languages MathSpeak, in the language of
  * the content. The label replaces the elements' own; it stays when SRE cannot
- * speak the math. Returns the function that stops observing.
+ * speak the math. Math in a control named by `aria-labelledby` from elements
+ * that do not hold it gets no label, as the elements' renderer gives it none.
+ * Returns the function that stops observing.
  */
 export function observeMathControlNames(
 	root: Element,
@@ -111,7 +154,8 @@ export function observeMathControlNames(
 	};
 
 	const name = (container: Element): void => {
-		if (!flatTreeClosest(container, CONTROLS)) return;
+		const control = flatTreeClosest(container, CONTROLS);
+		if (!control || isNamedFromElsewhere(control, container)) return;
 		const math = flatQuerySelector(container, "math");
 		const mathml = math && canonicalizeMathML(math.outerHTML);
 		if (!math || !mathml) return;
@@ -126,6 +170,7 @@ export function observeMathControlNames(
 		}
 		void pending.then((label) => {
 			if (stopped || !label || !container.isConnected) return;
+			if (isNamedFromElsewhere(control, container)) return;
 			if (container.getAttribute("aria-label") !== label) {
 				container.setAttribute("aria-label", label);
 			}

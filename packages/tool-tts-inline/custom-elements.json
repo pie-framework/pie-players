@@ -25,7 +25,7 @@
 							"kind": "field",
 							"name": "size",
 							"type": {
-								"text": "'sm' | 'md' | 'lg'"
+								"text": "TtsInlineSize"
 							},
 							"default": "'md'",
 							"attribute": "size"

@@ -98,6 +98,7 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 	import {
 		createPieI18n,
 		DEFAULT_LOCALE,
+		defaultContentLanguage,
 		stampInterfaceLocale,
 	} from "@pie-players/pie-players-shared/i18n";
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
@@ -1392,6 +1393,10 @@ const DEFAULT_ENV = {
 			locale: (void interfaceI18nVersion, interfaceI18n.getLocale()),
 			i18n: interfaceI18n,
 			contentLanguage: contentLanguage?.trim() || undefined,
+			contentLanguageDefault: defaultContentLanguage({
+				contentLanguage,
+				interfaceLocale: locale,
+			}),
 			reportSectionError: (error: unknown) => {
 				sectionBinding.reportSectionError({
 					source: "section-runtime",

@@ -54,8 +54,8 @@
 		"@pie-players/tts-client-server": "workspace:*"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.15",
-		"@happy-dom/global-registrator": "^20.14.5",
+		"@biomejs/biome": "^2.6.2",
+		"@happy-dom/global-registrator": "^21.0.4",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/default-tool-loaders#readme",

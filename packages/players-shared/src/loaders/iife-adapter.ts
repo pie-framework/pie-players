@@ -135,7 +135,7 @@ export type IifeBackend = ElementLoaderBackend & {
  * distinct specs for one package therefore cannot coexist in a single bundle:
  * one constructor would silently be reused for both requested versioned tags.
  */
-function findIifeElementMapConflict(elements: ElementMap): string | undefined {
+export function findIifeElementMapConflict(elements: ElementMap): string | undefined {
 	const specsByPackageName = new Map<string, Set<string>>();
 
 	for (const packageSpecValue of Object.values(elements)) {

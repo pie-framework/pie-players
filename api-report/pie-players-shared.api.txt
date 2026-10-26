@@ -231,6 +231,7 @@
   initializeMathRendering
   initializePiesFromLoadedBundle
   installContentStyles
+  isComposingKeyEvent
   isCustomElementConstructor
   isGlobalDebugEnabled
   isInstrumentationProvider
@@ -346,6 +347,7 @@
   BUNDLED_LOCALES
   type BundledLocaleCode
   type ContentLanguageAttributes
+  type ContentLanguageMatch
   DEFAULT_LOCALE
   type DynamicMessageKey
   type I18nConfig
@@ -366,17 +368,23 @@
   SimpleI18n
   type TextDirection
   type TranslationBundle
+  UNDECLARED_CONTENT_LANGUAGE
   canonicalLanguageTag
   contentLanguageAttributes
   createPieI18n
+  defaultContentLanguage
   detectBrowserLocale
   dynamicMessageKey
   findBestLanguageMatch
+  findClosestLanguageMatch
+  firstStrongDirection
   getDefaultI18n
   languageTagLookupSequence
+  languageTagScriptLookupSequence
   languageTagsEqual
   loadBundledCatalog
   localeDirection
+  negotiateContentLanguage
   normalizeLanguageTag
   pseudoLocalize
   reportInterfaceLocaleLoadError
@@ -384,16 +392,23 @@
   stampContentLanguage
   stampInterfaceLocale
   toLanguageTag
+  undeclaredDirectionMismatch
 
 ./i18n/catalogs
   BUNDLED_LOCALES
   loadBundledCatalog
 
 ./i18n/language-tags
+  type ContentLanguageMatch
   canonicalLanguageTag
   findBestLanguageMatch
+  findClosestLanguageMatch
   languageTagLookupSequence
+  languageTagScript
+  languageTagScriptLookupSequence
+  languageTagScriptsMatch
   languageTagsEqual
+  negotiateContentLanguage
   normalizeLanguageTag
   toLanguageTag
 
@@ -717,6 +732,7 @@
 
 ./types
   type AccessibilityCatalog
+  type AdaptationLink
   type AdvancedItemConfig
   type AssessmentEntity
   type AssessmentItemRef
@@ -734,6 +750,7 @@
   type ConfigElements
   type ConfigEntity
   type ConfigResource
+  type ContentSubstitution
   type ContextDeclaration
   type DeleteDone
   type DeleteImageDetail
@@ -750,6 +767,7 @@
   type ItemEntity
   type ItemSession
   type ItemSettings
+  type LanguagePolicy
   type MediaAssetRef
   type MediaFragmentRange
   type MediaKind
@@ -773,13 +791,10 @@
   type ReferencedPassageEntity
   type RubricBlock
   type RubricBlockView
-  type SearchMetaData
-  type SearchMetaDataEntity
   type SectionControllerSessionState
   type SemVer
   type SemVerPrerelease
-  type SettingsMetaData
-  type SettingsMetaDataEntity
+  type ServedContentIdentity
   type SignLanguageCardPayload
   type SoundHandler
   type SpokenAudioCardPayload

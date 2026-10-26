@@ -42,9 +42,6 @@ const TOOL_ID = "textToSpeech";
 const HIGHLIGHT_INTERVAL_MS = 50;
 // How long the endpoint probe waits before reporting the server unreachable.
 const ENDPOINT_PROBE_TIMEOUT_MS = 5000;
-// Debug-log previews of an error body and of the text under synthesis.
-const RAW_BODY_PREVIEW_LENGTH = 500;
-const TEXT_PREVIEW_LENGTH = 120;
 
 /**
  * The provider options the server provider reads. `contentLanguage`, set per
@@ -636,6 +633,29 @@ const ADAPTERS: Record<TransportAdapter["id"], TransportAdapter> = {
 	custom: customAdapter,
 };
 
+/** Release a rejected response without waiting for its underlying stream. */
+function cancelResponseBody(response: Response): void {
+	try {
+		void response.body?.cancel().catch(() => {});
+	} catch {
+		// Cleanup must not replace the status-only failure.
+	}
+}
+
+/**
+ * A fixed-message error that keeps the original's standard name, such as
+ * `NotAllowedError` for blocked autoplay, so hosts can still branch on it. The
+ * original message and cause are dropped: they can carry signed URLs.
+ */
+function redactedError(message: string, original: unknown): Error {
+	const error = new Error(message);
+	const name = (original as { name?: unknown } | null)?.name;
+	if (typeof name === "string" && /^[A-Z][A-Za-z]*Error$/.test(name)) {
+		error.name = name;
+	}
+	return error;
+}
+
 /**
  * Provider implementation that handles audio playback
  */
@@ -652,12 +672,12 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	 * spoken position instead of replaying the passage from its first word.
 	 */
 	private highlightCursor = -1;
-	private intentionallyStopped = false;
 	// Set while a synthesis request is in flight.
 	private activeSynthesisController: AbortController | null = null;
 	// Starts the current audio element; a pause before it sounds leaves the
 	// start to resume.
 	private startCurrentAudio: (() => void) | null = null;
+	private settleActivePlayback: ((error?: Error) => void) | null = null;
 	private synthesisRunId = 0;
 	private readonly telemetryReporter: TelemetryReporter | undefined;
 
@@ -680,15 +700,20 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 	): Promise<void> {
 		try {
 			await this.telemetryReporter?.(eventName, payload);
-		} catch (error) {
-			logger.warn("telemetry callback failed:", error);
+		} catch {
+			logger.warn("telemetry callback failed");
+		}
+	}
+
+	private assertSynthesisActive(signal: AbortSignal, runId: number): void {
+		if (signal.aborted || runId !== this.synthesisRunId) {
+			throw new DOMException("TTS request was aborted", "AbortError");
 		}
 	}
 
 	async speak(text: string): Promise<void> {
 		this.stop();
 
-		this.intentionallyStopped = false;
 		const runId = ++this.synthesisRunId;
 		const synthesisController = new AbortController();
 		this.activeSynthesisController = synthesisController;
@@ -723,6 +748,29 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		return new Promise((resolve, reject) => {
 			const audio = new Audio(audioUrl);
 			this.currentAudio = audio;
+			let settled = false;
+			const settle = (error?: Error): void => {
+				if (settled) return;
+				settled = true;
+				audio.onplaying = null;
+				audio.onended = null;
+				audio.onerror = null;
+				audio.onpause = null;
+				audio.pause();
+				audio.src = "";
+				URL.revokeObjectURL(audioUrl);
+				if (this.currentAudio === audio) {
+					this.clearCurrentAudio();
+					this.pausedState = false;
+					this.startCurrentAudio = null;
+				}
+				if (this.settleActivePlayback === settle) {
+					this.settleActivePlayback = null;
+				}
+				if (error) reject(error);
+				else resolve();
+			};
+			this.settleActivePlayback = settle;
 
 			if (this.config.volume !== undefined) {
 				audio.volume = Math.max(0, Math.min(1, this.config.volume));
@@ -742,8 +790,8 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					this.onPlaybackStart?.({
 						wordBoundaries: this.wordTimings.length > 0,
 					});
-				} catch (error) {
-					logger.warn("playback-start callback failed:", error);
+				} catch {
+					logger.warn("playback-start callback failed");
 				}
 
 				if (this.onWordBoundary && this.wordTimings.length > 0) {
@@ -751,20 +799,14 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				}
 			};
 
-			audio.onended = () => {
-				URL.revokeObjectURL(audioUrl);
-				if (!superseded()) this.clearCurrentAudio();
-				resolve();
-			};
+			audio.onended = () => settle();
 
 			audio.onerror = () => {
-				URL.revokeObjectURL(audioUrl);
-				if (superseded() || this.intentionallyStopped) {
-					resolve();
-					return;
-				}
-				this.clearCurrentAudio();
-				reject(new Error("Failed to play audio from server"));
+				settle(
+					superseded()
+						? undefined
+						: new Error("Failed to play audio from server"),
+				);
 			};
 
 			audio.onpause = () => {
@@ -781,7 +823,11 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					if (aborted && this.pausedState && this.currentAudio === audio) {
 						return;
 					}
-					reject(error);
+					settle(
+						superseded()
+							? undefined
+							: redactedError("Failed to start audio playback", error),
+					);
 				});
 			};
 			this.startCurrentAudio = start;
@@ -803,6 +849,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			"pie-tool-backend-call-start",
 			backendTelemetry(this.config, "synthesize-speech"),
 		);
+		this.assertSynthesisActive(signal, runId);
 		const headers: Record<string, string> = {
 			"Content-Type": "application/json",
 			...this.config.headers,
@@ -824,49 +871,25 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					...fetchCredentials(this.config),
 				});
 			} catch (error) {
-				if (signal.aborted) throw error;
+				this.assertSynthesisActive(signal, runId);
 				await this.emitTelemetry(
 					"pie-tool-backend-call-error",
 					backendTelemetry(this.config, "synthesize-speech", {
 						duration: Date.now() - synthStartedAt,
 						errorType: "TTSBackendNetworkError",
-						message: error instanceof Error ? error.message : String(error),
+						message: "TTS synthesis network request failed",
 					}),
 				);
-				throw error;
+				this.assertSynthesisActive(signal, runId);
+				throw redactedError("TTS synthesis network request failed", error);
 			}
 		})();
 
 		if (!response.ok) {
-			const rawBody = await response.text().catch(() => "");
-			let errorData: Record<string, unknown> = {};
-			if (rawBody) {
-				try {
-					errorData = JSON.parse(rawBody) as Record<string, unknown>;
-				} catch (parseError) {
-					logger.warn("non-OK response body was not JSON", {
-						status: response.status,
-						url: synthUrl,
-						bodyLength: rawBody.length,
-						parseError:
-							parseError instanceof Error
-								? parseError.message
-								: String(parseError),
-					});
-					// A provider's error body can echo the SSML it rejected, so the body
-					// itself stays behind the debug gate; the length above is what says
-					// a body arrived and was not JSON.
-					logger.debug("non-OK response body", {
-						rawBodyPreview: rawBody.slice(0, RAW_BODY_PREVIEW_LENGTH),
-					});
-				}
-			}
-			const errorMessage =
-				(typeof errorData.message === "string" && errorData.message) ||
-				(typeof (errorData.error as { message?: string })?.message === "string"
-					? (errorData.error as { message: string }).message
-					: undefined) ||
-				`Server returned ${response.status}`;
+			// A provider can echo request text or signed URLs in its body. Do not
+			// read it, or wait for a stalled stream before reporting the status.
+			cancelResponseBody(response);
+			const errorMessage = `Server returned ${response.status}`;
 			await this.emitTelemetry(
 				"pie-tool-backend-call-error",
 				backendTelemetry(this.config, "synthesize-speech", {
@@ -876,39 +899,39 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					message: errorMessage,
 				}),
 			);
+			this.assertSynthesisActive(signal, runId);
 			logger.error("synthesize request failed", {
 				status: response.status,
-				url: synthUrl,
 				backend: this.config.provider || "server",
-				message: errorMessage,
 				textLength: text.length,
-			});
-			// The text under synthesis is item content and the provider's error body
-			// can echo it, so both stay behind the debug gate. `errorMessage` above is
-			// thrown to the caller regardless, and `textLength` is what correlates a
-			// failure with a payload without publishing what the learner is reading.
-			const textPreview = text
-				.replace(/\s+/g, " ")
-				.trim()
-				.slice(0, TEXT_PREVIEW_LENGTH);
-			logger.debug("synthesize request failed for text", {
-				responseBody: errorData,
-				textPreview:
-					textPreview.length < text.length ? `${textPreview}…` : textPreview,
 			});
 			throw new Error(errorMessage);
 		}
 
-		const normalized = await this.adapter.parseResponse(
-			response,
-			this.config,
-			headers,
-			signal,
-			text,
-		);
-		if (runId !== this.synthesisRunId || signal.aborted) {
-			throw new Error("Synthesis superseded by a newer request");
+		let normalized: NormalizedSynthesisResult;
+		try {
+			normalized = await this.adapter.parseResponse(
+				response,
+				this.config,
+				headers,
+				signal,
+				text,
+			);
+		} catch {
+			this.assertSynthesisActive(signal, runId);
+			const message = "TTS synthesis response could not be processed";
+			await this.emitTelemetry(
+				"pie-tool-backend-call-error",
+				backendTelemetry(this.config, "synthesize-speech", {
+					duration: Date.now() - synthStartedAt,
+					errorType: "TTSBackendResponseError",
+					message,
+				}),
+			);
+			this.assertSynthesisActive(signal, runId);
+			throw new Error(message);
 		}
+		this.assertSynthesisActive(signal, runId);
 
 		let audioBlob: Blob;
 		if (normalized.audio.kind === "base64") {
@@ -923,6 +946,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				"pie-tool-backend-call-start",
 				backendTelemetry(this.config, "fetch-synthesized-audio-asset"),
 			);
+			this.assertSynthesisActive(signal, runId);
 			const assetHeaders = assetFetchHeaders(headers, this.config);
 			const parsedAssetUrl = parseAssetUrl(audioAssetUrl, this.config);
 			if (parsedAssetUrl === null) {
@@ -949,19 +973,21 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 						redirect: "error",
 					});
 				} catch (error) {
-					if (signal.aborted) throw error;
+					this.assertSynthesisActive(signal, runId);
 					await this.emitTelemetry(
 						"pie-tool-backend-call-error",
 						backendTelemetry(this.config, "fetch-synthesized-audio-asset", {
 							duration: Date.now() - assetFetchStartedAt,
 							errorType: "TTSAssetNetworkError",
-							message: error instanceof Error ? error.message : String(error),
+							message: "TTS synthesized audio request failed",
 						}),
 					);
-					throw error;
+					this.assertSynthesisActive(signal, runId);
+					throw redactedError("TTS synthesized audio request failed", error);
 				}
 			})();
 			if (!audioResponse.ok) {
+				cancelResponseBody(audioResponse);
 				await this.emitTelemetry(
 					"pie-tool-backend-call-error",
 					backendTelemetry(this.config, "fetch-synthesized-audio-asset", {
@@ -975,7 +1001,22 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					`Failed to download synthesized audio (${audioResponse.status})`,
 				);
 			}
-			audioBlob = await audioResponse.blob();
+			try {
+				audioBlob = await audioResponse.blob();
+			} catch {
+				this.assertSynthesisActive(signal, runId);
+				const message = "TTS synthesized audio response could not be read";
+				await this.emitTelemetry(
+					"pie-tool-backend-call-error",
+					backendTelemetry(this.config, "fetch-synthesized-audio-asset", {
+						duration: Date.now() - assetFetchStartedAt,
+						errorType: "TTSAssetResponseError",
+						message,
+					}),
+				);
+				this.assertSynthesisActive(signal, runId);
+				throw new Error(message);
+			}
 			await this.emitTelemetry(
 				"pie-tool-backend-call-success",
 				backendTelemetry(this.config, "fetch-synthesized-audio-asset", {
@@ -983,7 +1024,6 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 				}),
 			);
 		}
-		const audioUrl = URL.createObjectURL(audioBlob);
 
 		const wordTimings = this.parseSpeechMarks(normalized.speechMarks);
 		await this.emitTelemetry(
@@ -993,6 +1033,8 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 			}),
 		);
 
+		this.assertSynthesisActive(signal, runId);
+		const audioUrl = URL.createObjectURL(audioBlob);
 		return { audioUrl, wordTimings };
 	}
 
@@ -1171,16 +1213,8 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 		}
 		this.stopWordHighlighting();
 
-		if (this.currentAudio) {
-			// Mark as intentionally stopped to prevent error handler from rejecting
-			this.intentionallyStopped = true;
-			this.currentAudio.pause();
-			if (this.currentAudio.src) {
-				URL.revokeObjectURL(this.currentAudio.src);
-			}
-			this.currentAudio.src = "";
-			this.currentAudio = null;
-		}
+		this.settleActivePlayback?.();
+		this.clearCurrentAudio();
 
 		this.pausedState = false;
 		this.wordTimings = [];
@@ -1243,8 +1277,8 @@ export class ServerTTSProvider implements ITTSProvider {
 	): Promise<void> {
 		try {
 			await this.telemetryReporter?.(eventName, payload);
-		} catch (error) {
-			logger.warn("telemetry callback failed:", error);
+		} catch {
+			logger.warn("telemetry callback failed");
 		}
 	}
 
@@ -1280,12 +1314,10 @@ export class ServerTTSProvider implements ITTSProvider {
 					backendTelemetry(serverConfig, "validate-endpoint", {
 						duration: Date.now() - validationStartedAt,
 						errorType: "TTSEndpointValidationError",
-						message: `Server TTS API not available at ${serverConfig.apiEndpoint}`,
+						message: "Server TTS API is not available",
 					}),
 				);
-				throw new Error(
-					`Server TTS API not available at ${serverConfig.apiEndpoint}`,
-				);
+				throw new Error("Server TTS API is not available");
 			}
 			await this.emitTelemetry(
 				"pie-tool-backend-call-success",

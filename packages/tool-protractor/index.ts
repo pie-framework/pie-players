@@ -1,8 +1,10 @@
-/**
- * pie-tool-protractor - PIE Assessment Tool
- *
- * This package exports a web component built from Svelte.
- * Import the built version for CDN usage, or the .svelte source for Svelte projects.
- */
+import type { ProtractorProps } from "./element-props.js";
 
-// Re-export any TypeScript types defined in the package
+/** Native host interface for `<pie-tool-protractor>`. Properties may be unset until it mounts. */
+export interface PieToolProtractorElement extends HTMLElement, ProtractorProps {}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-tool-protractor": PieToolProtractorElement;
+	}
+}

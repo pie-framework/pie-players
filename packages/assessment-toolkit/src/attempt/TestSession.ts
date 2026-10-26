@@ -1,3 +1,5 @@
+import type { ServedContentIdentity } from "@pie-players/pie-players-shared/types";
+
 export interface TestAttemptSessionNavigationState {
 	currentItemIndex: number;
 	visitedItemIdentifiers: string[];
@@ -34,6 +36,11 @@ export interface TestAttemptItemSession {
 	updatedAt?: string;
 	completedAt?: string;
 	session?: unknown;
+	/**
+	 * The content version this item was delivered as, and its language. Present
+	 * when the item declares a language or a backend reported what it served.
+	 */
+	content?: ServedContentIdentity;
 }
 
 export interface TestAttemptSession {
@@ -147,6 +154,7 @@ export function upsertItemSessionFromPieSessionChange(
 		pieSessionId: string;
 		isCompleted?: boolean;
 		session?: unknown;
+		content?: ServedContentIdentity;
 	},
 ): TestAttemptSession {
 	const { itemIdentifier, pieSessionId, isCompleted } = args;
@@ -167,6 +175,9 @@ export function upsertItemSessionFromPieSessionChange(
 		updatedAt: now,
 		completedAt: completed ? existing?.completedAt || now : undefined,
 		session: args.session ?? existing?.session,
+		...(args.content || existing?.content
+			? { content: args.content ?? existing?.content }
+			: {}),
 	};
 
 	return {

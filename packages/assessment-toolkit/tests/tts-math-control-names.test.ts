@@ -1,5 +1,12 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	test,
+} from "bun:test";
 import { observeMathControlNames } from "../src/services/tts/math-control-names";
 import { resolveMathSpeechFromChunks } from "../src/services/tts/math-speech";
 
@@ -125,6 +132,38 @@ describe("math control names", () => {
 		for (const container of document.querySelectorAll("mjx-container")) {
 			expect(container.hasAttribute("aria-label")).toBe(false);
 		}
+	});
+
+	test("leaves math out of a choice named from its key and a note", async () => {
+		// multiple-choice names a choice holding math "A. Pick the answer below",
+		// so the screen reader reads its MathML in the content.
+		document.body.innerHTML = `<div id="item">
+			<label id="named"><span id="key">A.</span><span id="note">Pick the answer below</span><input type="radio" aria-labelledby="key note" />${typeset(FOUR_TWELFTHS)}</label>
+			<label id="plain"><input type="radio" />${typeset(FOUR_TWELFTHS)}</label>
+		</div>`;
+		observe(document.getElementById("item")!);
+
+		// The choice named from its label is labelled, so naming has run.
+		expect(await labelOf(document, "#plain mjx-container")).toBe("4 over 12");
+		expect(
+			document
+				.querySelector("#named mjx-container")!
+				.hasAttribute("aria-label"),
+		).toBe(false);
+	});
+
+	test("names the math in a control whose aria-labelledby holds it", async () => {
+		document.body.innerHTML = `<div id="item"><label><input type="radio" aria-labelledby="text" /><span id="text">${typeset(FOUR_TWELFTHS)}</span></label></div>`;
+		observe(document.getElementById("item")!);
+
+		expect(await labelOf(document)).toBe("4 over 12");
+	});
+
+	test("names the math when aria-labelledby names nothing on the page", async () => {
+		document.body.innerHTML = `<div id="item"><label><input type="radio" aria-labelledby="missing" />${typeset(FOUR_TWELFTHS)}</label></div>`;
+		observe(document.getElementById("item")!);
+
+		expect(await labelOf(document)).toBe("4 over 12");
 	});
 
 	test("leaves read-aloud on SRE's default style", async () => {

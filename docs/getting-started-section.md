@@ -156,7 +156,7 @@ The toolbars load each tool's element through the player's registry, `createPack
 
 `coordinator.updateAssessment(...)` binds the assessment, whose `personalNeedsProfile` (AfA PNP 3.0) holds the learner's accommodations. Each id in `supports` is the id of the tool it grants. A bound profile turns policy enforcement on while `tools.pnpEnforcement` is unset, and a grant keeps a placed tool through the content filter, which is how the calculator reaches both items. A grant places nothing: a tool the profile names reaches a toolbar only at a level where `tools.placement` lists it. The profile is learner data and rides on the assessment; the player ignores one on the section and warns once.
 
-For each tool the first matching rule decides: district block, test-administration override `false`, item restriction, PNP prohibition (`prohibitedSupports`), test-administration override `true`, item requirement, district requirement, PNP support. [PNP configuration](../packages/assessment-toolkit/docs/PNP_CONFIGURATION.md) gives each rule's field, with examples.
+For each tool the first matching rule decides: district block, test-administration override `false`, item restriction, PNP prohibition (`prohibitedSupports`) or support conflict (an enabled `screenReader` withholds `textToSpeech` and `autoplayAudio`), test-administration override `true`, item requirement, district requirement, PNP `activateAtInit` or `supports`. [PNP configuration](../packages/assessment-toolkit/docs/PNP_CONFIGURATION.md) gives each rule's field, with examples.
 
 ## Session persistence
 

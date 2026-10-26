@@ -139,6 +139,8 @@ export function getPassagePlayerParams(args: {
 	baseHeadingLevel?: HeadingLevel;
 	/** The interface-locale provider the toolkit published, for the player's own chrome. */
 	i18n?: I18nProvider | null;
+	/** The toolkit's `contentLanguageDefault`, for content that declares no language. */
+	contentLanguage?: string;
 }): PlayerElementParams {
 	// Keep passage visuals aligned with item defaults by sharing the same
 	// runtime env shape; passage content remains non-response by content model.
@@ -149,7 +151,9 @@ export function getPassagePlayerParams(args: {
 	// assertRegistered.
 	return {
 		config: args.passage.config || {},
-		env: args.resolvedPlayerEnv,
+		env: narrowContentEnv(args.resolvedPlayerEnv, {
+			language: args.passage.language,
+		}),
 		attributes: {
 			...(args.resolvedPlayerAttributes || {}),
 			strategy: args.playerStrategy,
@@ -166,6 +170,9 @@ export function getPassagePlayerParams(args: {
 			// facade: the facade's identity changes on every republish and would
 			// re-set the property on each.
 			i18n: args.i18n ?? undefined,
+			// The section's default for undeclared content: a nested player sets
+			// no `locale`, so it cannot derive the default itself.
+			contentLanguage: args.contentLanguage,
 			...stripItemDeliveryBackendProps(args.resolvedPlayerProps || {}),
 		},
 	};
@@ -235,21 +242,35 @@ export function getTimedMediaItemView(args: {
 }
 
 /**
- * Project a revealed item's formative env over the section env.
+ * Narrow the section env for one item or passage.
  *
  * The section env stays section-wide and this is the only place it is narrowed,
- * which is what keeps env resolution out of every layout. `applyPlayerParams`
- * diffs env by signature, so the override reaches a mounted player as a property
- * assignment rather than a remount — the item keeps its session across a reveal
- * and across the retry that withdraws it.
+ * which is what keeps env resolution out of every layout. Two facts narrow it:
+ *
+ * - The content's declared `language` becomes `env.locale`, so a Spanish variant
+ *   beside an English item scores and stamps as Spanish. Content that declares no
+ *   language keeps the section's locale.
+ * - A revealed item's formative override.
+ *
+ * `applyPlayerParams` diffs env by signature, so either narrowing reaches a
+ * mounted player as a property assignment rather than a remount — the item keeps
+ * its session across a reveal and across the retry that withdraws it.
  */
-function applyFormativeEnv(
+function narrowContentEnv(
 	env: Record<string, unknown>,
-	formativeView: FormativeItemView | null | undefined,
+	args: {
+		language?: string;
+		formativeView?: FormativeItemView | null;
+	},
 ): Record<string, unknown> {
-	const override = formativeView?.envOverride;
-	if (!override) return env;
-	return { ...env, ...override };
+	const language = args.language?.trim();
+	const override = args.formativeView?.envOverride;
+	if (!language && !override) return env;
+	return {
+		...env,
+		...(language ? { locale: language } : {}),
+		...(override ?? {}),
+	};
 }
 
 function copyItemSessionForPlayer(
@@ -278,6 +299,8 @@ export function getItemPlayerParams(args: {
 	formativeView?: FormativeItemView | null;
 	/** The interface-locale provider the toolkit published, for the player's own chrome. */
 	i18n?: I18nProvider | null;
+	/** The toolkit's `contentLanguageDefault`, for content that declares no language. */
+	contentLanguage?: string;
 }): PlayerElementParams {
 	const rawItemSession = getSessionForItem(args.compositionModel, args.item);
 	const itemSession = getSessionForItemOrEmpty(
@@ -288,7 +311,10 @@ export function getItemPlayerParams(args: {
 		args.compositionModel,
 		args.item,
 	);
-	const env = applyFormativeEnv(args.resolvedPlayerEnv, args.formativeView);
+	const env = narrowContentEnv(args.resolvedPlayerEnv, {
+		language: args.item.language,
+		formativeView: args.formativeView,
+	});
 	return {
 		config: args.item.config || {},
 		env,
@@ -314,6 +340,9 @@ export function getItemPlayerParams(args: {
 				// facade: the facade's identity changes on every republish and
 				// would re-set the property on each.
 				i18n: args.i18n ?? undefined,
+				// The section's default for undeclared content: a nested item
+				// player sets no `locale`, so it cannot derive the default itself.
+				contentLanguage: args.contentLanguage,
 				...(args.resolvedPlayerProps || {}),
 			},
 			item: args.item,

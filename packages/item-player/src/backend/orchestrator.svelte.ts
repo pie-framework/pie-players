@@ -20,6 +20,7 @@
  */
 
 import type { ConfigEntity } from "@pie-players/pie-players-shared";
+import type { ServedContentIdentity } from "@pie-players/pie-players-shared/types";
 import { tick, untrack } from "svelte";
 import { stableStringifyForKey } from "../utils/stable-stringify.js";
 
@@ -98,6 +99,8 @@ export type BackendOrchestrator = {
 	readonly configOverride: unknown | null;
 	/** Session a backend load supplied, or null when the `session` prop still wins. */
 	readonly sessionOverride: unknown | null;
+	/** The content version the last delivery load served, when the backend named it. */
+	readonly servedIdentity: ServedContentIdentity | null;
 	/** `backend.authoring.media`, the fallback for the media callback props. */
 	readonly authoringMedia: BackendAuthoringMediaConfig | null;
 	/**
@@ -163,6 +166,7 @@ export function createBackendOrchestrator(
 ): BackendOrchestrator {
 	let configOverride: unknown | null = $state(null);
 	let sessionOverride: unknown | null = $state(null);
+	let servedIdentity: ServedContentIdentity | null = $state(null);
 	let sessionReplacementRevision = $state(0);
 	let lastAppliedSessionReplacementRevision = 0;
 	let loadSignature = "";
@@ -313,6 +317,7 @@ export function createBackendOrchestrator(
 			configOverride = result.config;
 			configOverrideScope = "authoring";
 			sessionOverride = { id: "", data: [] };
+			servedIdentity = null;
 			sessionReplacementRevision += 1;
 			const loaded = await deps.loadPlayerConfig(result.config);
 			await tick();
@@ -363,6 +368,7 @@ export function createBackendOrchestrator(
 		configOverride = result.config;
 		configOverrideScope = "delivery";
 		sessionOverride = result.session;
+		servedIdentity = result.identity ?? null;
 		sessionReplacementRevision += 1;
 		modelRefreshSignature = modelSignatureAtLoadStart;
 		dispatchBackendEvent("backend-load-complete", {
@@ -370,6 +376,7 @@ export function createBackendOrchestrator(
 			operation: "load",
 			metadata: result.metadata ?? {},
 			session: result.session,
+			...(result.identity ? { identity: result.identity } : {}),
 		});
 	}
 
@@ -395,6 +402,7 @@ export function createBackendOrchestrator(
 					itemId: write.itemId,
 					sessionId: write.sessionId,
 					assignmentId: write.assignmentId,
+					requestedLanguages: delivery.requestedLanguages,
 					session: write.session,
 					env: envAtStart,
 					models,
@@ -714,6 +722,7 @@ export function createBackendOrchestrator(
 						configOverride = null;
 						configOverrideScope = null;
 						sessionOverride = null;
+						servedIdentity = null;
 					}
 				});
 			});
@@ -749,6 +758,7 @@ export function createBackendOrchestrator(
 						configOverride = null;
 						configOverrideScope = null;
 						sessionOverride = null;
+						servedIdentity = null;
 					}
 				});
 			});
@@ -798,6 +808,9 @@ export function createBackendOrchestrator(
 		},
 		get sessionOverride() {
 			return sessionOverride;
+		},
+		get servedIdentity() {
+			return servedIdentity;
 		},
 		get authoringMedia() {
 			return getBackendAuthoringMedia();

@@ -25,6 +25,7 @@ Developer panel for the section player demos that logs the item and section even
 -->
 
 <script lang="ts">
+	import type { EventDebuggerProps, ControllerEvent, EventLevel } from "./element-props.js";
 	import {
 		type AssessmentToolkitRuntimeContext,
 		connectToolRuntimeContext,
@@ -37,14 +38,6 @@ Developer panel for the section player demos that logs the item and section even
 	} from "@pie-players/pie-section-player-tools-shared";
 	import { untrack } from "svelte";
 
-	type ControllerEvent = {
-		type?: string;
-		timestamp?: number;
-		itemId?: string;
-		canonicalItemId?: string;
-		intent?: string;
-		[key: string]: unknown;
-	};
 	type ControllerRuntimeState = {
 		loadingComplete?: boolean;
 		totalRegistered?: number;
@@ -53,28 +46,6 @@ Developer panel for the section player demos that logs the item and section even
 		completedCount?: number;
 		totalItems?: number;
 	} | null;
-	type ToolkitCoordinatorLike = {
-		// The subscribe* helpers follow the toolkit's active section cohort
-		// automatically and do not accept sectionId / attemptId arguments. The
-		// debugger keeps `sectionId` + `attemptId` in the shared subscription
-		// manager purely to gate same-target re-subscribe — it does not pass
-		// them to the coordinator.
-		subscribeItemEvents?: (args: {
-			listener: (event: ControllerEvent) => void;
-		}) => () => void;
-		subscribeSectionLifecycleEvents?: (args: {
-			listener: (event: ControllerEvent) => void;
-		}) => () => void;
-		getSectionController?: (args: {
-			sectionId: string;
-			attemptId?: string;
-		}) => unknown;
-		onSectionControllerLifecycle?: (
-			listener: (event: {
-				key?: { sectionId?: string; attemptId?: string };
-			}) => void,
-		) => () => void;
-	};
 
 	type EventType =
 		| "item-session-data-changed"
@@ -87,8 +58,6 @@ Developer panel for the section player demos that logs the item and section even
 		| "section-loading-complete"
 		| "section-items-complete-changed"
 		| "section-error";
-	type EventLevel = "item" | "section";
-	type EventLimitOverrides = Partial<Record<EventLevel, number>>;
 
 	type EventRecord = {
 		id: number;
@@ -104,7 +73,6 @@ Developer panel for the section player demos that logs the item and section even
 		semanticFingerprint: string;
 	};
 
-
 	let {
 		maxEvents = 200,
 		maxEventsByLevel = {},
@@ -113,15 +81,7 @@ Developer panel for the section player demos that logs the item and section even
 		attemptId = undefined,
 		persistenceScope = "",
 		persistencePanelId = "controller-events",
-	}: {
-		maxEvents?: number;
-		maxEventsByLevel?: EventLimitOverrides;
-		toolkitCoordinator?: ToolkitCoordinatorLike | null;
-		sectionId?: string;
-		attemptId?: string;
-		persistenceScope?: string;
-		persistencePanelId?: string;
-	} = $props();
+	}: EventDebuggerProps = $props();
 	let isPaused = $state(false);
 	let selectedLevel = $state<EventLevel>("item");
 	let selectedRecordId = $state<number | null>(null);

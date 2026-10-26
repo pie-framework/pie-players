@@ -28,7 +28,7 @@ export default defineConfig({
 		// entry instead.
 		dts({
 			bundleTypes: false,
-			include: ["index.ts"],
+			include: ["index.ts", "element-props.ts"],
 		}),
 	],
 	build: {

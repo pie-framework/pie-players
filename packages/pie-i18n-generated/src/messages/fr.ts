@@ -395,6 +395,9 @@ const fr = {
 			description: "Barrer les options de réponse",
 			buttonA11y: "Barrer, éliminer des options de réponse",
 			tooltip: "Barrer",
+			toggleA11y: "Barrer ou rétablir {choice}",
+			eliminatedA11y: "(barrée)",
+			unlabeledChoice: "Option sans libellé",
 		},
 		highlighter: {
 			name: "Surligneur",

@@ -1,4 +1,5 @@
 import { scopeStylesheetCss } from "@pie-players/pie-players-shared";
+import { prepareExternalStyleCss } from "./external-style-css.js";
 
 type ScopedStyleEntry = {
 	element: HTMLStyleElement;
@@ -11,11 +12,12 @@ type AcquireScopedStyleOptions = {
 	scopeClass: string;
 	signal: AbortSignal;
 	sourceUrl: string;
+	allowedOrigins?: string[];
 };
 
 const stylesheetRequestsByDocument = new WeakMap<
 	Document,
-	Map<string, Promise<string>>
+	Map<string, Promise<{ cssText: string; stylesheetUrl: string }>>
 >();
 const scopedStylesByDocument = new WeakMap<
 	Document,
@@ -48,7 +50,7 @@ function getScopedStyleEntries(
 function fetchStylesheetText(
 	document: Document,
 	resolvedUrl: string,
-): Promise<string> {
+): Promise<{ cssText: string; stylesheetUrl: string }> {
 	let requests = stylesheetRequestsByDocument.get(document);
 	if (!requests) {
 		requests = new Map();
@@ -57,7 +59,24 @@ function fetchStylesheetText(
 	const cached = requests.get(resolvedUrl);
 	if (cached) return cached;
 
-	const request = fetch(resolvedUrl).then((response) => response.text());
+	const request = fetch(resolvedUrl, { redirect: "error" }).then(
+		async (response) => {
+			if (!response.ok) {
+				try {
+					void response.body?.cancel().catch(() => {});
+				} catch {
+					/* Best-effort cleanup. */
+				}
+				throw new Error(
+					`Stylesheet request failed with status ${response.status}.`,
+				);
+			}
+			return {
+				cssText: await response.text(),
+				stylesheetUrl: response.url || resolvedUrl,
+			};
+		},
+	);
 	requests.set(resolvedUrl, request);
 	const evictSettledRequest = () => {
 		if (requests.get(resolvedUrl) === request) {
@@ -81,6 +100,7 @@ export async function acquireScopedExternalStyle({
 	scopeClass,
 	signal,
 	sourceUrl,
+	allowedOrigins,
 }: AcquireScopedStyleOptions): Promise<(() => void) | null> {
 	if (signal.aborted) return null;
 
@@ -92,7 +112,7 @@ export async function acquireScopedExternalStyle({
 		return createRelease(entries, entryKey, existing);
 	}
 
-	const cssText = await fetchStylesheetText(document, resolvedUrl);
+	const stylesheet = await fetchStylesheetText(document, resolvedUrl);
 	if (signal.aborted) return null;
 
 	// Another consumer may have materialized the same URL + scope while the
@@ -103,10 +123,17 @@ export async function acquireScopedExternalStyle({
 		return createRelease(entries, entryKey, materialized);
 	}
 
+	const prepared = prepareExternalStyleCss(stylesheet.cssText, {
+		stylesheetUrl: stylesheet.stylesheetUrl,
+		documentUrl: document.URL,
+		allowedOrigins,
+	});
+	if (!prepared.ok) throw new Error(prepared.message);
+
 	const style = document.createElement("style");
 	style.setAttribute("data-pie-style", sourceUrl);
 	style.textContent = scopeStylesheetCss(
-		cssText,
+		prepared.cssText,
 		`.pie-item-player.${scopeClass}`,
 	);
 	const entry = { element: style, refCount: 1 };

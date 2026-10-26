@@ -390,6 +390,9 @@ const pt = {
 			description: "Riscar alternativas de resposta",
 			buttonA11y: "Riscar, eliminar alternativas de resposta",
 			tooltip: "Riscar",
+			toggleA11y: "Alternar risco de {choice}",
+			eliminatedA11y: "(riscada)",
+			unlabeledChoice: "Alternativa sem rótulo",
 		},
 		highlighter: {
 			name: "Marca-texto",

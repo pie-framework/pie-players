@@ -32,7 +32,7 @@
 		"lit": "^3.3.3"
 	},
 	"devDependencies": {
-		"@happy-dom/global-registrator": "^20.14.5",
+		"@happy-dom/global-registrator": "^21.0.4",
 		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*",
 		"@playwright/test": "^1.64.1",

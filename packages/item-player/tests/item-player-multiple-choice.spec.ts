@@ -437,7 +437,7 @@ test.describe("item-player demo multiple-choice", () => {
 		await gotoRoute(page, DELIVERY_PATH);
 		const failure = page.waitForEvent("console", (message) => message.type() === "error" && message.text().includes("Failed to load external stylesheet"));
 		await mountExternalStyleProbes(page, "failed-style-probes", [{ id: "failed-style", styleUrl: "/__pie-style-failed.css" }]);
-		await failure;
+		expect((await failure).text()).toContain("Stylesheet request failed with status 404.");
 		await expect(page.locator('style[data-pie-style="/__pie-style-failed.css"]')).toHaveCount(0);
 	});
 

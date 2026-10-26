@@ -9,10 +9,12 @@ import type {
 	SectionControllerSessionState,
 } from "@pie-players/pie-players-shared/types";
 import type { SectionPlayerRuntimeConfig } from "../components/shared/section-player-backend-delivery.js";
-import type { withHostMethods } from "../components/shared/layout-host-methods.js";
 import type { SectionPlayerPolicies } from "../policies/types.js";
 import type { SectionPlayerHostHooks } from "./host-hooks.js";
-import type { SectionPlayerRuntimeHostContract } from "./runtime-host-contract.js";
+import type {
+	SectionPlayerRuntimeHostContract,
+	SectionPlayerSnapshot,
+} from "./runtime-host-contract.js";
 
 /** Property inputs shared by the section layouts and their native host interfaces. */
 export interface SectionPlayerElementProps {
@@ -48,15 +50,16 @@ export interface SectionPlayerSplitPaneElementProps extends SectionPlayerElement
 	splitPaneCollapseStrategy?: string;
 }
 
-// Derive methods from the subclass that actually installs them on each host,
-// including its nullable snapshot before the Svelte component mounts.
-type HostMethods = Pick<
-	InstanceType<ReturnType<ReturnType<typeof withHostMethods>>>,
-	keyof SectionPlayerRuntimeHostContract
->;
+/**
+ * The methods `withHostMethods` installs on each layout host. `getSnapshot`
+ * returns `null` before the Svelte component mounts.
+ */
+export interface SectionPlayerHostMethods extends Omit<SectionPlayerRuntimeHostContract, "getSnapshot"> {
+	getSnapshot(): SectionPlayerSnapshot | null;
+}
 
 /** Native host interface shared by the section player's public layouts. */
-export interface PieSectionPlayerElement extends HTMLElement, SectionPlayerElementProps, HostMethods {}
+export interface PieSectionPlayerElement extends HTMLElement, SectionPlayerElementProps, SectionPlayerHostMethods {}
 
 /** Native host interface for `<pie-section-player-splitpane>`. */
 export interface PieSectionPlayerSplitPaneElement extends PieSectionPlayerElement, SectionPlayerSplitPaneElementProps {}

@@ -643,6 +643,20 @@ function cancelResponseBody(response: Response): void {
 }
 
 /**
+ * A fixed-message error that keeps the original's standard name, such as
+ * `NotAllowedError` for blocked autoplay, so hosts can still branch on it. The
+ * original message and cause are dropped: they can carry signed URLs.
+ */
+function redactedError(message: string, original: unknown): Error {
+	const error = new Error(message);
+	const name = (original as { name?: unknown } | null)?.name;
+	if (typeof name === "string" && /^[A-Z][A-Za-z]*Error$/.test(name)) {
+		error.name = name;
+	}
+	return error;
+}
+
+/**
  * Provider implementation that handles audio playback
  */
 class ServerTTSProviderImpl implements ITTSProviderImplementation {
@@ -812,7 +826,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					settle(
 						superseded()
 							? undefined
-							: new Error("Failed to start audio playback"),
+							: redactedError("Failed to start audio playback", error),
 					);
 				});
 			};
@@ -856,7 +870,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					signal,
 					...fetchCredentials(this.config),
 				});
-			} catch {
+			} catch (error) {
 				this.assertSynthesisActive(signal, runId);
 				await this.emitTelemetry(
 					"pie-tool-backend-call-error",
@@ -867,7 +881,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 					}),
 				);
 				this.assertSynthesisActive(signal, runId);
-				throw new Error("TTS synthesis network request failed");
+				throw redactedError("TTS synthesis network request failed", error);
 			}
 		})();
 
@@ -958,7 +972,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 						...fetchCredentials(this.config, assetTrusted),
 						redirect: "error",
 					});
-				} catch {
+				} catch (error) {
 					this.assertSynthesisActive(signal, runId);
 					await this.emitTelemetry(
 						"pie-tool-backend-call-error",
@@ -969,7 +983,7 @@ class ServerTTSProviderImpl implements ITTSProviderImplementation {
 						}),
 					);
 					this.assertSynthesisActive(signal, runId);
-					throw new Error("TTS synthesized audio request failed");
+					throw redactedError("TTS synthesized audio request failed", error);
 				}
 			})();
 			if (!audioResponse.ok) {

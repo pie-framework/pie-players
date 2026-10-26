@@ -341,6 +341,45 @@ describe("ServerTTSProvider", () => {
 		expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-audio");
 	});
 
+	test("keeps the error name of a blocked playback start", async () => {
+		MockAudio.playError = new DOMException(
+			"play() failed at https://cdn.example/audio?token=secret",
+			"NotAllowedError",
+		);
+		globalThis.fetch = vi.fn(async () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [],
+			}),
+		) as unknown as typeof fetch;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({ apiEndpoint: "/api/tts" } as any);
+
+		const caught = await impl.speak("hello").catch((error: unknown) => error);
+
+		expect((caught as Error).name).toBe("NotAllowedError");
+		expect((caught as Error).message).toBe("Failed to start audio playback");
+		expect((caught as Error).cause).toBeUndefined();
+	});
+
+	test("keeps the error name of a failed synthesis request", async () => {
+		globalThis.fetch = vi.fn(async () => {
+			throw new TypeError("request to https://tts.example?token=secret failed");
+		}) as unknown as typeof fetch;
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "https://tts.example",
+		} as any);
+
+		const caught = await impl.speak("hello").catch((error: unknown) => error);
+
+		expect((caught as Error).name).toBe("TypeError");
+		expect((caught as Error).message).toBe(
+			"TTS synthesis network request failed",
+		);
+	});
+
 	test("uses PIE transport defaults with /synthesize endpoint", async () => {
 		const fetchMock = vi.fn(async () =>
 			createJSONResponse({

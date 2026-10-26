@@ -64,6 +64,7 @@ const requiredCiLintTypecheckCommands = [
 	"check:svelte-type-imports",
 	"check:pack-integrity",
 	"check:node-consumer-imports",
+	"check:ce-composition",
 	"check:consumer-boundaries",
 	"lint:all",
 ];

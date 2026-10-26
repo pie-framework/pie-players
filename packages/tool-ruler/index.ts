@@ -1,7 +1,7 @@
 import type { RulerProps } from "./element-props.js";
 
-/** Native host interface for `<pie-tool-ruler>`. Importing the package registers it. */
-export interface PieToolRulerElement extends HTMLElement, Required<RulerProps> {}
+/** Native host interface for `<pie-tool-ruler>`. Properties may be unset until it mounts. */
+export interface PieToolRulerElement extends HTMLElement, RulerProps {}
 
 declare global {
 	interface HTMLElementTagNameMap {

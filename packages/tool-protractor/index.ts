@@ -1,7 +1,7 @@
 import type { ProtractorProps } from "./element-props.js";
 
-/** Native host interface for `<pie-tool-protractor>`. Importing the package registers it. */
-export interface PieToolProtractorElement extends HTMLElement, Required<ProtractorProps> {}
+/** Native host interface for `<pie-tool-protractor>`. Properties may be unset until it mounts. */
+export interface PieToolProtractorElement extends HTMLElement, ProtractorProps {}
 
 declare global {
 	interface HTMLElementTagNameMap {

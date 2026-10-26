@@ -139,9 +139,16 @@ import type { PieAssessmentPlayerDefaultElement } from "@pie-players/pie-assessm
 const ruler: PieToolRulerElement = document.createElement("pie-tool-ruler");
 ruler.visible = true;
 ruler.toolId = "ruler";
+const unmountedRuler = document.createElement("pie-tool-ruler");
+// @ts-expect-error Svelte has not supplied the component's defaults before mount.
+const initialVisible: boolean = unmountedRuler.visible;
+// @ts-expect-error The tool id can also be unset until mount.
+const initialToolId: string = unmountedRuler.toolId;
 const protractor: PieToolProtractorElement = document.createElement("pie-tool-protractor");
 protractor.visible = true;
 const tts: PieToolTtsInlineElement = document.createElement("pie-tool-tts-inline");
+// @ts-expect-error The base rate default is supplied when the component mounts.
+const initialRate: number = tts.baseRate;
 tts.speedOptions = [1, { rate: 1.5, ariaLabel: "Fast" }];
 tts.baseRate = 0.8;
 tts.pitch = 1;

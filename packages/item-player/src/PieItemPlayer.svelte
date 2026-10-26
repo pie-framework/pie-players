@@ -1465,9 +1465,13 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 					}
 					releases.add(release);
 				})
-				.catch(() => {
+				.catch((err) => {
 					if (!abortController.signal.aborted) {
-						logger.error(`Failed to load external stylesheet: ${diagnosticUrl}`);
+						// The reasons the loader and fetch give name no URL or content.
+						logger.error(
+							`Failed to load external stylesheet: ${diagnosticUrl}`,
+							err instanceof Error ? err.message : String(err),
+						);
 					}
 				});
 		}

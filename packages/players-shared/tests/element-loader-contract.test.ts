@@ -4825,3 +4825,205 @@ test("loads a second IIFE package version incrementally after the first tag is r
 		(g.customElements?.get(secondTag) as unknown as { tag: string } | undefined)?.tag,
 	).toBe("incremental-2.0.0");
 });
+
+describe("ensureRegistered — controllers for registered tags", () => {
+	const registryOf = () =>
+		(g.window as { PIE_REGISTRY?: Record<string, any> }).PIE_REGISTRY ?? {};
+
+	function registerWithoutController(tag: string, packageSpec: string): void {
+		g.customElements?.define(tag, createConstructorFor(tag));
+		writeRegistryEntry({
+			package: packageSpec,
+			status: Status.loaded,
+			tagName: tag,
+			element: createConstructorFor(tag),
+			bundleType: BundleType.player,
+		});
+	}
+
+	function iifeWithBundle(
+		config: {
+			kind: "iife";
+			bundleHost: string;
+			bundleType: BundleType;
+			needsControllers?: boolean;
+		},
+		packages: Record<string, { controller?: unknown }>,
+	): string[] {
+		const backend = createIifeBackend(config);
+		const loadedUrls: string[] = [];
+		(backend as unknown as { __seams: IifeBackendTestSeams }).__seams.replaceLoadBundleScript(
+			async (url) => {
+				loadedUrls.push(decodeURIComponent(url));
+				(g.window as { pie?: unknown }).pie = {
+					default: Object.fromEntries(
+						Object.entries(packages).map(([name, data]) => [
+							name,
+							{ Element: createConstructorFor(name), ...data },
+						]),
+					),
+				};
+			},
+		);
+		elementLoaderTesting.replaceResolvedBackendForTesting(config, backend);
+		return loadedUrls;
+	}
+
+	const clientIife = {
+		kind: "iife" as const,
+		bundleHost: "https://example.test/bundles/",
+		bundleType: BundleType.clientPlayer,
+	};
+
+	test("an IIFE request that loads a new tag fills a registered tag's missing controller", async () => {
+		installScriptedCustomElements();
+		const tag = "pie-fill-iife--version-1-0-0";
+		const newTag = "pie-fill-iife-new--version-1-0-0";
+		const controller = { model: async (model: unknown) => model };
+		registerWithoutController(tag, "@pie-element/fill-iife@1.0.0");
+		const loadedUrls = iifeWithBundle(clientIife, {
+			"@pie-element/fill-iife": { controller },
+			"@pie-element/fill-iife-new": { controller: {} },
+		});
+
+		await ensureRegistered(
+			{
+				[tag]: "@pie-element/fill-iife@1.0.0",
+				[newTag]: "@pie-element/fill-iife-new@1.0.0",
+			},
+			{ backend: clientIife, doc: createMockDocument(), whenDefinedTimeoutMs: 25 },
+		);
+
+		expect(loadedUrls).toHaveLength(1);
+		expect(registryOf()[tag].controller).toBe(controller);
+	});
+
+	test("a request whose tags are all registered loads nothing", async () => {
+		installScriptedCustomElements();
+		const tag = "pie-fill-none--version-1-0-0";
+		registerWithoutController(tag, "@pie-element/fill-none@1.0.0");
+		const loadedUrls = iifeWithBundle(clientIife, {
+			"@pie-element/fill-none": { controller: {} },
+		});
+
+		await ensureRegistered(
+			{ [tag]: "@pie-element/fill-none@1.0.0" },
+			{ backend: clientIife, doc: createMockDocument(), whenDefinedTimeoutMs: 25 },
+		);
+
+		expect(loadedUrls).toHaveLength(0);
+	});
+
+	function esmRecording(loadControllers: boolean): {
+		config: EsmBackendConfig;
+		loads: string[][];
+	} {
+		const loads: string[][] = [];
+		const config: EsmBackendConfig = {
+			kind: "esm",
+			cdnBaseUrl: "https://cdn.example.test",
+			loadControllers,
+		};
+		elementLoaderTesting.replaceResolvedBackendForTesting(config, {
+			async load(elements) {
+				loads.push(Object.keys(elements));
+				for (const tag of Object.keys(elements)) {
+					if (!g.customElements?.get(tag)) {
+						g.customElements?.define(tag, createConstructorFor(tag));
+					}
+				}
+			},
+		});
+		return { config, loads };
+	}
+
+	test("an ESM request that loads controllers also loads a registered tag without one", async () => {
+		installScriptedCustomElements();
+		const tag = "pie-fill-esm--version-1-0-0";
+		const newTag = "pie-fill-esm-new--version-1-0-0";
+		registerWithoutController(tag, "@pie-element/fill-esm@1.0.0");
+		const { config, loads } = esmRecording(true);
+
+		await ensureRegistered(
+			{
+				[tag]: "@pie-element/fill-esm@1.0.0",
+				[newTag]: "@pie-element/fill-esm-new@1.0.0",
+			},
+			{ backend: config, doc: createMockDocument(), whenDefinedTimeoutMs: 25 },
+		);
+
+		expect(loads).toEqual([[tag, newTag]]);
+	});
+
+	test("an ESM request without controllers loads only the new tag", async () => {
+		installScriptedCustomElements();
+		const tag = "pie-fill-esm-off--version-1-0-0";
+		const newTag = "pie-fill-esm-off-new--version-1-0-0";
+		registerWithoutController(tag, "@pie-element/fill-esm-off@1.0.0");
+		const { config, loads } = esmRecording(false);
+
+		await ensureRegistered(
+			{
+				[tag]: "@pie-element/fill-esm-off@1.0.0",
+				[newTag]: "@pie-element/fill-esm-off-new@1.0.0",
+			},
+			{ backend: config, doc: createMockDocument(), whenDefinedTimeoutMs: 25 },
+		);
+
+		expect(loads).toEqual([[newTag]]);
+	});
+
+	test("an IIFE request names every requested package in the bundle URL", async () => {
+		installScriptedCustomElements();
+		const definedTag = "pie-full-a--version-1-0-0";
+		const newTag = "pie-full-b--version-1-0-0";
+		g.customElements?.define(definedTag, createConstructorFor(definedTag));
+		writeRegistryEntry({
+			package: "@pie-element/full-a@1.0.0",
+			status: Status.loaded,
+			tagName: definedTag,
+			element: createConstructorFor(definedTag),
+			controller: { model: async () => ({}) } as any,
+			bundleType: BundleType.clientPlayer,
+		});
+		const loadedUrls = iifeWithBundle(clientIife, {
+			"@pie-element/full-a": { controller: {} },
+			"@pie-element/full-b": { controller: {} },
+		});
+
+		await ensureRegistered(
+			{
+				[definedTag]: "@pie-element/full-a@1.0.0",
+				[newTag]: "@pie-element/full-b@1.0.0",
+			},
+			{ backend: clientIife, doc: createMockDocument(), whenDefinedTimeoutMs: 25 },
+		);
+
+		expect(loadedUrls).toHaveLength(1);
+		expect(loadedUrls[0]).toContain("@pie-element/full-a@1.0.0");
+		expect(loadedUrls[0]).toContain("@pie-element/full-b@1.0.0");
+		expect(g.customElements?.get(newTag)).toBeDefined();
+	});
+
+	test("an IIFE request for a second version of a registered package loads only the new version", async () => {
+		installScriptedCustomElements();
+		const definedTag = "pie-full-v1--version-1-0-0";
+		const newTag = "pie-full-v2--version-2-0-0";
+		g.customElements?.define(definedTag, createConstructorFor(definedTag));
+		const loadedUrls = iifeWithBundle(clientIife, {
+			"@pie-element/full-versioned": { controller: {} },
+		});
+
+		await ensureRegistered(
+			{
+				[definedTag]: "@pie-element/full-versioned@1.0.0",
+				[newTag]: "@pie-element/full-versioned@2.0.0",
+			},
+			{ backend: clientIife, doc: createMockDocument(), whenDefinedTimeoutMs: 25 },
+		);
+
+		expect(loadedUrls).toHaveLength(1);
+		expect(loadedUrls[0]).toContain("@pie-element/full-versioned@2.0.0");
+		expect(loadedUrls[0]).not.toContain("@pie-element/full-versioned@1.0.0");
+	});
+});

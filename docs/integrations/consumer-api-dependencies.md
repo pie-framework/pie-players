@@ -2250,6 +2250,19 @@ already rendered, with one visible exception: legacy `kds-*` table headers take
 Hosts V and A both load a copy of this stylesheet and neither sets `--pie-text`
 or `--pie-white`, so both see it on upgrade.
 
+## Authored stylesheet resources
+
+`itemConfig.resources.stylesheets[*].url` reaches hosts through content, and
+one host also fills it from source. Host C carries QTI `<stylesheet>` references
+through its staged preview config and rewrites asset references to its asset
+service's preview URLs, which sit on another origin. It sets no
+`allowed-style-origins`, so since the same-origin default (`9868ee1`) the player
+rejects those stylesheets and logs why. Content imported from Learnosity custom
+questions carries CDN stylesheet URLs the same way, and every host renders it
+under the same rejection. No host sets `external-style-urls` or
+`allowed-style-origins`. Re-derived 2026-10-25; this corrects the `9868ee1`
+changelog entry, which recorded no consumer of either surface.
+
 ## Host-served endpoint contracts
 
 A surface class no other host has. PIE ships no dictionary

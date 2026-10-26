@@ -179,7 +179,7 @@ export class PiePrint extends LitElement {
 		this._activeConfigRequest = request;
 		this._resolvedConfigRequest = undefined;
 		this._config = value;
-		this._clearResolvedConfig();
+		// The previous job's output stays until this one resolves.
 		this.requestUpdate("config", oldValue);
 
 		void Promise.all(

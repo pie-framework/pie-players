@@ -75,6 +75,53 @@ test("a late resolver cannot replace the latest print job", async ({
 	await expect(page.locator("pie-older-print")).toHaveCount(0);
 });
 
+test("the previous output stays until the next config resolves", async ({
+	page,
+}) => {
+	await page.evaluate(() => {
+		const player = document.createElement("pie-print") as PiePrint;
+		const resolution = (name: string): PkgResolution => ({
+			tagName: `pie-${name}`,
+			printTagName: `pie-${name}-print`,
+			pkg: name,
+			url: `https://print.test/${name}.js`,
+			module: true,
+		});
+		player.resolve = (_tag, pkg) =>
+			pkg === "later"
+				? new Promise((resolve) => {
+						(window as unknown as { releaseLater: () => void }).releaseLater =
+							() => resolve(resolution("later"));
+					})
+				: Promise.resolve(resolution("first"));
+		const config = (name: string): Config => ({
+			item: {
+				markup: `<pie-${name} id="q1"></pie-${name}>`,
+				elements: { [`pie-${name}`]: name },
+				models: [{ id: "q1", element: `pie-${name}`, prompt: name }],
+			},
+		});
+		(window as unknown as { configFor: typeof config }).configFor = config;
+		document.body.append(player);
+		player.config = config("first");
+	});
+	await expect(page.locator("pie-first-print")).toHaveText("first");
+	await page.evaluate(async () => {
+		const player = document.querySelector("pie-print") as PiePrint;
+		const { configFor } = window as unknown as {
+			configFor: (name: string) => Config;
+		};
+		player.config = configFor("later");
+		await player.updateComplete;
+	});
+	await expect(page.locator("pie-first-print")).toHaveText("first");
+	await page.evaluate(() =>
+		(window as unknown as { releaseLater: () => void }).releaseLater(),
+	);
+	await expect(page.locator("pie-later-print")).toHaveText("later");
+	await expect(page.locator("pie-first-print")).toHaveCount(0);
+});
+
 test("a failed resolver clears stale output without leaking its error", async ({
 	page,
 }) => {

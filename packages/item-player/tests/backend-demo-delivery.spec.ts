@@ -253,9 +253,11 @@ test("backend demo accepts answer input after directly refreshing an existing se
 		),
 	).toBeVisible({ timeout: 30_000 });
 
-	// multiple-choice names its group "Answer choices" and renders the prompt
-	// before it, so the group's name no longer holds the question.
-	const answerGroup = page.getByRole("radiogroup", { name: "Answer choices" });
+	// The demo loads multiple-choice@latest from jsdelivr, whose edges cache that
+	// tag for hours, so a run can get a release that names the group by the
+	// question or one that names it "Answer choices". Scope to the item's only
+	// radiogroup instead of matching its name.
+	const answerGroup = page.getByRole("radiogroup");
 	await expect(answerGroup.getByRole("radio", { name: /Mars/ })).toBeChecked({
 		timeout: 10_000,
 	});
@@ -289,9 +291,11 @@ test("backend demo keeps the first selected answer in a fresh backend session", 
 		),
 	).toBeVisible({ timeout: 30_000 });
 
-	// multiple-choice names its group "Answer choices" and renders the prompt
-	// before it, so the group's name no longer holds the question.
-	const answerGroup = page.getByRole("radiogroup", { name: "Answer choices" });
+	// The demo loads multiple-choice@latest from jsdelivr, whose edges cache that
+	// tag for hours, so a run can get a release that names the group by the
+	// question or one that names it "Answer choices". Scope to the item's only
+	// radiogroup instead of matching its name.
+	const answerGroup = page.getByRole("radiogroup");
 	await answerGroup.locator("label", { hasText: "Jupiter" }).click();
 	await expect(answerGroup.getByRole("radio", { name: /Jupiter/ })).toBeChecked(
 		{
@@ -341,9 +345,11 @@ test("backend demo updates an existing answer from the default tool state", asyn
 		),
 	).toBeVisible({ timeout: 30_000 });
 
-	// multiple-choice names its group "Answer choices" and renders the prompt
-	// before it, so the group's name no longer holds the question.
-	const answerGroup = page.getByRole("radiogroup", { name: "Answer choices" });
+	// The demo loads multiple-choice@latest from jsdelivr, whose edges cache that
+	// tag for hours, so a run can get a release that names the group by the
+	// question or one that names it "Answer choices". Scope to the item's only
+	// radiogroup instead of matching its name.
+	const answerGroup = page.getByRole("radiogroup");
 	await expect(answerGroup.getByRole("radio", { name: /Earth/ })).toBeChecked({
 		timeout: 10_000,
 	});

@@ -6,8 +6,9 @@ Implementation status: pie-players removed `SearchMetaData`, `SearchMetaDataEnti
 and the `searchMetaData` field from the five content entities in 82596926b, and
 `highlights`, `SettingsMetaData`, `SettingsMetaDataEntity` and
 `AssessmentSection.settings` after it; `extensions` is deferred until a pie-players
-consumer exists. pie-qti still names the bag `searchMetaData` and
-writes it under the `pie:searchMetaData:` LOM source; the rename is outstanding.
+consumer exists. pie-qti renamed the bag to `extensions` in pie-framework/pie-qti#398:
+export writes the `pie:extension:` LOM source with no `purpose`, and import also
+reads the legacy `pie:searchMetaData:` prefix.
 
 Owner: PIE Players maintainers
 

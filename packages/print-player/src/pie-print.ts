@@ -34,6 +34,7 @@ import {
 import { mkItem, printItemAndFloaters } from "./markup-processor.js";
 import { defaultMissingElement } from "./missing-element.js";
 import { findRenderedModelElement } from "./model-element-lookup.js";
+import { assertPrintConfigAllowed } from "./print-config-policy.js";
 
 import type {
 	Config,
@@ -104,7 +105,8 @@ export class PiePrint extends LitElement {
 	}
 
 	/**
-	 * Where print modules load from, read when `config` is set, so set it first.
+	 * Where print modules load from and the optional element package policy.
+	 * Read when `config` is set, so set it first.
 	 * Declared ahead of `config` so a value set before upgrade is applied first.
 	 */
 	@property({ attribute: false })
@@ -176,6 +178,7 @@ export class PiePrint extends LitElement {
 		const request = {};
 		const resolveElement = this._resolve;
 		const loaderOptions = this.loaderOptions;
+		assertPrintConfigAllowed(value, loaderOptions?.elementPackagePolicy);
 		this._activeConfigRequest = request;
 		this._resolvedConfigRequest = undefined;
 		this._config = value;

@@ -4716,3 +4716,112 @@ describe("resolveEsmPackageFileUrl", () => {
 		);
 	});
 });
+
+test("identical request stays deduplicated after one tag registers while another is still loading", async () => {
+	const firstTag = "pie-dedup-partial-a--version-1-0-0";
+	const secondTag = "pie-dedup-partial-b--version-2-0-0";
+	const elements = {
+		[firstTag]: "@pie-element/dedup-partial-a@1.0.0",
+		[secondTag]: "@pie-element/dedup-partial-b@2.0.0",
+	};
+	let loadInvocations = 0;
+	let firstTagRegistered!: () => void;
+	const firstTagReady = new Promise<void>((resolve) => {
+		firstTagRegistered = resolve;
+	});
+	let release!: () => void;
+	const gate = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	const fake: ElementLoaderBackend = {
+		async load(unresolved) {
+			loadInvocations++;
+			if (unresolved[firstTag] && !g.customElements?.get(firstTag)) {
+				g.customElements?.define(firstTag, createConstructorFor(firstTag));
+				firstTagRegistered();
+			}
+			await gate;
+			if (unresolved[secondTag] && !g.customElements?.get(secondTag)) {
+				g.customElements?.define(secondTag, createConstructorFor(secondTag));
+			}
+		},
+	};
+
+	const first = ensureRegistered(elements, {
+		backend: fake,
+		doc: createMockDocument(),
+		whenDefinedTimeoutMs: 100,
+	});
+	await firstTagReady;
+	expect(g.customElements?.get(firstTag)).toBeDefined();
+	expect(g.customElements?.get(secondTag)).toBeUndefined();
+
+	const second = ensureRegistered(elements, {
+		backend: fake,
+		doc: createMockDocument(),
+		whenDefinedTimeoutMs: 100,
+	});
+	await Promise.resolve();
+	expect(loadInvocations).toBe(1);
+
+	release();
+	await Promise.all([first, second]);
+	expect(g.customElements?.get(secondTag)).toBeDefined();
+	expect(loadInvocations).toBe(1);
+});
+
+test("loads a second IIFE package version incrementally after the first tag is registered", async () => {
+	const backend = createIifeBackend({
+		kind: "iife",
+		bundleHost: "https://example.test/bundles/",
+		bundleType: BundleType.clientPlayer,
+		needsControllers: true,
+	});
+	const firstTag = "pie-incremental-v1--version-1-0-0";
+	const secondTag = "pie-incremental-v2--version-2-0-0";
+	const loadedUrls: string[] = [];
+	const seams = (backend as unknown as { __seams: IifeBackendTestSeams })
+		.__seams;
+	seams.replaceLoadBundleScript(async (url) => {
+		loadedUrls.push(decodeURIComponent(url));
+		const loadedVersion = url.includes("@2.0.0") ? "2.0.0" : "1.0.0";
+		(g.window as { pie?: unknown }).pie = {
+			default: {
+				"@pie-element/incremental": {
+					Element: createConstructorFor(`incremental-${loadedVersion}`),
+				},
+			},
+		};
+	});
+
+	await ensureRegistered(
+		{ [firstTag]: "@pie-element/incremental@1.0.0" },
+		{
+			backend,
+			doc: createMockDocument(),
+			whenDefinedTimeoutMs: 25,
+		},
+	);
+	await ensureRegistered(
+		{
+			[firstTag]: "@pie-element/incremental@1.0.0",
+			[secondTag]: "@pie-element/incremental@2.0.0",
+		},
+		{
+			backend,
+			doc: createMockDocument(),
+			whenDefinedTimeoutMs: 25,
+		},
+	);
+
+	expect(loadedUrls).toHaveLength(2);
+	expect(loadedUrls[0]).toContain("@pie-element/incremental@1.0.0");
+	expect(loadedUrls[1]).toContain("@pie-element/incremental@2.0.0");
+	expect(loadedUrls[1]).not.toContain("@pie-element/incremental@1.0.0");
+	expect(
+		(g.customElements?.get(firstTag) as unknown as { tag: string } | undefined)?.tag,
+	).toBe("incremental-1.0.0");
+	expect(
+		(g.customElements?.get(secondTag) as unknown as { tag: string } | undefined)?.tag,
+	).toBe("incremental-2.0.0");
+});

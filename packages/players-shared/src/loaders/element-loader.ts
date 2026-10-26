@@ -217,9 +217,10 @@ export type EnsureRegisteredOptions = {
 const DEFAULT_WHEN_DEFINED_TIMEOUT_MS = 5000;
 const DEFAULT_LOAD_TIMEOUT_MS = DEFAULT_IIFE_BUNDLE_RETRY_CONFIG.timeoutMs;
 
-// Module-scoped in-flight cache. Key: backend signature + sorted elements.
-// Keeps concurrent identical requests collapsed to one backend call.
+// Requests share a backend call by both the original map and the unresolved
+// subset, so incremental registration does not change an in-flight identity.
 const inFlightRequests = new Map<string, Promise<void>>();
+const inFlightKeysByPromise = new Map<Promise<void>, Set<string>>();
 // An ESM backend keeps page state that later loads build on (the import maps it
 // injected, the shared dependency versions they fixed), so every load with the
 // same config reuses one backend. IIFE backends are created per call.
@@ -249,24 +250,33 @@ export async function ensureRegistered(
 	// the registry must not turn a disallowed authored package into valid input.
 	assertElementPackagesAllowed(elements, options.elementPackagePolicy);
 
-	const tags = Object.keys(elements);
+	// Preserve the original request identity while tags register mid-flight.
+	const originalDedupKey = buildDedupKey(options.backend, elements);
+	const originalRequest = inFlightRequests.get(originalDedupKey);
+	if (originalRequest) return originalRequest;
+
+	const unresolvedElements: ElementMap = {};
+	for (const [tag, packageSpec] of Object.entries(elements)) {
+		if (!isRegistered(tag)) unresolvedElements[tag] = packageSpec;
+	}
+	const tags = Object.keys(unresolvedElements);
+	if (tags.length === 0) return;
 	const timeoutMs =
 		options.whenDefinedTimeoutMs ?? DEFAULT_WHEN_DEFINED_TIMEOUT_MS;
 	const loadTimeoutMs = options.loadTimeoutMs ?? DEFAULT_LOAD_TIMEOUT_MS;
 
-	// Fast path: everything already registered. Skip backend and dedup
-	// bookkeeping entirely.
-	if (allAlreadyRegistered(tags)) return;
-
-	const dedupKey = buildDedupKey(options.backend, elements);
+	const dedupKey = buildDedupKey(options.backend, unresolvedElements);
 	const existing = inFlightRequests.get(dedupKey);
-	if (existing) return existing;
+	if (existing) {
+		aliasInFlightRequest(originalDedupKey, existing);
+		return existing;
+	}
 
 	const backend = resolveBackend(options.backend);
 	const doc = resolveDoc(options.doc);
 
 	const promise = runEnsureRegistered(
-		elements,
+		unresolvedElements,
 		tags,
 		backend,
 		{ doc, whenDefinedTimeoutMs: timeoutMs },
@@ -274,14 +284,23 @@ export async function ensureRegistered(
 		loadTimeoutMs,
 	);
 
-	inFlightRequests.set(dedupKey, promise);
+	aliasInFlightRequest(originalDedupKey, promise);
+	aliasInFlightRequest(dedupKey, promise);
 	try {
 		await promise;
 	} finally {
-		if (inFlightRequests.get(dedupKey) === promise) {
-			inFlightRequests.delete(dedupKey);
+		for (const key of inFlightKeysByPromise.get(promise) ?? []) {
+			if (inFlightRequests.get(key) === promise) inFlightRequests.delete(key);
 		}
+		inFlightKeysByPromise.delete(promise);
 	}
+}
+
+function aliasInFlightRequest(key: string, promise: Promise<void>): void {
+	inFlightRequests.set(key, promise);
+	const keys = inFlightKeysByPromise.get(promise) ?? new Set<string>();
+	keys.add(key);
+	inFlightKeysByPromise.set(promise, keys);
 }
 
 async function runEnsureRegistered(
@@ -572,10 +591,6 @@ function getOpaqueObjectRefId(value: object): string {
 	return id;
 }
 
-function allAlreadyRegistered(tags: ElementTag[]): boolean {
-	return tags.every((tag) => isRegistered(tag));
-}
-
 function isRegistered(tag: ElementTag): boolean {
 	if (typeof customElements === "undefined") return false;
 	return customElements.get(tag) !== undefined;
@@ -637,6 +652,7 @@ function extractAdapterReason(
 export const __testing = {
 	resetDedupState(): void {
 		inFlightRequests.clear();
+		inFlightKeysByPromise.clear();
 		resolvedEsmBackends.clear();
 		resolvedBackendOverrides.clear();
 		clearPackageMetadataRequests();

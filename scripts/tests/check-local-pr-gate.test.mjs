@@ -34,7 +34,7 @@ const baseLefthook =
 	"pre-commit:\n  commands:\n    cheap-gate:\n      run: bun run verify:pre-commit\npre-push:\n  jobs:\n    - name: fast-gate\n      script: pre-push-gate.sh\n      runner: sh\n      use_stdin: true\n";
 
 const baseCiWorkflow =
-	"steps:\n  - name: Verify CI Lint & Typecheck Gate\n    run: bun run verify:ci-lint-typecheck\nmatrix:\n  include:\n    - command: test:e2e:item-player:critical\n    - command: test:e2e:assessment-player\nsteps:\n  - name: Run Section Player E2E\n    run: bun run test:e2e:section-player --shard=${{ matrix.shard }}/${{ strategy.job-total }}\n";
+	"steps:\n  - name: Verify CI Lint & Typecheck Gate\n    run: bun run verify:ci-lint-typecheck\nmatrix:\n  include:\n    - command: test:e2e:item-player:critical\n    - command: test:e2e:assessment-player\nsteps:\n  - name: Run Item Player E2E\n    run: bun run test:e2e:item-player:critical --shard=${{ matrix.shard }}/${{ strategy.job-total }}\n  - name: Run Section Player E2E\n    run: bun run test:e2e:section-player --shard=${{ matrix.shard }}/${{ strategy.job-total }}\n";
 
 const basePrePushGate =
 	'const gate = spawnSync("bun", ["run", "verify:pre-push"], { stdio: "inherit" });\n';
@@ -42,6 +42,20 @@ const basePrePushGate =
 const basePrePushHookScript = 'exec bun ./scripts/pre-push-gate.mjs "$@"\n';
 
 describe("check-local-pr-gate policy", () => {
+	test("rejects a fixed item-player shard that silently omits coverage", () => {
+		const failures = collectGateFailures({
+			packageJson: basePackageJson,
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow.replace(
+				"test:e2e:item-player:critical --shard=${{ matrix.shard }}/${{ strategy.job-total }}",
+				"test:e2e:item-player:critical --shard=1/2",
+			),
+			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
+		});
+		expect(failures).toContain("CI must run the complete critical item-player suite across every shard in its matrix.");
+	});
+
 	test("requires pre-push to run the full local PR gate", () => {
 		const failures = collectGateFailures({
 			packageJson: basePackageJson,
@@ -211,8 +225,8 @@ describe("check-local-pr-gate policy", () => {
 			packageJson: basePackageJson,
 			lefthook: baseLefthook,
 			ciWorkflow: baseCiWorkflow.replace(
-				"--shard=${{ matrix.shard }}/${{ strategy.job-total }}",
-				"--shard=1/4",
+				"test:e2e:section-player --shard=${{ matrix.shard }}/${{ strategy.job-total }}",
+				"test:e2e:section-player --shard=1/4",
 			),
 			prePushGate: basePrePushGate,
 			prePushHookScript: basePrePushHookScript,

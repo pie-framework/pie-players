@@ -33,6 +33,7 @@ jobs:
       skip_docs: ${{ steps.scope.outputs.skip_docs }}
       skip_audit: ${{ steps.scope.outputs.skip_audit }}
       skip_cortex: ${{ steps.scope.outputs.skip_cortex }}
+      playwright_image: ${{ steps.scope.outputs.playwright_image }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -141,12 +142,19 @@ jobs:
     name: Critical E2E (${{ matrix.name }})
     # The heavy-CI skip guards the steps, not the job. A skipped *job* publishes one
     # check run under the uninterpolated name `Critical E2E (${{ matrix.name }})`, so
-    # the five per-suite names develop's branch protection requires would never report
+    # the per-suite names develop's branch protection requires would never report
     # and the pull request would wait on them forever. Guarding the steps keeps the
     # matrix expanded, so every required name reports on every run.
     needs: change-scope
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
+    # Empty for lightweight skip runs; otherwise pinned to bun.lock by Change Scope.
+    container:
+      image: ${{ needs.change-scope.outputs.playwright_image }}
+      options: --init --ipc=host
+    defaults:
+      run:
+        shell: bash
     env:
       RUN_HEAVY: ${{ needs.change-scope.outputs.skip_code != 'true' }}
     strategy:
@@ -155,25 +163,14 @@ jobs:
         include:
           - name: assessment-player
             command: test:e2e:assessment-player
-            browsers: chromium
-          # Firefox runs the esm strategy's specs: it rejects import maps other
-          # engines apply, and the player loads through es-module-shims there.
-          # Firefox and WebKit run the focus-order spec.
-          - name: item-player-critical
-            command: test:e2e:item-player:critical
-            browsers: chromium firefox webkit
           - name: players-shared-sanitizer
             command: test:e2e:players-shared
-            browsers: chromium
           - name: print-player-sanitizer
             command: test:e2e:print-player
-            browsers: chromium
           - name: item-list-sanitizer
             command: test:e2e:item-list
-            browsers: chromium
           - name: backend-demo
             command: test:e2e:backend-demo
-            browsers: chromium
     steps:
       - name: Checkout
         if: env.RUN_HEAVY == 'true'
@@ -202,10 +199,6 @@ jobs:
           path: .turbo/cache
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
-
-      - name: Install Playwright Browsers
-        if: env.RUN_HEAVY == 'true'
-        run: bunx playwright install --with-deps ${{ matrix.browsers }}
 
       - name: Run Critical E2E
         if: env.RUN_HEAVY == 'true'
@@ -225,22 +218,26 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-  # The whole section-player suite, not a subset. The four critical specs were the
-  # only ones CI ran, and three stale specs and two real product defects sat
-  # undetected for months behind that gap. Sharded because on one worker it was
-  # the slowest leg by a factor of five; Playwright splits the spec files by test
-  # count, and `strategy.job-total` keeps the divisor in step with the matrix.
-  section-player-e2e:
-    name: Section Player E2E (${{ matrix.shard }}/${{ strategy.job-total }})
+  # Preserve the required item-player check while distributing its complete
+  # critical suite, including Firefox import-map and Firefox/WebKit focus tests.
+  item-player-e2e:
+    name: Item Player E2E (${{ matrix.shard }}/${{ strategy.job-total }})
     needs: change-scope
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
+    # Empty for lightweight skip runs; otherwise pinned to bun.lock by Change Scope.
+    container:
+      image: ${{ needs.change-scope.outputs.playwright_image }}
+      options: --init --ipc=host
+    defaults:
+      run:
+        shell: bash
     env:
       RUN_HEAVY: ${{ needs.change-scope.outputs.skip_code != 'true' }}
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2]
     steps:
       - name: Checkout
         if: env.RUN_HEAVY == 'true'
@@ -270,10 +267,79 @@ jobs:
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
 
-      # Firefox runs the esm strategy's specs; Firefox and WebKit the focus-order one.
-      - name: Install Playwright Browsers
+      - name: Run Item Player E2E
         if: env.RUN_HEAVY == 'true'
-        run: bunx playwright install --with-deps chromium firefox webkit
+        run: bun run test:e2e:item-player:critical --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+
+      - name: Upload E2E Failure Artifacts
+        if: failure() && env.RUN_HEAVY == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-failure-item-player-${{ matrix.shard }}
+          path: packages/item-player/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
+  item-player-e2e-result:
+    name: Critical E2E (item-player-critical)
+    needs: item-player-e2e
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Shard Results
+        run: test "${{ needs.item-player-e2e.result }}" = success
+
+  # The whole section-player suite, not a subset. The four critical specs were the
+  # only ones CI ran, and three stale specs and two real product defects sat
+  # undetected for months behind that gap. Sharded because on one worker it was
+  # the slowest leg by a factor of five; Playwright splits the spec files by test
+  # count, and `strategy.job-total` keeps the divisor in step with the matrix.
+  section-player-e2e:
+    name: Section Player E2E (${{ matrix.shard }}/${{ strategy.job-total }})
+    needs: change-scope
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    # Empty for lightweight skip runs; otherwise pinned to bun.lock by Change Scope.
+    container:
+      image: ${{ needs.change-scope.outputs.playwright_image }}
+      options: --init --ipc=host
+    defaults:
+      run:
+        shell: bash
+    env:
+      RUN_HEAVY: ${{ needs.change-scope.outputs.skip_code != 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - name: Checkout
+        if: env.RUN_HEAVY == 'true'
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        if: env.RUN_HEAVY == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      - name: Setup Bun
+        if: env.RUN_HEAVY == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install Dependencies
+        if: env.RUN_HEAVY == 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Restore Turbo Cache
+        if: env.RUN_HEAVY == 'true'
+        uses: actions/cache/restore@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
 
       - name: Run Section Player E2E
         if: env.RUN_HEAVY == 'true'
@@ -293,7 +359,7 @@ jobs:
   section-player-e2e-result:
     name: Critical E2E (section-player)
     needs: section-player-e2e
-    if: ${{ !cancelled() }}
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - name: Check Shard Results
@@ -308,6 +374,13 @@ jobs:
     needs: change-scope
     if: ${{ !cancelled() && needs.change-scope.outputs.skip_cortex != 'true' }}
     runs-on: ubuntu-latest
+    # Empty for lightweight skip runs; otherwise pinned to bun.lock by Change Scope.
+    container:
+      image: ${{ needs.change-scope.outputs.playwright_image }}
+      options: --init --ipc=host
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -331,9 +404,6 @@ jobs:
           path: .turbo/cache
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
-
-      - name: Install Playwright Chromium
-        run: bunx playwright install --with-deps chromium
 
       - name: Build Cortex Dependencies
         run: bunx turbo build --filter='@pie-players/pie-calculator-cortex^...'

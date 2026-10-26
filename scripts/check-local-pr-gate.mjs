@@ -105,6 +105,9 @@ const requiredCiE2eCommands = [
 const requiredCiSectionPlayerCommand =
 	/run:\s*bun run test:e2e:section-player --shard=\$\{\{ matrix\.shard \}\}\/\$\{\{ strategy\.job-total \}\}\s*$/m;
 
+const requiredCiItemPlayerCommand =
+	/run:\s*bun run test:e2e:item-player:critical --shard=\$\{\{ matrix\.shard \}\}\/\$\{\{ strategy\.job-total \}\}\s*$/m;
+
 function collectMissingOrderedCommands({
 	scripts,
 	scriptName,
@@ -243,6 +246,12 @@ export function collectGateFailures({
 	if (!requiredCiSectionPlayerCommand.test(ciWorkflow)) {
 		failures.push(
 			'CI must run the full section-player suite across its shards ("bun run test:e2e:section-player --shard=${{ matrix.shard }}/${{ strategy.job-total }}"), not a subset.',
+		);
+	}
+
+	if (!requiredCiItemPlayerCommand.test(ciWorkflow)) {
+		failures.push(
+			"CI must run the complete critical item-player suite across every shard in its matrix.",
 		);
 	}
 

@@ -121,8 +121,9 @@ the passage, and its items do not inherit it. The
 [curriculum standards PRD](../prds/curriculum-standards-alignment.md) has the
 decisions and the QTI 3 mapping.
 
-A `CurriculumStandard` is keyed by `providerId` + `guid`. `guid` is stored as
-issued and compared case-insensitively. `label` is a display code and never a
+A `CurriculumStandard` is keyed by `providerId` + `guid`. An absent
+`providerId` means `AB`, as CSM 1.1 leaves the attribute optional. `guid` is
+stored as issued and compared case-insensitively. `label` is a display code and never a
 key, because codes repeat across frameworks. `primary` marks the record's main
 standard, at most one per `providerId`; `provenance` is `authored`, `derived`
 or `imported`.

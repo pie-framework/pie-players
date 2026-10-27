@@ -80,8 +80,8 @@ product-completing, which leaves every backend to invent its own model.
  * QTI 3 Curriculum Standards Metadata (CSM 1.1), one entry per labelledGUID.
  */
 export interface CurriculumStandard {
-	/** CSM curriculumStandardsMetadata@providerId: who issued `guid`. */
-	providerId: string;
+	/** CSM curriculumStandardsMetadata@providerId: who issued `guid`. Absent means "AB". */
+	providerId?: string;
 	/** CSM labelledGUID/GUID, as the provider issued it. */
 	guid: string;
 	/** CSM labelledGUID/caseItemURI, for a CASE framework item. */
@@ -96,7 +96,7 @@ export interface CurriculumStandard {
 	/** How the link was made. */
 	provenance?: "authored" | "derived" | "imported";
 	/** For a derived link: the link it was generated from. */
-	derivedFrom?: { providerId: string; guid: string };
+	derivedFrom?: { providerId?: string; guid: string };
 }
 
 /** A cognitive-complexity classification. LOM classification purpose "skill level". */
@@ -138,7 +138,11 @@ Decisions:
    the set's `resourceLabel`. `setOfGUIDs` `region` and `version` are omitted: an
    export derives them from the provider's catalog, and nothing in PIE reads them.
 3. **Key.** `providerId` + `guid`, CSM's own key. A CASE URI alone would leave
-   content without CASE identifiers unaligned, so `caseItemURI` is optional. Display
+   content without CASE identifiers unaligned, so `caseItemURI` is optional.
+   `providerId` is optional because CSM 1.1 makes `@providerId` optional, and absent
+   means `AB` (Academic Benchmarks). Keys, primacy and every reader that needs an
+   issuer use that effective value; writers leave the field absent where the source
+   omitted it, so a round trip preserves the omission. Display
    codes go in `label` only, because they repeat across frameworks. GUIDs are stored as
    issued and compared case-insensitively, since providers mix cases and CASE UUIDs
    are lowercase.
@@ -257,6 +261,8 @@ None. The fields have no rendering effect.
 - pie-qti: an exported package validates against the QTI 3 CP and CSM 1.1 schemas.
 - pie-qti: a package carrying CSM and LOM without `pie:` sources imports with the
   extensions absent.
+- pie-qti: a `curriculumStandardsMetadata` block without `providerId` imports with the
+  field absent and exports without the attribute.
 - players-shared: the api-report diff shows only the two additive fields and the two
   exported interfaces.
 - Fixtures, tests and examples use synthetic GUIDs. GUIDs and statements from a

@@ -68,9 +68,10 @@ export interface ServedContentIdentity {
 export interface CurriculumStandard {
 	/**
 	 * CSM `curriculumStandardsMetadata@providerId`: who issued `guid`, from the
-	 * provider-id registry on the content-model page, or a host value.
+	 * provider-id registry on the content-model page, or a host value. Absent
+	 * means `"AB"` (Academic Benchmarks).
 	 */
-	providerId: string;
+	providerId?: string;
 	/**
 	 * CSM `labelledGUID/GUID`, as the provider issued it. Stored with its case
 	 * and compared case-insensitively.
@@ -87,8 +88,11 @@ export interface CurriculumStandard {
 	primary?: boolean;
 	/** How the link was made. */
 	provenance?: "authored" | "derived" | "imported";
-	/** For a derived link: the link it was generated from. */
-	derivedFrom?: { providerId: string; guid: string };
+	/**
+	 * For a derived link: the link it was generated from. An absent
+	 * `providerId` means `"AB"`.
+	 */
+	derivedFrom?: { providerId?: string; guid: string };
 }
 
 /**

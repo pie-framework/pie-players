@@ -14,6 +14,10 @@
  * or a resolver of its own.
  */
 
+import { toLanguageTag } from "../i18n/language-tags.js";
+import { localeDirection } from "../i18n/provider.js";
+import type { TextDirection } from "../i18n/types.js";
+
 /** What a host's term service is asked for. */
 export interface TermLookupRequest {
 	/** The term, already normalised by {@link normalizeTerm}. */
@@ -363,4 +367,22 @@ export function termPanelStatusMessage<TItem>(
 	}
 	if (state.kind === "empty") return labels.emptyLabel(state.term);
 	return "";
+}
+
+/**
+ * `lang` and `dir` for a lookup's results: the language the lookup asked in.
+ *
+ * Results are in the corpus's language, which is neither the panel's interface
+ * locale nor necessarily the content the term came from: a Spanish gloss for an
+ * English passage. Stamped on the results, an Arabic definition in an English panel
+ * reads and lays out as Arabic, and the panel's language never reaches the content.
+ * With no language named the corpus's is unknown, so the stamp is `lang=""` and
+ * `dir="auto"`, the one undeclared content gets.
+ */
+export function termResultLanguage(language: string | undefined): {
+	lang: string;
+	dir: TextDirection | "auto";
+} {
+	const tag = toLanguageTag(language);
+	return tag ? { lang: tag, dir: localeDirection(tag) } : { lang: "", dir: "auto" };
 }

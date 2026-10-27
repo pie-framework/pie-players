@@ -47,6 +47,7 @@ selection opens the panel already searched.
 	import {
 		normalizeTerm,
 		termPanelStatusMessage,
+		termResultLanguage,
 		TermLookupSession,
 		type TermPanelState
 	} from '@pie-players/pie-players-shared/tools/term-lookup';
@@ -118,6 +119,10 @@ selection opens the panel already searched.
 			runtimeContext = value;
 		});
 	});
+
+	// Entries are stamped with the language they were looked up in, so neither the
+	// panel's interface locale nor the content's reaches them.
+	const entryLanguage = $derived(termResultLanguage(language));
 
 	const resolver = $derived<DictionaryLookup | null>(
 		lookup ?? (endpoint ? createEndpointLookup({ endpoint, headers, credentials }) : null)
@@ -202,6 +207,7 @@ selection opens the panel already searched.
 					type="text"
 					autocomplete="off"
 					spellcheck="false"
+					dir="auto"
 					bind:value={query}
 					disabled={panel.kind === 'unconfigured'}
 				/>
@@ -243,7 +249,11 @@ selection opens the panel already searched.
 				     has changed to tell them. -->
 				<p class="pie-tool-dictionary__error" role="alert">{panel.reason}</p>
 			{:else}
-				<ul class="pie-tool-dictionary__entries">
+				<ul
+					class="pie-tool-dictionary__entries"
+					lang={entryLanguage.lang}
+					dir={entryLanguage.dir}
+				>
 					{#each panel.items as entry (entry.word + entry.senses.length)}
 						<li class="pie-tool-dictionary__entry">
 							<p class="pie-tool-dictionary__word">
@@ -365,12 +375,13 @@ selection opens the panel already searched.
 	.pie-tool-dictionary__entries,
 	.pie-tool-dictionary__senses {
 		margin: 0;
-		padding: 0 0 0 1.1rem;
+		padding: 0;
+		padding-inline-start: 1.1rem;
 	}
 
 	.pie-tool-dictionary__entries {
 		list-style: none;
-		padding-left: 0;
+		padding-inline-start: 0;
 	}
 
 	.pie-tool-dictionary__entry + .pie-tool-dictionary__entry {
@@ -385,7 +396,7 @@ selection opens the panel already searched.
 	}
 
 	.pie-tool-dictionary__pronunciation {
-		margin-left: 0.4rem;
+		margin-inline-start: 0.4rem;
 		font-weight: 400;
 		opacity: 0.75;
 	}
@@ -395,7 +406,7 @@ selection opens the panel already searched.
 	}
 
 	.pie-tool-dictionary__pos {
-		margin-right: 0.3rem;
+		margin-inline-end: 0.3rem;
 		font-style: italic;
 		opacity: 0.8;
 	}

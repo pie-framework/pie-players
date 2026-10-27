@@ -753,6 +753,7 @@
   type ConfigResource
   type ContentSubstitution
   type ContextDeclaration
+  type CurriculumStandard
   type DeleteDone
   type DeleteImageDetail
   DeleteImageEvent
@@ -797,6 +798,7 @@
   type SemVerPrerelease
   type ServedContentIdentity
   type SignLanguageCardPayload
+  type SkillLevel
   type SoundHandler
   type SpokenAudioCardPayload
   type TestPart

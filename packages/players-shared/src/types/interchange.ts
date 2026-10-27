@@ -1,7 +1,9 @@
 /**
- * Language-variant interchange types (PIE-1393). Backends and authoring tools
- * exchange them; no player reads `AdaptationLink` or `LanguagePolicy`.
+ * Interchange types: backends and authoring tools exchange them, and no player
+ * reads them. Their tier is listed on the content-model page.
  *
+ * Language variants (PIE-1393): no player reads `AdaptationLink` or
+ * `LanguagePolicy`.
  * A language variant is its own item or passage version that declares
  * `language` and, when it is a translation, `isAdaptationOf`. Its family is
  * `isAdaptationOf.baseId ?? baseId`.
@@ -55,4 +57,59 @@ export interface ServedContentIdentity {
 	/** BCP 47 tag of the served content. */
 	servedLanguage?: string;
 	substitution?: ContentSubstitution;
+}
+
+/**
+ * One curriculum standard, skill or competency the content is aligned to
+ * (PIE-1381). QTI 3 Curriculum Standards Metadata (CSM 1.1), one entry per
+ * `labelledGUID`. Content records direct links only; a framework provider
+ * resolves parents, crosswalks and successors on read.
+ */
+export interface CurriculumStandard {
+	/**
+	 * CSM `curriculumStandardsMetadata@providerId`: who issued `guid`, from the
+	 * provider-id registry on the content-model page, or a host value. Absent
+	 * means `"AB"` (Academic Benchmarks).
+	 */
+	providerId?: string;
+	/**
+	 * CSM `labelledGUID/GUID`, as the provider issued it. Stored with its case
+	 * and compared case-insensitively.
+	 */
+	guid: string;
+	/** CSM `labelledGUID/caseItemURI`, for a CASE framework item. */
+	caseItemURI?: string;
+	/** CSM `labelledGUID/label`: a display code. Never a key. */
+	label?: string;
+	/** LOM classification purpose. Absent means `"educational objective"`. */
+	purpose?: "educational objective" | "prerequisite" | (string & {});
+	// PIE extensions; QTI 3 has no equivalent.
+	/** The record's main standard for this provider. At most one per `providerId`. */
+	primary?: boolean;
+	/** How the link was made. */
+	provenance?: "authored" | "derived" | "imported";
+	/**
+	 * For a derived link: the link it was generated from. An absent
+	 * `providerId` means `"AB"`.
+	 */
+	derivedFrom?: { providerId?: string; guid: string };
+}
+
+/**
+ * A cognitive-complexity classification of the content (PIE-1381). LOM
+ * classification purpose "skill level".
+ */
+export interface SkillLevel {
+	/**
+	 * LOM `taxonPath/source`: `"webb-dok"`, `"blooms-revised"`,
+	 * `"blooms-original"`, or a host taxonomy.
+	 */
+	source: string;
+	/**
+	 * LOM `taxon/id`: `"1"` to `"4"` for `webb-dok`; `"remember"` to `"create"`
+	 * for `blooms-revised`.
+	 */
+	id: string;
+	/** PIE extension: the author's justification. */
+	rationale?: string;
 }

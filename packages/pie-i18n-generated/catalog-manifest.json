@@ -21,99 +21,99 @@
 	"source": {
 		"file": "../../players-shared/src/i18n/messages/en-US.ts",
 		"hashAlgorithm": "sha256",
-		"hash": "36515ae56c794bfb75e0cc8dbb2fdbc5881384c680a346078a49dc270026c1c1"
+		"hash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 	},
 	"locales": {
 		"th-TH": {
 			"status": "generated",
 			"brief": "briefs/th-TH.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the two passage-width keys by Claude Opus 5.5; the two question-position keys by Claude (claude-fable-5-1); the summary keys by Claude Opus 5.5; hash refreshed on landing the wave onto develop (catalog already complete); corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24",
-			"sourceHash": "36515ae56c794bfb75e0cc8dbb2fdbc5881384c680a346078a49dc270026c1c1"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the two passage-width keys by Claude Opus 5.5; the two question-position keys by Claude (claude-fable-5-1); the summary keys by Claude Opus 5.5; hash refreshed on landing the wave onto develop (catalog already complete); corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"en-GB": {
 			"status": "generated",
 			"brief": "briefs/en-GB.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24",
-			"sourceHash": "36515ae56c794bfb75e0cc8dbb2fdbc5881384c680a346078a49dc270026c1c1"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"en-AU": {
 			"status": "generated",
 			"brief": "briefs/en-AU.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24",
-			"sourceHash": "36515ae56c794bfb75e0cc8dbb2fdbc5881384c680a346078a49dc270026c1c1"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"es": {
 			"status": "generated",
 			"brief": "briefs/es.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24",
-			"sourceHash": "36515ae56c794bfb75e0cc8dbb2fdbc5881384c680a346078a49dc270026c1c1"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"fr": {
 			"status": "generated",
 			"brief": "briefs/fr.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24",
-			"sourceHash": "36515ae56c794bfb75e0cc8dbb2fdbc5881384c680a346078a49dc270026c1c1"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"ar": {
 			"status": "generated",
 			"brief": "briefs/ar.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24",
-			"sourceHash": "36515ae56c794bfb75e0cc8dbb2fdbc5881384c680a346078a49dc270026c1c1"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"pt": {
 			"status": "generated",
 			"brief": "briefs/pt.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24",
-			"sourceHash": "36515ae56c794bfb75e0cc8dbb2fdbc5881384c680a346078a49dc270026c1c1"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"ko": {
 			"status": "generated",
 			"brief": "briefs/ko.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24",
-			"sourceHash": "36515ae56c794bfb75e0cc8dbb2fdbc5881384c680a346078a49dc270026c1c1"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"ja": {
 			"status": "generated",
 			"brief": "briefs/ja.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24",
-			"sourceHash": "36515ae56c794bfb75e0cc8dbb2fdbc5881384c680a346078a49dc270026c1c1"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"zh": {
 			"status": "generated",
 			"brief": "briefs/zh.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24",
-			"sourceHash": "36515ae56c794bfb75e0cc8dbb2fdbc5881384c680a346078a49dc270026c1c1"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"cy": {
 			"status": "generated",
 			"brief": "briefs/cy.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24",
-			"sourceHash": "36515ae56c794bfb75e0cc8dbb2fdbc5881384c680a346078a49dc270026c1c1"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"sv": {
 			"status": "generated",
 			"brief": "briefs/sv.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24",
-			"sourceHash": "36515ae56c794bfb75e0cc8dbb2fdbc5881384c680a346078a49dc270026c1c1"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"ro": {
 			"status": "generated",
 			"brief": "briefs/ro.md",
 			"generatedAt": "2026-10-19",
-			"model": "Claude (claude-fable-5-1), agent-driven generation in the pie-players repo; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24",
-			"sourceHash": "36515ae56c794bfb75e0cc8dbb2fdbc5881384c680a346078a49dc270026c1c1"
+			"model": "Claude (claude-fable-5-1), agent-driven generation in the pie-players repo; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		}
 	}
 }

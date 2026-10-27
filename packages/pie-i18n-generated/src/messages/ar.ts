@@ -251,6 +251,11 @@ const ar = {
 				lanthanide: "لانثانيد",
 				actinide: "أكتينيد",
 			},
+			phaseValue: {
+				solid: "صلب",
+				liquid: "سائل",
+				gas: "غاز",
+			},
 		},
 		ruler: {
 			name: "المسطرة",

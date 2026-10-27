@@ -251,6 +251,11 @@ const sv = {
 				lanthanide: "Lantanid",
 				actinide: "Aktinid",
 			},
+			phaseValue: {
+				solid: "Fast",
+				liquid: "Flytande",
+				gas: "Gas",
+			},
 		},
 		ruler: {
 			name: "Linjal",

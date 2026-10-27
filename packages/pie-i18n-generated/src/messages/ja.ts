@@ -244,6 +244,11 @@ const ja = {
 				lanthanide: "ランタノイド",
 				actinide: "アクチノイド",
 			},
+			phaseValue: {
+				solid: "固体",
+				liquid: "液体",
+				gas: "気体",
+			},
 		},
 		ruler: {
 			name: "定規",

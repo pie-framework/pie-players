@@ -255,6 +255,11 @@ const pt = {
 				lanthanide: "Lantanídeo",
 				actinide: "Actinídeo",
 			},
+			phaseValue: {
+				solid: "Sólido",
+				liquid: "Líquido",
+				gas: "Gasoso",
+			},
 		},
 		ruler: {
 			name: "Régua",

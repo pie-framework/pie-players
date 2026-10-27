@@ -324,6 +324,12 @@ const enUS = {
 				lanthanide: "Lanthanide",
 				actinide: "Actinide",
 			},
+			/** Standard-state phase, keyed by the data file's lowercased `phase` value. */
+			phaseValue: {
+				solid: "Solid",
+				liquid: "Liquid",
+				gas: "Gas",
+			},
 		},
 		ruler: {
 			name: "Ruler",

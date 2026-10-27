@@ -253,6 +253,11 @@ const cy = {
 				lanthanide: "Lanthanid",
 				actinide: "Actinid",
 			},
+			phaseValue: {
+				solid: "Solid",
+				liquid: "Hylif",
+				gas: "Nwy",
+			},
 		},
 		ruler: {
 			name: "Rholer",

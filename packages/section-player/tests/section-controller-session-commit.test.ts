@@ -176,6 +176,53 @@ describe("SectionController delivered content identity", () => {
 		expect("content" in (entry(sessions, 2) ?? {})).toBe(false);
 	});
 
+	test("a backend's served identity wins over the declared one until a load reports none", async () => {
+		const controller = await withSpanishItem();
+		const served = {
+			baseId: "base-1-es",
+			version: { major: 1, minor: 0, patch: 0 },
+			family: "base-0",
+			servedLanguage: "es",
+			substitution: "stale" as const,
+		};
+		controller.recordServedContentIdentity({ itemId: "item-1", identity: served });
+		controller.recordServedContentIdentity({
+			itemId: "item-2",
+			identity: { baseId: "base-2", servedLanguage: "en", substitution: "fallback" },
+		});
+		controller.updateItemSession("item-1", {
+			session: { id: "item-1", data: [{ id: "el-1", value: ["A"] }] },
+		});
+		controller.updateItemSession("item-2", {
+			session: { id: "item-2", data: [{ id: "el-1", value: ["B"] }] },
+		});
+
+		let sessions = controller.getSession()?.itemSessions as Record<
+			string,
+			{ content?: unknown }
+		>;
+		expect(entry(sessions, 1)?.content).toEqual(served);
+		expect(entry(sessions, 2)?.content).toEqual({
+			baseId: "base-2",
+			servedLanguage: "en",
+			substitution: "fallback",
+		});
+
+		controller.recordServedContentIdentity({ itemId: "item-1" });
+		controller.updateItemSession("item-1", {
+			session: { id: "item-1", data: [{ id: "el-1", value: ["C"] }] },
+		});
+		sessions = controller.getSession()?.itemSessions as Record<
+			string,
+			{ content?: unknown }
+		>;
+		expect(entry(sessions, 1)?.content).toEqual({
+			baseId: "base-1",
+			version: { major: 2, minor: 0, patch: 0 },
+			servedLanguage: "es",
+		});
+	});
+
 	test("a restored session keeps the recorded identity", async () => {
 		const controller = await withSpanishItem();
 		controller.updateItemSession("item-1", {

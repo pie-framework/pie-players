@@ -5,10 +5,12 @@ import {
 } from "@pie-players/pie-players-shared";
 import type { ShellContextKind } from "../context/assessment-toolkit-context.js";
 import {
+	type InternalContentIdentityDetail,
 	type InternalContentLoadedDetail,
 	type InternalItemPlayerErrorDetail,
 	type InternalItemSessionChangedDetail,
 	type ItemSessionChangedDetail,
+	PIE_INTERNAL_CONTENT_IDENTITY_EVENT,
 	PIE_INTERNAL_CONTENT_LOADED_EVENT,
 	PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
 	PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
@@ -20,7 +22,9 @@ import { dispatchCrossBoundaryEvent } from "./tool-host-contract.js";
  * `section`: the shell is its content's only channel to the section. The
  * player's `session-changed`, `load-complete` and `player-error` stop at the
  * shell and travel on as the runtime's internal events, with an item's
- * response changes also announced as `item-session-changed`.
+ * response changes also announced as `item-session-changed`. The identity in
+ * an item's delivery `backend-load-complete` travels on too, for the section
+ * to record on the item's session; the event itself goes on to the host.
  *
  * `plain`: the host owns the player and listens to it, so the player's events
  * pass through untouched. The runtime still hears that the content loaded or
@@ -149,6 +153,21 @@ export function createShellEventBridge(
 		};
 		send(PIE_INTERNAL_CONTENT_LOADED_EVENT, detail);
 	};
+	const onBackendLoadComplete = (event: Event) => {
+		if (mode() !== "section" || kind !== "item") return;
+		const loaded = (event as CustomEvent).detail as
+			| { scope?: unknown; identity?: InternalContentIdentityDetail["identity"] }
+			| undefined;
+		if (loaded?.scope !== "delivery") return;
+		const { itemId, canonicalItemId } = identity();
+		if (!itemId) return;
+		const detail: InternalContentIdentityDetail = {
+			itemId,
+			canonicalItemId: canonicalItemId || itemId,
+			...(loaded.identity ? { identity: loaded.identity } : {}),
+		};
+		send(PIE_INTERNAL_CONTENT_IDENTITY_EVENT, detail);
+	};
 	const onPlayerError = (event: Event) => {
 		if (mode() === "section") event.stopPropagation();
 		const { itemId, canonicalItemId, contentKind } = identity();
@@ -164,6 +183,7 @@ export function createShellEventBridge(
 
 	host.addEventListener("session-changed", onSessionChanged);
 	host.addEventListener("load-complete", onLoadComplete);
+	host.addEventListener("backend-load-complete", onBackendLoadComplete);
 	host.addEventListener("player-error", onPlayerError);
 
 	return {
@@ -177,6 +197,7 @@ export function createShellEventBridge(
 			} finally {
 				host.removeEventListener("session-changed", onSessionChanged);
 				host.removeEventListener("load-complete", onLoadComplete);
+				host.removeEventListener("backend-load-complete", onBackendLoadComplete);
 				host.removeEventListener("player-error", onPlayerError);
 			}
 		},

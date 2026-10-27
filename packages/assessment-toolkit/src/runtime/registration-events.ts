@@ -1,5 +1,8 @@
 import type { SessionCommitReason } from "@pie-players/pie-players-shared/pie";
-import type { ItemSettings } from "@pie-players/pie-players-shared/types";
+import type {
+	ItemSettings,
+	ServedContentIdentity,
+} from "@pie-players/pie-players-shared/types";
 import type { MediaTimeSource } from "@pie-players/pie-players-shared/timed-media";
 
 export const PIE_REGISTER_EVENT = "pie-register";
@@ -8,6 +11,7 @@ export const PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT =
 	"pie-item-session-changed";
 export const PIE_ITEM_SESSION_CHANGED_EVENT = "item-session-changed";
 export const PIE_INTERNAL_CONTENT_LOADED_EVENT = "pie-content-loaded";
+export const PIE_INTERNAL_CONTENT_IDENTITY_EVENT = "pie-content-identity";
 export const PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT = "pie-item-player-error";
 export const PIE_INTERNAL_FORMATIVE_ACTION_EVENT = "pie-formative-action";
 export const PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT = "pie-media-time-source";
@@ -52,6 +56,17 @@ export interface InternalContentLoadedDetail {
 	canonicalItemId?: string;
 	contentKind?: string;
 	detail?: unknown;
+}
+
+/**
+ * The content a backend served an item as, from the item player's
+ * `backend-load-complete`. `identity` is absent when a load reported none, which
+ * clears what an earlier load reported.
+ */
+export interface InternalContentIdentityDetail {
+	itemId: string;
+	canonicalItemId?: string;
+	identity?: ServedContentIdentity;
 }
 
 export interface InternalItemPlayerErrorDetail {

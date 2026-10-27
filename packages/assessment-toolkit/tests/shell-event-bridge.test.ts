@@ -1,6 +1,7 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import {
+	PIE_INTERNAL_CONTENT_IDENTITY_EVENT,
 	PIE_INTERNAL_CONTENT_LOADED_EVENT,
 	PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
 	PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
@@ -36,6 +37,7 @@ const setup = (options: {
 	for (const type of [
 		"session-changed",
 		"load-complete",
+		"backend-load-complete",
 		"player-error",
 		PIE_ITEM_SESSION_CHANGED_EVENT,
 	]) {
@@ -145,6 +147,43 @@ describe("shell event bridge", () => {
 		expect(shell.reachedOuter).toEqual([]);
 		expect(shell.sent).toEqual([]);
 		shell.dispose();
+	});
+
+	test("in a section an item's delivery identity is sent, and the event goes on to the host", () => {
+		const shell = setup({ mode: "section" });
+		const identity = { baseId: "base-1", servedLanguage: "es", family: "base-0" };
+		shell.fire("backend-load-complete", { scope: "delivery", identity });
+		shell.fire("backend-load-complete", { scope: "delivery" });
+		shell.fire("backend-load-complete", { scope: "authoring", identity });
+
+		expect(shell.reachedOuter).toEqual([
+			"backend-load-complete",
+			"backend-load-complete",
+			"backend-load-complete",
+		]);
+		expect(shell.sent).toEqual([
+			{
+				type: PIE_INTERNAL_CONTENT_IDENTITY_EVENT,
+				detail: { itemId: "item-1", canonicalItemId: "item-1", identity },
+			},
+			{
+				type: PIE_INTERNAL_CONTENT_IDENTITY_EVENT,
+				detail: { itemId: "item-1", canonicalItemId: "item-1" },
+			},
+		]);
+		shell.dispose();
+	});
+
+	test("no identity is sent without a section or for a passage", () => {
+		const identity = { baseId: "base-1", servedLanguage: "es" };
+		for (const shell of [
+			setup({ mode: "plain" }),
+			setup({ mode: "section", kind: "passage" }),
+		]) {
+			shell.fire("backend-load-complete", { scope: "delivery", identity });
+			expect(shell.sent).toEqual([]);
+			shell.dispose();
+		}
 	});
 
 	test("after disconnect the shell no longer translates", () => {

@@ -728,6 +728,14 @@ the three entity types without extending or narrowing them, and its `language`
 hits are element model fields, so nothing collides. Assessed against the changed
 surfaces, so it does not advance the verification date.
 
+On 2026-10-26 the section player began recording that `identity` as the item
+session's `content`, carried from `<pie-item-scope>` to the toolkit on a new
+internal runtime event. The public `backend-load-complete` still bubbles to the
+host unstopped, and `toolkit-ready` fires when it did. No recorded host names
+the internal event, which is new, and the 2026-10-24 grep above covers
+`backend-load-complete` and `TestAttemptItemSession`. Assessed against the
+changed surfaces, so it does not advance the verification date.
+
 On 2026-10-18 `@pie-players/pie-context` gained `interfaceLocaleContext`
 (`Symbol.for("pie.interfaceLocale")`, value `{ locale, direction }`), which
 `pie-assessment-toolkit` and `pie-item-player` now answer for the PIE elements

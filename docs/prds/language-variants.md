@@ -5,9 +5,9 @@ Status: Ready, 2026-10-25
 Implementation status: pie-players landed the fields, the interchange types,
 `negotiateContentLanguage` with its conformance fixtures, the item player's
 `requestedLanguages` and `identity`, per-item `env.locale` in the section player
-and the `itemTranslation` tool parameter (#867, #870). Outstanding in
-pie-players: the section player reading the item player's served identity, and
-`keyword-translation` card languages. pie-api-aws landed a read-adapter seam with
+and the `itemTranslation` tool parameter (#867, #870), and the section
+player's recording of the served identity on item sessions. Outstanding in
+pie-players: `keyword-translation` card languages. pie-api-aws landed a read-adapter seam with
 no language derivations; derived fields, variant resolution, the player endpoint
 fields and session recording are outstanding.
 No authoring tool emits `language` or `isAdaptationOf` yet.
@@ -106,9 +106,10 @@ parameter. Absent or empty, the request is today's request.
 **Players.** The item player renders, saves and scores under
 `identity.servedLanguage` when present, else under the entity's `language`, else
 under the host's `env.locale`. The section player narrows `env.locale` per item
-and per passage from the entity's `language` and records
-`content: { baseId, version, servedLanguage }` on the item session. Once it reads
-the item player's served identity, it records `family` and `substitution` too.
+and per passage from the entity's `language`, and records the item player's
+served identity as the item session's `content`. An item no backend served
+records `content: { baseId, version, servedLanguage }` from its declared
+`language`.
 
 ## Compatibility
 

@@ -39,7 +39,7 @@ A host adopts the layer it needs:
 - **Section player** when the host needs a complete section screen: passages, items, section navigation, section tools, item and passage toolbars, and section session state.
 - **A custom assessment player** for multi-section delivery: section players, one toolkit coordinator per assessment attempt, and the toolkit's assessment-session helpers, with routing, persistence and submission against the host's backend. The reference assessment player and its demos show that assembly working.
 
-Players own runtime mechanics. Hosts own durable data and product policy: authentication, timing, save cadence, navigation rules, submission confirmation, routing and backend integration. Standards alignment, policy authoring, gradebooks and reporting, item banks and media hosting, durable persistence, authorization and proctoring, psychometrics, adaptive selection engines and review workflows stay out of PIE; [framework-completing work](./architecture/framework-completing-work.md#classification) sets out where that line falls.
+Players own runtime mechanics. Hosts own durable data and product policy: authentication, timing, save cadence, navigation rules, submission confirmation, routing and backend integration. Resolving standards alignments and mastery by standard, policy authoring, gradebooks and reporting, item banks and media hosting, durable persistence, authorization and proctoring, psychometrics, adaptive selection engines and review workflows stay out of PIE; [framework-completing work](./architecture/framework-completing-work.md#classification) sets out where that line falls.
 
 ## Loading strategies
 

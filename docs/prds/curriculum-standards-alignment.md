@@ -1,11 +1,11 @@
 # Curriculum Standards And Skill Levels
 
-Status: Draft, 2026-10-24
+Status: Ready, 2026-10-27
 
-Implementation status: nothing has landed. pie-players owes the two interchange
-types in the players-shared interchange module, their rows and the provider-id
-registry on the [content-model page](../architecture/content-model.md), and the
-narrowing of the scope line in
+Implementation status: pie-players landed the two interchange types in the
+players-shared interchange module, their rows and the provider-id registry on the
+[content-model page](../architecture/content-model.md#curriculum-standards), and
+the narrowing of the scope line in
 [framework-completing work](../architecture/framework-completing-work.md). pie-qti
 owes the QTI round trip.
 
@@ -180,8 +180,8 @@ The registry is open to host values; PIE validates none.
 - [x] Additive optional fields on `ItemEntity` and `PassageEntity`; every current
       record stays valid.
 - [x] No player, element or toolkit behaviour change.
-- [ ] api-report update for players-shared.
-- [ ] Framework-completing work scope line narrowed to alignment-based resolution,
+- [x] api-report update for players-shared.
+- [x] Framework-completing work scope line narrowed to alignment-based resolution,
       roll-ups, mastery and reporting.
 
 ## Data Ownership And Host Responsibilities

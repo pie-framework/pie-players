@@ -1,8 +1,9 @@
 # Content Model
 
 The fields of `ItemEntity`, `PassageEntity` and `AssessmentEntity` in
-`@pie-players/pie-players-shared/types`, each with its contract tier, and the
-language-variant model those fields carry.
+`@pie-players/pie-players-shared/types`, each with its contract tier, the
+language-variant model those fields carry, and the identifier registries of the
+curriculum-standards fields.
 
 The tiers are the ones the [content extensions PRD](../prds/content-extensions.md#contract-shape)
 defines:
@@ -28,6 +29,8 @@ Fields no player reads and no interchange contract defines are listed as
 | `name` | both | runtime | The section player's fallback when a passage has no `id` |
 | `baseId`, `version` | both | interchange | The stored version. The section player records them, with `language`, as the item session's `content` |
 | `isAdaptationOf` | both | interchange | The source a translation was adapted from: `{ baseId, version? }` |
+| `curriculumStandards` | both | interchange | Standards, skills and competencies the content is aligned to, one `CurriculumStandard` per QTI CSM 1.1 `labelledGUID`; see [Curriculum standards](#curriculum-standards) |
+| `skillLevels` | both | interchange | Cognitive-complexity classifications (DOK, Bloom's), one `SkillLevel` per LOM classification "skill level" |
 | `signature` | both | untiered | A backend's content hash |
 | `retired`, `published` | both | untiered | A backend's lifecycle flags |
 | `configuration` | item | untiered | Authoring configuration |
@@ -105,3 +108,47 @@ on its own side matches the conformance fixtures in
 `identity` in the item player's delivery `backend-load-complete`, and falls back
 to the entity's declared `baseId`, `version` and `language` when no load
 reported one. `family` and `substitution` reach a session only from a backend.
+
+## Curriculum standards
+
+`curriculumStandards` and `skillLevels` record direct alignments only: the
+link someone made, or a crosswalk generated and marked with `derivedFrom`.
+Framework structure (parents, skill-to-standard links, crosswalks, successors,
+a framework node's DOK) is resolved on read by the framework provider, and
+roll-ups, mastery and reporting belong to the host. Absent means no data; `[]`
+means the writer states that none applies. A passage's alignment belongs to
+the passage, and its items do not inherit it. The
+[curriculum standards PRD](../prds/curriculum-standards-alignment.md) has the
+decisions and the QTI 3 mapping.
+
+A `CurriculumStandard` is keyed by `providerId` + `guid`. `guid` is stored as
+issued and compared case-insensitively. `label` is a display code and never a
+key, because codes repeat across frameworks. `primary` marks the record's main
+standard, at most one per `providerId`; `provenance` is `authored`, `derived`
+or `imported`.
+
+**Provider ids.** Ids come from the
+[1EdTech GUID Provider Registry](https://www.imsglobal.org/cc/guidregistry1.cfm)
+where the issuer is listed there. The registry is open: a host writes its own
+provider under its own id, and PIE validates none.
+
+| `providerId` | Issuer | `guid` |
+| --- | --- | --- |
+| `AB` | Academic Benchmarks | The AB GUID, as issued |
+| `CASE` | The CASE Network | The CFItem identifier, a lowercase UUID; `caseItemURI` holds the CFItem URI |
+| `RLI-SKILLS` | Renaissance skills (not in the 1EdTech registry) | The skill id, a lowercase hyphenated UUID |
+
+A skill framework takes its own id, distinct from any standards id its
+publisher holds, so a later standards framework from the same organization
+cannot collide with it.
+
+**Skill-level sources.** LOM has no taxonomy-source registry, so these are
+PIE's own names. A host adds its own taxonomy under its own `source`.
+
+| `source` | Taxonomy | `id` |
+| --- | --- | --- |
+| `webb-dok` | Webb's Depth of Knowledge | `"1"`, `"2"`, `"3"`, `"4"` |
+| `blooms-revised` | Bloom's taxonomy, revised (2001) | `"remember"`, `"understand"`, `"apply"`, `"analyze"`, `"evaluate"`, `"create"` |
+| `blooms-original` | Bloom's taxonomy, original (1956) | `"knowledge"`, `"comprehension"`, `"application"`, `"analysis"`, `"synthesis"`, `"evaluation"` |
+
+A combined value such as DOK 1–2 is two entries.

@@ -17,15 +17,22 @@ import type {
 	TimedMediaSectionData,
 	TimedMediaSectionSessionSlice,
 } from "../timed-media/types.js";
-import type { AdaptationLink, LanguagePolicy } from "./interchange.js";
+import type {
+	AdaptationLink,
+	CurriculumStandard,
+	LanguagePolicy,
+	SkillLevel,
+} from "./interchange.js";
 
 export type { FormativeDeliveryPolicy, FormativeItemPolicy };
 export type { TimedMediaSectionData };
 export type {
 	AdaptationLink,
 	ContentSubstitution,
+	CurriculumStandard,
 	LanguagePolicy,
 	ServedContentIdentity,
+	SkillLevel,
 } from "./interchange.js";
 
 export interface BaseEntity {
@@ -101,6 +108,13 @@ export interface PassageEntity extends VersionEntity, ConfigContainerEntity {
 	isAdaptationOf?: AdaptationLink;
 	/** QTI/APIP-style accessibility catalogs owned by this passage content. */
 	accessibilityCatalogs?: AccessibilityCatalog[];
+	/**
+	 * Standards and skills the content is aligned to. Absent means no data; `[]`
+	 * means the writer states that none applies. No player reads it.
+	 */
+	curriculumStandards?: CurriculumStandard[];
+	/** DOK and Bloom's classifications, on the same terms. No player reads it. */
+	skillLevels?: SkillLevel[];
 	retired?: boolean;
 	published?: boolean;
 }
@@ -122,6 +136,13 @@ export interface ItemEntity extends VersionEntity, ConfigContainerEntity {
 	passage?: string | PassageEntity | null;
 	/** QTI/APIP-style accessibility catalogs owned by the item root. */
 	accessibilityCatalogs?: AccessibilityCatalog[];
+	/**
+	 * Standards and skills the content is aligned to. Absent means no data; `[]`
+	 * means the writer states that none applies. No player reads it.
+	 */
+	curriculumStandards?: CurriculumStandard[];
+	/** DOK and Bloom's classifications, on the same terms. No player reads it. */
+	skillLevels?: SkillLevel[];
 	retired?: boolean;
 	published?: boolean;
 	configuration?: any;

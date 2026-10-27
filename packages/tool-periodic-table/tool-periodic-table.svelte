@@ -36,7 +36,12 @@ filter the table by de-emphasising the other elements. The host shows it with
 		resolveInterfaceI18n,
 	} from '@pie-players/pie-players-shared/i18n/provider';
 	import { categorySlug, normalizeCategory } from './categories.js';
-	import { localizedElementName } from './element-names.js';
+	import {
+		elementNamesLanguage,
+		loadElementNames,
+		localizedElementName,
+		type ElementNames,
+	} from './element-names.js';
 
 	// Shape of an entry in periodic-table-data.json
 	interface Element {
@@ -63,8 +68,20 @@ filter the table by de-emphasising the other elements. The host shows it with
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Interface locale, re-derived on every context republish.
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
+	const namesLanguage = $derived(elementNamesLanguage(interfaceI18n.getLocale()));
+	// English until the locale's names arrive, and again as soon as the locale changes.
+	let loadedNames = $state<{ language: string; names: ElementNames | undefined } | null>(null);
+	$effect(() => {
+		const language = namesLanguage;
+		void loadElementNames(language).then((names) => {
+			if (language === namesLanguage) loadedNames = { language, names };
+		});
+	});
 	const nameOf = (element: Element) =>
-		localizedElementName(element, interfaceI18n.getLocale());
+		localizedElementName(
+			element,
+			loadedNames?.language === namesLanguage ? loadedNames.names : undefined,
+		);
 	$effect(() => {
 		if (!containerEl) return;
 		return connectToolRuntimeContext(containerEl, (value) => {

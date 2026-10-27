@@ -12,6 +12,8 @@
 		"element-props.ts",
 		"index.ts",
 		"categories.ts",
+		"element-names.ts",
+		"element-names/ar.json",
 		"tool-periodic-table.svelte",
 		"periodic-table-data.json"
 	],

@@ -134,6 +134,30 @@ Before finalizing a custom-element packaging or consumer-boundary change, run
 `bun run check:custom-elements`, then `bun run check:custom-elements:dist` after a
 build.
 
+### Localized Content Loading
+
+- English is the default and the fallback, and stays statically resident. Every
+  other locale's content loads through a dynamic `import()`, one chunk per locale,
+  so a host that never sets that locale fetches none of it. This covers interface
+  catalogs, a tool's per-language data such as the periodic table's element names,
+  and speech-rule tables.
+- The loaders are an explicit static map of `import()` calls, as in
+  `packages/players-shared/src/i18n/catalogs.ts`; `pie-i18n-generated`,
+  `assessment-toolkit/src/services/tts/sre-locales.ts` and
+  `tool-periodic-table/element-names.ts` follow it. No `import.meta.glob`: `tsc`
+  emits the calls verbatim, so `dist` evaluates under every bundler, and every
+  bundler still splits each one.
+- A locale's file is named by its language tag (`ar.json`, `nl-NL.ts`).
+  `bun run check:locale-lazy-loading` fails on a static import of one. It reads
+  file names only, so content kept under another name or inline in a module is a
+  review item.
+- Language-detection patterns stay resident: the tool-visibility gates in
+  `assessment-toolkit/src/services/tool-context.ts` try every language's set,
+  because content often declares no language and there is no locale to load by.
+- After adding a locale, build the package and confirm `dist` holds it as its own
+  chunk. The design is in
+  [`docs/architecture/internationalization.md`](docs/architecture/internationalization.md#packaging).
+
 ### Decision Records
 
 `docs/adr/` holds one file per decision that is hard to reverse or surprising without

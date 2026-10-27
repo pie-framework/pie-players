@@ -729,6 +729,7 @@
   normalizeTerm
   readTermLookupPayload
   termPanelStatusMessage
+  termResultLanguage
 
 ./types
   type AccessibilityCatalog

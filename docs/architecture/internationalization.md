@@ -601,6 +601,20 @@ The item player and the section player's browser build set `external: []`, and t
 print player declares no externals, so each inlines a locale bundle imported from
 `players-shared` unless it is made external or fetched at runtime.
 
+Localized content other than English is lazy everywhere, because each language is
+paid for only by the hosts that set it. English stays statically resident as the
+fallback; every other locale is one chunk behind an explicit static map of
+`import()` loaders. The interface catalogs, the generated tier, the
+speech-rule-engine tables (`assessment-toolkit/src/services/tts/sre-locales.ts`)
+and the periodic table's element names (`tool-periodic-table/element-names.ts`)
+share that shape, and a tool's own per-language data follows it too. A tool builds
+with Vite, so its locale chunks sit beside its entry in `dist`; `players-shared`
+leaves the split to the consumer's bundler. `check:locale-lazy-loading` fails on a
+static import of a file named by a non-English language tag. Language-detection
+patterns are exempt: the tool-visibility gates in `tool-context.ts` run every
+language's set against content that often declares no language, so they have no
+locale to load by.
+
 Tool display names ride on `ToolRegistration.nameKey` and `descriptionKey`, which
 `default-tool-loaders` supplies. Core stays capability-neutral, as
 `check:capability-neutrality` enforces, and `name` and `description` stay the

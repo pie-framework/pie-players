@@ -99,6 +99,7 @@ export function workspacePackages(root = REPO_ROOT): WorkspacePackage[] {
 				})
 					.filter((entry) => entry.isDirectory())
 					.map((entry) => path.join(root, pattern.slice(0, -2), entry.name))
+					.sort()
 			: [path.join(root, pattern)];
 		for (const dir of dirs) {
 			const manifestPath = path.join(dir, "package.json");

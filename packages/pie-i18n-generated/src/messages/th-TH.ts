@@ -237,6 +237,11 @@ const thTH = {
 				lanthanide: "แลนทาไนด์",
 				actinide: "แอกทิไนด์",
 			},
+			phaseValue: {
+				solid: "ของแข็ง",
+				liquid: "ของเหลว",
+				gas: "แก๊ส",
+			},
 		},
 		ruler: {
 			name: "ไม้บรรทัด",

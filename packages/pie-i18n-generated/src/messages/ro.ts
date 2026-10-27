@@ -257,6 +257,11 @@ const ro = {
 				lanthanide: "Lantanidă",
 				actinide: "Actinidă",
 			},
+			phaseValue: {
+				solid: "Solidă",
+				liquid: "Lichidă",
+				gas: "Gazoasă",
+			},
 		},
 		ruler: {
 			name: "Riglă",

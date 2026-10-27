@@ -249,6 +249,11 @@ const nlNL = {
 				lanthanide: "Lanthanide",
 				actinide: "Actinide",
 			},
+			phaseValue: {
+				solid: "Vast",
+				liquid: "Vloeibaar",
+				gas: "Gas",
+			},
 		},
 		ruler: {
 			name: "Lineaal",

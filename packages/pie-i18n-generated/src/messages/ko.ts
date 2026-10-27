@@ -242,6 +242,11 @@ const ko = {
 				lanthanide: "란탄족",
 				actinide: "악티늄족",
 			},
+			phaseValue: {
+				solid: "고체",
+				liquid: "액체",
+				gas: "기체",
+			},
 		},
 		ruler: {
 			name: "자",

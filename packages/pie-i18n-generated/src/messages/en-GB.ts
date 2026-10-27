@@ -241,6 +241,11 @@ const enGB = {
 				lanthanide: "Lanthanide",
 				actinide: "Actinide",
 			},
+			phaseValue: {
+				solid: "Solid",
+				liquid: "Liquid",
+				gas: "Gas",
+			},
 		},
 		ruler: {
 			name: "Ruler",

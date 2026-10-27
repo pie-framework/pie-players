@@ -249,6 +249,11 @@ const es = {
 				lanthanide: "Lantánido",
 				actinide: "Actínido",
 			},
+			phaseValue: {
+				solid: "Sólido",
+				liquid: "Líquido",
+				gas: "Gaseoso",
+			},
 		},
 		ruler: {
 			name: "Regla",

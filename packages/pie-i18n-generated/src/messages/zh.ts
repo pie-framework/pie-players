@@ -238,6 +238,11 @@ const zh = {
 				lanthanide: "镧系元素",
 				actinide: "锕系元素",
 			},
+			phaseValue: {
+				solid: "固态",
+				liquid: "液态",
+				gas: "气态",
+			},
 		},
 		ruler: {
 			name: "直尺",

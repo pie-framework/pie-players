@@ -113,6 +113,12 @@ filter the table by de-emphasising the other elements. The host shows it with
 			.join(' ');
 	}
 
+	/** Phase in the interface locale; a value the catalog does not carry shows as written. */
+	function formatPhase(phase: string): string {
+		const key = dynamicMessageKey(`tools.periodicTable.phaseValue.${phase.trim().toLowerCase()}`);
+		return interfaceI18n.hasKey?.(key) ? interfaceI18n.t(key) : phase;
+	}
+
 	let uniqueCategories = $derived.by(() => {
 		const categories = new Set<string>();
 		allElements.forEach((element) => {
@@ -236,7 +242,7 @@ filter the table by de-emphasising the other elements. The host shows it with
 										</div>
 										<div class="pie-tool-periodic-table__info-block">
 											<div class="pie-tool-periodic-table__label">{interfaceI18n.t('tools.periodicTable.phase')}</div>
-											<div class="pie-tool-periodic-table__value">{selectedElement.phase}</div>
+											<div class="pie-tool-periodic-table__value">{formatPhase(selectedElement.phase)}</div>
 										</div>
 									</div>
 								</div>

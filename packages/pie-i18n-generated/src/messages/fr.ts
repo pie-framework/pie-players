@@ -260,6 +260,11 @@ const fr = {
 				lanthanide: "Lanthanide",
 				actinide: "Actinide",
 			},
+			phaseValue: {
+				solid: "Solide",
+				liquid: "Liquide",
+				gas: "Gaz",
+			},
 		},
 		ruler: {
 			name: "Règle",

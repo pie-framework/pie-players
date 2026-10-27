@@ -365,6 +365,25 @@ describe("createShellScope", () => {
 		]);
 	});
 
+	test("tells a nearer runtime that takes it over what its content was served as", () => {
+		const outer = child(newPage());
+		const inner = child(outer);
+		const host = child(inner);
+		provideRuntime(outer, "runtime-outer");
+		const served = received(host, "pie-content-identity");
+		const scope = createShellScope();
+		scopes.push(scope);
+		scope.publish({ host, ...q1 });
+		scope.send("pie-content-identity", { itemId: "q1" });
+
+		provideRuntime(inner, "runtime-inner");
+
+		expect(served).toEqual([
+			{ itemId: "q1", runtimeId: "runtime-outer" },
+			{ itemId: "q1", runtimeId: "runtime-inner" },
+		]);
+	});
+
 	test("holds what it sends until a runtime answers, then delivers it in order", () => {
 		const { runtimeNode, host, registrations, scope } = setup({
 			runtime: false,

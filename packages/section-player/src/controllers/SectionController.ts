@@ -197,6 +197,11 @@ export class SectionController implements SectionControllerHandle {
 	// Items whose completion an element has reported, which a restore must not
 	// overwrite with a derived one.
 	private readonly reportedCompletionIds = new Set<string>();
+	// What a backend reported serving each item as, by canonical id.
+	private readonly servedContentIdentities = new Map<
+		string,
+		ServedContentIdentity
+	>();
 	private sectionLoadingComplete = false;
 	private totalRegistered = 0;
 	private totalLoaded = 0;
@@ -1269,6 +1274,22 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	/**
+	 * Record what a backend served an item as, for the item's session changes
+	 * from then on. No identity clears an earlier load's.
+	 */
+	public recordServedContentIdentity(args: {
+		itemId: string;
+		identity?: ServedContentIdentity;
+	}): void {
+		const canonicalItemId = this.getCanonicalItemId(args.itemId);
+		if (isContentIdentity(args.identity)) {
+			this.servedContentIdentities.set(canonicalItemId, { ...args.identity });
+		} else {
+			this.servedContentIdentities.delete(canonicalItemId);
+		}
+	}
+
+	/**
 	 * The identity an item declares for itself. Recorded only when it declares a
 	 * language: `family` and `substitution` are a backend's to report.
 	 */
@@ -1298,7 +1319,9 @@ export class SectionController implements SectionControllerHandle {
 			sessionDetail,
 			testAttemptSession: this.state.testAttemptSession,
 			itemSessions,
-			content: this.getDeclaredContentIdentity(itemId),
+			content:
+				this.servedContentIdentities.get(this.getCanonicalItemId(itemId)) ??
+				this.getDeclaredContentIdentity(itemId),
 		});
 		this.state.testAttemptSession = result.testAttemptSession;
 		const canonicalItemId = this.getCanonicalItemId(result.eventDetail.itemId);
@@ -1591,6 +1614,7 @@ export class SectionController implements SectionControllerHandle {
 		this.itemCompletionByCanonicalId.clear();
 		this.elementCompletionByCanonicalId.clear();
 		this.reportedCompletionIds.clear();
+		this.servedContentIdentities.clear();
 		this.sectionLoadingComplete = false;
 		this.totalRegistered = 0;
 		this.totalLoaded = 0;

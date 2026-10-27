@@ -102,6 +102,6 @@ on its own side matches the conformance fixtures in
 `packages/players-shared/tests/content-language-fixtures.json`.
 
 **Sessions.** The section player records an item session's `content` from the
-entity's `language`; `family` and `substitution` reach a session only from a
-backend's `identity`. The section player does not yet read the item player's
-served identity, so in a section the recorded language is the declared one.
+`identity` in the item player's delivery `backend-load-complete`, and falls back
+to the entity's declared `baseId`, `version` and `language` when no load
+reported one. `family` and `substitution` reach a session only from a backend.

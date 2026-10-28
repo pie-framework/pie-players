@@ -6,10 +6,12 @@ Implementation status: pie-players landed the fields, the interchange types,
 `negotiateContentLanguage` with its conformance fixtures, the item player's
 `requestedLanguages` and `identity`, per-item `env.locale` in the section player
 and the `itemTranslation` tool parameter (#867, #870), and the section
-player's recording of the served identity on item sessions. Outstanding in
-pie-players: `keyword-translation` card languages. pie-api-aws landed a read-adapter seam with
-no language derivations; derived fields, variant resolution, the player endpoint
-fields and session recording are outstanding.
+player's recording of the served identity on item sessions (#902). Outstanding in
+pie-players: `keyword-translation` card languages. pie-api-aws derives `language`
+and `isAdaptationOf` from legacy metadata, resolves `requestedLanguages` under a
+`languagePolicy` on player load, model and activity load, and records the served
+identity on the session; `itemVariants` for pinned forms and Docket admission are
+outstanding.
 No authoring tool emits `language` or `isAdaptationOf` yet.
 
 Owner: PIE Players maintainers

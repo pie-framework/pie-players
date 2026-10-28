@@ -45,7 +45,7 @@ The registry and the toolkit's policy engine together:
 │  - Returns visible tools                                    │
 │                                                             │
 │  Pass 3: Vetoes inapplicable tools                          │
-│  - Calls isApplicableToContent(context) where declared      │
+│  - Calls isApplicableToContent(context, config) if declared │
 │  - Removes the tool even under a grant                      │
 └──────────────────────┬──────────────────────────────────────┘
                        │ visibleTools: [ToolRegistration, ...]
@@ -68,7 +68,7 @@ A tool can hide itself and cannot overturn policy:
 `filterDecidedToolIds(entries, level, contexts)` enforces this by filtering only the entries of the policy decision it is given. It applies the toolbar's rule, and `<pie-item-toolbar>` calls it:
 
 - **Pass 2** is skipped at section level, where relevance would depend on item content, and for a tool whose policy entry is `required` or `alwaysAvailable`, so a relevance heuristic cannot withdraw a granted accommodation.
-- **Pass 3** runs below section level once content has resolved. A registration that declares `isApplicableToContent(context)` and answers `false` for every context at its placement is removed even under a grant, because a control that provably does nothing serves no learner. The answer eliminator declares this gate, answering `false` for content with no element supporting answer masking.
+- **Pass 3** runs below section level once content has resolved. A registration that declares `isApplicableToContent(context)` and answers `false` for every context at its placement is removed even under a grant, because a control that provably does nothing serves no learner. The gate also receives the tool's `tools.providers.<toolId>` entry, through which host config can narrow what the tool acts on. The answer eliminator declares this gate, answering `false` for content with no element that supports answer masking and that its `elements` list, when set, names.
 
 A tool whose visibility a host `ToolContextResolver` decided keeps that answer, since the host may own an adapter that works with the content.
 
@@ -78,7 +78,7 @@ A toolbar container can stay mounted; its button visibility is re-evaluated on e
 
 1. Decide the toolbar's tools (Pass 1).
 2. Rebuild the current item and element `ToolContext`s.
-3. Call `filterDecidedToolIds(decision.visibleTools, level, contexts)` (Passes 2 and 3).
+3. Call `filterDecidedToolIds(decision.visibleTools, level, contexts, onFailure, (toolId) => coordinator.getToolConfig(toolId))` (Passes 2 and 3). Without the last argument, Pass 3 ignores host tool config, such as the answer eliminator's `elements` list.
 4. Render only the resulting buttons.
 
 ## Support ids

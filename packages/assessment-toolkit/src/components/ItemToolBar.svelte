@@ -44,10 +44,11 @@ The toolbar for an item, passage or section, rendering a button for each tool th
     at the toolbar boundary by design (engine doesn't import tool
     registry render context). A PNP-granted tool skips this gate: a
     heuristic must not withdraw an accommodation.
-  - Pass 3: tool-owned isApplicableToContent(context) — capability veto,
-    e.g. "an answer eliminator has no choices to strike through here".
-    Outranks a grant, because a control that provably does nothing
-    delivers no accommodation. Tools declare it only where that is
+  - Pass 3: tool-owned isApplicableToContent(context, config) — capability
+    veto, e.g. "an answer eliminator has no choices to strike through here",
+    given the tool's `tools.providers.<toolId>` entry, which can narrow what
+    the tool acts on. Outranks a grant, because a control that provably does
+    nothing delivers no accommodation. Tools declare it only where that is
     provable; a host that resolves visibility itself is exempt.
 -->
 <script lang="ts">
@@ -781,7 +782,9 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		const reportCallbackFailure: ToolCallbackFailureHandler = (toolId, phase, error) =>
 			reportToolFailure(runtimeContext?.toolkitCoordinator, toolId, phase, error);
 		const visible = new Set(
-			effectiveToolRegistry.filterDecidedToolIds(entries, effectiveLevel, contexts, reportCallbackFailure)
+			effectiveToolRegistry.filterDecidedToolIds(entries, effectiveLevel, contexts, reportCallbackFailure, (toolId) =>
+				runtimeContext?.toolkitCoordinator?.getToolConfig?.(toolId) ?? null
+			)
 		);
 		return allowedToolIds.filter((toolId) => visible.has(toolId) || hostResolved[toolId]?.visible);
 	});

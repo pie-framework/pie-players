@@ -9,7 +9,9 @@
 			buttonAlignment: { type: 'String', attribute: 'button-alignment' },
 
 			// Store key per PIE element, by model id (JS property only)
-			elementStateKeys: { type: 'Object', reflect: false }
+			elementStateKeys: { type: 'Object', reflect: false },
+			// Model ids of the elements whose choices take a toggle (JS property only)
+			elementIds: { type: 'Array', reflect: false }
 		},
 		extend: coerceBooleanAttributes,
 	}}
@@ -20,7 +22,8 @@
 Process-of-elimination tool for the item in its enclosing `<pie-item-scope>`: it
 adds a toggle beside each choice an element supplies for `answer-masking` that
 strikes the choice through or masks it, per `strategy`. It renders nothing of
-its own and is active while `visible` or `always-on` is set. Eliminations
+its own and is active while `visible` or `always-on` is set; `elementIds` limits
+the toggles to those elements' choices. Eliminations
 persist in the runtime context's element tool state store, under the key
 `elementStateKeys` gives each PIE element.
 -->
@@ -77,7 +80,8 @@ persist in the runtime context's element tool state store, under the key
 		// beside it, mirrored under right-to-left content; `left` and `right`
 		// alias `start` and `end`.
 		buttonAlignment = 'inline' as 'start' | 'end' | 'inline' | 'left' | 'right',
-		elementStateKeys = {} as ElementStateKeys // Store key per PIE element, by model id
+		elementStateKeys = {} as ElementStateKeys, // Store key per PIE element, by model id
+		elementIds = undefined as readonly string[] | undefined // Elements whose choices take a toggle; unset for all
 	}: AnswerEliminatorProps = $props();
 
 	let contextHostElement = $state<HTMLElement | null>(null);
@@ -141,6 +145,20 @@ persist in the runtime context's element tool state store, under the key
 		core?.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
 	});
 
+	// Re-scan the question when the elements whose choices take a toggle change.
+	let appliedElementIds: string | null = null;
+	$effect(() => {
+		const ids = elementIds ? [...elementIds] : null;
+		const signature = ids ? JSON.stringify(ids) : null;
+		untrack(() => {
+			if (!core) return;
+			core.setElementIds(ids);
+			if (signature === appliedElementIds) return;
+			appliedElementIds = signature;
+			initializeForCurrentQuestion();
+		});
+	});
+
 	// The toolbar owns this tool's coordinator entry and passes its visibility in
 	// `visible`. A strategy or alignment change rebuilds the core, which restores
 	// the question's eliminations from the store.
@@ -148,6 +166,7 @@ persist in the runtime context's element tool state store, under the key
 		const next = new AnswerEliminatorCore(strategy, buttonAlignment);
 		untrack(() => {
 			next.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
+			next.setElementIds(elementIds ? [...elementIds] : null);
 			next.setInterfaceI18n(interfaceI18n);
 			core = next;
 			if (isActive) {

@@ -180,6 +180,11 @@ export type {
 	TextToSpeechToolProviderConfig,
 	ToolProviderConfig,
 } from "../services/tools-config-normalizer.js";
+// What a registration's `validateConfig` reports.
+export type {
+	ToolConfigDiagnostic,
+	ToolConfigDiagnosticSeverity,
+} from "../services/tool-config-validation.js";
 
 // The contract a descriptor's `createProvider` returns, for a package writing its
 // own provider. The calculator adapters are written against it in the composition

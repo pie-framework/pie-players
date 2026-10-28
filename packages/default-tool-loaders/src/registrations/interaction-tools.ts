@@ -6,6 +6,8 @@
  */
 
 import type {
+	ToolConfigDiagnostic,
+	ToolProviderConfig,
 	ToolRegistration,
 	ToolToolbarButtonDefinition,
 	ToolToolbarRenderResult,
@@ -33,6 +35,20 @@ const normalizeEliminationStrategy = (value: unknown): EliminationStrategy =>
 const ANSWER_MASKING = "answer-masking";
 
 /**
+ * The answer eliminator's `tools.providers.answerEliminator` entry.
+ */
+export interface AnswerEliminatorToolConfig extends ToolProviderConfig {
+	/**
+	 * The elements the eliminator acts on, by the name `<name>` of their
+	 * `@pie-element/<name>` package, such as `["multiple-choice"]`. An element
+	 * must also support answer masking. Omitted, every element that supports it
+	 * takes the eliminator; empty, none does. A host lists the elements whose
+	 * support it has vetted.
+	 */
+	elements?: readonly string[];
+}
+
+/**
  * pie-item contract compatibility: legacy pie-elements, and pie-elements-ng
  * releases from before elements declared their supports, render the markup the
  * eliminator's built-in adapters read for these two. An element that declares
@@ -40,29 +56,99 @@ const ANSWER_MASKING = "answer-masking";
  */
 const UNDECLARED_ANSWER_MASKING_ELEMENTS = new Set(["multiple-choice", "ebsr"]);
 
-// Content names one element several ways: `multiple-choice`,
-// `pie-multiple-choice`, `pie-element-multiple-choice`, a runtime `--version-*`
-// tag, or any tag the item's `elements` map binds to `@pie-element/multiple-choice`.
-function isUndeclaredAnswerMaskingElement(
-	tag: string,
-	packageSpec: string | undefined,
-): boolean {
-	const name = tag
+function elementName(tag: string): string {
+	return tag
 		.toLowerCase()
 		.replace(/--version-[0-9a-z-]+$/, "")
 		.replace(/^pie-(element-)?/, "");
-	if (UNDECLARED_ANSWER_MASKING_ELEMENTS.has(name)) return true;
-	const packageName = packageSpec?.match(/^@pie-element\/([^@]+)/)?.[1];
-	return !!packageName && UNDECLARED_ANSWER_MASKING_ELEMENTS.has(packageName);
 }
 
-/** Whether an element of the context supports answer masking. */
-function supportsAnswerMasking(context: ToolContext): boolean {
-	return elementSupports(context).some(({ supports, tag, packageSpec }) =>
-		supports
-			? supports.includes(ANSWER_MASKING)
-			: isUndeclaredAnswerMaskingElement(tag, packageSpec),
+// Content names one element several ways: `multiple-choice`,
+// `pie-multiple-choice`, `pie-element-multiple-choice`, a runtime `--version-*`
+// tag, or any tag the item's `elements` map binds to `@pie-element/multiple-choice`.
+function elementNames(tag: string, packageSpec: string | undefined): string[] {
+	const names = [elementName(tag)];
+	const packageName = pieElementPackageName(packageSpec);
+	if (packageName) names.push(packageName);
+	return names;
+}
+
+function pieElementPackageName(packageSpec: string | undefined): string | null {
+	return packageSpec?.match(/^@pie-element\/([^@]+)/)?.[1]?.toLowerCase() ?? null;
+}
+
+/**
+ * The name an `elements` list matches: the `@pie-element/<name>` package the
+ * item binds the tag to, else the tag's own name. A tag bound to another
+ * package matches no name, whatever the tag says.
+ */
+function listedName(tag: string, packageSpec: string | undefined): string | null {
+	return packageSpec ? pieElementPackageName(packageSpec) : elementName(tag);
+}
+
+/**
+ * The element names `config.elements` allows, or `null` for every element. An
+ * `elements` that is not a list allows none: validation reports it, and an
+ * element a host has not vetted stays without the eliminator.
+ */
+function allowedElementNames(
+	config: ToolProviderConfig | null | undefined,
+): Set<string> | null {
+	const elements = (config as AnswerEliminatorToolConfig | null | undefined)
+		?.elements;
+	if (elements === undefined) return null;
+	if (!Array.isArray(elements)) return new Set();
+	return new Set(
+		elements
+			.filter((name): name is string => typeof name === "string")
+			.map(elementName),
 	);
+}
+
+/**
+ * The model ids of the context's elements that support answer masking and the
+ * host config allows.
+ */
+function answerMaskingElementIds(
+	context: ToolContext,
+	config: ToolProviderConfig | null | undefined,
+): string[] {
+	const allowed = allowedElementNames(config);
+	return elementSupports(context)
+		.filter(({ supports, tag, packageSpec }) => {
+			if (allowed) {
+				const name = listedName(tag, packageSpec);
+				if (name === null || !allowed.has(name)) return false;
+			}
+			return supports
+				? supports.includes(ANSWER_MASKING)
+				: elementNames(tag, packageSpec).some((name) =>
+						UNDECLARED_ANSWER_MASKING_ELEMENTS.has(name),
+					);
+		})
+		.flatMap(({ elementId }) => (elementId ? [elementId] : []));
+}
+
+function validateAnswerEliminatorConfig(
+	config: ToolProviderConfig,
+): ToolConfigDiagnostic[] {
+	const { elements } = config as AnswerEliminatorToolConfig;
+	if (elements === undefined) return [];
+	if (
+		Array.isArray(elements) &&
+		elements.every((name) => typeof name === "string" && name.trim() !== "")
+	) {
+		return [];
+	}
+	return [
+		{
+			code: "tools.invalidProviderConfig",
+			severity: "error",
+			path: "providers.answerEliminator.elements",
+			message:
+				'`elements` must be a list of element names, such as ["multiple-choice"].',
+		},
+	];
 }
 
 /** The state-store key of each PIE element in the item, by model id. */
@@ -97,24 +183,30 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 
 	supportedLevels: ["item"],
 
+	validateConfig: validateAnswerEliminatorConfig,
+
 	/**
 	 * Pass 2: relevant where an element supports answer masking. An element
 	 * declares it on its class, and the answer eliminator's README says what the
 	 * element then supplies.
 	 */
 	isVisibleInContext(context: ToolContext): boolean {
-		return supportsAnswerMasking(context);
+		return answerMaskingElementIds(context, null).length > 0;
 	},
 
 	/**
-	 * Pass 3: the same question, asked as a capability. Elimination controls are
-	 * rendered per choice, so an item none of whose elements supports answer
-	 * masking gives this tool nothing to act on. Answering the relevance gate
-	 * alone left the button on such items for any learner whose profile grants
-	 * answer masking.
+	 * Pass 3: the same question, asked as a capability and narrowed to the
+	 * elements the host config allows. Elimination controls are rendered per
+	 * choice, so an item none of whose allowed elements supports answer masking
+	 * gives this tool nothing to act on. Answering the relevance gate alone left
+	 * the button on such items for any learner whose profile grants answer
+	 * masking.
 	 */
-	isApplicableToContent(context: ToolContext): boolean {
-		return supportsAnswerMasking(context);
+	isApplicableToContent(
+		context: ToolContext,
+		config?: ToolProviderConfig,
+	): boolean {
+		return answerMaskingElementIds(context, config).length > 0;
 	},
 
 	renderToolbar(
@@ -141,6 +233,7 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 				) as HTMLElement & {
 					visible?: boolean;
 					elementStateKeys?: Record<string, string>;
+					elementIds?: readonly string[];
 				},
 		);
 		overlay.setAttribute("button-alignment", "inline");
@@ -176,6 +269,13 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 					context,
 					toolbarContext,
 				);
+				const config =
+					toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) ??
+					null;
+				overlay.elementIds =
+					allowedElementNames(config) === null
+						? undefined
+						: answerMaskingElementIds(context, config);
 			},
 			subscribeActive: visibility.subscribeActive,
 		};

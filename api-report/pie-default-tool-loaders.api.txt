@@ -11,6 +11,7 @@
   type AfaPnpRecord
   type AfaSpoken
   type AfaZoomAmount
+  type AnswerEliminatorToolConfig
   CONTENT_ALTERNATE_REGISTRATIONS
   CONTENT_LEAD_SURFACE
   type CalculatorProviderDefinition

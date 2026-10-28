@@ -59,6 +59,8 @@ type ToolsConfigInput = {
 
 Two provider entries are closed to the keys their tool reads, so a misplaced key fails to compile. `tools.providers.textToSpeech` takes its runtime settings (`backend`, `layoutMode`, `speedOptions` and the rest) at its top level, beside `enabled` and `provider`, and reads no `settings`. `tools.providers.calculator` takes `settings`, `restrictedMode`, `locale`, `theme`, `enabled` and `provider`.
 
+`tools.providers.answerEliminator.elements` lists the elements the answer eliminator acts on, by `@pie-element/<name>` package name, such as `["multiple-choice"]`, so a host offers it only on elements whose support it has vetted. Omitted, every element that supports answer masking takes it. The [tool's README](../../packages/tool-answer-eliminator/README.md#host-element-list) gives the matching rules.
+
 `pnpEnforcement` sets whether toolbar decisions apply the learner's Personal Needs and Preferences (PNP) profile: `"on"`, `"off"`, or left out for auto-mode. Auto-mode applies it when the bound assessment carries profile policy or, for a decision scoped to an item, when that item's settings require or restrict a tool. [PNP configuration](../../packages/assessment-toolkit/docs/PNP_CONFIGURATION.md) covers the profile.
 
 ### Canonical tool IDs
@@ -195,8 +197,8 @@ Resolver order is deliberately narrow:
    `isVisibleInContext` relevance check. Section toolbars skip it, and so does a
    tool a PNP grant marks required or always available.
 4. Below section level, once content has resolved, a tool whose registration
-   reports it inapplicable to every content context (`isApplicableToContent`) is
-   dropped, granted or not. A host-resolved tool keeps the resolver's answer.
+   reports it inapplicable to every content context (`isApplicableToContent`,
+   given the tool's `tools.providers` entry) is dropped, granted or not. A host-resolved tool keeps the resolver's answer.
 5. The tool's `renderToolbar` receives params through
    `toolbarContext.getToolRenderParams(toolId)`, and its policy parameters through
    `toolbarContext.getToolParameters(toolId)`.

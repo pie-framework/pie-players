@@ -311,6 +311,8 @@
   type ToolComponentFactory
   type ToolComponentFactoryMap
   type ToolComponentOverrides
+  type ToolConfigDiagnostic
+  type ToolConfigDiagnosticSeverity
   type ToolContentDependencyContext
   type ToolContext
   type ToolCoordinatorApi

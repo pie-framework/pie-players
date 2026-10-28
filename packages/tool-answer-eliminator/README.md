@@ -82,7 +82,7 @@ For a custom layout inside the toolkit. The tool detects choices under the item 
 
 ## Props/Attributes
 
-`elementStateKeys` is a JS property only; the others also take the attribute shown.
+`elementStateKeys` and `elementIds` are JS properties only; the others also take the attribute shown.
 
 | Property | Attribute | Type | Default | Description |
 |----------|-----------|------|---------|-------------|
@@ -91,6 +91,7 @@ For a custom layout inside the toolkit. The tool detects choices under the item 
 | `strategy` | `strategy` | `'strikethrough' \| 'mask'` | `'strikethrough'` | Elimination styling; any other value uses `strikethrough` |
 | `buttonAlignment` | `button-alignment` | `'start' \| 'end' \| 'inline'` | `'inline'` | Toggle placement: `inline` in the flow after the choice, or `start`/`end` beside it, resolved against the choice's own direction so they mirror under right-to-left content. `left` and `right` are aliases of `start` and `end`; any other value is `inline` |
 | `elementStateKeys` | | `Record<string, string>` | `{}` | Composite key `assessmentId:sectionId:attemptId:itemId:elementId` per PIE element, by model id, into the runtime context's element tool state store. A choice is tracked under its nearest ancestor with a listed id and persists under that key; choices outside a listed element are kept in memory only |
+| `elementIds` | | `string[]` | unset | Model ids of the PIE elements whose choices take a toggle; unset, every element's do. A choice belongs to an element when that element or one of its ancestors up to the item has a listed id. The toolbar sets it from the host's element list |
 
 ## Global Element ID Format
 
@@ -222,6 +223,22 @@ An element may replace its choices' markup on any render, as select-text does. W
 The outermost declaring element under the item owns its subtree: an element composed of declaring parts answers for them, prefixing ids with the part where they would collide, as EBSR does with `a-` and `b-`. Eliminations persist under the key of the nearest element listed in `elementStateKeys`, starting from the declaring element.
 
 Elements that declare nothing fall back to the multiple-choice and EBSR markup this package reads (`.corespring-checkbox` and `.corespring-radio-button` choices, and the `ebsr-multiple-choice` parts with ids `a` and `b`). That fallback serves legacy pie-elements and pie-elements-ng releases from before elements declared their supports, and never runs inside a declaring element.
+
+### Host element list
+
+A host limits the eliminator to the elements whose support it has vetted, by package name, in the tool's provider entry:
+
+```typescript
+new ToolkitCoordinator({
+  tools: {
+    providers: {
+      answerEliminator: { elements: ['multiple-choice', 'ebsr'] },
+    },
+  },
+});
+```
+
+A name is the `<name>` of `@pie-element/<name>`, matched against the package the item's `elements` map binds a model's tag to, or, for a tag the map does not bind, against the tag with its version suffix and `pie-`/`pie-element-` prefix removed. A tag bound to a package outside `@pie-element` matches no name. A listed element must still support answer masking. The toolbar withdraws the eliminator from an item with no listed element, even under a PNP grant, and in a mixed item gives toggles only to the listed elements' choices. Omitting `elements` keeps every supporting element; an empty list allows none. A value that is not a list of names fails config validation and, under `toolConfigStrictness: "warn"` or `"off"`, allows none.
 
 ### 2. State Storage
 

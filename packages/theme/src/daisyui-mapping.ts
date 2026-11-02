@@ -259,5 +259,11 @@ export function resolveDaisyPieVariables(args: {
 			resolved[entry.token] = value;
 		}
 	}
+	// DaisyUI has no separate keyboard-focus slot, so the canonical focus ring is
+	// the corrected button focus outline.
+	if (resolved["--pie-button-focus-outline"]) {
+		resolved["--pie-focus-keyboard-outline"] =
+			resolved["--pie-button-focus-outline"];
+	}
 	return resolved;
 }

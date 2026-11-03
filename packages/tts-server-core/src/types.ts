@@ -3,26 +3,12 @@
  * @module @pie-players/tts-server-core
  */
 
-/**
- * Speech mark representing a timing event in synthesized speech
- * Unified format across all TTS providers
- */
-export interface SpeechMark {
-	/** Milliseconds from start of audio */
-	time: number;
+import type { SpeechMark } from "@pie-players/pie-tts";
 
-	/** Type of speech mark */
-	type: "word" | "sentence" | "ssml";
-
-	/** UTF-16 index into the request text (inclusive) */
-	start: number;
-
-	/** UTF-16 index into the request text (exclusive) */
-	end: number;
-
-	/** The actual word or text */
-	value: string;
-}
+// The word-timing wire format is the contract's: one definition, shared with
+// the browser client that parses it. Re-exported here so this package's
+// surface stays unchanged.
+export type { SpeechMark };
 
 /**
  * Standard TTS parameters based on W3C Web Speech API and SSML specifications.

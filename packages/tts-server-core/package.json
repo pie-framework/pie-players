@@ -11,6 +11,9 @@
 		"access": "public"
 	},
 	"main": "./dist/index.js",
+	"dependencies": {
+		"@pie-players/pie-tts": "workspace:*"
+	},
 	"devDependencies": {
 		"@types/node": "^26.6.5",
 		"typescript": "^5.9.3",

@@ -35,7 +35,8 @@
 	"license": "MIT",
 	"scripts": {
 		"build": "tsc",
-		"typecheck": "tsc --noEmit"
+		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
+		"test": "bun test tests"
 	},
 	"type": "module",
 	"types": "./dist/index.d.ts",

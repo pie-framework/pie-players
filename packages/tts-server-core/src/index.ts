@@ -21,12 +21,15 @@ export { BaseTTSProvider } from "./provider.js";
 
 export { resolveTTSErrorCodeForHttpStatus } from "./http-error-mapping.js";
 
-// Export speech marks utilities
-export { anchorSpeechMarks, normalizeSpeechMarks } from "./speech-marks.js";
+// Speech marks and speed-rate utilities live in the contract package, shared
+// with the browser client; re-exported so this package's surface stays
+// unchanged.
 export {
+	anchorSpeechMarks,
+	normalizeSpeechMarks,
 	resolveSpeedRateBucket,
 	type SpeedRateBucket,
-} from "./speed-rate.js";
+} from "@pie-players/pie-tts";
 // Export types
 export type {
 	GetVoicesOptions,

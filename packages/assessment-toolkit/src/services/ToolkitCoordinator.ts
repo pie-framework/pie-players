@@ -145,9 +145,6 @@ class SectionControllerRetiredError extends Error {
 	}
 }
 
-const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
-	!!value && typeof value === "object" && !Array.isArray(value);
-
 const mergeToolConfigUpdate = (
 	toolId: string,
 	current: ToolProviderConfig,

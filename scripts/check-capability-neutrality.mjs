@@ -23,6 +23,9 @@
  * whose TTS-specific internals moved to `services/tts/tts-lifecycle.ts` so it
  * could be held to that; its public read-aloud-typed config accessors take
  * their literal from `TTS_TOOL_ID`, so no quoted id remains to allow-list.
+ * That import channel is type-position only (`typeof TTS_TOOL_ID`); importing
+ * the constant for a runtime comparison would name the capability just as a
+ * quoted string would, and belongs in `services/tts/`.
  *
  * Comments are exempt. A comment naming a capability is usually explaining why
  * the code no longer does, and gating prose would push authors toward vaguer

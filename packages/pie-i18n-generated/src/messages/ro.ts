@@ -1,18 +1,21 @@
 /**
- * Romanian message catalog — machine-generated, not reviewed.
+ * Romanian message catalog — reviewed (agent pass in lieu of a native
+ * reader, 2026-11-03; see `reviewedBy` in `catalog-manifest.json`).
  *
  * Serves every Romanian host: registered under the bare `ro` tag, so `ro`,
  * `ro-RO` and `ro-MD` all widen to it. Content flavour is standard Romanian
  * per `briefs/ro.md` — the imperative on controls and `tu` where a possessive
  * is unavoidable, school terminology (`Întrebare`, `Secțiune`, `Raportor`,
- * `Riglă`), comma-below diacritics, Romanian quotation marks („{term}”) and
- * the three CLDR plural forms, where `other` takes `de` before the noun
- * (`20 de încercări`). A Moldovan host can override any key through
- * `customMessages`.
+ * `Riglă`, `Barează`), comma-below diacritics, Romanian quotation marks
+ * („{term}”) and the three CLDR plural forms, where `other` takes `de`
+ * before the noun (`20 de încercări`). A Moldovan host can override any key
+ * through `customMessages`.
  *
- * Provenance — the source hash, model and generation date — is recorded in
- * `catalog-manifest.json`; `scripts/check-catalogs.ts` fails this file
- * against the English source when either drifts.
+ * Regeneration is surgical, never wholesale: `scripts/check-catalogs.ts`
+ * diffs the English snapshot (`ro.english-snapshot.json`) against the live
+ * `en-US` source and lists exactly the keys whose English moved; translate
+ * only those, keep every reviewed string, then refresh the snapshot per the
+ * package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/ro
  */
@@ -176,11 +179,11 @@ const ro = {
 		},
 
 		announce: {
-			movedUp: "Mutat în sus la {position}",
-			movedDown: "Mutat în jos la {position}",
-			movedLeft: "Mutat la stânga la {position}",
-			movedRight: "Mutat la dreapta la {position}",
-			rotatedTo: "Rotit la {degrees}°",
+			movedUp: "Mutare în sus la {position}",
+			movedDown: "Mutare în jos la {position}",
+			movedLeft: "Mutare la stânga la {position}",
+			movedRight: "Mutare la dreapta la {position}",
+			rotatedTo: "Rotire la {degrees}°",
 		},
 	},
 
@@ -242,10 +245,10 @@ const ro = {
 			phase: "Stare de agregare",
 			filterByA11y: "Filtrează după {category}",
 			elementA11y:
-				"{name}, Simbol: {symbol}, Număr atomic: {number}, Masă atomică: {mass}, Categorie: {category}",
+				"{name}, simbol: {symbol}, număr atomic: {number}, masă atomică: {mass}, categorie: {category}",
 			outsideFilterA11y: ", în afara filtrului curent",
 			category: {
-				unknown: "Necunoscut",
+				unknown: "Necunoscută",
 				alkaliMetal: "Metal alcalin",
 				alkalineEarthMetal: "Metal alcalino-pământos",
 				transitionMetal: "Metal de tranziție",
@@ -336,12 +339,12 @@ const ro = {
 			toolA11y: "Dicționar spaniol",
 		},
 		pictureDictionarySpanish: {
-			name: "Dicționar ilustrat spaniol",
+			name: "Dicționar ilustrat în spaniolă",
 			description: "Caută imagini pentru cuvinte în spaniolă",
 			buttonA11y:
-				"Dicționar ilustrat spaniol, caută imagini pentru cuvinte în spaniolă",
-			tooltip: "Dicționar ilustrat spaniol",
-			toolA11y: "Dicționar ilustrat spaniol",
+				"Dicționar ilustrat în spaniolă, caută imagini pentru cuvinte în spaniolă",
+			tooltip: "Dicționar ilustrat în spaniolă",
+			toolA11y: "Dicționar ilustrat în spaniolă",
 		},
 		lineReader: {
 			name: "Ghid de citire",
@@ -363,7 +366,7 @@ const ro = {
 			narrowerA11y: "Îngustează ghidul de citire",
 			widerA11y: "Lărgește ghidul de citire",
 			applicationA11y:
-				"Instrumentul Ghid de citire. O fereastră de citire clară într-un cadru care acoperă restul. Folosește tastele săgeți pentru a muta, +/- pentru a redimensiona fereastra de citire, Escape pentru a închide. Înălțimea ferestrei de citire: {paneHeight} pixeli, înălțimea cadrului: {frameHeight} pixeli",
+				"Instrumentul Ghid de citire. O fereastră de citire clară într-un cadru care maschează restul conținutului. Folosește tastele săgeți pentru a muta, +/- pentru a redimensiona fereastra de citire, Escape pentru a închide. Înălțimea ferestrei de citire: {paneHeight} pixeli, înălțimea cadrului: {frameHeight} pixeli",
 			resizeWindowFullA11y:
 				"Redimensionează fereastra de citire. Trage sau folosește tastele săgeți sus și jos pentru a-i schimba înălțimea. Înălțimea curentă: {paneHeight} pixeli",
 			resizeFrameFullA11y:
@@ -392,16 +395,16 @@ const ro = {
 			tallerA11y: "Înalță lupa",
 		},
 		answerEliminator: {
-			name: "Eliminare răspunsuri",
-			description: "Taie variantele de răspuns",
-			buttonA11y: "Tăiere, elimină variante de răspuns",
-			tooltip: "Tăiere",
-			toggleA11y: "Comută tăierea pentru {choice}",
+			name: "Barează răspunsurile",
+			description: "Barează variantele de răspuns",
+			buttonA11y: "Barează, elimină variante de răspuns",
+			tooltip: "Barează",
+			toggleA11y: "Barează sau restabilește {choice}",
 			eliminatedA11y: "(eliminată)",
 			unlabeledChoice: "Variantă fără etichetă",
 		},
 		highlighter: {
-			name: "Evidențiere",
+			name: "Evidențiator",
 			description: "Evidențiază și adnotează textul",
 			buttonA11y: "Evidențiază textul",
 			tooltip: "Evidențiază",
@@ -449,8 +452,8 @@ const ro = {
 			inline: {
 				controlsA11y: "Controale de citire",
 				playbackSpeedA11y: "Viteză de redare",
-				rewindA11y: "Înapoi",
-				fastForwardA11y: "Înainte",
+				rewindA11y: "Derulează înapoi",
+				fastForwardA11y: "Derulează înainte",
 				stopA11y: "Oprește citirea",
 				starting: "Citirea începe",
 				started: "Citirea a început",
@@ -473,7 +476,7 @@ const ro = {
 		},
 		signLanguage: {
 			name: "Limba semnelor",
-			description: "Alternativă în limba semnelor pentru conținutul autorat",
+			description: "Alternativă în limba semnelor pentru conținutul creat",
 			generic: "Limba semnelor",
 			unknown: "Limba semnelor ({code})",
 			ase: "Limba semnelor americană",
@@ -572,7 +575,7 @@ const ro = {
 			title: "Profil PNP",
 			noAssessmentBound: "Nicio evaluare asociată",
 			noAssessmentBoundBody:
-				"Profilul, districtul și politica de administrare a testului nu au nimic de citit, așa că doar requiredTools al unui item poate acorda o adaptare. Transmite evaluarea proprietății assessment a setului de instrumente sau apelează updateAssessment(...) pe coordonatorul setului de instrumente.",
+				"Profilul, districtul și politica de administrare a testului nu au nimic de citit, așa că doar requiredTools al unui item poate acorda o adaptare. Transmite evaluarea către proprietatea assessment a setului de instrumente sau apelează updateAssessment(...) pe coordonatorul setului de instrumente.",
 			determinationReadOnly: "Determinare (doar citire)",
 			toolsEditor: "Editor de instrumente",
 			enforcement: "Aplicarea PNP",
@@ -639,8 +642,8 @@ const ro = {
 				"Disponibilitatea furnizorului nu a fost verificată încă.",
 			webSpeechUnavailable: "Web Speech API nu este disponibil în acest browser.",
 			browserNoVoices:
-				"Citirea cu voce tare din browser este disponibilă, dar nu au fost returnate voci încă.",
-			browserUnavailable: "Citirea cu voce tare din browser nu este disponibilă.",
+				"Sinteza vocală din browser este disponibilă, dar nu au fost returnate voci încă.",
+			browserUnavailable: "Sinteza vocală din browser nu este disponibilă.",
 			googleUnavailable:
 				"Google Cloud TTS nu este disponibil prin API-ul configurat.",
 			pollyUnavailable: "AWS Polly nu este disponibil prin API-ul configurat.",
@@ -665,7 +668,7 @@ const ro = {
 				"Previzualizarea nu este posibilă cât timp acest serviciu este indisponibil.",
 			browserSynthesisUnavailable: "Sinteza vocală din browser este indisponibilă.",
 			ssmlWordTrackingDisabled:
-				"Previzualizarea SSML Google păstrează SSML-ul autorat, așa că urmărirea cuvintelor este dezactivată.",
+				"Previzualizarea SSML Google păstrează SSML-ul original, așa că urmărirea cuvintelor este dezactivată.",
 			applyUnavailable:
 				"Setările nu pot fi aplicate cât timp acest serviciu este indisponibil.",
 			coordinatorUnavailable:

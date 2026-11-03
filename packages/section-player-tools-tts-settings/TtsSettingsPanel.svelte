@@ -1653,9 +1653,13 @@ Developer dialog for the section player demos that configures the toolkit's text
 				<span class="pie-tts-spinner"></span>
 				<span>{interfaceI18n.t("debug.tts.checkingAvailability")}</span>
 			{:else if getActiveState().checked}
-				<span class={getActiveState().available ? "pie-tts-ok" : "pie-tts-error"}>
-					{getActiveState().message}
-				</span>
+				<span
+					class="pie-tts-status-mark {getActiveState().available
+						? 'pie-tts-ok'
+						: 'pie-tts-error'}"
+					aria-hidden="true"
+				></span>
+				<span>{getActiveState().message}</span>
 			{/if}
 			<button class="pie-tts-button" onclick={() => void checkActiveTabAvailability()}>
 				{interfaceI18n.t("debug.tts.recheck")}
@@ -2140,19 +2144,32 @@ Developer dialog for the section player demos that configures the toolkit's text
 		justify-content: space-between;
 	}
 
-	.pie-tts-status > span:not(.pie-tts-spinner) {
+	.pie-tts-status > span:not(.pie-tts-spinner):not(.pie-tts-status-mark) {
 		flex: 1;
 		min-width: 0;
 		font-size: 0.75rem;
 		line-height: 1.35;
 	}
 
+	/*
+	 * The availability signal rides a marker dot, and the message itself stays on
+	 * the dialog's certified text ink: `--pie-correct` / `--pie-incorrect` as
+	 * 0.75rem text on `--pie-background-dark` do not clear 4.5:1 on every scheme,
+	 * while as a non-text marker each clears the 3:1 boundary minimum everywhere.
+	 */
+	.pie-tts-status-mark {
+		width: 0.55rem;
+		height: 0.55rem;
+		border-radius: 999px;
+		flex: none;
+	}
+
 	.pie-tts-ok {
-		color: var(--pie-correct, #208537);
+		background: var(--pie-correct, #208537);
 	}
 
 	.pie-tts-error {
-		color: var(--pie-incorrect, #a65f00);
+		background: var(--pie-incorrect, #a65f00);
 	}
 
 	.pie-tts-actions {
@@ -2184,10 +2201,11 @@ Developer dialog for the section player demos that configures the toolkit's text
 
 	.pie-tts-label {
 		display: block;
+		/* Size and weight carry the de-emphasis: an 85% blend of the text ink
+		   misses 4.5:1 on at least one scheme at this size. */
 		font-size: 0.7rem;
 		font-weight: 600;
 		line-height: 1.2;
-		opacity: 0.85;
 		padding: 0;
 	}
 

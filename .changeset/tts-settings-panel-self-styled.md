@@ -10,5 +10,9 @@ and a host that had loaded it had its CSS reaching into the panel's controls.
 Every styled node now carries a `pie-tts-*` class hook the panel defines
 itself, styled from the same `--pie-button-*` / `--pie-text` tokens the PnP
 panel uses, with the status variants riding the border so the ink stays on a
-certified pair. The new hooks are in the package's `custom-elements.json`; the
-element tag, props and events are unchanged.
+certified pair. The availability message's ok/error signal moves to a marker
+dot for the same reason — the status colours as 0.75rem text on the dialog
+surface miss 4.5:1 on some schemes — and the field labels drop their 85%
+opacity, which missed it on one; the message and label ink stays on the
+certified text pair. The new hooks are in the package's `custom-elements.json`;
+the element tag, props and events are unchanged.

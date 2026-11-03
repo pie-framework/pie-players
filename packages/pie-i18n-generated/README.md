@@ -55,9 +55,9 @@ loaded catalog.
 | Tag | Status | Brief | Generated |
 | --- | --- | --- | --- |
 | `th-TH` | generated, unreviewed | [`briefs/th-TH.md`](./briefs/th-TH.md) | 2026-10-19 |
-| `en-GB` | generated, unreviewed | [`briefs/en-GB.md`](./briefs/en-GB.md) | 2026-10-19 |
-| `en-AU` | generated, unreviewed | [`briefs/en-AU.md`](./briefs/en-AU.md) | 2026-10-19 |
-| `es` | generated, unreviewed (Latin-American neutral; serves `es*`) | [`briefs/es.md`](./briefs/es.md) | 2026-10-19 |
+| `en-GB` | reviewed (agent verification pass, 2026-11-03; delta locale) | [`briefs/en-GB.md`](./briefs/en-GB.md) | 2026-10-19 |
+| `en-AU` | reviewed (agent verification pass, 2026-11-03; delta locale) | [`briefs/en-AU.md`](./briefs/en-AU.md) | 2026-10-19 |
+| `es` | reviewed (agent pass in lieu of a native reader, 2026-11-03; Latin-American neutral; serves `es*`) | [`briefs/es.md`](./briefs/es.md) | 2026-10-19 |
 | `fr` | generated, unreviewed (France flavour; serves `fr*`) | [`briefs/fr.md`](./briefs/fr.md) | 2026-10-19 |
 | `ar` | generated, unreviewed (MSA; serves `ar*`; RTL — layout audit pending, see [The RTL layout audit](#the-rtl-layout-audit-ar)) | [`briefs/ar.md`](./briefs/ar.md) | 2026-10-19 |
 | `pt` | generated, unreviewed (Brazilian; serves `pt*`) | [`briefs/pt.md`](./briefs/pt.md) | 2026-10-19 |
@@ -109,6 +109,14 @@ fails the gate until the affected catalogs are regenerated — wholesale for
 `generated` locales, surgically for `reviewed` ones.
 
 ## The review lifecycle
+
+**Agent passes in lieu of native readers.** On 2026-11-03 `es`, `en-GB` and
+`en-AU` were promoted on agent passes: no native readers were available, the
+maintainer accepted agent review for them, and each manifest entry's
+`reviewedBy` records exactly that. `reviewed` still means *a pass happened and
+its work is anchored* — the pass's nature lives in the manifest, the native
+pass remains open work, and because regeneration is surgical from here, a
+later native pass corrects in place instead of starting over.
 
 A locale moves through two statuses, recorded in `catalog-manifest.json`, and
 what regeneration may touch follows from the status:

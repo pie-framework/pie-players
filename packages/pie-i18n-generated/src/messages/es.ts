@@ -1,5 +1,6 @@
 /**
- * Spanish message catalog — machine-generated, not reviewed.
+ * Spanish message catalog — reviewed (agent pass in lieu of a native reader,
+ * 2026-11-03; see `reviewedBy` in `catalog-manifest.json`).
  *
  * Serves every Spanish host: registered under the bare `es` tag, so `es`,
  * `es-MX`, `es-419` and `es-ES` all widen to it. Content flavour is neutral
@@ -8,9 +9,11 @@
  * phrasing, and possessives use `tus` only where unavoidable. A
  * Spain-focused host can override any key through `customMessages`.
  *
- * Provenance — the source hash, model and generation date — is recorded in
- * `catalog-manifest.json`; `scripts/check-catalogs.ts` fails this file
- * against the English source when either drifts.
+ * Regeneration is surgical, never wholesale: `scripts/check-catalogs.ts`
+ * diffs the English snapshot (`es.english-snapshot.json`) against the live
+ * `en-US` source and lists exactly the keys whose English moved; translate
+ * only those, keep every reviewed string, then refresh the snapshot per the
+ * package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/es
  */

@@ -1,13 +1,15 @@
 /**
- * British English (United Kingdom) message catalog — machine-generated, not
- * reviewed.
+ * British English (United Kingdom) message catalog — reviewed (agent
+ * verification pass in lieu of a native reader, 2026-11-03; see `reviewedBy`
+ * in `catalog-manifest.json`).
  *
  * A delta locale per `briefs/en-GB.md`: most values equal `en-US`, and only
  * established British forms differ ("Centre", "colours", "maths",
- * "Centimetres"). Provenance — the source hash, model and generation date —
- * is recorded in `catalog-manifest.json`; `scripts/check-catalogs.ts` fails
- * this file against the English source when either drifts. Regenerate per the
- * package README when the check reports the catalog stale.
+ * "Centimetres"). Regeneration is surgical, never wholesale:
+ * `scripts/check-catalogs.ts` diffs the English snapshot
+ * (`en-GB.english-snapshot.json`) against the live `en-US` source and lists
+ * exactly the keys whose English moved; translate only those, keep every
+ * reviewed string, then refresh the snapshot per the package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/en-GB
  */

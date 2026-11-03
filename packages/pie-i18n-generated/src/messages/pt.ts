@@ -1,5 +1,6 @@
 /**
- * Portuguese message catalog — machine-generated, not reviewed.
+ * Portuguese message catalog — reviewed (agent pass in lieu of a native
+ * reader, 2026-11-03; see `reviewedBy` in `catalog-manifest.json`).
  *
  * Serves every Portuguese host: registered under the bare `pt` tag, so `pt`,
  * `pt-BR` and `pt-PT` all widen to it. Content flavour is Brazilian
@@ -8,9 +9,11 @@
  * `Transferidor`, `Semimetal`, `Marca-texto`). A Portugal-focused host can
  * override any key through `customMessages`.
  *
- * Provenance — the source hash, model and generation date — is recorded in
- * `catalog-manifest.json`; `scripts/check-catalogs.ts` fails this file
- * against the English source when either drifts.
+ * Regeneration is surgical, never wholesale: `scripts/check-catalogs.ts`
+ * diffs the English snapshot (`pt.english-snapshot.json`) against the live
+ * `en-US` source and lists exactly the keys whose English moved; translate
+ * only those, keep every reviewed string, then refresh the snapshot per the
+ * package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/pt
  */
@@ -32,10 +35,10 @@ const pt = {
 		no: "Não",
 		ok: "OK",
 		any: "Qualquer",
-		off: "Desligado",
+		off: "Desativado",
 		auto: "Automático",
-		all: "Todas",
-		none: "Nenhuma",
+		all: "Todos",
+		none: "Nenhum",
 		loading: "Carregando…",
 		error: "Erro",
 		settings: "Configurações",
@@ -173,11 +176,11 @@ const pt = {
 		},
 
 		announce: {
-			movedUp: "Movido para cima até {position}",
-			movedDown: "Movido para baixo até {position}",
-			movedLeft: "Movido para a esquerda até {position}",
-			movedRight: "Movido para a direita até {position}",
-			rotatedTo: "Girado para {degrees} graus",
+			movedUp: "Deslocamento para cima até {position}",
+			movedDown: "Deslocamento para baixo até {position}",
+			movedLeft: "Deslocamento para a esquerda até {position}",
+			movedRight: "Deslocamento para a direita até {position}",
+			rotatedTo: "Rotação para {degrees} graus",
 		},
 	},
 
@@ -189,12 +192,12 @@ const pt = {
 			nameGraphing: "Calculadora gráfica",
 			description:
 				"Calculadora de vários tipos (básica, científica, gráfica)",
-			openedBasic: "Calculadora básica aberta",
-			openedScientific: "Calculadora científica aberta",
-			openedGraphing: "Calculadora gráfica aberta",
-			closedBasic: "Calculadora básica fechada",
-			closedScientific: "Calculadora científica fechada",
-			closedGraphing: "Calculadora gráfica fechada",
+			openedBasic: "A calculadora básica foi aberta",
+			openedScientific: "A calculadora científica foi aberta",
+			openedGraphing: "A calculadora gráfica foi aberta",
+			closedBasic: "A calculadora básica foi fechada",
+			closedScientific: "A calculadora científica foi fechada",
+			closedGraphing: "A calculadora gráfica foi fechada",
 			toolA11y: "Ferramenta Calculadora",
 			loading: "Carregando a calculadora…",
 			providerUnavailable: "A calculadora está indisponível.",
@@ -225,22 +228,22 @@ const pt = {
 				"Excluir: clique em um ponto para excluí-lo junto com as retas conectadas.",
 		},
 		periodicTable: {
-			name: "Tabela Periódica",
-			description: "Referência da tabela periódica da química",
-			buttonA11y: "Tabela Periódica, referência de química",
-			tooltip: "Tabela Periódica",
+			name: "Tabela periódica",
+			description: "Tabela periódica de referência para química",
+			buttonA11y: "Tabela periódica, referência de química",
+			tooltip: "Tabela periódica",
 			toolA11y:
 				"Tabela periódica — selecione um elemento para ver seus detalhes",
 			elementsA11y: "Elementos da tabela periódica",
 			showAllA11y: "Mostrar todos os elementos",
 			allElements: "Todos os elementos",
-			atomicMass: "Massa Atômica",
-			atomicNumber: "Número Atômico",
-			electronConfig: "Configuração Eletrônica",
+			atomicMass: "Massa atômica",
+			atomicNumber: "Número atômico",
+			electronConfig: "Configuração eletrônica",
 			phase: "Estado",
 			filterByA11y: "Filtrar por {category}",
 			elementA11y:
-				"{name}, Símbolo: {symbol}, Número Atômico: {number}, Massa Atômica: {mass}, Categoria: {category}",
+				"{name}, símbolo: {symbol}, número atômico: {number}, massa atômica: {mass}, categoria: {category}",
 			outsideFilterA11y: ", fora do filtro atual",
 			category: {
 				unknown: "Desconhecida",
@@ -258,7 +261,7 @@ const pt = {
 			phaseValue: {
 				solid: "Sólido",
 				liquid: "Líquido",
-				gas: "Gasoso",
+				gas: "Gas",
 			},
 		},
 		ruler: {
@@ -430,7 +433,7 @@ const pt = {
 			buttonA11y: "Tema, mudar cores e contraste",
 			tooltip: "Tema",
 			selectorA11y: "Seletor de temas",
-			hint: "Escolha um tema para melhorar a legibilidade e reduzir o cansaço visual.",
+			hint: "Escolha um tema para melhorar a legibilidade e reduzir a fadiga visual.",
 			selectA11y: "Escolher tema",
 			selectCurrentA11y: "Escolher tema. Tema atual: {name}",
 			optionUnavailableA11y: "{name}, indisponível",
@@ -448,7 +451,7 @@ const pt = {
 			inline: {
 				controlsA11y: "Controles de leitura",
 				playbackSpeedA11y: "Velocidade de leitura",
-				rewindA11y: "Voltar",
+				rewindA11y: "Retroceder",
 				fastForwardA11y: "Avançar",
 				stopA11y: "Parar a leitura",
 				starting: "Iniciando a leitura",
@@ -462,7 +465,7 @@ const pt = {
 				skippedForward: "Avançou a leitura",
 				skipForwardFailed: "Não foi possível avançar a leitura",
 				skippedBackward: "Retrocedeu a leitura",
-				skipBackwardFailed: "Não foi possível voltar a leitura",
+				skipBackwardFailed: "Não foi possível retroceder a leitura",
 				speedChangeFailed: "Não foi possível mudar a velocidade de leitura",
 				speedAnnounce: "Velocidade de leitura: {label}",
 				playA11y: "Reproduzir a leitura",
@@ -574,7 +577,7 @@ const pt = {
 			title: "Perfil PNP",
 			noAssessmentBound: "Nenhuma avaliação vinculada",
 			noAssessmentBoundBody:
-				"O perfil, o distrito e a política de aplicação do teste não têm nada para ler, então apenas os requiredTools de um item podem conceder uma adaptação. Passe a avaliação para a propriedade assessment do toolkit ou chame updateAssessment(...) no coordenador do toolkit.",
+				"O perfil, o distrito e a política de aplicação do teste não têm nada para ler, então apenas os requiredTools de um item podem conceder uma adaptação. Passe a avaliação para a propriedade assessment do conjunto de ferramentas ou chame updateAssessment(...) no coordenador do conjunto de ferramentas.",
 			determinationReadOnly: "Determinação (somente leitura)",
 			toolsEditor: "Editor de ferramentas",
 			enforcement: "Aplicação do PNP",
@@ -584,7 +587,7 @@ const pt = {
 			placement: "Posicionamento",
 			provider: "Provedor",
 			simulation: "Simulação de PNP",
-			resolvedTools: "Ferramentas resolvidas (toolkit)",
+			resolvedTools: "Ferramentas resolvidas (conjunto de ferramentas)",
 			provenanceSummary:
 				"Resumo de procedência da política de ferramentas",
 			perToolDecisions: "Decisões por ferramenta",
@@ -678,7 +681,7 @@ const pt = {
 			applyUnavailable:
 				"Não é possível aplicar as configurações enquanto este serviço estiver indisponível.",
 			coordinatorUnavailable:
-				"O coordenador do toolkit não está disponível para atualizações da leitura por voz.",
+				"O coordenador do conjunto de ferramentas não está disponível para atualizações da leitura por voz.",
 			customProviderNotRegistered:
 				"O provedor personalizado '{id}' não está registrado.",
 			customProviderNoConfig:

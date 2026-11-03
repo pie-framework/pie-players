@@ -402,7 +402,7 @@
       "name": "@pie-players/pie-item-list",
       "version": "1.0.0-beta.7",
       "dependencies": {
-        "@pie-element/shared-types": "0.2.2",
+        "@pie-element/shared-types": "0.2.3",
         "@pie-players/pie-item-player": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
       },
@@ -1459,7 +1459,7 @@
 
     "@pie-element/shared-player-events": ["@pie-element/shared-player-events@0.2.2-next.20261103123052", "", {}, "sha512-KJ74msZ0L8Gp2Pq43nsaDCrkM5lgXW+FprZ4yGcUevFhmgB4SolD0FSiSM5IjuVEidz14LVmqil4g6cNgeb3cw=="],
 
-    "@pie-element/shared-types": ["@pie-element/shared-types@0.2.2", "", {}, "sha512-21Kg2qoNLynpROyBcS3bT3o2aZizkMRYZWV2SelrEchqg3baCx4i4oyk//zkU09khrstqo4FVpc6yYSLz78Vaw=="],
+    "@pie-element/shared-types": ["@pie-element/shared-types@0.2.3", "", {}, "sha512-pTsBNs52Jsau8z57l4o5UnGUfw0SjvnbILP7PWMZTLj0VhsxEAmz6BAnzOQPqOOx9xQk66Fs5ZX0jadtfFgbZQ=="],
 
     "@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.6", "", { "dependencies": { "@pie-element/shared-types": "0.2.3", "dompurify": "^3.4.17" } }, "sha512-gPq+w1qavY0ff5U483sMEKA7lEc2T1jSOrWKHSKkQVrr3m3HZJu78MtruHodr2ZUDKRntBswL/6f8KUGAdoAUA=="],
 
@@ -3354,8 +3354,6 @@
     "@pie-element/select-text/@pie-element/shared-utils": ["@pie-element/shared-utils@0.1.7-next.20261027193325", "", { "dependencies": { "@pie-element/shared-types": "0.2.4-next.20261026212738", "dompurify": "^3.4.17" } }, "sha512-GJks2oDsSSJn3qcPv9PeogYFVJLkfmD0JCuVtSAfPiLj7V8IlGSo3XH7ScFQy1aPOR5E/ZbDMexYvLXSYBiQ1g=="],
 
     "@pie-element/shared-controller-utils/@pie-element/shared-types": ["@pie-element/shared-types@0.2.4-next.20261026212738", "", {}, "sha512-9yt90QI3B8z3hgcMVes5h9YJrmy2WTrkyzrobtuLuU06uxEtLU7HZQ8SauVMWYXmswW1wxca9xgYJN9C69Q+Dw=="],
-
-    "@pie-element/shared-utils/@pie-element/shared-types": ["@pie-element/shared-types@0.2.3", "", {}, "sha512-pTsBNs52Jsau8z57l4o5UnGUfw0SjvnbILP7PWMZTLj0VhsxEAmz6BAnzOQPqOOx9xQk66Fs5ZX0jadtfFgbZQ=="],
 
     "@pie-framework/math-validation/mathjs": ["mathjs@9.5.2", "", { "dependencies": { "@babel/runtime": "^7.15.4", "complex.js": "^2.0.15", "decimal.js": "^10.3.1", "escape-latex": "^1.2.0", "fraction.js": "^4.1.1", "javascript-natural-sort": "^0.7.1", "seedrandom": "^3.0.5", "tiny-emitter": "^2.1.0", "typed-function": "^2.0.0" }, "bin": { "mathjs": "bin/cli.js" } }, "sha512-c0erTq0GP503/Ch2OtDOAn50GIOsuxTMjmE00NI/vKJFSWrDaQHRjx6ai+16xYv70yBSnnpUgHZGNf9FR9IwmA=="],
 

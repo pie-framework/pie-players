@@ -54,16 +54,16 @@ loaded catalog.
 
 | Tag | Status | Brief | Generated |
 | --- | --- | --- | --- |
-| `th-TH` | generated, unreviewed | [`briefs/th-TH.md`](./briefs/th-TH.md) | 2026-10-19 |
+| `th-TH` | reviewed (agent pass in lieu of a native reader, 2026-11-03) | [`briefs/th-TH.md`](./briefs/th-TH.md) | 2026-10-19 |
 | `en-GB` | reviewed (agent verification pass, 2026-11-03; delta locale) | [`briefs/en-GB.md`](./briefs/en-GB.md) | 2026-10-19 |
 | `en-AU` | reviewed (agent verification pass, 2026-11-03; delta locale) | [`briefs/en-AU.md`](./briefs/en-AU.md) | 2026-10-19 |
 | `es` | reviewed (agent pass in lieu of a native reader, 2026-11-03; Latin-American neutral; serves `es*`) | [`briefs/es.md`](./briefs/es.md) | 2026-10-19 |
 | `fr` | reviewed (agent pass in lieu of a native reader, 2026-11-03; France flavour; serves `fr*`) | [`briefs/fr.md`](./briefs/fr.md) | 2026-10-19 |
 | `ar` | generated, unreviewed — string-level language pass landed 2026-11-03 (decisions pinned in the brief); promotion to reviewed awaits the RTL layout audit, see [The RTL layout audit](#the-rtl-layout-audit-ar) (MSA; serves `ar*`; RTL) | [`briefs/ar.md`](./briefs/ar.md) | 2026-10-19 |
 | `pt` | reviewed (agent pass in lieu of a native reader, 2026-11-03; Brazilian; serves `pt*`) | [`briefs/pt.md`](./briefs/pt.md) | 2026-10-19 |
-| `ko` | generated, unreviewed | [`briefs/ko.md`](./briefs/ko.md) | 2026-10-19 |
-| `ja` | generated, unreviewed | [`briefs/ja.md`](./briefs/ja.md) | 2026-10-19 |
-| `zh` | generated, unreviewed (Simplified; serves `zh`, `zh-CN`, `zh-SG`; Traditional hosts supply `customMessages`) | [`briefs/zh.md`](./briefs/zh.md) | 2026-10-19 |
+| `ko` | reviewed (agent pass in lieu of a native reader, 2026-11-03) | [`briefs/ko.md`](./briefs/ko.md) | 2026-10-19 |
+| `ja` | reviewed (agent pass in lieu of a native reader, 2026-11-03) | [`briefs/ja.md`](./briefs/ja.md) | 2026-10-19 |
+| `zh` | reviewed (agent pass in lieu of a native reader, 2026-11-03; Simplified; serves `zh`, `zh-CN`, `zh-SG`; Traditional hosts supply `customMessages`) | [`briefs/zh.md`](./briefs/zh.md) | 2026-10-19 |
 | `cy` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `cy`, `cy-GB`; six CLDR plural categories) | [`briefs/cy.md`](./briefs/cy.md) | 2026-10-19 |
 | `sv` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `sv`, `sv-SE`, `sv-FI`) | [`briefs/sv.md`](./briefs/sv.md) | 2026-10-19 |
 | `ro` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `ro`, `ro-RO`, `ro-MD`; three CLDR plural categories, `other` takes `de`) | [`briefs/ro.md`](./briefs/ro.md) | 2026-10-19 |

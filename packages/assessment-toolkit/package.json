@@ -79,7 +79,7 @@
 		"@biomejs/biome": "^2.6.2",
 		"@happy-dom/global-registrator": "^21.0.4",
 		"@pie-players/tts-client-server": "workspace:*",
-		"svelte": "^5.57.2",
+		"svelte": "^5.57.3",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3"
 	},

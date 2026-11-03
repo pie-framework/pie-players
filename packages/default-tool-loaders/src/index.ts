@@ -38,10 +38,12 @@ export {
 	AUDIO_TRANSCRIPT_REGION_CLASS,
 	AUDIO_TRANSCRIPT_REGION_LABEL,
 	audioTranscriptRegistration,
-	CONTENT_LEAD_SURFACE,
 	resolveAudioTranscript,
 	type ResolvedAudioTranscript,
 } from "./registrations/audio-transcript.js";
+// The canonical surface ids live in the toolkit; re-exported so the packaged
+// set's surface stays unchanged.
+export { CONTENT_LEAD_SURFACE } from "@pie-players/pie-assessment-toolkit/tools/registration";
 export {
 	type CalculatorProviderDefinition,
 	type CalculatorRegistrationOptions,

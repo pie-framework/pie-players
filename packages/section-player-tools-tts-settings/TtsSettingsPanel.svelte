@@ -1553,7 +1553,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 		<div class="pie-tts-dialog-header">
 			<h3 id="pie-tts-dialog-title" class="pie-tts-dialog-title">{interfaceI18n.t("debug.tts.title")}</h3>
 			<button
-				class="btn btn-xs btn-ghost btn-circle"
+				class="pie-tts-button pie-tts-button-icon"
 				bind:this={closeButtonEl}
 				type="button"
 				onclick={requestClose}
@@ -1574,12 +1574,12 @@ Developer dialog for the section player demos that configures the toolkit's text
 			</button>
 		</div>
 
-		<div class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box">
+		<div class="pie-tts-fieldset">
 			<div class="pie-tts-field">
 				<label class="pie-tts-label" for="tts-layout-mode">{interfaceI18n.t("debug.tts.toolbarLayoutMode")}</label>
 				<select
 					id="tts-layout-mode"
-					class="select select-sm select-bordered w-full"
+					class="pie-tts-select"
 					bind:value={layoutMode}
 				>
 					<option value="reserved-row">{interfaceI18n.t("debug.tts.reservedRow")}</option>
@@ -1587,7 +1587,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 					<option value="floating-overlay">{interfaceI18n.t("debug.tts.floatingOverlay")}</option>
 					<option value="left-aligned">{interfaceI18n.t("debug.tts.leftAlignedControls")}</option>
 				</select>
-				<div class="text-xs opacity-75">
+				<div class="pie-tts-hint">
 					{interfaceI18n.t("debug.tts.headerRowReservation", {
 						state: layoutModeReservesRow
 							? interfaceI18n.t("common.enabled")
@@ -1599,18 +1599,18 @@ Developer dialog for the section player demos that configures the toolkit's text
 				<label class="pie-tts-label" for="tts-inline-speed-options">{interfaceI18n.t("debug.tts.inlineSpeedButtons")}</label>
 				<input
 					id="tts-inline-speed-options"
-					class="input input-sm input-bordered w-full"
+					class="pie-tts-input"
 					bind:value={speedOptionsText}
 					placeholder="0.8, 1, 1.25"
 					autocomplete="off"
 				/>
-				<div class="mt-1 flex flex-wrap items-center gap-2">
-					<span class="text-xs opacity-75">
+				<div class="pie-tts-help-row">
+					<span class="pie-tts-hint">
 						{interfaceI18n.t("debug.tts.speedOptionsHelp")}
 					</span>
 					<button
 						type="button"
-						class="btn btn-xs btn-ghost"
+						class="pie-tts-button"
 						onclick={resetInlineSpeedOptionsToDefaults}
 					>
 						{interfaceI18n.t("debug.tts.resetToDefaults")}
@@ -1623,10 +1623,10 @@ Developer dialog for the section player demos that configures the toolkit's text
 					<input
 						id="tts-math-token-highlighting"
 						type="checkbox"
-						class="toggle toggle-sm"
+						class="pie-tts-toggle"
 						bind:checked={mathTokenHighlighting}
 					/>
-					<span class="text-xs opacity-75">
+					<span class="pie-tts-hint">
 						{mathTokenHighlighting
 							? interfaceI18n.t("debug.tts.mathHighlightParts")
 							: interfaceI18n.t("debug.tts.mathHighlightBlock")}
@@ -1635,11 +1635,11 @@ Developer dialog for the section player demos that configures the toolkit's text
 			</div>
 		</div>
 
-		<div class="join pie-tts-tabs">
+		<div class="pie-tts-tabs">
 			{#each providerTabs as provider}
 				<button
-					class="btn btn-sm join-item"
-					class:btn-active={activeTab === provider.id}
+					class="pie-tts-button pie-tts-tab"
+					class:pie-tts-button-active={activeTab === provider.id}
 					aria-pressed={activeTab === provider.id}
 					onclick={() => setActiveTab(provider.id)}
 				>
@@ -1650,31 +1650,31 @@ Developer dialog for the section player demos that configures the toolkit's text
 
 		<div class="pie-tts-status">
 			{#if getActiveState().loading}
-				<span class="loading loading-spinner loading-xs"></span>
+				<span class="pie-tts-spinner"></span>
 				<span>{interfaceI18n.t("debug.tts.checkingAvailability")}</span>
 			{:else if getActiveState().checked}
 				<span class={getActiveState().available ? "pie-tts-ok" : "pie-tts-error"}>
 					{getActiveState().message}
 				</span>
 			{/if}
-			<button class="btn btn-xs btn-outline" onclick={() => void checkActiveTabAvailability()}>
+			<button class="pie-tts-button" onclick={() => void checkActiveTabAvailability()}>
 				{interfaceI18n.t("debug.tts.recheck")}
 			</button>
 		</div>
 
 		{#if getActiveState().detail}
-			<div class="alert alert-warning text-xs">
+			<div class="pie-tts-alert pie-tts-alert-warning">
 				<span>{getActiveState().detail}</span>
 			</div>
 		{/if}
 
 		{#if activeTab === "browser"}
-			<fieldset class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box" disabled={!browserState.available}>
+			<fieldset class="pie-tts-fieldset" disabled={!browserState.available}>
 				<div class="pie-tts-field">
 					<label class="pie-tts-label" for="tts-browser-voice">{interfaceI18n.t("debug.tts.voice")}</label>
 					<select
 						id="tts-browser-voice"
-						class="select select-sm select-bordered w-full"
+						class="pie-tts-select"
 						bind:value={browserVoice}
 						aria-describedby="tts-browser-auto-voice"
 					>
@@ -1696,7 +1696,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 					</select>
 					<div
 						id="tts-browser-auto-voice"
-						class="pie-tts-browser-auto-voice text-xs opacity-75"
+						class="pie-tts-browser-auto-voice pie-tts-hint"
 						aria-live="polite"
 					>
 						{#if browserVoice}
@@ -1712,10 +1712,10 @@ Developer dialog for the section player demos that configures the toolkit's text
 				</div>
 			</fieldset>
 		{:else if activeTab === "polly"}
-			<fieldset class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box" disabled={!pollyState.available}>
+			<fieldset class="pie-tts-fieldset" disabled={!pollyState.available}>
 				<div class="pie-tts-field">
 					<label class="pie-tts-label" for="tts-polly-endpoint">{interfaceI18n.t("debug.tts.apiEndpoint")}</label>
-					<input id="tts-polly-endpoint" class="input input-sm input-bordered w-full" bind:value={pollyApiEndpoint} placeholder={interfaceI18n.t("debug.tts.apiEndpointPlaceholder")} />
+					<input id="tts-polly-endpoint" class="pie-tts-input" bind:value={pollyApiEndpoint} placeholder={interfaceI18n.t("debug.tts.apiEndpointPlaceholder")} />
 				</div>
 
 				<div class="pie-tts-grid-3">
@@ -1723,7 +1723,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 						<label class="pie-tts-label" for="tts-polly-language">{interfaceI18n.t("common.language")}</label>
 						<input
 							id="tts-polly-language"
-							class="input input-sm input-bordered w-full"
+							class="pie-tts-input"
 							bind:value={pollyLanguage}
 							placeholder={interfaceI18n.t("debug.tts.languagePlaceholder")}
 							onchange={refreshPollyVoices}
@@ -1733,7 +1733,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 						<label class="pie-tts-label" for="tts-polly-gender">{interfaceI18n.t("debug.tts.gender")}</label>
 						<select
 							id="tts-polly-gender"
-							class="select select-sm select-bordered w-full"
+							class="pie-tts-select"
 							bind:value={pollyGender}
 							onchange={refreshPollyVoices}
 						>
@@ -1747,7 +1747,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 						<label class="pie-tts-label" for="tts-polly-engine">{interfaceI18n.t("debug.tts.engine")}</label>
 						<select
 							id="tts-polly-engine"
-							class="select select-sm select-bordered w-full"
+							class="pie-tts-select"
 							bind:value={pollyEngine}
 							onchange={refreshPollyVoices}
 						>
@@ -1759,7 +1759,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 
 				<div class="pie-tts-field">
 					<label class="pie-tts-label" for="tts-polly-voice">{interfaceI18n.t("debug.tts.voice")}</label>
-					<select id="tts-polly-voice" class="select select-sm select-bordered w-full" bind:value={pollyVoice}>
+					<select id="tts-polly-voice" class="pie-tts-select" bind:value={pollyVoice}>
 						<option value="">{interfaceI18n.t("debug.tts.providerDefault")}</option>
 						{#each pollyState.voices as voice}
 							<option value={voiceIdentity(voice)}>{voice.name || voice.id} ({voice.languageCode || interfaceI18n.t("debug.tts.notAvailable")})</option>
@@ -1770,7 +1770,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 				<div class="pie-tts-grid-3">
 					<div class="pie-tts-field">
 						<label class="pie-tts-label" for="tts-polly-format">{interfaceI18n.t("debug.tts.format")}</label>
-						<select id="tts-polly-format" class="select select-sm select-bordered w-full" bind:value={pollyFormat}>
+						<select id="tts-polly-format" class="pie-tts-select" bind:value={pollyFormat}>
 							<option value="mp3">{interfaceI18n.t("debug.tts.formatMp3")}</option>
 							<option value="ogg">{interfaceI18n.t("debug.tts.formatOgg")}</option>
 							<option value="pcm">{interfaceI18n.t("debug.tts.formatPcm")}</option>
@@ -1778,7 +1778,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 					</div>
 					<div class="pie-tts-field">
 						<label class="pie-tts-label" for="tts-polly-sample-rate">{interfaceI18n.t("debug.tts.sampleRate")}</label>
-						<select id="tts-polly-sample-rate" class="select select-sm select-bordered w-full" bind:value={pollySampleRate}>
+						<select id="tts-polly-sample-rate" class="pie-tts-select" bind:value={pollySampleRate}>
 							<option value={8000}>{interfaceI18n.t("debug.tts.sampleRate8000")}</option>
 							<option value={16000}>{interfaceI18n.t("debug.tts.sampleRate16000")}</option>
 							<option value={22050}>{interfaceI18n.t("debug.tts.sampleRate22050")}</option>
@@ -1787,7 +1787,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 					</div>
 					<div class="pie-tts-field">
 						<label class="pie-tts-label" for="tts-polly-speech-marks">{interfaceI18n.t("debug.tts.speechMarks")}</label>
-						<select id="tts-polly-speech-marks" class="select select-sm select-bordered w-full" bind:value={pollySpeechMarksMode}>
+						<select id="tts-polly-speech-marks" class="pie-tts-select" bind:value={pollySpeechMarksMode}>
 							<option value="word">{interfaceI18n.t("debug.tts.word")}</option>
 							<option value="word+sentence">{interfaceI18n.t("debug.tts.wordAndSentence")}</option>
 						</select>
@@ -1795,10 +1795,10 @@ Developer dialog for the section player demos that configures the toolkit's text
 				</div>
 			</fieldset>
 		{:else if activeTab === "google"}
-			<fieldset class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box" disabled={!googleState.available}>
+			<fieldset class="pie-tts-fieldset" disabled={!googleState.available}>
 				<div class="pie-tts-field">
 					<label class="pie-tts-label" for="tts-google-endpoint">{interfaceI18n.t("debug.tts.apiEndpoint")}</label>
-					<input id="tts-google-endpoint" class="input input-sm input-bordered w-full" bind:value={googleApiEndpoint} placeholder={interfaceI18n.t("debug.tts.apiEndpointPlaceholder")} />
+					<input id="tts-google-endpoint" class="pie-tts-input" bind:value={googleApiEndpoint} placeholder={interfaceI18n.t("debug.tts.apiEndpointPlaceholder")} />
 				</div>
 
 				<div class="pie-tts-grid-3">
@@ -1806,7 +1806,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 						<label class="pie-tts-label" for="tts-google-language">{interfaceI18n.t("common.language")}</label>
 						<input
 							id="tts-google-language"
-							class="input input-sm input-bordered w-full"
+							class="pie-tts-input"
 							bind:value={googleLanguage}
 							placeholder={interfaceI18n.t("debug.tts.languagePlaceholder")}
 							onchange={refreshGoogleVoices}
@@ -1816,7 +1816,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 						<label class="pie-tts-label" for="tts-google-gender">{interfaceI18n.t("debug.tts.gender")}</label>
 						<select
 							id="tts-google-gender"
-							class="select select-sm select-bordered w-full"
+							class="pie-tts-select"
 							bind:value={googleGender}
 							onchange={refreshGoogleVoices}
 						>
@@ -1830,7 +1830,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 						<label class="pie-tts-label" for="tts-google-voice-type">{interfaceI18n.t("debug.tts.voiceType")}</label>
 						<select
 							id="tts-google-voice-type"
-							class="select select-sm select-bordered w-full"
+							class="pie-tts-select"
 							bind:value={googleVoiceType}
 							onchange={refreshGoogleVoices}
 						>
@@ -1843,7 +1843,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 
 				<div class="pie-tts-field">
 					<label class="pie-tts-label" for="tts-google-voice">{interfaceI18n.t("debug.tts.voice")}</label>
-					<select id="tts-google-voice" class="select select-sm select-bordered w-full" bind:value={googleVoice}>
+					<select id="tts-google-voice" class="pie-tts-select" bind:value={googleVoice}>
 						<option value="">{interfaceI18n.t("debug.tts.providerDefault")}</option>
 						{#each googleState.voices as voice}
 							<option value={voiceIdentity(voice)}>{voice.name || voice.id} ({voice.languageCode || interfaceI18n.t("debug.tts.notAvailable")})</option>
@@ -1852,24 +1852,24 @@ Developer dialog for the section player demos that configures the toolkit's text
 				</div>
 			</fieldset>
 		{:else if activeCustomProvider}
-			<fieldset class="pie-tts-fieldset fieldset bg-base-200 border border-base-300 rounded-box" disabled={!getActiveState().available}>
+			<fieldset class="pie-tts-fieldset" disabled={!getActiveState().available}>
 				<div class="pie-tts-custom-provider-header">
-					<div class="text-sm font-semibold">{activeCustomProvider.label}</div>
+					<div class="pie-tts-provider-name">{activeCustomProvider.label}</div>
 					{#if activeCustomProvider.description}
-						<div class="text-xs opacity-75">{activeCustomProvider.description}</div>
+						<div class="pie-tts-hint">{activeCustomProvider.description}</div>
 					{/if}
 				</div>
 			</fieldset>
 		{/if}
 
-		<div class="pie-tts-fieldset pie-tts-preview-block fieldset bg-base-200 border border-base-300 rounded-box">
+		<div class="pie-tts-fieldset pie-tts-preview-block">
 			<div class="pie-tts-preview-header">
 				<h4 class="pie-tts-preview-title">{interfaceI18n.t("common.preview")}</h4>
-				<div class="join">
+				<div class="pie-tts-tab-group">
 					<button
 						type="button"
-						class="btn btn-xs join-item"
-						class:btn-active={previewMode === "plain"}
+						class="pie-tts-button pie-tts-tab"
+						class:pie-tts-button-active={previewMode === "plain"}
 						aria-pressed={previewMode === "plain"}
 						onclick={() => onPreviewModeChange("plain")}
 					>
@@ -1877,8 +1877,8 @@ Developer dialog for the section player demos that configures the toolkit's text
 					</button>
 					<button
 						type="button"
-						class="btn btn-xs join-item"
-						class:btn-active={previewMode === "ssml"}
+						class="pie-tts-button pie-tts-tab"
+						class:pie-tts-button-active={previewMode === "ssml"}
 						aria-pressed={previewMode === "ssml"}
 						onclick={() => onPreviewModeChange("ssml")}
 					>
@@ -1889,14 +1889,14 @@ Developer dialog for the section player demos that configures the toolkit's text
 			<label class="pie-tts-label" for="tts-preview-text">{interfaceI18n.t("debug.tts.sampleText")}</label>
 			<textarea
 				id="tts-preview-text"
-				class="textarea textarea-sm textarea-bordered w-full pie-tts-preview-input"
+				class="pie-tts-textarea pie-tts-preview-input"
 				bind:value={previewText}
 			></textarea>
 			<div class="pie-tts-preview-row">
-				<button type="button" class="btn btn-xs btn-outline" onclick={setPreviewTextForCurrentTab}>
+				<button type="button" class="pie-tts-button" onclick={setPreviewTextForCurrentTab}>
 					{interfaceI18n.t("debug.tts.resetSample")}
 				</button>
-				<span class="text-xs opacity-70">
+				<span class="pie-tts-hint">
 					{#if activeTab === "browser" && previewMode === "ssml"}
 						{interfaceI18n.t("debug.tts.previewHintBrowserSsml")}
 					{:else if activeTab === "google" && previewMode === "ssml"}
@@ -1916,25 +1916,25 @@ Developer dialog for the section player demos that configures the toolkit's text
 		</div>
 
 		{#if applyError}
-			<div class="alert alert-error text-xs" role="alert"><span>{applyError}</span></div>
+			<div class="pie-tts-alert pie-tts-alert-error" role="alert"><span>{applyError}</span></div>
 		{/if}
 		{#if previewError}
-			<div class="alert alert-error text-xs" role="alert"><span>{previewError}</span></div>
+			<div class="pie-tts-alert pie-tts-alert-error" role="alert"><span>{previewError}</span></div>
 		{/if}
 		{#if previewNote}
-			<div class="alert alert-info text-xs" role="status"><span>{previewNote}</span></div>
+			<div class="pie-tts-alert pie-tts-alert-info" role="status"><span>{previewNote}</span></div>
 		{/if}
 
 		<div class="pie-tts-actions">
-			<button class="btn btn-sm btn-outline" onclick={requestClose}>{interfaceI18n.t("common.close")}</button>
+			<button class="pie-tts-button" onclick={requestClose}>{interfaceI18n.t("common.close")}</button>
 			<button
-				class="btn btn-sm btn-outline"
+				class="pie-tts-button"
 				disabled={!getActiveState().available || isApplying || !canPreviewActiveTab()}
 				onclick={() => void previewSelectedVoice()}
 			>
 				{isPreviewing && previewBackend === activeTab ? interfaceI18n.t("debug.tts.stopPreview") : interfaceI18n.t("debug.tts.previewVoice")}
 			</button>
-			<button class="btn btn-sm btn-primary" disabled={isApplying || !getActiveState().available} onclick={() => void applySettings()}>
+			<button class="pie-tts-button pie-tts-button-primary" disabled={isApplying || !getActiveState().available} onclick={() => void applySettings()}>
 				{isApplying ? interfaceI18n.t("debug.tts.applying") : interfaceI18n.t("common.apply")}
 			</button>
 		</div>
@@ -1986,10 +1986,151 @@ Developer dialog for the section player demos that configures the toolkit's text
 	}
 
 	.pie-tts-tabs {
+		display: flex;
+		gap: 0.25rem;
 		width: 100%;
 		max-width: 100%;
 		flex-wrap: wrap;
 		row-gap: 0.25rem;
+	}
+
+	.pie-tts-tab-group {
+		display: inline-flex;
+		gap: 0.25rem;
+	}
+
+	/*
+	 * Controls and buttons style themselves here rather than borrowing the host
+	 * page's utility classes: in a light-DOM custom element every class name is
+	 * public API, and a class this element does not define is a dependency on the
+	 * host having a framework's CSS loaded. These are the certified button token
+	 * pairs the PnP panel styles from, so both dev panels draw on the same
+	 * guarantees.
+	 */
+	.pie-tts-select,
+	.pie-tts-input,
+	.pie-tts-textarea {
+		width: 100%;
+		box-sizing: border-box;
+		font: inherit;
+		font-size: 0.8125rem;
+		color: var(--pie-button-color, #374151);
+		background: var(--pie-button-bg, #ffffff);
+		border: 1px solid var(--pie-button-border, #8f8f8f);
+		border-radius: 0.375rem;
+		padding: 0.25rem 0.5rem;
+	}
+
+	.pie-tts-button {
+		font: inherit;
+		font-size: 0.75rem;
+		color: var(--pie-button-color, #374151);
+		background: var(--pie-button-bg, #ffffff);
+		border: 1px solid var(--pie-button-border, #8f8f8f);
+		border-radius: 0.375rem;
+		padding: 0.25rem 0.6rem;
+		cursor: pointer;
+	}
+
+	.pie-tts-button:disabled {
+		opacity: 0.55;
+		cursor: default;
+	}
+
+	.pie-tts-button-active {
+		border-color: var(--pie-button-hover-border, #8b919c);
+		/* `--pie-button-active-bg` is certified against `--pie-button-color` and
+		   nothing else, so the two move together. */
+		background: var(--pie-button-active-bg, #f3f4f6);
+		color: var(--pie-button-color, #374151);
+		font-weight: 600;
+	}
+
+	.pie-tts-button-primary {
+		/* The one submitting action. The same two certified colours, inverted, so
+		   the emphasis never leaves the pair the theme guarantees. */
+		background: var(--pie-button-color, #374151);
+		color: var(--pie-button-bg, #ffffff);
+		font-weight: 600;
+	}
+
+	.pie-tts-button-icon {
+		border: none;
+		background: transparent;
+		border-radius: 999px;
+		padding: 0.3rem;
+		display: grid;
+		place-items: center;
+	}
+
+	.pie-tts-toggle {
+		accent-color: var(--pie-button-color, #374151);
+		width: 0.95rem;
+		height: 0.95rem;
+		margin: 0;
+	}
+
+	.pie-tts-hint {
+		font-size: 0.75rem;
+		line-height: 1.35;
+		/* Size carries the hierarchy; the ink stays on the certified text colour,
+		   because a faded grey cannot hold on a dark palette. */
+		color: var(--pie-text, #111827);
+	}
+
+	.pie-tts-provider-name {
+		font-size: 0.85rem;
+		font-weight: 600;
+	}
+
+	.pie-tts-help-row {
+		margin-top: 0.25rem;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.pie-tts-spinner {
+		width: 0.85rem;
+		height: 0.85rem;
+		border: 2px solid color-mix(in srgb, var(--pie-text, #111827) 25%, transparent);
+		border-top-color: var(--pie-text, #111827);
+		border-radius: 999px;
+		animation: pie-tts-spin 0.8s linear infinite;
+	}
+
+	@keyframes pie-tts-spin {
+		to {
+			transform: rotate(360deg);
+		}
+	}
+
+	/*
+	 * Status surfaces. The variant rides the border — `--pie-incorrect` and
+	 * `--pie-missing` clear 3:1 against the dialog on every scheme, past what a
+	 * boundary owes — while the text stays on the certified ink pair, which a
+	 * tinted background over an unknown page could not promise.
+	 */
+	.pie-tts-alert {
+		border: 1px solid var(--pie-border, #8f8f8f);
+		border-radius: 0.375rem;
+		padding: 0.4rem 0.55rem;
+		font-size: 0.75rem;
+		line-height: 1.35;
+		color: var(--pie-text, #111827);
+	}
+
+	.pie-tts-alert-error {
+		border-color: var(--pie-incorrect, #a65f00);
+	}
+
+	.pie-tts-alert-warning {
+		border-color: var(--pie-missing, #d32f2f);
+	}
+
+	.pie-tts-alert-info {
+		border-color: var(--pie-border, #8f8f8f);
 	}
 
 	.pie-tts-status {
@@ -1999,7 +2140,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 		justify-content: space-between;
 	}
 
-	.pie-tts-status > span:not(.loading) {
+	.pie-tts-status > span:not(.pie-tts-spinner) {
 		flex: 1;
 		min-width: 0;
 		font-size: 0.75rem;
@@ -2021,6 +2162,13 @@ Developer dialog for the section player demos that configures the toolkit's text
 	}
 
 	.pie-tts-fieldset {
+		/* A recessed group surface. The ink mix keeps it scheme-agnostic: it sits
+		   on the dialog's `--pie-background-dark` in every palette, and carries no
+		   text of its own, so no contrast pair is involved. */
+		margin: 0;
+		border: 1px solid var(--pie-border, #8f8f8f);
+		border-radius: 0.375rem;
+		background: color-mix(in srgb, var(--pie-text, #111827) 4%, transparent);
 		padding: 0.5rem 0.65rem;
 		display: flex;
 		flex-direction: column;

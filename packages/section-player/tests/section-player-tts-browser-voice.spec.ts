@@ -555,7 +555,7 @@ test("speaks with the selected Browser voice on question-passage", async ({
 	const browserTab = page
 		.locator(".pie-tts-dialog")
 		.getByRole("button", { name: "Browser", exact: true });
-	await expect(browserTab).toHaveClass(/btn-active/);
+	await expect(browserTab).toHaveClass(/pie-tts-button-active/);
 
 	// The panel persists settings, so a new coordinator created on reload must
 	// hydrate Browser and the selected voice before playback instead of merely

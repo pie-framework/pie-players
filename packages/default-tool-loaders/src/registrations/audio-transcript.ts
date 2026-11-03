@@ -42,6 +42,7 @@ import type {
 	ToolSurfaceRenderContext,
 	ToolSurfaceRenderResult,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { CONTENT_LEAD_SURFACE } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { toLanguageTag } from "@pie-players/pie-players-shared/i18n/language-tags";
 
 /** QTI 3.0 / AfA support id gating an audio transcript. */
@@ -140,14 +141,6 @@ export function resolveAudioTranscript(
 	// and being asked anyway is the price of also serving the authored case.
 	return context.granted ? firstOnGrant : null;
 }
-
-/**
- * Host surface this capability fills: the full-width slot above a card's content.
- *
- * Item cards and passage cards open the same surface, so declaring it once
- * reaches both — a passage can carry an audio prompt as an item can.
- */
-export const CONTENT_LEAD_SURFACE = "content-lead";
 
 /**
  * A labelled region holding the transcript text.

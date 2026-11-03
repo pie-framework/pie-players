@@ -1,11 +1,14 @@
 /**
- * Thai (Thailand) message catalog — machine-generated, not reviewed.
+ * Thai (Thailand) message catalog — reviewed (agent pass in lieu of a native
+ * reader, 2026-11-03; see `reviewedBy` in `catalog-manifest.json`).
  *
- * Generated from `en-US` against `briefs/th-TH.md`. Provenance — the source
- * hash, model and generation date — is recorded in `catalog-manifest.json`;
- * `scripts/check-catalogs.ts` fails this file against the English source when
- * either drifts. Regenerate per the package README when the check reports the
- * catalog stale.
+ * Content flavour follows `briefs/th-TH.md`.
+ *
+ * Regeneration is surgical, never wholesale: `scripts/check-catalogs.ts`
+ * diffs the English snapshot (`th-TH.english-snapshot.json`) against the live
+ * `en-US` source and lists exactly the keys whose English moved; translate
+ * only those, keep every reviewed string, then refresh the snapshot per the
+ * package README.
  *
  * Locale facts the shape relies on: Thai has a single CLDR plural category,
  * so every plural group carries only `other`; Thai orthography writes no
@@ -193,15 +196,15 @@ const thTH = {
 			description: "ระนาบพิกัด",
 			buttonA11y: "กราฟ ระนาบพิกัด",
 			tooltip: "กราฟ",
-			toolA11y: "เครื่องมือกราฟ — วาดจุดและเส้นบนตารางพิกัด",
+			toolA11y: "เครื่องมือกราฟ — วาดจุดและเส้นบนระนาบพิกัด",
 			canvasA11y: "พื้นที่วาดกราฟ — ใช้เครื่องมือเพิ่มจุดและวาดเส้น",
 			grid: "เส้นกริด:",
 			gridOpacityA11y: "ความทึบของเส้นกริด",
 			pointA11y: "จุดกราฟ {id}",
 			modeSelector: "เลือก",
-			modeSelectorHint: "เลือก: คลิกและลากจุดเพื่อย้ายจุดนั้นหรือเส้นที่เกี่ยวข้อง",
+			modeSelectorHint: "เลือก: คลิกและลากจุดเพื่อย้ายจุดนั้นหรือเส้นที่เชื่อมต่อ",
 			modePoint: "จุด",
-			modePointHint: "จุด: คลิกบนตารางพิกัดเพื่อเพิ่มจุด",
+			modePointHint: "จุด: คลิกบนระนาบพิกัดเพื่อเพิ่มจุด",
 			modeLine: "เส้น",
 			modeLineHint: "เส้น: คลิกจุดเริ่มต้น แล้วคลิกจุดสิ้นสุดเพื่อวาดเส้น",
 			modeDelete: "ลบ",
@@ -399,8 +402,8 @@ const thTH = {
 		},
 		theme: {
 			name: "ธีม",
-			description: "ธีมและความเปรียบต่างสีที่เข้าถึงได้",
-			buttonA11y: "ธีม เปลี่ยนสีและความเปรียบต่าง",
+			description: "ธีมและคอนทราสต์ที่เข้าถึงได้",
+			buttonA11y: "ธีม เปลี่ยนสีและคอนทราสต์",
 			tooltip: "ธีม",
 			selectorA11y: "ตัวเลือกธีม",
 			hint: "เลือกธีมเพื่อให้อ่านง่ายขึ้นและลดอาการตาลาย",
@@ -468,7 +471,7 @@ const thTH = {
 		sessionDataPersistent: "ข้อมูลเซสชัน PIE (ถาวร)",
 		noItemSessionYet: "ยังไม่มีข้อมูลเซสชันของข้อสอบ โต้ตอบกับข้อสอบเพื่อดูการอัปเดตที่นี่",
 		itemSessionsSnapshot: "สแนปชอตเซสชันของข้อสอบ",
-		sectionControllerUnavailable: "ยังไม่มีตัวควบคุมตอนสำหรับตอนนี้",
+		sectionControllerUnavailable: "ยังไม่มีตัวควบคุมสำหรับตอนนี้",
 		filteredModel: "โมเดลที่กรองแล้ว",
 		environment: "สภาพแวดล้อม",
 		events: "เหตุการณ์",
@@ -561,8 +564,8 @@ const thTH = {
 		},
 
 		tts: {
-			title: "การตั้งค่า TTS",
-			closeA11y: "ปิดการตั้งค่า TTS",
+			title: "การตั้งค่าการอ่านออกเสียง",
+			closeA11y: "ปิดการตั้งค่าการอ่านออกเสียง",
 			toolbarLayoutMode: "โหมดเลย์เอาต์แถบเครื่องมือ",
 			reservedRow: "แถวสงวน",
 			expandingRow: "แถวขยาย",
@@ -638,7 +641,7 @@ const thTH = {
 			voiceRemote: "ระยะไกล",
 			voiceBrowserDefault: "ค่าเริ่มต้นของเบราว์เซอร์",
 			browserAvailable: {
-				other: "เบราว์เซอร์มี TTS พร้อมใช้งาน (ตรวจพบ {count} เสียง)",
+				other: "การอ่านออกเสียงข้อความของเบราว์เซอร์พร้อมใช้งาน (ตรวจพบ {count} เสียง)",
 			},
 			pollyAvailable: {
 				other: "AWS Polly พร้อมใช้งาน (มี {count} เสียงที่ตรงกัน เอนจิน {engine})",

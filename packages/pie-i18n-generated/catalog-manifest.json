@@ -25,10 +25,12 @@
 	},
 	"locales": {
 		"th-TH": {
-			"status": "generated",
+			"status": "reviewed",
 			"brief": "briefs/th-TH.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the two passage-width keys by Claude Opus 5.5; the two question-position keys by Claude (claude-fable-5-1); the summary keys by Claude Opus 5.5; hash refreshed on landing the wave onto develop (catalog already complete); corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"reviewedAt": "2026-11-03",
+			"reviewedBy": "Agent review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Register-and-consistency pass over the October three-reviewer baseline: coordinate-plane term unified, contrast moved to the Thai UI loanword, TTS titles and voice statuses moved to learner read-aloud phrasing. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the two passage-width keys by Claude Opus 5.5; the two question-position keys by Claude (claude-fable-5-1); the summary keys by Claude Opus 5.5; hash refreshed on landing the wave onto develop (catalog already complete); corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27; language pass on 2026-11-03 (GLM, Z.ai): coordinate plane unified to ระนาบพิกัด (was ตารางพิกัด, \"coordinate table\"), graph associated lines unified to เส้นที่เชื่อมต่อ, contrast switched to the Thai UI loanword คอนทราสต์, TTS settings title and browser-voice status moved to learner read-aloud phrasing (TTS acronym out of titles), section-controller empty state de-duplicated — pinned into briefs/th-TH.md in the same change",
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"en-GB": {
@@ -80,24 +82,30 @@
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"ko": {
-			"status": "generated",
+			"status": "reviewed",
 			"brief": "briefs/ko.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"reviewedAt": "2026-11-03",
+			"reviewedBy": "Agent review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Register pass: 원자번호 compound orthography, deterministic josa in the timed-media announcements, 편의 제공 accommodation register, learner-language TTS settings, quote and annotation-vocabulary consistency. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27; language pass on 2026-11-03 (GLM, Z.ai): 원자 번호 → 원자번호 compound, questionAvailable josa made deterministic (문항 {position}번이), dictionary miss named 항목 (was generic 결과), accommodation register 편의 제공 (was 지원 도구), TTS settings title and browser status moved to 음성 읽기 phrasing (TTS acronym out of titles), reserved row 예약 행, zoom announcement as an event, filter miss rephrased 현재 필터에 포함되지 않음 (was 필터 외부 calque), annotation loanword 마킹 replaced, curly quotes on {id}, previewNoAudio rephrased, transcript description de-duplicated, host surface 호스트 화면 — pinned into briefs/ko.md in the same change",
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"ja": {
-			"status": "generated",
+			"status": "reviewed",
 			"brief": "briefs/ja.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"reviewedAt": "2026-11-03",
+			"reviewedBy": "Agent review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Domain-register pass: test-support tool naming, strike-through tool name off the bookkeeping register, glyph and calque conventions. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27; language pass on 2026-11-03 (GLM, Z.ai): assessment tools テスト支援ツール (was テストツール, software-testing reading), answer-eliminator name 解答の取り消し線 (was bookkeeping-register 消し込み), associated lines 接続された線, transcript description unified to 文字起こし, full-width （除外済み）, host surface ホスト画面 (was ホスト面 calque), voice gender neutral ニュートラル (was 中性) — pinned into briefs/ja.md in the same change",
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"zh": {
-			"status": "generated",
+			"status": "reviewed",
 			"brief": "briefs/zh.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"reviewedAt": "2026-11-03",
+			"reviewedBy": "Agent review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Domain-register pass per the calibration finding list: 测评/物态/溯源 terminology, event-phrased state announcements, placement and surface calques. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27; language pass on 2026-11-03 (GLM, Z.ai): assessment tools 测评工具 (was 测试工具), periodic-table phase 物态 (was generic 状态), provenance 溯源 (was 来源), placement 放置位置 and host surface 宿主界面 (calque fixes), eliminated-choice toggle 切换{choice}的划除状态, empty state 暂无部分, zoom announcement as an event 已放大至 {zoom} 倍, connected lines 与之相连的线, sign-language description completed — pinned into briefs/zh.md in the same change",
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"cy": {

@@ -755,6 +755,61 @@ function markupSurface(ast) {
 	return { slots, parts, classes };
 }
 
+/**
+ * The `pie-*` classes a `.ts` element source puts on its own nodes: the static
+ * literals a `className` assignment or a `classList.add`/`remove`/`toggle` call
+ * carries. A name composed at runtime (`${BASE}__text`) yields its static
+ * parts, the same rule the Svelte extractor applies to template expressions —
+ * the base class documents the family, and a composite child hook is its
+ * descendant. In a light-DOM element these names are public styling API, so
+ * they are recorded whether they are written from a template or from script.
+ */
+function tsMarkupSurface(context) {
+	const classes = new Set();
+	const addClasses = (text) => {
+		for (const token of text.split(/\s+/)) {
+			if (/^pie-[A-Za-z0-9_-]*[A-Za-z0-9_]$/.test(token)) classes.add(token);
+		}
+	};
+	// The static text of a TS expression: string and template literals, with the
+	// literal head/middle/tail pieces of a substituted template. A fragment like
+	// the `${cond ? "pie-on" : "pie-off"}` branches or a `${base} pie-extra`
+	// tail is what survives, which is the part that names a class.
+	const collect = (node) => {
+		if (!node) return;
+		if (
+			ts.isStringLiteral(node) ||
+			ts.isNoSubstitutionTemplateLiteral(node) ||
+			ts.isTemplateHead(node) ||
+			ts.isTemplateMiddle(node) ||
+			ts.isTemplateTail(node)
+		) {
+			addClasses(node.text);
+		}
+		ts.forEachChild(node, collect);
+	};
+	const isName = (node, name) =>
+		ts.isPropertyAccessExpression(node) && node.name.text === name;
+	const classListCall = (node) =>
+		ts.isCallExpression(node) &&
+		ts.isPropertyAccessExpression(node.expression) &&
+		["add", "remove", "toggle"].includes(node.expression.name.text) &&
+		isName(node.expression.expression, "classList");
+	const classNameWrite = (node) =>
+		ts.isBinaryExpression(node) &&
+		node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+		(isName(node.left, "className") ||
+			(ts.isIdentifier(node.left) && node.left.text === "className"));
+	const visit = (node) => {
+		if (!node) return;
+		if (classNameWrite(node)) collect(node.right);
+		if (classListCall(node)) for (const arg of node.arguments) collect(arg);
+		ts.forEachChild(node, visit);
+	};
+	for (const sourceFile of context.scripts) visit(sourceFile);
+	return { classes };
+}
+
 // ---------------------------------------------------------------------------
 // Events
 // ---------------------------------------------------------------------------
@@ -1607,15 +1662,22 @@ export function buildManifests(root = REPO_ROOT) {
 
 		// Markup. Slots are the element's own template's: a `<slot>` in a
 		// component it renders is that component's. Parts and classes come from
-		// every template the element renders, up to the next element.
+		// every template the element renders, up to the next element — and from
+		// the `.ts` sources on the same closure, which put classes on nodes from
+		// script rather than from a template.
 		const ownFiles = localClosure(index, ref.file, pkg.dir, { stopAtElements: true });
 		const markup = { slots: new Set(), parts: new Set(), classes: new Set() };
 		for (const file of ownFiles) {
-			if (!file.endsWith(".svelte")) continue;
-			const surface = markupSurface(index.context(file).svelte.ast);
-			if (file === ref.file) markup.slots = surface.slots;
-			for (const value of surface.parts) markup.parts.add(value);
-			for (const value of surface.classes) markup.classes.add(value);
+			if (file.endsWith(".svelte")) {
+				const surface = markupSurface(index.context(file).svelte.ast);
+				if (file === ref.file) markup.slots = surface.slots;
+				for (const value of surface.parts) markup.parts.add(value);
+				for (const value of surface.classes) markup.classes.add(value);
+			} else if (file.endsWith(".ts")) {
+				for (const value of tsMarkupSurface(index.context(file)).classes) {
+					markup.classes.add(value);
+				}
+			}
 		}
 		if (built.shadow === "none" && markup.slots.size > 0) {
 			problems.push(`${where}: renders <slot> without a shadow root, where it does not project`);

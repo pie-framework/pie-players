@@ -75,6 +75,8 @@ const GENERATED_CATALOG_LOADERS: Record<string, CatalogLoader> = {
 	cy: () => import("./messages/cy.js"),
 	sv: () => import("./messages/sv.js"),
 	ro: () => import("./messages/ro.js"),
+	// Bare tag: `vi-VN` widens to `vi`.
+	vi: () => import("./messages/vi.js"),
 };
 
 /**
@@ -97,6 +99,7 @@ export const GENERATED_LOCALES: readonly string[] = [
 	"cy",
 	"sv",
 	"ro",
+	"vi",
 ];
 
 /**

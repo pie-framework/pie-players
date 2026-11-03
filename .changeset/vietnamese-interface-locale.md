@@ -1,0 +1,5 @@
+---
+"@pie-players/pie-i18n-generated": patch
+---
+
+Vietnamese (`vi`) joins the generated locale tier as its fourteenth catalog: a bare tag, so `vi-VN` widens to it, generated against a new terminology brief (`briefs/vi.md`) under the same structural gate as the rest of the tier. The Spanish catalog takes a domain-register pass — impersonal `se`-form state announcements (`Se abrió la calculadora básica`), unmarked-masculine enums (`Todos`/`Ninguno`), the `Seleccionar` graph mode, noun phase values (`Gas`), curly quotes over guillemets, singular dictionary misses, and `conjunto de herramientas`/`anfitrión` in place of the `toolkit`/`host` loanwords — with every decision pinned into `briefs/es.md` so a regeneration reproduces it. en-GB and en-AU take a verification pass against their briefs: delta sets complete, no missed anglicizations, nothing to correct. The package README gains the RTL layout audit checklist that gates the `ar` review pass, and records that the card-header geometry spec already exists.

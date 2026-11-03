@@ -59,7 +59,7 @@ loaded catalog.
 | `en-AU` | generated, unreviewed | [`briefs/en-AU.md`](./briefs/en-AU.md) | 2026-10-19 |
 | `es` | generated, unreviewed (Latin-American neutral; serves `es*`) | [`briefs/es.md`](./briefs/es.md) | 2026-10-19 |
 | `fr` | generated, unreviewed (France flavour; serves `fr*`) | [`briefs/fr.md`](./briefs/fr.md) | 2026-10-19 |
-| `ar` | generated, unreviewed (MSA; serves `ar*`; RTL — first RTL locale, layout not yet audited) | [`briefs/ar.md`](./briefs/ar.md) | 2026-10-19 |
+| `ar` | generated, unreviewed (MSA; serves `ar*`; RTL — layout audit pending, see [The RTL layout audit](#the-rtl-layout-audit-ar)) | [`briefs/ar.md`](./briefs/ar.md) | 2026-10-19 |
 | `pt` | generated, unreviewed (Brazilian; serves `pt*`) | [`briefs/pt.md`](./briefs/pt.md) | 2026-10-19 |
 | `ko` | generated, unreviewed | [`briefs/ko.md`](./briefs/ko.md) | 2026-10-19 |
 | `ja` | generated, unreviewed | [`briefs/ja.md`](./briefs/ja.md) | 2026-10-19 |
@@ -67,6 +67,7 @@ loaded catalog.
 | `cy` | generated, unreviewed (serves `cy`, `cy-GB`; six CLDR plural categories) | [`briefs/cy.md`](./briefs/cy.md) | 2026-10-19 |
 | `sv` | generated, unreviewed (serves `sv`, `sv-SE`, `sv-FI`) | [`briefs/sv.md`](./briefs/sv.md) | 2026-10-19 |
 | `ro` | generated, unreviewed (serves `ro`, `ro-RO`, `ro-MD`; three CLDR plural categories, `other` takes `de`) | [`briefs/ro.md`](./briefs/ro.md) | 2026-10-19 |
+| `vi` | generated, unreviewed (serves `vi`, `vi-VN`; one CLDR plural category) | [`briefs/vi.md`](./briefs/vi.md) | 2026-11-03 |
 
 Locale tags are chosen for variant reach: bare tags (`es`, `fr`, `ar`) let
 `es-MX`, `fr-CA` and `ar-SA` widen onto them through RFC 4647 lookup, while
@@ -150,6 +151,52 @@ lists keys whose English moved:
 
 Wholesale regeneration of a `reviewed` locale discards review work; do it
 only deliberately, by flipping the status back to `generated` first.
+
+## The RTL layout audit (`ar`)
+
+`ar` is the framework's first right-to-left interface locale, and the audit
+that gates its review pass is a layout audit, not a translation one: a native
+reviewer certifying strings that render mirrored would certify the wrong
+product. `direction` already derives from `Intl.Locale.prototype.textInfo` and
+the shell stamps `lang`/`dir` on its own host
+([adoption record](../../docs/architecture/i18n-interface-locale-adoption.md)),
+and one geometry spec exists:
+`packages/section-player/tests/section-player-rtl-layout.spec.ts` holds the
+content-card header's toolbar to trailing-edge geometry both under a forced
+`dir="rtl"` and under the real `ar` catalog's own stamps.
+
+The audit extends that verified surface until every point below is either a
+geometry assertion in that spec (extend it — do not verify by eye) or an
+explicit rendered check recorded here:
+
+1. **Card footer.** The formative check-answer button mirrors under the same
+   `margin-inline-start` trailing-edge rule as the header toolbar. One spec
+   case mirrors the existing header case.
+2. **Split-pane layout.** Pane *order* flips (passage pane leading in RTL);
+   each pane keeps `min-height: 0` / `min-width: 0` and contained overflow.
+   These are grid properties, direction-neutral by construction — assert pane
+   order flips and scrollbars stay functional.
+3. **Toolbar internals.** Button row order flips, the overflow menu opens on
+   the trailing side, tooltips do not clip at the leading viewport edge.
+4. **Navigation chrome.** Back/Next order flips; the question-position live
+   region reads correctly.
+5. **Tool windows at `document.body`.** Their *contents* lay out by direction;
+   their *positions* do not — a window the learner dragged to the top-left
+   stays at the top-left (the adoption record's free-window rule). Assert
+   content mirroring and position stability for one representative shell.
+6. **Standalone item player.** Its own chrome stamps and mirrors like the
+   section shell.
+7. **Text-level checks.** Latin product names inside Arabic sentences (`TTS`,
+   `SSML`, `WaveNet`, `PIE`) must not strand adjacent punctuation on the wrong
+   side; the `…` and `“”` glyphs read correctly; numerals stay Western digits
+   per the brief.
+8. **Metrics.** Arabic script needs taller line boxes: no toolbar label,
+   panel title or dialog string clips or ellipsizes at default sizes.
+
+A rendered pass runs the section-player e2e suite against the `ar` demo
+(`/interface-locale?locale=ar`), outside the sandbox per the repository's
+Playwright rules. When every point above holds, the `ar` row loses this
+pending note and the review lifecycle may start.
 
 ## Adding a locale
 

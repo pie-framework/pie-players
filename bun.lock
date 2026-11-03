@@ -46,7 +46,7 @@
         "@pie-players/tts-server-polly": "workspace:*",
       },
       "devDependencies": {
-        "@sveltejs/adapter-node": "^6.0.0",
+        "@sveltejs/adapter-node": "^6.0.1",
         "@sveltejs/kit": "^3.1.0",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "@tailwindcss/vite": "^4.3.3",
@@ -69,7 +69,7 @@
         "@pie-players/pie-section-player": "workspace:*",
       },
       "devDependencies": {
-        "@sveltejs/adapter-node": "^6.0.0",
+        "@sveltejs/adapter-node": "^6.0.1",
         "@sveltejs/kit": "^3.1.0",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "@tailwindcss/vite": "^4.3.3",
@@ -171,7 +171,7 @@
         "lowlight": "^3.3.0",
       },
       "devDependencies": {
-        "@sveltejs/adapter-node": "^6.0.0",
+        "@sveltejs/adapter-node": "^6.0.1",
         "@sveltejs/kit": "^3.1.0",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "@tailwindcss/vite": "^4.3.3",
@@ -213,7 +213,7 @@
         "@pie-players/pie-players-shared": "workspace:*",
       },
       "devDependencies": {
-        "@sveltejs/adapter-node": "^6.0.0",
+        "@sveltejs/adapter-node": "^6.0.1",
         "@sveltejs/kit": "^3.1.0",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "@types/node": "^26.6.5",
@@ -269,7 +269,7 @@
       },
       "devDependencies": {
         "@playwright/test": "^1.64.1",
-        "@sveltejs/adapter-node": "^6.0.0",
+        "@sveltejs/adapter-node": "^6.0.1",
         "@sveltejs/kit": "^3.1.0",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "@tailwindcss/vite": "^4.3.3",
@@ -1759,7 +1759,7 @@
 
     "@sveltejs/acorn-typescript": ["@sveltejs/acorn-typescript@1.0.13", "", { "peerDependencies": { "acorn": "^8.9.0" } }, "sha512-wgKggnhZVL9Bfx1OaKKTrYY9BFRk6C8UAkQNUcIv1+llzYrIqy+RZm5HPKzn0NpEBvTVhTqB4kQyllZywsRBRQ=="],
 
-    "@sveltejs/adapter-node": ["@sveltejs/adapter-node@6.0.0", "", { "peerDependencies": { "@sveltejs/kit": "^3.0.0-next.0" } }, "sha512-s7muM4JmJ75OZ8o0G4VRhrEKdi8twuEm3t2o/qQsdlm12hKaX7S/CuUBuw3n983wB/IFBSpzG2ugX0xdGzbKwg=="],
+    "@sveltejs/adapter-node": ["@sveltejs/adapter-node@6.0.1", "", { "peerDependencies": { "@sveltejs/kit": "^3.0.0-next.0" } }, "sha512-Pt/YcMakEkTjdQXaAvxrjrDnoGX4zU7pAZICnoLfpI+CawLGigq5upjFW9rVK2QY7yfpR1xeRG/kgI+syzPB3w=="],
 
     "@sveltejs/adapter-static": ["@sveltejs/adapter-static@4.0.0", "", { "peerDependencies": { "@sveltejs/kit": "^3.0.0-next.0" } }, "sha512-aF1J23R1ebKqUxQ4/qLr/Lxu63NFmLAtg8UZl3HFLxaoA1D/nhTVGcD9lTqx65iUbjNR2iOL0TgOxSX82x6Paw=="],
 

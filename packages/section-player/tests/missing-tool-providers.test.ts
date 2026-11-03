@@ -115,7 +115,7 @@ describe("placed tools a host-supplied coordinator has no provider for", () => {
 		watch(coordinator, createPackagedToolRegistry());
 		await settle();
 
-		expect((coordinator as unknown as { ttsInitialized: boolean }).ttsInitialized).toBe(false);
+		expect((coordinator as unknown as { tts: { started: boolean } }).tts.started).toBe(false);
 		expect(providerWarnings()).toHaveLength(2);
 	});
 

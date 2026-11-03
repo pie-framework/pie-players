@@ -37,19 +37,19 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		});
 
 		const internals = coordinator as any;
-		internals.ttsInitialized = true;
+		internals.tts.initialized = true;
 
 		let reconfigureFinished = false;
-		internals._reconfigureTTSProvider = async () => {
+		internals.tts.reconfigure = async () => {
 			await new Promise((resolve) => setTimeout(resolve, 10));
 			reconfigureFinished = true;
-			internals.ttsInitialized = false;
+			internals.tts.initialized = false;
 		};
 
 		let initializedAfterReconfigure = false;
-		internals._initializeTTS = async () => {
+		internals.tts.initializeIfNeeded = async () => {
 			initializedAfterReconfigure = reconfigureFinished;
-			internals.ttsInitialized = true;
+			internals.tts.initialized = true;
 		};
 
 		coordinator.updateToolConfig("textToSpeech", {
@@ -62,7 +62,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 		await coordinator.ensureTTSReady();
 
 		expect(initializedAfterReconfigure).toBe(true);
-		expect(internals.ttsInitialized).toBe(true);
+		expect(internals.tts.initialized).toBe(true);
 	});
 
 	test("a speak after a reconfigure starts the reconfigured provider", async () => {
@@ -171,9 +171,9 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 
 		const internals = coordinator as any;
 		let capturedConfig: any = null;
-		internals._initializeTTS = async () => {
-			capturedConfig = internals.resolveTTSToolConfig();
-			internals.ttsInitialized = true;
+		internals.tts.initializeIfNeeded = async () => {
+			capturedConfig = internals.tts.resolveToolConfig();
+			internals.tts.initialized = true;
 		};
 
 		await coordinator.waitUntilReady();
@@ -205,16 +205,16 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 
 		const internals = coordinator as any;
 		let capturedConfig: any = null;
-		internals.toolProviderRegistry = { has: () => false };
-		internals.initializeTTSService = async (
+		internals.tts.host.toolProviderRegistry = { has: () => false };
+		internals.tts.initializeService = async (
 			_provider: unknown,
 			config: unknown,
 		) => {
 			capturedConfig = config;
-			internals.ttsInitialized = true;
+			internals.tts.initialized = true;
 		};
 
-		await internals._initializeTTS();
+		await internals.tts.initializeIfNeeded();
 
 		expect(capturedConfig?.providerOptions?.mathSpeech).toEqual({
 			domain: "clearspeak",
@@ -239,16 +239,16 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 
 		const internals = coordinator as any;
 		let capturedConfig: any = null;
-		internals.toolProviderRegistry = { has: () => false };
-		internals._reconfigureTTSProvider = async () => {
-			internals.ttsInitialized = false;
+		internals.tts.host.toolProviderRegistry = { has: () => false };
+		internals.tts.reconfigure = async () => {
+			internals.tts.initialized = false;
 		};
-		internals.initializeTTSService = async (
+		internals.tts.initializeService = async (
 			_provider: unknown,
 			config: unknown,
 		) => {
 			capturedConfig = config;
-			internals.ttsInitialized = true;
+			internals.tts.initialized = true;
 		};
 
 		coordinator.updateToolConfig("textToSpeech", {
@@ -288,16 +288,16 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 
 		const internals = coordinator as any;
 		let capturedConfig: any = null;
-		internals.toolProviderRegistry = { has: () => false };
-		internals._reconfigureTTSProvider = async () => {
-			internals.ttsInitialized = false;
+		internals.tts.host.toolProviderRegistry = { has: () => false };
+		internals.tts.reconfigure = async () => {
+			internals.tts.initialized = false;
 		};
-		internals.initializeTTSService = async (
+		internals.tts.initializeService = async (
 			_provider: unknown,
 			config: unknown,
 		) => {
 			capturedConfig = config;
-			internals.ttsInitialized = true;
+			internals.tts.initialized = true;
 		};
 
 		coordinator.updateToolConfig("textToSpeech", {
@@ -334,16 +334,16 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 
 		const internals = coordinator as any;
 		let capturedConfig: any = null;
-		internals.toolProviderRegistry = { has: () => false };
-		internals._reconfigureTTSProvider = async () => {
-			internals.ttsInitialized = false;
+		internals.tts.host.toolProviderRegistry = { has: () => false };
+		internals.tts.reconfigure = async () => {
+			internals.tts.initialized = false;
 		};
-		internals.initializeTTSService = async (
+		internals.tts.initializeService = async (
 			_provider: unknown,
 			config: unknown,
 		) => {
 			capturedConfig = config;
-			internals.ttsInitialized = true;
+			internals.tts.initialized = true;
 		};
 
 		coordinator.updateToolConfig("textToSpeech", {
@@ -369,22 +369,22 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 
 		const internals = coordinator as any;
 		let attempts = 0;
-		internals._initializeTTS = async () => {
+		internals.tts.initializeIfNeeded = async () => {
 			attempts += 1;
 			if (attempts === 1) {
 				throw new Error("simulated init failure");
 			}
-			internals.ttsInitialized = true;
+			internals.tts.initialized = true;
 		};
 
 		await expect(coordinator.ensureTTSReady()).rejects.toThrow(
 			"simulated init failure",
 		);
-		expect(internals.ttsInitialized).toBe(false);
+		expect(internals.tts.initialized).toBe(false);
 
 		await coordinator.ensureTTSReady();
 		expect(attempts).toBe(2);
-		expect(internals.ttsInitialized).toBe(true);
+		expect(internals.tts.initialized).toBe(true);
 	});
 
 	test("dedupes concurrent ensureTTSReady calls to a single initialization", async () => {
@@ -396,10 +396,10 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 
 		const internals = coordinator as any;
 		let initCalls = 0;
-		internals._initializeTTS = async () => {
+		internals.tts.initializeIfNeeded = async () => {
 			initCalls += 1;
 			await new Promise((resolve) => setTimeout(resolve, 10));
-			internals.ttsInitialized = true;
+			internals.tts.initialized = true;
 		};
 
 		await Promise.all([
@@ -407,7 +407,7 @@ describe("ToolkitCoordinator TTS reconfigure sequencing", () => {
 			coordinator.ensureTTSReady(),
 		]);
 		expect(initCalls).toBe(1);
-		expect(internals.ttsInitialized).toBe(true);
+		expect(internals.tts.initialized).toBe(true);
 	});
 
 	test("accepts custom tool ids when coordinator receives matching toolRegistry", () => {

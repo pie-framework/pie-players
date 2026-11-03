@@ -287,6 +287,8 @@
   type AssessmentToolkitRegionScopeContext
   type AssessmentToolkitRuntimeContext
   type AssessmentToolkitShellContext
+  CONTENT_LEAD_SURFACE
+  CONTENT_MEDIA_SURFACE
   type CalculatorToolProviderConfig
   type CatalogLookupContext
   type CatalogOwnerSnapshot

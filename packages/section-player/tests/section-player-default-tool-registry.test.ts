@@ -38,6 +38,10 @@ const MEDIA_REGION_PATH = resolve(
 	__dirname,
 	"../src/components/shared/card-media-region.ts",
 );
+const CONTENT_SURFACES_PATH = resolve(
+	__dirname,
+	"../../assessment-toolkit/src/tools/content-surfaces.ts",
+);
 const SURFACE_STACK_PATH = resolve(
 	__dirname,
 	"../src/components/shared/SectionCardSurfaceStack.svelte",
@@ -134,10 +138,15 @@ describe("section-player tool surface host seam", () => {
 	test("the surface is named for the relationship, not for one card kind", () => {
 		// The regression this guards: the surface was `item-media` and lived in the
 		// item card, so an alternate authored against passage content had nowhere to
-		// render even though it resolved. Both cards now open one surface, which is
-		// also why a capability declares it once.
-		expect(readSource(MEDIA_REGION_PATH)).toContain(
+		// render even though it resolved. Both cards now open one surface, and the
+		// id has one definition — in the toolkit, where capability packages and
+		// renderers meet. The cards' media region re-exports it beside the sizing
+		// model that consumes it.
+		expect(readSource(CONTENT_SURFACES_PATH)).toContain(
 			'export const CONTENT_MEDIA_SURFACE = "content-media";',
+		);
+		expect(readSource(MEDIA_REGION_PATH)).toContain(
+			'from "@pie-players/pie-assessment-toolkit/tools/registration";',
 		);
 		for (const sourcePath of [ITEM_CARD_PATH, PASSAGE_CARD_PATH]) {
 			expect(readSource(sourcePath)).toContain("<SectionCardMediaSplit");
@@ -148,8 +157,8 @@ describe("section-player tool surface host seam", () => {
 		// A text alternate has to be read in order with the content rather than
 		// watched beside it, which the docked media geometry cannot express. Both
 		// cards open the slot, so a capability declares it once and reaches an item
-		// and a passage alike.
-		expect(readSource(MEDIA_REGION_PATH)).toContain(
+		// and a passage alike. The id's one definition lives in the toolkit.
+		expect(readSource(CONTENT_SURFACES_PATH)).toContain(
 			'export const CONTENT_LEAD_SURFACE = "content-lead";',
 		);
 		for (const sourcePath of [ITEM_CARD_PATH, PASSAGE_CARD_PATH]) {

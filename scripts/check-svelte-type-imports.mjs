@@ -1,21 +1,30 @@
 #!/usr/bin/env node
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { builtinModules } from "node:module";
 import path from "node:path";
 import ts from "typescript";
 
 /**
- * A host installs PIE packages and nothing else, so no published declaration may
- * import `svelte`. TypeScript loads every declaration a published entry reaches,
- * and a host without Svelte then fails with TS2307 under `skipLibCheck: false`,
- * or types the surface as `any` under `skipLibCheck: true`. Only a copy hoisted
- * from some other package's dependency hides the failure.
+ * A host installs the packages a manifest declares and nothing else, so a
+ * published declaration may import only what the package depends on. Two ways
+ * to break that, both with the same consumer symptom — TypeScript loads every
+ * declaration a published entry reaches, and a host without the import fails
+ * with TS2307 under `skipLibCheck: false`, or types the surface as `any` under
+ * `skipLibCheck: true`. Only a copy hoisted from some other package's
+ * dependency hides the failure:
  *
- * `check-svelte-runtime-deps.mjs` governs the manifests and `check-publint.mjs`
- * the runtime import closure. This walks the declaration closure of every type
- * entry and reports the chain of files that reaches `svelte`. A shipped
- * declaration no entry reaches is reported too: it loads into no host, but it is
- * one re-export away from an entry.
+ * - importing `svelte`. Hosts install no Svelte: the players bundle their UI
+ *   runtime, and no package declares it. `check-svelte-runtime-deps.mjs`
+ *   governs the manifests and `check-publint.mjs` the runtime import closure.
+ * - importing a package outside `dependencies` (a devDependency bundled away,
+ *   typically). The runtime works because the build inlined it; the types do
+ *   not resolve on a machine that installs the package alone.
+ *
+ * This walks the declaration closure of every type entry and reports the chain
+ * of files that reaches a forbidden specifier. A shipped declaration no entry
+ * reaches is reported too: it loads into no host, but it is one re-export away
+ * from an entry.
  */
 
 const ROOT = process.cwd();
@@ -25,6 +34,38 @@ const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
 
 export const isSvelteSpecifier = (specifier) =>
 	specifier === "svelte" || specifier.startsWith("svelte/");
+
+/**
+ * Node builtins load everywhere Node 20 does, in browsers through bundlers, and
+ * declarations referencing them resolve from the compiler's own lib set.
+ */
+export const isNodeBuiltinSpecifier = (specifier) => {
+	if (specifier.startsWith("node:")) return true;
+	const [name] = specifier.split("/");
+	if (name.startsWith("@")) return false; // scoped packages are never builtins
+	return builtinModules.includes(name);
+};
+
+/**
+ * The bare specifiers a package's published declarations may import: the
+ * packages an install of it brings. `devDependencies` install for development
+ * of the package, not for its consumer, so an import of one is a finding.
+ */
+export const declaredRuntimeDependencies = (pkg) => {
+	const declared = new Set();
+	for (const field of ["dependencies", "peerDependencies", "optionalDependencies"]) {
+		for (const name of Object.keys(pkg[field] ?? {})) declared.add(name);
+	}
+	return declared;
+};
+
+/** `@scope/pkg/subpath` names `@scope/pkg`; `pkg/subpath` names `pkg`. */
+export const packageNameOf = (specifier) => {
+	const parts = specifier.split("/");
+	return specifier.startsWith("@")
+		? parts.slice(0, 2).join("/")
+		: parts[0];
+};
 
 /**
  * Every module a declaration file refers to. Parsed rather than pattern-matched,
@@ -164,22 +205,25 @@ export function collectShippedDeclarations(dir, pkg) {
 	return [...found].sort();
 }
 
-const svelteReferencesOf = (file) => {
-	const { specifiers, typeReferences } = findModuleReferences(
-		readFileSync(file, "utf8"),
-		file,
-	);
-	return [...specifiers, ...typeReferences].filter(isSvelteSpecifier);
-};
-
 /**
- * One finding per reference to `svelte` in a package's published declarations,
- * with the chain of files from a type entry to the file that makes it. Imports of
- * other packages are not followed: each publishable package is checked on its
- * own.
+ * One finding per forbidden bare specifier in a package's published
+ * declarations, with the chain of files from a type entry to the file that
+ * makes it: `svelte`, which no host installs, and any bare specifier outside
+ * the package's declared runtime dependencies, which a consumer's install
+ * cannot resolve. Imports of other packages are not followed: each publishable
+ * package is checked on its own.
  */
 export function findSvelteTypeImports({ dir, pkg }) {
 	const { entries, missing } = collectTypeEntries(dir, pkg);
+	const declared = declaredRuntimeDependencies(pkg);
+	const undeclaredReason = (specifier) =>
+		isNodeBuiltinSpecifier(specifier)
+			? null
+			: declared.has(packageNameOf(specifier))
+				? null
+				: isSvelteSpecifier(specifier)
+					? `imports "${specifier}"; hosts install no Svelte`
+					: `imports "${specifier}", which it does not declare as a dependency`;
 	const relative = (file) => path.relative(dir, file).split(path.sep).join("/");
 	const findings = missing.map((target) => ({
 		chain: [target.replace(/^\.\//, "")],
@@ -199,20 +243,27 @@ export function findSvelteTypeImports({ dir, pkg }) {
 		parents.set(file, parent);
 		queue.push(file);
 	};
+	const checkSpecifiers = (file, specifiers) => {
+		for (const specifier of specifiers) {
+			if (specifier.startsWith(".") || specifier.startsWith("/")) {
+				enqueue(resolveDeclarationFile(file, specifier), file);
+				continue;
+			}
+			if (isSvelteSpecifier(specifier)) {
+				findings.push({ chain: chainTo(file), reason: `imports "${specifier}"` });
+				continue;
+			}
+			const reason = undeclaredReason(specifier);
+			if (reason) {
+				findings.push({ chain: chainTo(file), reason });
+			}
+		}
+	};
 	while (queue.length > 0) {
 		const file = queue.shift();
 		const { specifiers, referencedPaths, typeReferences } =
 			findModuleReferences(readFileSync(file, "utf8"), file);
-		for (const specifier of [...specifiers, ...typeReferences]) {
-			if (specifier.startsWith(".") || specifier.startsWith("/")) {
-				enqueue(resolveDeclarationFile(file, specifier), file);
-			} else if (isSvelteSpecifier(specifier)) {
-				findings.push({
-					chain: chainTo(file),
-					reason: `imports "${specifier}"`,
-				});
-			}
-		}
+		checkSpecifiers(file, [...specifiers, ...typeReferences]);
 		for (const referencedPath of referencedPaths) {
 			const target = path.resolve(path.dirname(file), referencedPath);
 			enqueue(existsSync(target) ? target : null, file);
@@ -220,7 +271,17 @@ export function findSvelteTypeImports({ dir, pkg }) {
 	}
 	for (const file of collectShippedDeclarations(dir, pkg)) {
 		if (parents.has(file)) continue;
-		for (const specifier of svelteReferencesOf(file)) {
+		const { specifiers, typeReferences } = findModuleReferences(
+			readFileSync(file, "utf8"),
+			file,
+		);
+		for (const specifier of [...specifiers, ...typeReferences]) {
+			// The sweep does not walk the closure of an unreachable file, so only
+			// the absolute rule applies to it: no svelte. An undeclared dependency
+			// in an unreachable declaration is latent, not a consumer break — the
+			// walk above catches it the day an entry reaches the file.
+			if (specifier.startsWith(".") || specifier.startsWith("/")) continue;
+			if (!isSvelteSpecifier(specifier)) continue;
 			findings.push({
 				chain: [relative(file)],
 				reason: `imports "${specifier}" and ships, though no type entry reaches it`,
@@ -269,14 +330,14 @@ function main() {
 
 	if (violations.length > 0) {
 		console.error(
-			`[check-svelte-type-imports] Found ${violations.length} published declaration(s) importing svelte. Hosts install no Svelte: type the surface without it, or stop emitting declarations for Svelte components.`,
+			`[check-svelte-type-imports] Found ${violations.length} published declaration(s) importing svelte or an undeclared dependency. A host installs the declared dependencies and nothing else: declare the import, or type the surface without it.`,
 		);
 		for (const violation of violations) console.error(`- ${violation}`);
 		process.exit(1);
 	}
 
 	console.log(
-		`[check-svelte-type-imports] OK: the declarations of ${packages} publishable package(s), reached from ${entries} type entries or shipped, import no svelte`,
+		`[check-svelte-type-imports] OK: the declarations of ${packages} publishable package(s), reached from ${entries} type entries or shipped, import no svelte and only declared dependencies`,
 	);
 }
 

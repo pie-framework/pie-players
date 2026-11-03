@@ -61,25 +61,29 @@
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"fr": {
-			"status": "generated",
+			"status": "reviewed",
 			"brief": "briefs/fr.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
-			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27; language pass on 2026-11-03 (GLM, Z.ai): évaluation/boîte à outils domain words, event-noun state announcements, CLDR many plurals, guillemets on interpolated ids, tables brutes — pinned into briefs/fr.md in the same change",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058",
+			"reviewedAt": "2026-11-03",
+			"reviewedBy": "Agent review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Domain-register pass per the calibration finding list; decisions pinned in briefs/fr.md. Évaluation over test for the assessment, boîte à outils for the toolkit, event-noun state announcements (Ouverture de…, Déplacement…, Rotation à…), CLDR many plural added, guillemets around interpolated ids, DB tables over tableaux. A native pass remains open work."
 		},
 		"ar": {
 			"status": "generated",
 			"brief": "briefs/ar.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27; string-level language pass on 2026-11-03 (GLM, Z.ai): none reads لا شيء (not بلا), agency phrases take بواسطة (not من قبل), feminine agreement on the counted noun in triesLeft many/other (تبقّت), playback prose unified on الوسائط (not الوسيط), dictionary and picture misses take لا + singular indefinite (لا مُدخل، لا صورة) per the es precedent — pinned into briefs/ar.md; promotion held for the RTL layout audit",
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"pt": {
-			"status": "generated",
+			"status": "reviewed",
 			"brief": "briefs/pt.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
-			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27; language pass on 2026-11-03 (GLM, Z.ai): unmarked-masculine enums, Gas phase noun, foi-aberta and Deslocamento/Rotação announcements, sentence-case labels, Retroceder rewind, fadiga visual, conjunto de ferramentas — pinned into briefs/pt.md in the same change",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058",
+			"reviewedAt": "2026-11-03",
+			"reviewedBy": "Agent review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Domain-register pass per the calibration finding list; decisions pinned in briefs/pt.md. Unmarked-masculine enums (Todos/Nenhum), Gas noun phase, foi-aberta event announcements and Deslocamento/Rotação move nouns, sentence-case periodic-table labels, Retroceder rewind, fadiga visual, conjunto de ferramentas naturalization. A native pass remains open work."
 		},
 		"ko": {
 			"status": "reviewed",
@@ -109,31 +113,39 @@
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"cy": {
-			"status": "generated",
+			"status": "reviewed",
 			"brief": "briefs/cy.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"reviewedAt": "2026-11-03",
+			"reviewedBy": "Agent review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Mutation and register pass per the calibration finding list, with the six CLDR plural categories and their `dau` soft mutations verified; decisions pinned in briefs/cy.md. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27; language pass on 2026-11-03 (GLM, Z.ai): spurious mutation after imperatives removed (Atebwch cwestiwn), `a` + soft mutation fixed (Symud a droi), taller reads hirach (not dalach, which is for people), PNP accommodation reads addasiad (not eithriad), semicolon reads atalnod hanner, per-tool reads pob + singular, lowercase sentence-internal field label (symbol:), zoom announcement drops the calqued ar, authoring-backend error title reworded, Normal speed reads y cyflymder arferol — pinned into briefs/cy.md in the same change",
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"sv": {
-			"status": "generated",
+			"status": "reviewed",
 			"brief": "briefs/sv.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
-			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27; language pass on 2026-11-03 (GLM, Z.ai): Uppläsningsinställningar panel title, spela upp verbs, talsyntes status lines, neuter (uteslutet), uppläsning register in init errors — pinned into briefs/sv.md in the same change",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058",
+			"reviewedAt": "2026-11-03",
+			"reviewedBy": "Agent review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Register and terminology pass per the calibration finding list; decisions pinned in briefs/sv.md. Learner-register TTS panel title (Uppläsningsinställningar), spela upp playback verbs, talsyntes over the TTS acronym in learner-visible status lines, neuter (uteslutet), init failures speak the tool's own word. A native pass remains open work."
 		},
 		"ro": {
-			"status": "generated",
+			"status": "reviewed",
 			"brief": "briefs/ro.md",
 			"generatedAt": "2026-10-19",
-			"model": "Claude (claude-fable-5-1), agent-driven generation in the pie-players repo; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
-			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
+			"model": "Claude (claude-fable-5-1), agent-driven generation in the pie-players repo; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27; language pass on 2026-11-03 (GLM, Z.ai): Barează strike-through, Evidențiator pen name, Mutare/Rotire nouns, lowercase field labels, sinteza vocală alignment, autorat→creat/original, PNP către — pinned into briefs/ro.md in the same change",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058",
+			"reviewedAt": "2026-11-03",
+			"reviewedBy": "Agent review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Domain-register pass per the calibration finding list; decisions pinned in briefs/ro.md. Barează over Tăiere (false-friend cut), Evidențiator the pen, Mutare/Rotire event-noun moves, lowercase sentence-internal field labels, sinteza vocală alignment, autorat false friend replaced with creat/original, către in the PNP hand-off sentence. A native pass remains open work."
 		},
 		"vi": {
-			"status": "generated",
+			"status": "reviewed",
 			"brief": "briefs/vi.md",
 			"generatedAt": "2026-11-03",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
+			"reviewedAt": "2026-11-03",
+			"reviewedBy": "Agent review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Register and terminology pass per the calibration finding list, verifying the brief's pins (Nộp, bảng, kính lúp, phân loại) and the pronoun-free impersonal register; decisions pinned in briefs/vi.md. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; language pass on 2026-11-03 (GLM, Z.ai): previous/maximize button register (Trước, Tối đa hóa), enabled/disabled toggle-state pair (Bật/Tắt), window maximize no longer clashes with zoom-in, media-prose aspect added (khi đa phương tiện đang phát), district reads học khu, host kept Latin in developer strings (máy chủ is a false friend for server), tất cả + các on countable nouns, lowercase mid-string noun in speedOptionsHelp, previewUnavailable disambiguated with trong khi, protractor description drops the đo góc tautology — pinned into briefs/vi.md in the same change",
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		}
 	}

@@ -1,16 +1,19 @@
 /**
- * Vietnamese message catalog — machine-generated, not reviewed.
+ * Vietnamese message catalog — reviewed (agent pass in lieu of a native
+ * reader, 2026-11-03; see `reviewedBy` in `catalog-manifest.json`).
  *
- * Generated from `en-US` against `briefs/vi.md`. Provenance — the source
- * hash, model and generation date — is recorded in `catalog-manifest.json`;
- * `scripts/check-catalogs.ts` fails this file against the English source when
- * either drifts. Regenerate per the package README when the check reports the
- * catalog stale.
+ * Serves every Vietnamese host: registered under the bare `vi` tag, so `vi`
+ * and `vi-VN` both widen to it. Content flavour is neutral-formal written
+ * Vietnamese per `briefs/vi.md` — full standard diacritics, sentence-initial
+ * capitalization only, pronoun-free impersonal phrasing, and the brief's
+ * terminology pins (`Nộp`, `bảng`, `kính lúp`, `phân loại`). Vietnamese has a
+ * single CLDR plural category, so every plural group carries only `other`.
  *
- * Locale facts the shape relies on: Vietnamese has a single CLDR plural
- * category, so every plural group carries only `other`; orthography is Latin
- * script with full standard diacritics and sentence-initial capitalization
- * only; UI phrasing omits pronouns entirely; product names stay untranslated.
+ * Regeneration is surgical, never wholesale: `scripts/check-catalogs.ts`
+ * diffs the English snapshot (`vi.english-snapshot.json`) against the live
+ * `en-US` source and lists exactly the keys whose English moved; translate
+ * only those, keep every reviewed string, then refresh the snapshot per the
+ * package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/vi
  */
@@ -24,7 +27,7 @@ const vi = {
 		retry: "Thử lại",
 		back: "Quay lại",
 		next: "Tiếp theo",
-		previous: "Trước đó",
+		previous: "Trước",
 		submit: "Nộp",
 		continue: "Tiếp tục",
 		finish: "Hoàn thành",
@@ -47,7 +50,7 @@ const vi = {
 		untitled: "Không có tiêu đề",
 		apply: "Áp dụng",
 		enabled: "Bật",
-		disabled: "Đã tắt",
+		disabled: "Tắt",
 		lookUp: "Tra cứu",
 		wordOrPhrase: "Từ hoặc cụm từ",
 		closeA11y: "Đóng",
@@ -106,7 +109,7 @@ const vi = {
 		},
 
 		timedMedia: {
-			waitingForMedia: "Các câu hỏi sẽ xuất hiện khi đa phương tiện phát.",
+			waitingForMedia: "Các câu hỏi sẽ xuất hiện khi đa phương tiện đang phát.",
 			questionAvailable: "Câu hỏi {position} hiện đã có sẵn.",
 			playbackPaused: "Đã tạm dừng phát. Hãy trả lời câu hỏi {position} để tiếp tục.",
 			playbackAdvisory: "Hãy trả lời câu hỏi {position} trước khi tiếp tục phát đa phương tiện.",
@@ -137,9 +140,9 @@ const vi = {
 		closePanelA11y: "Đóng bảng",
 		resizeWindow: "Đổi kích thước cửa sổ",
 		minimize: "Thu nhỏ",
-		maximize: "Phóng to",
+		maximize: "Tối đa hóa",
 		minimizePanelA11y: "Thu nhỏ bảng",
-		maximizePanelA11y: "Phóng to bảng",
+		maximizePanelA11y: "Tối đa hóa bảng",
 
 		window: {
 			moveLeftA11y: "Di chuyển công cụ sang trái",
@@ -215,7 +218,7 @@ const vi = {
 			toolA11y: "Bảng tuần hoàn — chọn một nguyên tố để xem thông tin chi tiết",
 			elementsA11y: "Các nguyên tố trong bảng tuần hoàn",
 			showAllA11y: "Hiện tất cả các nguyên tố",
-			allElements: "Tất cả nguyên tố",
+			allElements: "Tất cả các nguyên tố",
 			atomicMass: "Khối lượng nguyên tử",
 			atomicNumber: "Số nguyên tử",
 			electronConfig: "Cấu hình electron",
@@ -263,7 +266,7 @@ const vi = {
 		},
 		protractor: {
 			name: "Thước đo góc",
-			description: "Thước đo góc trên màn hình để đo góc",
+			description: "Thước đo góc trên màn hình",
 			buttonA11y: "Thước đo góc",
 			tooltip: "Thước đo góc",
 			toolA11y:
@@ -539,11 +542,11 @@ const vi = {
 			title: "Hồ sơ PNP",
 			noAssessmentBound: "Chưa gắn bài đánh giá",
 			noAssessmentBoundBody:
-				"Hồ sơ, chính sách quận và chính sách tổ chức thi chưa có dữ liệu để đọc, nên chỉ requiredTools bắt buộc của câu hỏi mới có thể cấp một sự hỗ trợ. Hãy truyền bài đánh giá vào thuộc tính assessment của bộ công cụ, hoặc gọi updateAssessment(...) trên bộ điều phối của bộ công cụ.",
+				"Hồ sơ, chính sách học khu và chính sách tổ chức thi chưa có dữ liệu để đọc, nên chỉ requiredTools bắt buộc của câu hỏi mới có thể cấp một sự hỗ trợ. Hãy truyền bài đánh giá vào thuộc tính assessment của bộ công cụ, hoặc gọi updateAssessment(...) trên bộ điều phối của bộ công cụ.",
 			determinationReadOnly: "Xác định (chỉ đọc)",
 			toolsEditor: "Trình chỉnh sửa công cụ",
 			enforcement: "Thực thi PNP",
-			allAvailableTools: "Tất cả công cụ khả dụng",
+			allAvailableTools: "Tất cả các công cụ khả dụng",
 			clearPlacement: "Xóa vị trí đặt",
 			tool: "Công cụ",
 			placement: "Vị trí đặt",
@@ -557,7 +560,7 @@ const vi = {
 			on: "Bật",
 			effective: "Hiệu lực:",
 			needs: "cần",
-			hostSurfaceNotPlaced: "bề mặt máy chủ (chưa đặt)",
+			hostSurfaceNotPlaced: "bề mặt host (chưa đặt)",
 			support: "hỗ trợ",
 			prohibit: "cấm",
 		},
@@ -611,7 +614,7 @@ const vi = {
 				"Google Cloud TTS không khả dụng qua API đã cấu hình.",
 			pollyUnavailable: "AWS Polly không khả dụng qua API đã cấu hình.",
 			recommendedVoices: "Giọng đọc được đề xuất",
-			allVoices: "Tất cả giọng đọc khả dụng",
+			allVoices: "Tất cả các giọng đọc khả dụng",
 			previewVoice: "Nghe thử giọng đọc",
 			stopPreview: "Dừng nghe thử",
 			applying: "Đang áp dụng…",
@@ -627,7 +630,7 @@ const vi = {
 			previewNoAudio: "Phản hồi xem trước không chứa nội dung âm thanh.",
 			previewEnterText: "Nhập văn bản xem trước trước khi bắt đầu phát.",
 			previewUnavailable:
-				"Không thể xem trước khi dịch vụ này không khả dụng.",
+				"Không thể xem trước trong khi dịch vụ này không khả dụng.",
 			browserSynthesisUnavailable: "Tổng hợp giọng nói của trình duyệt không khả dụng.",
 			ssmlWordTrackingDisabled:
 				"Bản xem trước SSML của Google giữ nguyên SSML gốc, nên theo dõi từ bị tắt.",
@@ -655,7 +658,7 @@ const vi = {
 			},
 			headerRowReservation: "Đặt trước hàng tiêu đề câu hỏi: {state}",
 			speedOptionsHelp:
-				"Các hệ số phân tách bằng dấu phẩy hoặc dấu chấm phẩy. Bao gồm cả 1 cho Tốc độ thường; để trống để ẩn các điều khiển tốc độ.",
+				"Các hệ số phân tách bằng dấu phẩy hoặc dấu chấm phẩy. Bao gồm cả 1 cho tốc độ bình thường; để trống để ẩn các điều khiển tốc độ.",
 			usingSelectedVoice: "Đang dùng giọng đọc đã chọn: {voice}",
 			autoVoice: "Giọng đọc tốt nhất khả dụng (tự động): {voice}",
 			autoVoiceWaiting: "Giọng đọc tốt nhất khả dụng (tự động): đang chờ giọng đọc của trình duyệt.",

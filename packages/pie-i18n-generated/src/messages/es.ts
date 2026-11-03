@@ -1,5 +1,6 @@
 /**
- * Spanish message catalog — machine-generated, not reviewed.
+ * Spanish message catalog — reviewed (agent pass in lieu of a native reader,
+ * 2026-11-03; see `reviewedBy` in `catalog-manifest.json`).
  *
  * Serves every Spanish host: registered under the bare `es` tag, so `es`,
  * `es-MX`, `es-419` and `es-ES` all widen to it. Content flavour is neutral
@@ -8,9 +9,11 @@
  * phrasing, and possessives use `tus` only where unavoidable. A
  * Spain-focused host can override any key through `customMessages`.
  *
- * Provenance — the source hash, model and generation date — is recorded in
- * `catalog-manifest.json`; `scripts/check-catalogs.ts` fails this file
- * against the English source when either drifts.
+ * Regeneration is surgical, never wholesale: `scripts/check-catalogs.ts`
+ * diffs the English snapshot (`es.english-snapshot.json`) against the live
+ * `en-US` source and lists exactly the keys whose English moved; translate
+ * only those, keep every reviewed string, then refresh the snapshot per the
+ * package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/es
  */
@@ -34,8 +37,8 @@ const es = {
 		any: "Cualquiera",
 		off: "Desactivado",
 		auto: "Automático",
-		all: "Todas",
-		none: "Ninguna",
+		all: "Todos",
+		none: "Ninguno",
 		loading: "Cargando…",
 		error: "Error",
 		settings: "Configuración",
@@ -106,7 +109,7 @@ const es = {
 			noSections: "No hay secciones",
 			loadFailed: "No se pudo cargar la evaluación. Inténtelo de nuevo.",
 			restoreFailed:
-				"No se pudieron restaurar tus respuestas guardadas de esta sección. Inténtelo de nuevo.",
+				"No se pudieron restaurar las respuestas guardadas de esta sección. Inténtelo de nuevo.",
 		},
 
 		formative: {
@@ -170,11 +173,11 @@ const es = {
 		},
 
 		announce: {
-			movedUp: "Movido hacia arriba a {position}",
-			movedDown: "Movido hacia abajo a {position}",
-			movedLeft: "Movido a la izquierda a {position}",
-			movedRight: "Movido a la derecha a {position}",
-			rotatedTo: "Rotado a {degrees} grados",
+			movedUp: "Se movió hacia arriba a {position}",
+			movedDown: "Se movió hacia abajo a {position}",
+			movedLeft: "Se movió a la izquierda a {position}",
+			movedRight: "Se movió a la derecha a {position}",
+			rotatedTo: "Se rotó a {degrees} grados",
 		},
 	},
 
@@ -185,12 +188,12 @@ const es = {
 			nameScientific: "Calculadora científica",
 			nameGraphing: "Calculadora gráfica",
 			description: "Calculadora de varios tipos (básica, científica, gráfica)",
-			openedBasic: "Calculadora básica abierta",
-			openedScientific: "Calculadora científica abierta",
-			openedGraphing: "Calculadora gráfica abierta",
-			closedBasic: "Calculadora básica cerrada",
-			closedScientific: "Calculadora científica cerrada",
-			closedGraphing: "Calculadora gráfica cerrada",
+			openedBasic: "Se abrió la calculadora básica",
+			openedScientific: "Se abrió la calculadora científica",
+			openedGraphing: "Se abrió la calculadora gráfica",
+			closedBasic: "Se cerró la calculadora básica",
+			closedScientific: "Se cerró la calculadora científica",
+			closedGraphing: "Se cerró la calculadora gráfica",
 			toolA11y: "Herramienta Calculadora",
 			loading: "Cargando la calculadora…",
 			providerUnavailable: "La calculadora no está disponible.",
@@ -207,9 +210,9 @@ const es = {
 			grid: "Cuadrícula:",
 			gridOpacityA11y: "Opacidad de la cuadrícula",
 			pointA11y: "Punto de la gráfica {id}",
-			modeSelector: "Selector",
+			modeSelector: "Seleccionar",
 			modeSelectorHint:
-				"Selector: haga clic y arrastre los puntos para moverlos o mover las líneas asociadas.",
+				"Seleccionar: haga clic y arrastre los puntos para moverlos o mover las líneas asociadas.",
 			modePoint: "Punto",
 			modePointHint: "Punto: haga clic en la cuadrícula para agregar puntos.",
 			modeLine: "Línea",
@@ -252,7 +255,7 @@ const es = {
 			phaseValue: {
 				solid: "Sólido",
 				liquid: "Líquido",
-				gas: "Gaseoso",
+				gas: "Gas",
 			},
 		},
 		ruler: {
@@ -293,13 +296,13 @@ const es = {
 			notConfigured:
 				"No hay ningún servicio de diccionario configurado para esta evaluación.",
 			idleHint: "Escriba una palabra para buscar su definición.",
-			lookingUp: "Buscando «{term}»…",
-			noEntryFor: "Sin entradas para «{term}».",
+			lookingUp: "Buscando “{term}”…",
+			noEntryFor: "Sin entrada para “{term}”.",
 			entriesCount: {
 				one: "{count} entrada",
 				other: "{count} entradas",
 			},
-			noEntryStatusFor: "Sin entradas del diccionario para {term}.",
+			noEntryStatusFor: "Sin entrada del diccionario para {term}.",
 		},
 		pictureDictionary: {
 			name: "Diccionario de imágenes",
@@ -310,13 +313,13 @@ const es = {
 			notConfigured:
 				"No hay ningún servicio de diccionario de imágenes configurado para esta evaluación.",
 			idleHint: "Escriba una palabra para ver una imagen.",
-			lookingUp: "Buscando «{term}»…",
-			noEntryFor: "Sin imágenes para «{term}».",
+			lookingUp: "Buscando “{term}”…",
+			noEntryFor: "Sin imagen para “{term}”.",
 			entriesCount: {
 				one: "{count} imagen",
 				other: "{count} imágenes",
 			},
-			noEntryStatusFor: "Sin imágenes para {term}.",
+			noEntryStatusFor: "Sin imagen para {term}.",
 		},
 		dictionarySpanish: {
 			name: "Diccionario en español",
@@ -560,7 +563,7 @@ const es = {
 			title: "Perfil PNP",
 			noAssessmentBound: "Ninguna evaluación vinculada",
 			noAssessmentBoundBody:
-				"El perfil, el distrito y la política de administración de la prueba no tienen nada que leer, así que solo los requiredTools de un ítem pueden otorgar una adaptación. Pase la evaluación a la propiedad assessment del toolkit o llame a updateAssessment(...) en el coordinador del toolkit.",
+				"El perfil, el distrito y la política de administración de la prueba no tienen nada que leer, así que solo los requiredTools de un ítem pueden otorgar una adaptación. Pase la evaluación a la propiedad assessment del conjunto de herramientas o llame a updateAssessment(...) en el coordinador del conjunto de herramientas.",
 			determinationReadOnly: "Determinación (solo lectura)",
 			toolsEditor: "Editor de herramientas",
 			enforcement: "Aplicación de PNP",
@@ -570,7 +573,7 @@ const es = {
 			placement: "Ubicación",
 			provider: "Proveedor",
 			simulation: "Simulación de PNP",
-			resolvedTools: "Herramientas resueltas (toolkit)",
+			resolvedTools: "Herramientas resueltas (conjunto de herramientas)",
 			provenanceSummary: "Resumen de procedencia de la política de herramientas",
 			perToolDecisions: "Decisiones por herramienta",
 			policyDiagnostics: "Diagnóstico de políticas",
@@ -578,7 +581,7 @@ const es = {
 			on: "Activado",
 			effective: "Efectivo:",
 			needs: "requiere",
-			hostSurfaceNotPlaced: "superficie del host (sin colocar)",
+			hostSurfaceNotPlaced: "superficie del anfitrión (sin colocar)",
 			support: "permitir",
 			prohibit: "prohibir",
 		},
@@ -606,7 +609,7 @@ const es = {
 			female: "Femenino",
 			neutral: "Neutro",
 			engine: "Motor",
-			neural: "Neural",
+			neural: "Neuronal",
 			standard: "Estándar",
 			providerDefault: "Predeterminado del proveedor",
 			format: "Formato",
@@ -618,8 +621,8 @@ const es = {
 			wavenetVoiceType: "WaveNet",
 			studioVoiceType: "Studio",
 			plainText: "Texto sin formato",
-			sampleText: "Texto de ejemplo",
-			resetSample: "Restablecer el ejemplo",
+			sampleText: "Texto de muestra",
+			resetSample: "Restablecer la muestra",
 			providerAvailable: "Proveedor disponible.",
 			providerUnavailable: "Proveedor no disponible.",
 			providerCheckFailed: "Falló la comprobación de disponibilidad del proveedor.",
@@ -660,7 +663,7 @@ const es = {
 			applyUnavailable:
 				"No se puede aplicar la configuración mientras este servicio no esté disponible.",
 			coordinatorUnavailable:
-				"El coordinador del toolkit no está disponible para actualizar la lectura por voz.",
+				"El coordinador del conjunto de herramientas no está disponible para actualizar la lectura por voz.",
 			customProviderNotRegistered:
 				"El proveedor personalizado '{id}' no está registrado.",
 			customProviderNoConfig:

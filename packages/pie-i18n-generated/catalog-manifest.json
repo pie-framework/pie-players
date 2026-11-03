@@ -32,24 +32,30 @@
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"en-GB": {
-			"status": "generated",
+			"status": "reviewed",
 			"brief": "briefs/en-GB.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"reviewedAt": "2026-11-03",
+			"reviewedBy": "Agent verification pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Delta-locale review is spelling-convention verification: catalog verified complete against the brief, no corrections needed. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27; spelling-convention verification pass on 2026-11-03 (GLM, Z.ai): catalog verified against the brief, delta set complete, no missed anglicizations, no corrections needed",
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"en-AU": {
-			"status": "generated",
+			"status": "reviewed",
 			"brief": "briefs/en-AU.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"reviewedAt": "2026-11-03",
+			"reviewedBy": "Agent verification pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Delta-locale review is spelling-convention verification: catalog verified complete against the brief, no corrections needed. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27; spelling-convention verification pass on 2026-11-03 (GLM, Z.ai): catalog verified against the brief, delta set complete, no missed anglicizations, no corrections needed",
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"es": {
-			"status": "generated",
+			"status": "reviewed",
 			"brief": "briefs/es.md",
 			"generatedAt": "2026-10-19",
-			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"reviewedAt": "2026-11-03",
+			"reviewedBy": "Agent review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Domain-register pass per the calibration finding list; decisions pinned in briefs/es.md. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; the nine passage-width, question-position and summary keys by Claude (claude-fable-5-1) on landing the wave onto develop; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27; domain-register pass on 2026-11-03 (GLM, Z.ai): impersonal se-form state announcements, unmarked-masculine enums, dropped tú/usted clash in restoreFailed, Seleccionar selector mode, noun Gas phase, curly quotes over guillemets, singular dictionary misses, toolkit/host/anfitrión naturalization, neuronal/muestra consistency — pinned into briefs/es.md in the same change",
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		},
 		"fr": {
@@ -113,6 +119,13 @@
 			"brief": "briefs/ro.md",
 			"generatedAt": "2026-10-19",
 			"model": "Claude (claude-fable-5-1), agent-driven generation in the pie-players repo; corrections from a three-reviewer agent review on 2026-10-20 (Claude claude-fable-5-1), applied where at least two reviewers agreed; the list toggle key by Claude (claude-opus-5-5) on 2026-10-20; the list highlights key by Claude (claude-opus-5-5) on 2026-10-20; the list collapse and player-error keys by Claude (claude-opus-5-5) on 2026-10-20; the answer-eliminator toggle, eliminated and unlabeled-choice keys by Claude (claude-opus-5-5) on 2026-10-24; the periodic-table phase-value keys by Claude (claude-opus-5-5) on 2026-10-27",
+			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
+		},
+		"vi": {
+			"status": "generated",
+			"brief": "briefs/vi.md",
+			"generatedAt": "2026-11-03",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo",
 			"sourceHash": "2b87ba61e58573bc68bd6bc1b2d35b89b61f707b6b5496855b01556aaecca058"
 		}
 	}

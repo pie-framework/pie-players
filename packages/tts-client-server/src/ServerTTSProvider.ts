@@ -23,14 +23,14 @@ import type {
 	TTSProviderOptions,
 } from "@pie-players/pie-tts";
 import {
-	createPieLogger,
-	isTtsDebugEnabled,
-} from "@pie-players/pie-players-shared/pie";
-import {
 	anchorSpeechMarks,
 	normalizeSpeechMarks,
 	resolveSpeedRateBucket,
-} from "@pie-players/tts-server-core";
+} from "@pie-players/pie-tts";
+import {
+	createPieLogger,
+	isTtsDebugEnabled,
+} from "@pie-players/pie-players-shared/pie";
 
 // Debug lines need PIE_TTS_DEBUG=1 or globalThis.__PIE_TTS_DEBUG__ = true.
 const logger = createPieLogger("server-tts-provider", isTtsDebugEnabled);

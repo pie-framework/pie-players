@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { anchorSpeechMarks, normalizeSpeechMarks } from "./speech-marks.js";
-import type { SpeechMark } from "./types.js";
+import { describe, expect, it } from "bun:test";
+import { anchorSpeechMarks, normalizeSpeechMarks } from "../src/speech-marks.js";
+import type { SpeechMark } from "../src/speech-marks.js";
 
 const SPANISH = "La canción está aquí, señor. Él comió más pan después.";
 const encoder = new TextEncoder();

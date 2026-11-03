@@ -320,17 +320,43 @@ export type ToolkitToolProviders = [ToolProviderApi, TTSToolProvider];
 };
 
 /**
+ * The workspace runtime dependencies of `packageName`, transitively, from the
+ * packed fixture set.
+ */
+const packedDependencyClosure = (packageName, packageMap, tarballs) => {
+	const closure = [];
+	const queue = Object.keys(
+		packageMap.get(packageName)?.pkg.dependencies ?? {},
+	).filter((name) => tarballs.has(name));
+	for (let index = 0; index < queue.length; index += 1) {
+		const name = queue[index];
+		closure.push(tarballs.get(name));
+		for (const dependency of Object.keys(
+			packageMap.get(name)?.pkg.dependencies ?? {},
+		)) {
+			if (tarballs.has(dependency) && !queue.includes(dependency)) {
+				queue.push(dependency);
+			}
+		}
+	}
+	return closure;
+};
+
+/**
  * The server TTS declarations use no Node types, and the package installs none:
  * `@types/node` is included in every compilation that can see it, so one pulled
  * in by a dependency breaks a consumer on an older TypeScript. The package
  * installs into a fixture of its own, since other fixture packages bring
- * `@types/node` in transitively. The snippet encodes the bytes the way a route
- * handler does, which the audio type has to keep compiling without Node types.
+ * `@types/node` in transitively. Its workspace dependencies install from their
+ * own packed tarballs — a host installing the package alone resolves them the
+ * same way — and none of them brings `@types/node`. The snippet encodes the
+ * bytes the way a route handler does, which the audio type has to keep
+ * compiling without Node types.
  */
-const typecheckTtsServerCore = (tarballPath) => {
+const typecheckTtsServerCore = (tarballPath, dependencyTarballs) => {
 	const fixtureDir = createFixtureProject();
 	try {
-		installTarballs(fixtureDir, [tarballPath]);
+		installTarballs(fixtureDir, [tarballPath, ...dependencyTarballs]);
 		if (existsSync(path.join(fixtureDir, "node_modules", "@types", "node"))) {
 			return { ok: false, message: "installing it installs @types/node" };
 		}
@@ -428,7 +454,10 @@ const run = async () => {
 			}
 		}
 
-		const ttsTypecheckResult = typecheckTtsServerCore(ttsServerCoreTarball);
+		const ttsTypecheckResult = typecheckTtsServerCore(
+			ttsServerCoreTarball,
+			packedDependencyClosure(TTS_SERVER_CORE, packageMap, tarballs),
+		);
 		if (!ttsTypecheckResult.ok) {
 			failures.push(
 				`[node-consumer] ${TTS_SERVER_CORE} failed TypeScript consumption without Node types: ${ttsTypecheckResult.message}`,

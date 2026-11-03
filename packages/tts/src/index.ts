@@ -15,3 +15,12 @@ export type {
 	TTSProviderCapabilities,
 	TTSProviderOptions,
 } from "./provider-interface.js";
+
+// The word-timing wire format and its correction, shared by the browser client
+// and the server providers.
+export type { SpeechMark } from "./speech-marks.js";
+export {
+	anchorSpeechMarks,
+	normalizeSpeechMarks,
+} from "./speech-marks.js";
+export { resolveSpeedRateBucket } from "./speed-rate.js";

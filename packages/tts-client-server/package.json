@@ -38,8 +38,7 @@
 	},
 	"dependencies": {
 		"@pie-players/pie-players-shared": "workspace:*",
-		"@pie-players/pie-tts": "workspace:*",
-		"@pie-players/tts-server-core": "workspace:*"
+		"@pie-players/pie-tts": "workspace:*"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.3",

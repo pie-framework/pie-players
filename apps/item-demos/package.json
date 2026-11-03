@@ -37,7 +37,7 @@
 		"@tailwindcss/vite": "^4.3.3",
 		"@types/bun": "^1.4.4",
 		"@types/node": "^26.6.5",
-		"daisyui": "^5.7.47",
+		"daisyui": "^5.7.50",
 		"svelte": "^5.57.3",
 		"svelte-check": "^4.7.6",
 		"tailwindcss": "^4.2.2",

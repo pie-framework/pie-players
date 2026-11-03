@@ -51,7 +51,7 @@
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "@tailwindcss/vite": "^4.3.3",
         "@types/node": "^26.6.5",
-        "daisyui": "^5.7.47",
+        "daisyui": "^5.7.50",
         "svelte": "^5.57.3",
         "svelte-check": "^4.7.6",
         "tailwindcss": "^4.2.2",
@@ -75,7 +75,7 @@
         "@tailwindcss/vite": "^4.3.3",
         "@types/bun": "^1.4.4",
         "@types/node": "^26.6.5",
-        "daisyui": "^5.7.47",
+        "daisyui": "^5.7.50",
         "svelte": "^5.57.3",
         "svelte-check": "^4.7.6",
         "tailwindcss": "^4.2.2",
@@ -141,7 +141,7 @@
         "@tailwindcss/typography": "^0.5.20",
         "@tailwindcss/vite": "^4.3.3",
         "@types/node": "^26.6.5",
-        "daisyui": "^5.7.47",
+        "daisyui": "^5.7.50",
         "svelte": "^5.57.3",
         "svelte-check": "^4.7.6",
         "tailwindcss": "^4.2.2",
@@ -177,7 +177,7 @@
         "@tailwindcss/vite": "^4.3.3",
         "@types/bun": "^1.4.4",
         "@types/node": "^26.6.5",
-        "daisyui": "^5.7.47",
+        "daisyui": "^5.7.50",
         "svelte": "^5.57.3",
         "svelte-check": "^4.7.6",
         "tailwindcss": "^4.2.2",
@@ -275,7 +275,7 @@
         "@tailwindcss/vite": "^4.3.3",
         "@types/bun": "^1.4.4",
         "@types/node": "^26.6.5",
-        "daisyui": "^5.7.47",
+        "daisyui": "^5.7.50",
         "svelte": "^5.57.3",
         "svelte-check": "^4.7.6",
         "tailwindcss": "^4.2.2",
@@ -2187,7 +2187,7 @@
 
     "d3-timer": ["d3-timer@3.0.1", "", {}, "sha512-ndfJ/JxxMd3nw31uyKoY2naivF+r29V+Lc0svZxe1JvvIRmi8hUsrMvdOwgS1o6uBHmiz91geQ0ylPP0aj1VUA=="],
 
-    "daisyui": ["daisyui@5.7.47", "", {}, "sha512-NOl4vPifelRqB3CMzoU751zc44KCDD9HdHMTTqQ30uiYVpIyK7+s94/ySDWgYqjdl1tQCaCrgGBx4KCizm+a3Q=="],
+    "daisyui": ["daisyui@5.7.50", "", {}, "sha512-+/LRqnTCoc7s/bJEKKwtJSwzeXCVdAmRdNmZeZzgHCaQ9PJyl7j+2V2U32GQDMyD+VDkP9e/+JGoC72Y1hLk7w=="],
 
     "data-uri-to-buffer": ["data-uri-to-buffer@4.0.1", "", {}, "sha512-0R9ikRb668HB7QDxT1vkpuUBtqc53YyAwMwGeUFKRojY/NWKvdZ+9UYtRfGmhqNbRkTSVpMbmyhXipFFv2cb/A=="],
 

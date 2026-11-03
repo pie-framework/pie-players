@@ -966,7 +966,7 @@
       "name": "@pie-players/tts-server-google",
       "version": "1.0.0-beta.7",
       "dependencies": {
-        "@google-cloud/text-to-speech": "^7.1.1",
+        "@google-cloud/text-to-speech": "^7.2.0",
         "@pie-players/tts-server-core": "workspace:*",
       },
       "devDependencies": {
@@ -1287,7 +1287,7 @@
 
     "@floating-ui/utils": ["@floating-ui/utils@0.2.12", "", {}, "sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww=="],
 
-    "@google-cloud/text-to-speech": ["@google-cloud/text-to-speech@7.1.1", "", { "dependencies": { "google-gax": "^6.0.0" } }, "sha512-afBM2oY60XzNvwFO55u2ugirkNGQCfr2jMGdqBwYyWgbvgXzq3QC/WgpSLjHXsTUTTerGbsQKqzVh60+oXfCzg=="],
+    "@google-cloud/text-to-speech": ["@google-cloud/text-to-speech@7.2.0", "", { "dependencies": { "google-gax": "^6.0.0" } }, "sha512-RsfBmiZvZ9aI8tr8PitPam5HDIL9X5upbrzBw5uZUP+syCo2AUZictX2bBeYZQa5sWx/bfp6G1sBE1TbAe4QAg=="],
 
     "@grpc/grpc-js": ["@grpc/grpc-js@1.14.4", "", { "dependencies": { "@grpc/proto-loader": "^0.8.0", "@js-sdsl/ordered-map": "^4.4.2" } }, "sha512-k9Dj3DV/itK9D06Y8f190Qgop7/Ui+D0njFV3LHMPwPT75DpXLQohE9Wmz0QElrJnzsjB7KPWiKJbOl7IPDArQ=="],
 

@@ -37,7 +37,7 @@ const ar = {
 		off: "إيقاف",
 		auto: "تلقائي",
 		all: "الكل",
-		none: "بلا",
+		none: "لا شيء",
 		loading: "جارٍ التحميل…",
 		error: "خطأ",
 		settings: "الإعدادات",
@@ -66,7 +66,7 @@ const ar = {
 		summary: {
 			correctA11y: "الإجابة الصحيحة",
 			answer: "الإجابة",
-			manualScoring: "تم تصحيحه من قبل معلم",
+			manualScoring: "تم تصحيحه بواسطة معلم",
 			audio: "صوت",
 			video: "فيديو",
 		},
@@ -122,19 +122,19 @@ const ar = {
 				one: "تبقت محاولة واحدة ({count}).",
 				two: "تبقت محاولتان ({count}).",
 				few: "تبقت {count} محاولات.",
-				many: "تبقّى {count} محاولة.",
-				other: "تبقّى {count} محاولة.",
+				many: "تبقّت {count} محاولة.",
+				other: "تبقّت {count} محاولة.",
 			},
 		},
 
 		timedMedia: {
-			waitingForMedia: "ستظهر الأسئلة أثناء تشغيل الوسيط.",
+			waitingForMedia: "ستظهر الأسئلة أثناء تشغيل الوسائط.",
 			questionAvailable: "السؤال {position} متاح الآن.",
 			playbackPaused:
 				"توقف التشغيل مؤقتًا. أجب عن السؤال {position} للمتابعة.",
 			playbackAdvisory:
-				"أجب عن السؤال {position} قبل متابعة تشغيل الوسيط.",
-			playbackReleased: "قُبلت الإجابة. تابع تشغيل الوسيط.",
+				"أجب عن السؤال {position} قبل متابعة تشغيل الوسائط.",
+			playbackReleased: "قُبلت الإجابة. تابع تشغيل الوسائط.",
 		},
 	},
 
@@ -295,7 +295,7 @@ const ar = {
 			notConfigured: "لا توجد خدمة قاموس مهيأة لهذا الاختبار.",
 			idleHint: "اكتب كلمة للبحث عن تعريفها.",
 			lookingUp: "جارٍ البحث عن «{term}»…",
-			noEntryFor: "لا مدخلات لـ«{term}».",
+			noEntryFor: "لا مُدخل لـ«{term}».",
 			entriesCount: {
 				zero: "{count} مُدخلات",
 				one: "مُدخل واحد ({count})",
@@ -304,7 +304,7 @@ const ar = {
 				many: "{count} مُدخلًا",
 				other: "{count} مُدخل",
 			},
-			noEntryStatusFor: "لا مدخلات قاموس لـ{term}.",
+			noEntryStatusFor: "لا مُدخل قاموس لـ{term}.",
 		},
 		pictureDictionary: {
 			name: "القاموس المصور",
@@ -315,7 +315,7 @@ const ar = {
 			notConfigured: "لا توجد خدمة قاموس مصور مهيأة لهذا الاختبار.",
 			idleHint: "اكتب كلمة لرؤية صورة لها.",
 			lookingUp: "جارٍ البحث عن «{term}»…",
-			noEntryFor: "لا صور لـ«{term}».",
+			noEntryFor: "لا صورة لـ«{term}».",
 			entriesCount: {
 				zero: "{count} صور",
 				one: "صورة واحدة ({count})",
@@ -324,7 +324,7 @@ const ar = {
 				many: "{count} صورة",
 				other: "{count} صورة",
 			},
-			noEntryStatusFor: "لا صور لـ{term}.",
+			noEntryStatusFor: "لا صورة لـ{term}.",
 		},
 		dictionarySpanish: {
 			name: "القاموس الإسباني",

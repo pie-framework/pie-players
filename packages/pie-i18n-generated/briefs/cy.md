@@ -72,6 +72,28 @@ one).
 - Soft mutation after `dau` (`{count} gofnod`, `{count} ddelwedd`) is
   authored where the pattern is fixed; machine output elsewhere may miss
   mutations — a review pass should check them first.
+- `a` (and) takes soft mutation (`Symud a droi`, never `*a throi`); the
+  imperative `-wch` ending takes soft mutation (`Rhowch destun`,
+  `Gwahanwch luosyddion`); a noun object of an imperative keeps the radical
+  (`Atebwch cwestiwn`, never `*gwestiwn` — the `dau` mutation does not
+  generalize).
+
+## Review pins (2026-11-03)
+
+Decisions the language pass pinned so a regeneration reproduces them:
+
+- Height pairs `hirach`/`fyrrach` (`Gwneud … yn hirach` / `yn fyrrach`);
+  `tal` is for people, not windows and panels.
+- Sentence-internal field labels stay lowercase (`symbol:` in
+  `elementA11y`), per the calibration's Dutch finding.
+- `accommodation` (PNP) is `addasiad`, never `eithriad` (exception).
+- `semicolon` is `atalnod hanner`, following `atalnod llawn` /
+  `atalnod eirlorn`; `Normal` speed in `speedOptionsHelp` reads
+  `y cyflymder arferol`.
+- Per-tool is `pob` + singular (`Penderfyniadau pob offer`), matching
+  `Pob offer ar gael`.
+- The zoom announcement drops the calqued `ar`:
+  `Chwyddwydr {zoom} gwaith`.
 
 ## Typography
 

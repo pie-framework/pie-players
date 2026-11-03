@@ -1,18 +1,21 @@
 /**
- * French message catalog — machine-generated, not reviewed.
+ * French message catalog — reviewed (agent pass in lieu of a native reader,
+ * 2026-11-03; see `reviewedBy` in `catalog-manifest.json`).
  *
  * Serves every French host: registered under the bare `fr` tag, so `fr`,
  * `fr-FR` and `fr-CA` all widen to it. Content flavour is standard
  * international/France French per `briefs/fr.md` — impersonal infinitive on
  * controls, French math register where the tools teach (`repère cartésien`,
- * `Droite`, `Rapporteur`, `Métal pauvre`), and U+00A0 (written `\u00A0`)
- * before the double punctuation and inside the guillemets, per French
- * typography. A Canadian host can override any key through
- * `customMessages`.
+ * `Droite`, `Rapporteur`, `Métal pauvre`), the education domain word
+ * `évaluation` for the assessment, and U+00A0 (written `\u00A0`) before the
+ * double punctuation and inside the guillemets, per French typography. A
+ * Canadian host can override any key through `customMessages`.
  *
- * Provenance — the source hash, model and generation date — is recorded in
- * `catalog-manifest.json`; `scripts/check-catalogs.ts` fails this file
- * against the English source when either drifts.
+ * Regeneration is surgical, never wholesale: `scripts/check-catalogs.ts`
+ * diffs the English snapshot (`fr.english-snapshot.json`) against the live
+ * `en-US` source and lists exactly the keys whose English moved; translate
+ * only those, keep every reviewed string, then refresh the snapshot per the
+ * package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/fr
  */
@@ -107,7 +110,7 @@ const fr = {
 			sectionPosition: "Partie {position} sur {total}",
 			noSections: "Aucune partie",
 			loadFailed:
-				"Le test n'a pas pu être chargé. Réessayez.",
+				"L'évaluation n'a pas pu être chargée. Réessayez.",
 			restoreFailed:
 				"Vos réponses enregistrées pour cette partie n'ont pas pu être restaurées. Réessayez.",
 		},
@@ -125,6 +128,7 @@ const fr = {
 				"Cette question n'a pas pu être vérifiée. Réessayez.",
 			triesLeft: {
 				one: "Il reste {count} tentative.",
+				many: "Il reste {count} tentatives.",
 				other: "Il reste {count} tentatives.",
 			},
 		},
@@ -143,7 +147,7 @@ const fr = {
 	},
 
 	toolkit: {
-		toolsA11y: "Outils du test",
+		toolsA11y: "Outils de l'évaluation",
 		toolbarInitError: "Impossible d'initialiser les outils.",
 		settingsTitle: "Paramètres",
 		closeSettingsA11y: "Fermer les paramètres",
@@ -177,11 +181,11 @@ const fr = {
 		},
 
 		announce: {
-			movedUp: "Déplacé vers le haut à {position}",
-			movedDown: "Déplacé vers le bas à {position}",
-			movedLeft: "Déplacé vers la gauche à {position}",
-			movedRight: "Déplacé vers la droite à {position}",
-			rotatedTo: "Pivoté à {degrees} degrés",
+			movedUp: "Déplacement vers le haut à {position}",
+			movedDown: "Déplacement vers le bas à {position}",
+			movedLeft: "Déplacement vers la gauche à {position}",
+			movedRight: "Déplacement vers la droite à {position}",
+			rotatedTo: "Rotation à {degrees} degrés",
 		},
 	},
 
@@ -193,12 +197,12 @@ const fr = {
 			nameGraphing: "Calculatrice graphique",
 			description:
 				"Calculatrice multi-types (basique, scientifique, graphique)",
-			openedBasic: "Calculatrice basique ouverte",
-			openedScientific: "Calculatrice scientifique ouverte",
-			openedGraphing: "Calculatrice graphique ouverte",
-			closedBasic: "Calculatrice basique fermée",
-			closedScientific: "Calculatrice scientifique fermée",
-			closedGraphing: "Calculatrice graphique fermée",
+			openedBasic: "Ouverture de la calculatrice basique",
+			openedScientific: "Ouverture de la calculatrice scientifique",
+			openedGraphing: "Ouverture de la calculatrice graphique",
+			closedBasic: "Fermeture de la calculatrice basique",
+			closedScientific: "Fermeture de la calculatrice scientifique",
+			closedGraphing: "Fermeture de la calculatrice graphique",
 			toolA11y: "Outil Calculatrice",
 			loading: "Chargement de la calculatrice…",
 			providerUnavailable: "La calculatrice est indisponible.",
@@ -279,7 +283,7 @@ const fr = {
 			centimetersInSentence: "centimètres",
 			switchToInchesA11y: "Passer aux pouces",
 			switchToCentimetersA11y: "Passer aux centimètres",
-			switchedTo: "Passé à l'unité {unit}",
+			switchedTo: "Passage à l'unité {unit}",
 			applicationA11y:
 				"Outil Règle. Flèches pour déplacer, Shift+flèches pour pivoter, PageUp ou PageDown pour un réglage fin de la rotation, et U pour changer d'unité. Unité actuelle\u00A0: {unit}",
 			imageAlt: "Règle en {unit}",
@@ -302,12 +306,13 @@ const fr = {
 			tooltip: "Dictionnaire",
 			toolA11y: "Dictionnaire",
 			notConfigured:
-				"Aucun service de dictionnaire n'est configuré pour ce test.",
+				"Aucun service de dictionnaire n'est configuré pour cette évaluation.",
 			idleHint: "Saisissez un mot pour chercher sa définition.",
 			lookingUp: "Recherche de «\u00A0{term}\u00A0»…",
 			noEntryFor: "Aucune entrée pour «\u00A0{term}\u00A0».",
 			entriesCount: {
 				one: "{count} entrée",
+				many: "{count} entrées",
 				other: "{count} entrées",
 			},
 			noEntryStatusFor: "Aucune entrée de dictionnaire pour {term}.",
@@ -319,12 +324,13 @@ const fr = {
 			tooltip: "Dictionnaire en images",
 			toolA11y: "Dictionnaire en images",
 			notConfigured:
-				"Aucun service de dictionnaire en images n'est configuré pour ce test.",
+				"Aucun service de dictionnaire en images n'est configuré pour cette évaluation.",
 			idleHint: "Saisissez un mot pour voir une image.",
 			lookingUp: "Recherche de «\u00A0{term}\u00A0»…",
 			noEntryFor: "Aucune image pour «\u00A0{term}\u00A0».",
 			entriesCount: {
 				one: "{count} image",
+				many: "{count} images",
 				other: "{count} images",
 			},
 			noEntryStatusFor: "Aucune image pour {term}.",
@@ -464,9 +470,9 @@ const fr = {
 				switchedSection: "La lecture est passée à une autre partie",
 				nothingToRead: "Rien à lire à voix haute ici",
 				startFailed: "Impossible de démarrer la lecture",
-				skippedForward: "Avancé rapidement",
+				skippedForward: "Lecture avancée",
 				skipForwardFailed: "Impossible d'avancer rapidement",
-				skippedBackward: "Rembobiné",
+				skippedBackward: "Lecture rembobinée",
 				skipBackwardFailed: "Impossible de rembobiner",
 				speedChangeFailed: "Impossible de changer la vitesse de lecture",
 				speedAnnounce: "Vitesse de lecture\u00A0: {label}",
@@ -516,10 +522,10 @@ const fr = {
 		selectRecord: "Sélectionnez un enregistrement pour voir les détails.",
 		selectEvent:
 			"Sélectionnez un événement pour voir les détails de sa charge utile.",
-		showRawTables: "Afficher les tableaux bruts",
+		showRawTables: "Afficher les tables brutes",
 		showReconstructedSnapshots: "Afficher les instantanés reconstruits",
 		showSectionRequest: "Afficher la requête de la partie",
-		showAssessmentRequest: "Afficher la requête du test",
+		showAssessmentRequest: "Afficher la requête de l'évaluation",
 		liveUpdatesUnsupported:
 			"Les mises à jour en direct ne sont pas prises en charge dans ce navigateur",
 		liveUpdatesDisconnected:
@@ -579,9 +585,9 @@ const fr = {
 
 		pnp: {
 			title: "Profil PNP",
-			noAssessmentBound: "Aucun test associé",
+			noAssessmentBound: "Aucune évaluation associée",
 			noAssessmentBoundBody:
-				"Le profil, les politiques de l'établissement et de passation n'ont rien à lire, donc seuls les requiredTools d'un item peuvent accorder un aménagement. Passez le test à la propriété assessment du toolkit, ou appelez updateAssessment(...) sur le coordinateur du toolkit.",
+				"Le profil, les politiques de l'établissement et de passation n'ont rien à lire, donc seuls les requiredTools d'un item peuvent accorder un aménagement. Passez l'évaluation à la propriété assessment de la boîte à outils, ou appelez updateAssessment(...) sur le coordinateur de la boîte à outils.",
 			determinationReadOnly: "Décision (lecture seule)",
 			toolsEditor: "Éditeur d'outils",
 			enforcement: "Application du PNP",
@@ -591,7 +597,7 @@ const fr = {
 			placement: "Placement",
 			provider: "Fournisseur",
 			simulation: "Simulation PNP",
-			resolvedTools: "Outils résolus (toolkit)",
+			resolvedTools: "Outils résolus (boîte à outils)",
 			provenanceSummary:
 				"Résumé de la provenance de la politique d'outils",
 			perToolDecisions: "Décisions par outil",
@@ -685,11 +691,11 @@ const fr = {
 			applyUnavailable:
 				"Impossible d'appliquer les paramètres tant que ce service est indisponible.",
 			coordinatorUnavailable:
-				"Le coordinateur du toolkit n'est pas disponible pour les mises à jour de la synthèse vocale.",
+				"Le coordinateur de la boîte à outils n'est pas disponible pour les mises à jour de la synthèse vocale.",
 			customProviderNotRegistered:
-				"Le fournisseur personnalisé '{id}' n'est pas enregistré.",
+				"Le fournisseur personnalisé «\u00A0{id}\u00A0» n'est pas enregistré.",
 			customProviderNoConfig:
-				"Le fournisseur personnalisé '{id}' n'a renvoyé aucune configuration à appliquer.",
+				"Le fournisseur personnalisé «\u00A0{id}\u00A0» n'a renvoyé aucune configuration à appliquer.",
 			httpError: "HTTP {status}\u00A0: {message}",
 			unknownError: "Erreur inconnue",
 			previewRequestFailed:
@@ -700,14 +706,17 @@ const fr = {
 			voiceBrowserDefault: "voix par défaut du navigateur",
 			browserAvailable: {
 				one: "Synthèse vocale du navigateur disponible ({count} voix détectée).",
+				many: "Synthèse vocale du navigateur disponible ({count} voix détectées).",
 				other: "Synthèse vocale du navigateur disponible ({count} voix détectées).",
 			},
 			pollyAvailable: {
 				one: "AWS Polly disponible ({count} voix correspondante, moteur {engine}).",
+				many: "AWS Polly disponible ({count} voix correspondantes, moteur {engine}).",
 				other: "AWS Polly disponible ({count} voix correspondantes, moteur {engine}).",
 			},
 			googleAvailable: {
 				one: "Google Cloud TTS disponible ({count} voix correspondante).",
+				many: "Google Cloud TTS disponible ({count} voix correspondantes).",
 				other: "Google Cloud TTS disponible ({count} voix correspondantes).",
 			},
 			headerRowReservation:

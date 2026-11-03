@@ -59,15 +59,15 @@ loaded catalog.
 | `en-AU` | reviewed (agent verification pass, 2026-11-03; delta locale) | [`briefs/en-AU.md`](./briefs/en-AU.md) | 2026-10-19 |
 | `es` | reviewed (agent pass in lieu of a native reader, 2026-11-03; Latin-American neutral; serves `es*`) | [`briefs/es.md`](./briefs/es.md) | 2026-10-19 |
 | `fr` | reviewed (agent pass in lieu of a native reader, 2026-11-03; France flavour; serves `fr*`) | [`briefs/fr.md`](./briefs/fr.md) | 2026-10-19 |
-| `ar` | generated, unreviewed (MSA; serves `ar*`; RTL — layout audit pending, see [The RTL layout audit](#the-rtl-layout-audit-ar)) | [`briefs/ar.md`](./briefs/ar.md) | 2026-10-19 |
+| `ar` | generated, unreviewed — string-level language pass landed 2026-11-03 (decisions pinned in the brief); promotion to reviewed awaits the RTL layout audit, see [The RTL layout audit](#the-rtl-layout-audit-ar) (MSA; serves `ar*`; RTL) | [`briefs/ar.md`](./briefs/ar.md) | 2026-10-19 |
 | `pt` | reviewed (agent pass in lieu of a native reader, 2026-11-03; Brazilian; serves `pt*`) | [`briefs/pt.md`](./briefs/pt.md) | 2026-10-19 |
 | `ko` | generated, unreviewed | [`briefs/ko.md`](./briefs/ko.md) | 2026-10-19 |
 | `ja` | generated, unreviewed | [`briefs/ja.md`](./briefs/ja.md) | 2026-10-19 |
 | `zh` | generated, unreviewed (Simplified; serves `zh`, `zh-CN`, `zh-SG`; Traditional hosts supply `customMessages`) | [`briefs/zh.md`](./briefs/zh.md) | 2026-10-19 |
-| `cy` | generated, unreviewed (serves `cy`, `cy-GB`; six CLDR plural categories) | [`briefs/cy.md`](./briefs/cy.md) | 2026-10-19 |
+| `cy` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `cy`, `cy-GB`; six CLDR plural categories) | [`briefs/cy.md`](./briefs/cy.md) | 2026-10-19 |
 | `sv` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `sv`, `sv-SE`, `sv-FI`) | [`briefs/sv.md`](./briefs/sv.md) | 2026-10-19 |
 | `ro` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `ro`, `ro-RO`, `ro-MD`; three CLDR plural categories, `other` takes `de`) | [`briefs/ro.md`](./briefs/ro.md) | 2026-10-19 |
-| `vi` | generated, unreviewed (serves `vi`, `vi-VN`; one CLDR plural category) | [`briefs/vi.md`](./briefs/vi.md) | 2026-11-03 |
+| `vi` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `vi`, `vi-VN`; one CLDR plural category) | [`briefs/vi.md`](./briefs/vi.md) | 2026-11-03 |
 
 Locale tags are chosen for variant reach: bare tags (`es`, `fr`, `ar`) let
 `es-MX`, `fr-CA` and `ar-SA` widen onto them through RFC 4647 lookup, while

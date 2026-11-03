@@ -81,3 +81,25 @@ spell the number word (`مُدخل واحد`, `مُدخلان`).
 
 PIE, PNP, TTS, SSML, WaveNet, Studio, Desmos, Polly, AWS, Google Cloud TTS,
 Web Speech API, HTTP, JSON, API.
+
+## String-level pass (2026-11-03)
+
+Pins from the language pass; promotion to `reviewed` is held for the RTL
+layout audit, so these bind regeneration only:
+
+- `none` is `لا شيء`, never `بلا`.
+- Agency phrases take `بواسطة` (`تم تصحيحه بواسطة معلم`), not `من قبل`.
+- Verbs agree with the counted noun's gender: `تبقّت {count} محاولة` —
+  `محاولة` is feminine — while the category nouns keep the classical
+  numeral agreement (`few` plural `محاولات`, `many`/`other` singular
+  accusative `محاولةً`).
+- Playback prose reads `الوسائط` everywhere (`أثناء تشغيل الوسائط`), never
+  the singular `وسيط`, matching `منطقة الوسائط`.
+- Dictionary and picture-dictionary misses take `لا` + singular indefinite,
+  the classical negative-existential form (`لا مُدخل لـ«{term}»`,
+  `لا صورة لـ«{term}»`), matching the singular-miss precedent in
+  `briefs/es.md`.
+- The straight quotes `'{id}'` on the `customProvider` keys stay (the `es`
+  pass kept them); the Arabic comma `،`, Arabic semicolon `؛`, guillemets
+  `«{term}»` and `…` pins above hold, as do the Western digits on
+  `imageAlt` and the sample-rate labels.

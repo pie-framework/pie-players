@@ -90,6 +90,23 @@ string's fidelity: the learner must see one word for one concept everywhere.
 | instrumentation | đo lường | telemetry records |
 | engine (TTS) | bộ máy | neural = `nơ-ron` |
 | resize | đổi kích thước | `điều chỉnh kích thước` for the plain `resizePanels` noun |
+| previous | Trước | button pairing with `Tiếp theo`; `Trước đó` is prose ("previously"), not a control |
+| maximize | Tối đa hóa | window maximize, the Vietnamese Windows register; `Phóng to` stays zoom-in |
+| enabled / disabled | Bật / Tắt | toggle-state pair as `{state}` values (`headerRowReservation`), not `Đã bật`/`Đã tắt` |
+| district (PNP) | học khu | the education-sector word; `quận` is the urban administrative unit |
+| host (dev strings) | host | keep Latin `host` in developer panels; `máy chủ` means *server* — a false friend |
+
+## Review pins (2026-11-03)
+
+Decisions the language pass pinned so a regeneration reproduces them:
+
+- After `tất cả`, a countable noun takes `các` (`Tất cả các nguyên tố`, `Tất cả
+  các công cụ khả dụng`); the bare enum `Tất cả` keeps its form.
+- Mid-string nouns stay lowercase (`cho tốc độ bình thường` in
+  `speedOptionsHelp`), per the capitalization rule above.
+- `previewUnavailable` reads `trong khi` (`Không thể xem trước trong khi…`) so
+  `xem trước + khi` cannot misparse as `xem + trước khi`.
+- `{state}` toggle values read `Bật`/`Tắt`, matching `common.off`.
 
 ## Untranslated product names
 

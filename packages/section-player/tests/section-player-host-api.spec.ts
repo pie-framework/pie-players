@@ -35,6 +35,9 @@ type HostApiLog = {
 	beforeAppend: MethodResults | null;
 	afterAppend: MethodResults | null;
 	controller: "resolved" | "null" | string | null;
+	itemPlayerEvents: Array<{ canonicalItemId: string; type: string }>;
+	/** The first element response each `item-session-changed` carried. */
+	sessionValues: unknown[];
 };
 
 type HostApiElement = HTMLElement & {
@@ -43,7 +46,9 @@ type HostApiElement = HTMLElement & {
 	session?: unknown;
 	getSnapshot?: () => { composition?: { itemsCount?: number } } | null;
 	waitForSectionController?: (timeoutMs?: number) => Promise<unknown>;
-	provideScore?: () => Promise<unknown>;
+	getSectionController?: () => {
+		score?: () => Promise<{ items: unknown[] }>;
+	} | null;
 };
 
 declare global {
@@ -81,6 +86,8 @@ async function mountFreshLayout(page: Page, options: MountOptions) {
 				beforeAppend: null,
 				afterAppend: null,
 				controller: null,
+				itemPlayerEvents: [],
+				sessionValues: [],
 			};
 			window.__pieHostApi = log;
 
@@ -98,6 +105,24 @@ async function mountFreshLayout(page: Page, options: MountOptions) {
 				log.loadingCompleteSectionIds.push(
 					(event as CustomEvent<{ sectionId?: string }>).detail?.sectionId ??
 						"",
+				);
+			});
+			fresh.addEventListener("item-player-event", (event) => {
+				const detail = (
+					event as CustomEvent<{ canonicalItemId: string; type: string }>
+				).detail;
+				log.itemPlayerEvents.push({
+					canonicalItemId: detail.canonicalItemId,
+					type: detail.type,
+				});
+			});
+			fresh.addEventListener("item-session-changed", (event) => {
+				log.sessionValues.push(
+					(
+						event as CustomEvent<{
+							session?: { data?: Array<{ value?: unknown }> };
+						}>
+					).detail?.session?.data?.[0]?.value,
 				);
 			});
 			fresh.addEventListener("toolkit-ready", (event) => {
@@ -204,12 +229,12 @@ async function waitForLoadingComplete(page: Page): Promise<HostApiLog> {
 	return hostApiLog(page);
 }
 
-function provideScore(page: Page, tag: string): Promise<unknown> {
-	return page.evaluate(
-		(layoutTag) =>
-			(document.querySelector(layoutTag) as HostApiElement | null)?.provideScore?.(),
-		tag,
-	);
+/** The section controller's browser score, item by item. */
+function sectionScore(page: Page, tag: string): Promise<unknown> {
+	return page.evaluate(async (layoutTag) => {
+		const element = document.querySelector(layoutTag) as HostApiElement | null;
+		return (await element?.getSectionController?.()?.score?.())?.items ?? null;
+	}, tag);
 }
 
 function collectWarnings(page: Page): string[] {
@@ -271,24 +296,32 @@ test.describe("section player host API", () => {
 		});
 	}
 
-	test("provideScore resolves no scores before the layout mounts", async ({
+	test("relays item player events with each item's identity", async ({
 		page,
 	}) => {
+		const tag = "pie-section-player-splitpane";
 		await openPreloadedBase(page);
-		const scores = await page.evaluate(
-			(tags) =>
-				Promise.all(
-					tags.map((tag) =>
-						(document.createElement(tag) as HostApiElement).provideScore?.(),
-					),
-				),
-			[...LAYOUT_TAGS],
-		);
-		expect(scores).toEqual(LAYOUT_TAGS.map(() => []));
+		await mountFreshLayout(page, { tag });
+		await waitForLoadingComplete(page);
+		await expect(page.locator(tag).getByText(MC_PROMPT)).toBeVisible({
+			timeout: 30_000,
+		});
+		await expect
+			.poll(async () => (await hostApiLog(page)).itemPlayerEvents, {
+				timeout: 10_000,
+			})
+			.toEqual(
+				expect.arrayContaining([
+					{ canonicalItemId: MC_REF, type: "load-complete" },
+					{ canonicalItemId: "fixture-categorize-ref", type: "load-complete" },
+				]),
+			);
 	});
 
 	for (const tag of LAYOUT_TAGS) {
-		test(`${tag} scores every item through provideScore`, async ({ page }) => {
+		test(`${tag} scores every item through its section controller`, async ({
+			page,
+		}) => {
 			await openPreloadedBase(page);
 			await mountFreshLayout(page, { tag });
 			await waitForLoadingComplete(page);
@@ -304,7 +337,7 @@ test.describe("section player host API", () => {
 			await player.getByText("config.elements", { exact: true }).click();
 
 			await expect
-				.poll(() => provideScore(page, tag), { timeout: 10_000 })
+				.poll(() => sectionScore(page, tag), { timeout: 10_000 })
 				.toEqual([
 					{
 						canonicalItemId: MC_REF,
@@ -333,7 +366,7 @@ test.describe("section player host API", () => {
 			player.getByRole("radio", { name: "config.elements" }),
 		).toBeChecked({ timeout: 30_000 });
 		await expect
-			.poll(() => provideScore(page, tag), { timeout: 10_000 })
+			.poll(() => sectionScore(page, tag), { timeout: 10_000 })
 			.toEqual([
 				{
 					canonicalItemId: MC_REF,
@@ -344,7 +377,7 @@ test.describe("section player host API", () => {
 					outcomes: [expect.objectContaining({ score: 1 })],
 				},
 			]);
-		// The populated responses reach the section session as learner ones do.
+		// The populated responses render but stay out of the section session.
 		const mcSession = await page.evaluate(
 			({ layoutTag, itemRef }) =>
 				(
@@ -358,7 +391,14 @@ test.describe("section player host API", () => {
 				)?.itemSessions?.[itemRef]?.session?.data?.[0]?.value,
 			{ layoutTag: tag, itemRef: MC_REF },
 		);
-		expect(mcSession).toEqual(["a"]);
+		expect(mcSession).toBeUndefined();
+		const { itemPlayerEvents, sessionValues } = await hostApiLog(page);
+		expect(sessionValues).not.toContainEqual(["a"]);
+		expect(itemPlayerEvents).toEqual(
+			expect.arrayContaining([
+				{ canonicalItemId: MC_REF, type: "correct-responses-populated" },
+			]),
+		);
 	});
 
 	test("an owned coordinator reports no unbound assessment while enforcement is unset", async ({

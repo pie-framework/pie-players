@@ -5,6 +5,7 @@ import {
 	PIE_INTERNAL_CONTENT_LOADED_EVENT,
 	PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
 	PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
+	PIE_ITEM_PLAYER_EVENT,
 	PIE_ITEM_SESSION_CHANGED_EVENT,
 } from "../src/runtime/registration-events.js";
 import {
@@ -34,6 +35,7 @@ const setup = (options: {
 
 	const sent: Array<{ type: string; detail: Record<string, unknown> }> = [];
 	const reachedOuter: string[] = [];
+	const outerDetails: Array<{ type: string; detail: unknown }> = [];
 	for (const type of [
 		"session-changed",
 		"load-complete",
@@ -42,6 +44,11 @@ const setup = (options: {
 		PIE_ITEM_SESSION_CHANGED_EVENT,
 	]) {
 		outer.addEventListener(type, () => reachedOuter.push(type));
+	}
+	for (const type of [PIE_ITEM_SESSION_CHANGED_EVENT, PIE_ITEM_PLAYER_EVENT]) {
+		outer.addEventListener(type, (event) =>
+			outerDetails.push({ type, detail: (event as CustomEvent).detail }),
+		);
 	}
 	const bridge = createShellEventBridge({
 		host,
@@ -58,6 +65,7 @@ const setup = (options: {
 	return {
 		sent,
 		reachedOuter,
+		outerDetails,
 		fire,
 		bridge,
 		setMode: (next: ShellEventBridgeMode) => {
@@ -184,6 +192,75 @@ describe("shell event bridge", () => {
 			expect(shell.sent).toEqual([]);
 			shell.dispose();
 		}
+	});
+
+	test("in a section an item player's events reach the host with the item's identity", () => {
+		const shell = setup({ mode: "section" });
+		shell.fire("load-complete", { ok: true });
+		shell.fire("backend-error", { message: "down" });
+		shell.fire("model-updated", {});
+
+		expect(
+			shell.outerDetails.filter((entry) => entry.type === PIE_ITEM_PLAYER_EVENT),
+		).toEqual([
+			{
+				type: PIE_ITEM_PLAYER_EVENT,
+				detail: {
+					itemId: "item-1",
+					canonicalItemId: "item-1",
+					type: "load-complete",
+					detail: { ok: true },
+				},
+			},
+			{
+				type: PIE_ITEM_PLAYER_EVENT,
+				detail: {
+					itemId: "item-1",
+					canonicalItemId: "item-1",
+					type: "backend-error",
+					detail: { message: "down" },
+				},
+			},
+		]);
+		shell.dispose();
+	});
+
+	test("no item player event is relayed without a section or for a passage", () => {
+		for (const shell of [
+			setup({ mode: "plain" }),
+			setup({ mode: "section", kind: "passage" }),
+		]) {
+			shell.fire("load-complete", { ok: true });
+			expect(shell.outerDetails).toEqual([]);
+			shell.dispose();
+		}
+	});
+
+	test("a session the player filled with correct responses stays out of the section", () => {
+		const shell = setup({ mode: "section" });
+		shell.fire("session-changed", {
+			...response("a"),
+			sessionSource: "correct-response",
+		});
+		shell.fire("session-changed", {
+			...response("a"),
+			sessionSource: "correct-response",
+			sessionCommitReason: "teardown",
+		});
+		shell.fire("session-changed", response("b"));
+
+		expect(
+			shell.sent
+				.filter((entry) => entry.type === PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT)
+				.map((entry) => entry.detail.session),
+		).toEqual([response("b")]);
+		expect(
+			shell.outerDetails
+				.filter((entry) => entry.type === PIE_ITEM_SESSION_CHANGED_EVENT)
+				.map((entry) => (entry.detail as { session: unknown }).session),
+		).toHaveLength(1);
+		expect(shell.reachedOuter).not.toContain("session-changed");
+		shell.dispose();
 	});
 
 	test("after disconnect the shell no longer translates", () => {

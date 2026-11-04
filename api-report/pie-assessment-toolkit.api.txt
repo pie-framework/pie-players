@@ -55,6 +55,7 @@
   type InternalMediaTimeSourceDetail
   type InterpolationValues
   type ItemPlayerConfig
+  type ItemPlayerEventDetail
   type ItemPlayerType
   type ItemToolContext
   type LocaleCode
@@ -62,11 +63,14 @@
   PIE_INTERNAL_FORMATIVE_ACTION_EVENT
   PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT
   PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT
+  PIE_ITEM_PLAYER_EVENT
   PIE_ITEM_SESSION_CHANGED_EVENT
   type PassageToolContext
   PlaybackState
   type PluralOptions
   type ProviderLifecycleContext
+  RELAYED_ITEM_PLAYER_EVENTS
+  type RelayedItemPlayerEventType
   type ResolvedCatalog
   type ResolvedToolContext
   type RubricToolContext
@@ -85,10 +89,13 @@
   type SectionItemEvent
   type SectionItemEventSubscriptionArgs
   type SectionItemEventType
+  type SectionItemScore
+  type SectionItemScorer
   type SectionPersistenceFactoryDefaults
   type SectionScopedEvent
   type SectionScopedEventSubscriptionArgs
   type SectionScopedEventType
+  type SectionScore
   type SectionSessionPersistenceConfig
   type SectionSessionPersistenceStrategy
   type SectionToolContext

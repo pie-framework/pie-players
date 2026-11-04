@@ -33,9 +33,13 @@ export {
 	PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
 	PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
 	PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT,
+	PIE_ITEM_PLAYER_EVENT,
 	PIE_ITEM_SESSION_CHANGED_EVENT,
+	RELAYED_ITEM_PLAYER_EVENTS,
 	type InternalFormativeActionDetail,
 	type InternalMediaTimeSourceDetail,
+	type ItemPlayerEventDetail,
+	type RelayedItemPlayerEventType,
 } from "./runtime/registration-events.js";
 export {
 	createShellScope,
@@ -184,6 +188,9 @@ export type {
 	SectionControllerFactoryDefaults,
 	SectionControllerHandle,
 	SectionControllerKey,
+	SectionItemScore,
+	SectionItemScorer,
+	SectionScore,
 	SectionScopedEvent,
 	SectionScopedEventType,
 	SectionSessionPersistenceConfig,

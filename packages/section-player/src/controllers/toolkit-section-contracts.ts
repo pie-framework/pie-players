@@ -3,4 +3,6 @@ export type {
 	SectionSessionPersistenceConfig,
 	SectionControllerRuntimeState,
 	SectionControllerSessionState,
+	SectionItemScorer,
+	SectionScore,
 } from "@pie-players/pie-assessment-toolkit";

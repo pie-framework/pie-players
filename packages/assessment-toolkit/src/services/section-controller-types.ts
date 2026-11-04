@@ -351,6 +351,31 @@ export type SectionControllerEvent =
 
 export type SectionControllerEventType = SectionControllerEvent["type"];
 
+/** One item's part of a {@link SectionScore}. */
+export type SectionItemScore = {
+	canonicalItemId: string;
+	/**
+	 * The item's element outcomes, one slot per scored model as
+	 * `pie-item-player.provideScore()` returns them. `null` while the item is not
+	 * rendered, or when it has no scorable model.
+	 */
+	outcomes: Array<Record<string, unknown> | undefined> | null;
+};
+
+/** The section's browser score, from {@link SectionControllerHandle.score}. */
+export type SectionScore = {
+	/** Every item in the section, in section order. */
+	items: SectionItemScore[];
+};
+
+/**
+ * Scores one rendered item in the browser: its element outcomes, or `false` when
+ * the item is not rendered or has no scorable model.
+ */
+export type SectionItemScorer = (
+	canonicalItemId: string,
+) => Promise<false | Array<Record<string, unknown> | undefined>>;
+
 /**
  * Host-facing controller for a single section cohort.
  *
@@ -511,6 +536,26 @@ export interface SectionControllerHandle {
 	 * those boundaries.
 	 */
 	setPendingSessionCommit?(commit: (() => void) | null): void;
+	/**
+	 * Commit every element's pending response to the section session, so the
+	 * next `getSession()` holds it. For a host about to read or submit the
+	 * session; the controller already commits before its own boundaries.
+	 */
+	commitPendingSessions?(): void;
+	/**
+	 * Register how the controller scores a rendered item. The controller is
+	 * DOM-free, so the layout that renders the item players supplies it, as with
+	 * `setPendingSessionCommit`. The latest registration wins; the returned
+	 * release unregisters this scorer and leaves a later one in place, so two
+	 * layouts on one controller do not unregister each other.
+	 */
+	registerItemScorer?(scorer: SectionItemScorer): () => void;
+	/**
+	 * Score the section in the browser: each item's element outcomes, in section
+	 * order. An item that is not rendered, or has no scorable model, scores
+	 * `null`.
+	 */
+	score?(): Promise<SectionScore>;
 	/**
 	 * Record one Try for an item: derive correctness from the element outcomes,
 	 * increment the Try count, and reveal feedback if the item's resolved

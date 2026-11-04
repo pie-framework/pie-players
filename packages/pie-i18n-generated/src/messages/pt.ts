@@ -426,6 +426,19 @@ const pt = {
 			highlightPinkA11y: "Realce rosa",
 			highlightBlueA11y: "Realce azul",
 			highlightGreenA11y: "Realce verde",
+			selectionAvailableA11y:
+				"Barra de ferramentas de anotação disponível para “{text}”. Pressione Shift+F10 para as ferramentas de anotação.",
+			highlightedYellowA11y: "“{text}” realçado em amarelo",
+			highlightedPinkA11y: "“{text}” realçado em rosa",
+			highlightedBlueA11y: "“{text}” realçado em azul",
+			highlightedGreenA11y: "“{text}” realçado em verde",
+			underlinedA11y: "“{text}” sublinhado",
+			removedA11y: "Anotação removida de “{text}”",
+			clearedA11y: {
+				one: "{count} anotação limpa",
+				many: "{count} anotações limpas",
+				other: "{count} anotações limpas",
+			},
 		},
 		theme: {
 			name: "Tema",

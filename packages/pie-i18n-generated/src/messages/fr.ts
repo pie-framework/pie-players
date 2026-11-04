@@ -434,6 +434,19 @@ const fr = {
 			highlightPinkA11y: "Surlignage rose",
 			highlightBlueA11y: "Surlignage bleu",
 			highlightGreenA11y: "Surlignage vert",
+			selectionAvailableA11y:
+				"Barre d'outils d'annotation disponible pour « {text} ». Appuyez sur Maj+F10 pour accéder aux outils d'annotation.",
+			highlightedYellowA11y: "« {text} » surligné en jaune",
+			highlightedPinkA11y: "« {text} » surligné en rose",
+			highlightedBlueA11y: "« {text} » surligné en bleu",
+			highlightedGreenA11y: "« {text} » surligné en vert",
+			underlinedA11y: "« {text} » souligné",
+			removedA11y: "Annotation supprimée de « {text} »",
+			clearedA11y: {
+				one: "{count} annotation effacée",
+				many: "{count} annotations effacées",
+				other: "{count} annotations effacées",
+			},
 		},
 		theme: {
 			name: "Thème",

@@ -45,6 +45,7 @@ capability's registration supplies `enabled` and `selectionActions`.
 		isShadowRootNode
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import type { MessageKey } from '@pie-players/pie-players-shared/i18n/types';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
 	import { isComposingKeyEvent } from '@pie-players/pie-players-shared';
 	import {
@@ -87,6 +88,14 @@ capability's registration supplies `enabled` and `selectionActions`.
 
 	// Longest stretch of selected text an announcement quotes before eliding it.
 	const ANNOUNCED_TEXT_MAX_LENGTH = 30;
+	// What applying each colour the strip offers announces.
+	const HIGHLIGHT_ANNOUNCEMENT_KEYS: Partial<Record<HighlightColor, MessageKey>> = {
+		[HighlightColor.YELLOW]: 'tools.annotationToolbar.highlightedYellowA11y',
+		[HighlightColor.PINK]: 'tools.annotationToolbar.highlightedPinkA11y',
+		[HighlightColor.BLUE]: 'tools.annotationToolbar.highlightedBlueA11y',
+		[HighlightColor.GREEN]: 'tools.annotationToolbar.highlightedGreenA11y',
+		[HighlightColor.UNDERLINE]: 'tools.annotationToolbar.underlinedA11y'
+	};
 
 	let contextHostElement = $state<HTMLElement | null>(null);
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
@@ -406,7 +415,9 @@ capability's registration supplies `enabled` and `selectionActions`.
 		if (announcedForText !== text) {
 			announcedForText = text;
 			announce(
-				`Annotation toolbar available for "${previewText(text)}". Press Shift+F10 for annotation tools.`,
+				interfaceI18n.t('tools.annotationToolbar.selectionAvailableA11y', {
+					text: previewText(text)
+				}),
 				4000
 			);
 		}
@@ -557,8 +568,8 @@ capability's registration supplies `enabled` and `selectionActions`.
 		annotationCount = highlightCoordinator.getAnnotations().length;
 		saveAnnotations();
 
-		const colorName = color === HighlightColor.UNDERLINE ? 'underlined' : `highlighted in ${color}`;
-		announce(`"${previewText(text)}" ${colorName}`, 3000);
+		const announcement = HIGHLIGHT_ANNOUNCEMENT_KEYS[color];
+		if (announcement) announce(interfaceI18n.t(announcement, { text: previewText(text) }), 3000);
 
 		finishAction();
 	}
@@ -581,7 +592,10 @@ capability's registration supplies `enabled` and `selectionActions`.
 		annotationCount = highlightCoordinator.getAnnotations().length;
 		saveAnnotations();
 
-		announce(`Removed annotation from "${previewText(text)}"`, 3000);
+		announce(
+			interfaceI18n.t('tools.annotationToolbar.removedA11y', { text: previewText(text) }),
+			3000
+		);
 
 		finishAction();
 	}
@@ -592,7 +606,11 @@ capability's registration supplies `enabled` and `selectionActions`.
 		annotationCount = 0;
 		saveAnnotations();
 
-		announce(`${count} annotation${count === 1 ? '' : 's'} cleared`, 3000);
+		announce(
+			interfaceI18n.plural?.('tools.annotationToolbar.clearedA11y', { count }) ??
+				interfaceI18n.t('tools.annotationToolbar.clearedA11y', { count }),
+			3000,
+		);
 
 		finishAction();
 	}

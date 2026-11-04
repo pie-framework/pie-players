@@ -80,7 +80,12 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		isValidToolbarItemShape,
 		type ToolbarItem
 	} from '../services/toolbar-items.js';
-	import { resolveEsmPackageFileUrl } from '@pie-players/pie-players-shared/loaders';
+	import {
+		applyNdsGlyphVariant,
+		ensureFontAwesome,
+		installFontAwesomeInShadow,
+		type NdsGlyphVariant
+	} from '@pie-players/pie-players-shared/ui/fontawesome';
 	import { sanitizeSvgIcon } from '@pie-players/pie-players-shared/security';
 	import { resolveInterfaceI18n, stampInterfaceLocale } from '@pie-players/pie-players-shared/i18n/provider';
 	import {
@@ -113,55 +118,6 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	import '@pie-players/pie-players-shared/nds-icon-button';
 
 	const isBrowser = typeof window !== 'undefined';
-	// FontAwesome comes from the host page when it links any FA stylesheet.
-	// Otherwise the toolbar adds FA Free from the ESM CDN the item player's
-	// `loaderOptions` name, jsDelivr by default. Pro is never fetched from
-	// here: ui.renaissance.com serves its font files to Renaissance origins only,
-	// so a host that licenses it links it itself, as section-demos does through
-	// its dev proxy.
-	//
-	// The NDS bundle renders `fa-light fa-${name}`, a weight only Pro carries.
-	// Free has no `.fa-light` rule and its Regular font lacks the toolbar's and
-	// calculator window's icons, so without Pro every NDS glyph renders in
-	// Solid, the one Free weight that has them all.
-	//
-	// Roboto comes from the vendored button: its connectedCallback links
-	// ui.renaissance.com's Roboto unless the page links a stylesheet whose URL
-	// contains `Roboto`. That CDN serves the font files to Renaissance origins
-	// only, so a host elsewhere links its own.
-	const FA_FREE_FILE = '@fortawesome/fontawesome-free@6.5.2/css/all.min.css';
-	// Matches any FA stylesheet the host page links: `fontawesome.min.css`,
-	// `font-awesome.css`, a `/_fa-pro/` proxy, `fontawesome-free@…`.
-	const FA_HREF_PATTERN = /font.?awesome|fa-?pro/i;
-	const FA_FREE_HREF_PATTERN = /fontawesome-free/i;
-	const documentStylesheetLinks = () =>
-		Array.from(document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"][href]'));
-	const pageLinksFaPro = () =>
-		documentStylesheetLinks().some(
-			(link) => FA_HREF_PATTERN.test(link.href) && !FA_FREE_HREF_PATTERN.test(link.href)
-		);
-	type NdsGlyphVariant = 'fa-light' | 'fa-regular' | 'fa-solid';
-	// Re-applies whenever Lit renders or rewrites the icon's class. Our own class
-	// edit removes `fa-light`, so the callback it triggers is a no-op.
-	const applyNdsGlyphVariant = (button: HTMLElement, preferred: NdsGlyphVariant) => {
-		const variant = pageLinksFaPro() ? preferred : 'fa-solid';
-		if (variant === 'fa-light') return () => {};
-		const apply = () => {
-			for (const icon of button.querySelectorAll<HTMLElement>('i.fa-light')) {
-				icon.classList.remove('fa-light');
-				icon.classList.add(variant);
-			}
-		};
-		apply();
-		const observer = new MutationObserver(apply);
-		observer.observe(button, {
-			childList: true,
-			subtree: true,
-			attributes: true,
-			attributeFilter: ['class']
-		});
-		return () => observer.disconnect();
-	};
 	// Turns the glyph and leaves the button upright: a turned button's box grows
 	// into its neighbours' and covers their hit areas. Re-applies when Lit renders.
 	const turnNdsGlyph = (button: HTMLElement, turn: string) => {
@@ -175,88 +131,16 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		observer.observe(button, { childList: true, subtree: true });
 		return () => observer.disconnect();
 	};
-	// A stylesheet that fails to load stays in <head> marked
-	// `data-pie-load-failed`: no later call requests it again, and no shadow root
-	// copies it.
-	const appendHeadStylesheet = (href: string) => {
-		if (document.querySelector(`link[href="${href}"]`)) return;
-		const link = document.createElement('link');
-		link.rel = 'stylesheet';
-		link.href = href;
-		link.addEventListener(
-			'error',
-			() => {
-				link.dataset.pieLoadFailed = '';
-			},
-			{ once: true }
-		);
-		document.head.appendChild(link);
-	};
-	let ndsAssetsInstalled = false;
-	const ensureNdsAssets = () => {
-		if (!isBrowser || ndsAssetsInstalled) return;
-		ndsAssetsInstalled = true;
-		// Only inject our FA stylesheets when the host page hasn't already
-		// loaded one. If we always appended Free, it would land later in the
-		// document cascade than the host's FA Pro and override Pro's
-		// `.fa-regular` / `.fa-solid` / `.far` / `.fas` font-family rules
-		// page-wide, swapping every Pro glyph for the Free fallback.
-		// `installFaInToolbarShadow` clones whatever FA <link>s the host has
-		// into the toolbar's shadow root, so our own calculator icon still
-		// renders correctly without us forcing Free into <head>.
-		const hostHasFa = documentStylesheetLinks().some((link) => FA_HREF_PATTERN.test(link.href));
-		if (hostHasFa) return;
-		appendHeadStylesheet(
-			resolveEsmPackageFileUrl(runtimeContext?.itemPlayer?.loaderOptions, FA_FREE_FILE)
-		);
-	};
-
-	// <nds-icon-button> renders into light DOM (createRenderRoot returns `this`),
-	// so document-scope FA stylesheets apply when the button is appended directly
-	// to document.body — which is how the calculator shell mounts its controls.
-	// The toolbar's calculator glyph, however, is rendered inside
-	// <pie-item-toolbar>'s own shadow root, and document.head <link> stylesheets
-	// don't cross that boundary. Replicate the FA cascade into the toolbar's
-	// shadow root the first time we mount an item that needs it.
-	const FA_TOOLBAR_SHADOW_INSTALLED = '__pieFaToolbarShadowInstalled';
-	const installFaInToolbarShadow = (root: HTMLElement) => {
-		const shadow = root.getRootNode();
-		if (!(shadow instanceof ShadowRoot)) return;
-		const marker = shadow as ShadowRoot & { [FA_TOOLBAR_SHADOW_INSTALLED]?: boolean };
-		if (marker[FA_TOOLBAR_SHADOW_INSTALLED]) return;
-		marker[FA_TOOLBAR_SHADOW_INSTALLED] = true;
-		const seenHrefs = new Set<string>();
-		const appendLink = (href: string) => {
-			if (!href || seenHrefs.has(href)) return;
-			seenHrefs.add(href);
-			const link = document.createElement('link');
-			link.rel = 'stylesheet';
-			link.href = href;
-			shadow.appendChild(link);
-		};
-		const documentFaLinks = documentStylesheetLinks().filter((link) => FA_HREF_PATTERN.test(link.href));
-		// A stylesheet still loading is copied once it loads, so the copy comes from
-		// the cache; one that fails is not copied, since every copy would request
-		// it again. Chromium gives a link a `sheet` even when its load fails, so a
-		// failed one is known by its mark.
-		for (const link of documentFaLinks) {
-			if ('pieLoadFailed' in link.dataset) continue;
-			if (link.sheet) {
-				appendLink(link.href);
-				continue;
-			}
-			const settle = (event: Event) => {
-				link.removeEventListener('load', settle);
-				link.removeEventListener('error', settle);
-				if (event.type === 'load') appendLink(link.href);
-			};
-			link.addEventListener('load', settle);
-			link.addEventListener('error', settle);
-		}
-	};
+	// FontAwesome for the NDS glyphs, and where it comes from: see
+	// players-shared `ui/fontawesome`.
+	const ensureNdsAssets = () =>
+		ensureFontAwesome(runtimeContext?.itemPlayer?.loaderOptions);
+	// The toolbar's own glyphs render inside <pie-item-toolbar>'s shadow root,
+	// which <head> stylesheets don't reach; the calculator shell's controls mount
+	// on document.body, where they do.
 	const ndsIconButtonAction = (node: HTMLElement) => {
 		ensureNdsAssets();
-		installFaInToolbarShadow(node);
+		installFontAwesomeInShadow(node);
 		return { destroy: applyNdsGlyphVariant(node, 'fa-light') };
 	};
 

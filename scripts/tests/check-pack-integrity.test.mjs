@@ -3,9 +3,11 @@ import { describe, expect, test } from "bun:test";
 import {
 	assertPublishablePackagesChecked,
 	collectExportTargetViolations,
+} from "../check-pack-integrity.mjs";
+import {
 	collectManifestSurfaceViolations,
 	collectPackedFileSurfaceViolations,
-} from "../check-pack-integrity.mjs";
+} from "../lib/publish-surface.mjs";
 
 describe("check-pack-integrity rule functions", () => {
 	test("flags manifest targets that expose source files or forbidden conditions", () => {

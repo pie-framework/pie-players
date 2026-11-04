@@ -109,6 +109,39 @@ describe("SSMLExtractor sanitization", () => {
 		expect(ssml).not.toMatch(/src=/i);
 	});
 
+	test.each([
+		"http://metadata.oci.oraclecloud.com/opc/v2/instance/",
+		"http://METADATA.OCI.ORACLECLOUD.COM./opc/v2/instance/",
+		"http://[fd00:ec2::254]/latest/meta-data/",
+		"http://[0:0:0:0:0:0:0:1]/a.mp3",
+		"http://2130706433/a.mp3",
+		"http://0x7f000001/a.mp3",
+		"http://017700000001/a.mp3",
+		"http://0177.0.0.1/a.mp3",
+		"http://[::ffff:127.0.0.1]/a.mp3",
+		"http://[::ffff:169.254.169.254]/latest/meta-data/",
+		"http://[0:0:0:0:0:ffff:a9fe:a9fe]/latest/meta-data/",
+		"http://[::ffff:a01:203]/a.mp3",
+	])("strips private / metadata host %s from audio src", (src) => {
+		const ssml = extractSsml(
+			`<p><speak><audio src="${src}">fallback</audio></speak></p>`,
+		);
+		expect(ssml).toContain("<audio");
+		expect(ssml).not.toMatch(/src=/i);
+	});
+
+	test.each([
+		"https://cdn.example.com/bell.mp3",
+		"https://8.8.8.8/bell.mp3",
+		"https://[::ffff:808:808]/bell.mp3",
+		"https://metadata.example.com/bell.mp3",
+	])("keeps public audio src %s", (src) => {
+		const ssml = extractSsml(
+			`<p><speak><audio src="${src}">bell</audio></speak></p>`,
+		);
+		expect(ssml).toMatch(/<audio src="[^"]+"/);
+	});
+
 	test("keeps legitimate https audio src", () => {
 		const markup =
 			'<p><speak><audio src="https://cdn.example.com/bell.mp3">bell</audio></speak></p>';

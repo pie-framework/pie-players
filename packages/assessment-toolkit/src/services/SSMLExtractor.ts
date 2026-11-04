@@ -137,10 +137,18 @@ function expandSelfClosingVoidTags(input: string): string {
 /**
  * Hosts that must never appear inside an SSML `<audio src>` because they
  * would cause the server-side TTS provider to fetch a private / metadata
- * endpoint on behalf of the request. Mirrors the SchoolCity provider's
- * defense-in-depth check; the SSML-side block is cheap and belt-and-braces.
+ * endpoint on behalf of the request. Mirrors the union of the SchoolCity
+ * provider's cloud-metadata and private-host lists, and its hostname
+ * normalisation, in `tts-server-sc/src/SchoolCityServerProvider.ts`; keep
+ * the two in step. The SSML-side block is cheap and belt-and-braces.
  */
 const SSML_PRIVATE_AUDIO_HOSTS: RegExp[] = [
+	/^169\.254\.169\.254$/,
+	/^fd00:ec2::254$/i,
+	/^metadata\.google\.internal$/i,
+	/^metadata\.azure\.internal$/i,
+	/^metadata\.packet\.net$/i,
+	/^metadata\.oci\.oraclecloud\.com$/i,
 	/^localhost$/i,
 	/^127(?:\.\d{1,3}){3}$/,
 	/^0(?:\.\d{1,3}){3}$/,
@@ -149,13 +157,67 @@ const SSML_PRIVATE_AUDIO_HOSTS: RegExp[] = [
 	/^172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}$/,
 	/^169\.254(?:\.\d{1,3}){2}$/,
 	/^::1$/,
+	/^0:0:0:0:0:0:0:1$/,
 	/^fe80:/i,
 	/^fc00:/i,
 	/^fd[0-9a-f]{2}:/i,
-	/^metadata\.google\.internal$/i,
-	/^metadata\.azure\.internal$/i,
-	/^metadata\.packet\.net$/i,
 ];
+
+/**
+ * A host written as one bare decimal, hex or octal number (`2130706433`,
+ * `0x7f000001`, `017700000001` for `127.0.0.1`) is a classic way past a
+ * host list. The WHATWG URL parser already rewrites these to dotted form;
+ * this keeps the check correct for a hostname that did not come from it.
+ */
+function ipv4BareToDotted(hostname: string): string | null {
+	let asInt: number;
+	if (/^0x[0-9a-f]+$/i.test(hostname)) {
+		asInt = Number.parseInt(hostname.slice(2), 16);
+	} else if (/^0[0-7]+$/.test(hostname)) {
+		asInt = Number.parseInt(hostname, 8);
+	} else if (/^\d+$/.test(hostname)) {
+		asInt = Number.parseInt(hostname, 10);
+	} else {
+		return null;
+	}
+	if (!Number.isFinite(asInt) || asInt < 0 || asInt > 0xff_ff_ff_ff) {
+		return null;
+	}
+	return [
+		(asInt >>> 24) & 0xff,
+		(asInt >>> 16) & 0xff,
+		(asInt >>> 8) & 0xff,
+		asInt & 0xff,
+	].join(".");
+}
+
+function normalizeSsmlAudioHostname(hostname: string): string {
+	const host = hostname
+		.replace(/^\[|\]$/g, "")
+		.replace(/\.$/, "")
+		.toLowerCase();
+	// Unmap IPv4-in-IPv6. The URL parser serialises `::ffff:127.0.0.1` as
+	// `::ffff:7f00:1`, which no IPv4 pattern above would otherwise match.
+	const mapped = host.match(
+		/^::ffff:(?:(\d+\.\d+\.\d+\.\d+)|([0-9a-f]{1,4}):([0-9a-f]{1,4}))$/,
+	);
+	if (!mapped) return host;
+	const [, dotted, high, low] = mapped;
+	if (dotted) return dotted;
+	return [Number.parseInt(high, 16), Number.parseInt(low, 16)]
+		.flatMap((word) => [(word >>> 8) & 0xff, word & 0xff])
+		.join(".");
+}
+
+function isPrivateSsmlAudioHost(hostname: string): boolean {
+	const normalized = normalizeSsmlAudioHostname(hostname);
+	const candidates = [normalized];
+	const numericDotted = ipv4BareToDotted(normalized);
+	if (numericDotted) candidates.push(numericDotted);
+	return candidates.some((candidate) =>
+		SSML_PRIVATE_AUDIO_HOSTS.some((pattern) => pattern.test(candidate)),
+	);
+}
 
 function isSafeSsmlAudioSrc(raw: string): boolean {
 	if (typeof raw !== "string" || raw.length === 0) return false;
@@ -168,8 +230,7 @@ function isSafeSsmlAudioSrc(raw: string): boolean {
 	if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
 		return false;
 	}
-	const hostname = parsed.hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "");
-	return !SSML_PRIVATE_AUDIO_HOSTS.some((pattern) => pattern.test(hostname));
+	return !isPrivateSsmlAudioHost(parsed.hostname);
 }
 
 /**

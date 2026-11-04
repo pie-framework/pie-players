@@ -16,7 +16,7 @@
 							"kind": "field",
 							"name": "toolkitCoordinator",
 							"type": {
-								"text": "ToolkitCoordinatorApi | null"
+								"text": "ToolkitCoordinatorLike | null"
 							},
 							"default": "null",
 							"attribute": "toolkitcoordinator"

@@ -446,7 +446,8 @@ Developer dialog for the section player demos that configures the toolkit's text
 	}
 
 	function initializeFromCoordinator() {
-		const existing = toolkitCoordinator?.getToolConfig("textToSpeech") ?? {};
+		const existing =
+			(toolkitCoordinator?.getToolConfig("textToSpeech") as TextToSpeechToolProviderConfig | null) ?? {};
 		const stored = readStoredSettings();
 		const source = mergeStoredSettings(existing, stored);
 		const resolvedDefaultApiEndpoint = getDefaultApiEndpoint();
@@ -1366,7 +1367,9 @@ Developer dialog for the section player demos that configures the toolkit's text
 	function backendProviderOptions(
 		own: Record<string, unknown> = {}
 	): Record<string, unknown> {
-		const current = toolkitCoordinator?.getToolConfig("textToSpeech")?.providerOptions;
+		const current = (
+			toolkitCoordinator?.getToolConfig("textToSpeech") as TextToSpeechToolProviderConfig | null
+		)?.providerOptions;
 		const shared = Object.fromEntries(
 			Object.entries(current && typeof current === "object" ? current : {}).filter(
 				([key]) => !BACKEND_PROVIDER_OPTIONS.includes(key)

@@ -61,6 +61,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		connectToolRuntimeContext,
 		connectToolShellContext,
 	} from '../runtime/tool-host-contract.js';
+	import { untrack } from 'svelte';
 	import { ContextProvider } from '@pie-players/pie-context';
 	import type { I18nProvider, MessageKeyInput } from '@pie-players/pie-players-shared/i18n/types';
 	import { ZIndexLayer } from '../services/ToolCoordinator.js';
@@ -1125,41 +1126,49 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		activeToolState = nextActiveState;
 	}
 
+	// Resubscribes when the rendered set changes, and on nothing else: a tool's
+	// `sync` and `subscribeActive` read whatever state they read untracked. The
+	// first sync is deferred like every later one, so a tool's `sync` and the
+	// `activeToolState` write never run inside this flush; until it runs, a
+	// button shows its own `active`.
 	$effect(() => {
+		const tools = renderedTools;
 		const unsubs: Array<() => void> = [];
-		syncRenderedToolsState();
-		for (const renderedTool of renderedTools) {
-			if (renderedTool.subscribeActive) {
-				let disposed = false;
-				const unsubscribe = renderedTool.subscribeActive((active) => {
-					// Tools may dispatch their active-change signal from inside
-					// a tracked Svelte $effect (e.g. tool-tts-inline does this
-					// on mount). When the toolbar synchronously creates / re-
-					// connects the tool element during its own template/
-					// derivation pass — for example when the section player
-					// collapses on resize — that dispatch lands back here while
-					// our parent derivation is still running, and Svelte
-					// rejects the `activeToolState` write with
-					// `state_unsafe_mutation`. Queue the update on a
-					// microtask so the mutation happens after the current
-					// reactive flush settles.
-					queueMicrotask(() => {
-						if (disposed) return;
-						activeToolState = {
-							...activeToolState,
-							[renderedTool.toolId]: active
-						};
-						renderedTool.sync?.();
+		let disposed = false;
+		queueMicrotask(() => {
+			if (!disposed) syncRenderedToolsState();
+		});
+		untrack(() => {
+			for (const renderedTool of tools) {
+				if (renderedTool.subscribeActive) {
+					const unsubscribe = renderedTool.subscribeActive((active) => {
+						// Tools may dispatch their active-change signal from inside
+						// a tracked Svelte $effect (e.g. tool-tts-inline does this
+						// on mount). When the toolbar synchronously creates / re-
+						// connects the tool element during its own template/
+						// derivation pass — for example when the section player
+						// collapses on resize — that dispatch lands back here while
+						// our parent derivation is still running, and Svelte
+						// rejects the `activeToolState` write with
+						// `state_unsafe_mutation`. Queue the update on a
+						// microtask so the mutation happens after the current
+						// reactive flush settles.
+						queueMicrotask(() => {
+							if (disposed) return;
+							activeToolState = {
+								...activeToolState,
+								[renderedTool.toolId]: active
+							};
+							renderedTool.sync?.();
+						});
 					});
-				});
-				unsubs.push(() => {
-					disposed = true;
-					unsubscribe();
-				});
+					unsubs.push(unsubscribe);
+				}
 			}
-		}
+		});
 
 		return () => {
+			disposed = true;
 			unsubs.forEach((unsub) => unsub());
 		};
 	});

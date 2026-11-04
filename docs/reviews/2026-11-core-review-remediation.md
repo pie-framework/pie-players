@@ -251,6 +251,13 @@ These decisions supersede the pending/defer recommendations in the execution
 plan and client-impact table below where they conflict. They authorize scope,
 not a claim that consumer verification or implementation has already happened.
 
+- **D2:** approved consistent Escape dismissal: within the tool, close it;
+  from assessment content, dismiss the relevant obscuring overlay without
+  moving content focus. Respect Escape already handled by menus/dialogs, and
+  dismiss one appropriate layer per press. Keep visible keyboard-accessible
+  close controls. Test ordering across stacked tools and host dialogs; avoid
+  independent global listeners racing to dismiss everything. This is a design
+  chosen to support WCAG 2.2 focus visibility, not a claim WCAG mandates Escape.
 - **D6:** keep coordinator provider defaults as intentional 1.0 behavior;
   document them and test explicit overrides.
 - **D4:** keep route-level TTS caching; verify the documented integration and
@@ -358,7 +365,7 @@ explicit client-impact decisions. D7's recommended path preserves behavior.
 | ID | Decision | Options | Proposed default | Resolution |
 |---|---|---|---|---|
 | D1 | `scripts/smoke-pie-elements-ng-esm.mjs` (~950 lines, zero callers) | wire into docs / delete | delete | pending |
-| D2 | Escape-close semantics for obscuring overlay tools | page-wide close with `defaultPrevented` guard (magnifier, WCAG 2.4.11) / focused-panel only (line-reader) | page-wide | pending |
+| D2 | Escape-close semantics for obscuring overlay tools | page-wide close with `defaultPrevented` guard (magnifier, WCAG 2.4.11) / focused-panel only (line-reader) | ordered dismissal | resolved: relevant obscuring overlay, handled-event protection, one layer per press; preserve content focus |
 | D3 | `langId`/`lang_id` wire reconciliation | both spellings everywhere / single spelling | both spellings (client's documented camelCase accommodation) | pending |
 | D4 | TTS cache module | add optional cache hook to `BaseTTSProvider`/`ITTSServerProvider` / document route-level caching as the story | route-level caching | resolved: keep route-level caching; no provider hook for 1.0 |
 | D5 | Calculator shared runtime | tiny `calculator-shared` package / parity tests only | separate implementations for 1.0 | resolved: no new package; meaningful lifecycle parity tests |

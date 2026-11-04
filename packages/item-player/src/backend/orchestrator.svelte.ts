@@ -81,6 +81,12 @@ export type BackendOrchestratorDeps = {
 	getEnv: () => unknown;
 	/** The authoritative session, controller-owned once one exists. */
 	getSessionContainer: () => BackendSessionContainer;
+	/**
+	 * True while `addCorrectResponse` has filled the session with the item's
+	 * correct responses. No session write goes out then: autosaves are skipped,
+	 * and a save, score or model call made by the host rejects.
+	 */
+	holdsCorrectResponses: () => boolean;
 	/** The component's element-load pipeline; resolves false when it did not commit. */
 	loadPlayerConfig: (config: unknown) => Promise<boolean>;
 	/** Re-dispatches from the custom-element host. */
@@ -389,6 +395,9 @@ export function createBackendOrchestrator(
 		if (!backend || !getDeliveryBackend(backend) || !deps.getItemConfig())
 			return;
 		if (configOverrideScope === "authoring") return;
+		// Skipped rather than failed: nothing awaits it, and the next model
+		// signature change runs it again.
+		if (deps.holdsCorrectResponses()) return;
 		const delivery = getDeliveryBackend(backend)!;
 		const envAtStart = deps.getEnv();
 		const write = captureSessionWrite();
@@ -465,6 +474,14 @@ export function createBackendOrchestrator(
 			assignmentId: target.assignmentId,
 			session: cloneForBackend(sessionContainerFor(target.sessionId)),
 		};
+	}
+
+	function assertLearnerSession(operation: string): void {
+		if (deps.holdsCorrectResponses()) {
+			throw new Error(
+				`${operation} refused: the session holds the item's correct responses.`,
+			);
+		}
 	}
 
 	function saveTargetKey(identity: DeliverySaveIdentity): string {
@@ -544,6 +561,11 @@ export function createBackendOrchestrator(
 	}
 
 	function saveSession(options?: { keepalive?: boolean }): Promise<void> {
+		try {
+			assertLearnerSession("saveSession");
+		} catch (errorValue) {
+			return Promise.reject(errorValue);
+		}
 		return sendSave(captureSessionWrite(), options);
 	}
 
@@ -582,7 +604,7 @@ export function createBackendOrchestrator(
 		) {
 			sendAutosave(resend, options, true);
 		}
-		if (pending) {
+		if (pending && !deps.holdsCorrectResponses()) {
 			sendAutosave(captureSessionWrite(pending), options);
 		}
 	}
@@ -592,6 +614,7 @@ export function createBackendOrchestrator(
 		if (!backend || !getDeliveryBackend(backend)) {
 			throw new Error("backend.delivery is not configured.");
 		}
+		assertLearnerSession("score");
 		const write = captureSessionWrite();
 		const env = deps.getEnv();
 		const result = await enqueueSessionWrite(write, () =>
@@ -680,6 +703,7 @@ export function createBackendOrchestrator(
 	}
 
 	function scheduleAutosave() {
+		if (deps.holdsCorrectResponses()) return;
 		const backend = deps.getBackend();
 		if (!backend) return;
 		const delivery = getDeliveryBackend(backend);
@@ -704,6 +728,7 @@ export function createBackendOrchestrator(
 			) {
 				return;
 			}
+			if (deps.holdsCorrectResponses()) return;
 			sendAutosave(captureSessionWrite(saveIdentity));
 		}, autosave.debounceMs);
 	}

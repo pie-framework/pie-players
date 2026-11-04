@@ -9,6 +9,7 @@
 		toFrameworkErrorModel,
 		type FrameworkErrorModel,
 		type SectionControllerHandle,
+		type SectionItemScorer,
 		type ToolRegistry,
 		type ToolbarItem,
 		type ToolConfigStrictness,
@@ -32,7 +33,6 @@
 	} from "@pie-players/pie-players-shared/types";
 	import { untrack } from "svelte";
 	import type {
-		SectionItemScore,
 		SectionPlayerNavigationSnapshot,
 		SectionPlayerSnapshot,
 	} from "../../contracts/runtime-host-contract.js";
@@ -175,6 +175,8 @@
 		cohort: NonNullable<ReturnType<typeof makeCohort>>;
 		controller: SectionControllerHandle;
 	} | null = null;
+	// Unregisters this layout's scorer from the controller it scores for.
+	let releaseItemScorer: (() => void) | null = null;
 	let controllerResolvedFor: ReturnType<typeof makeCohort> = null;
 
 	// One section runtime engine per kernel mount: the section player's only
@@ -392,6 +394,8 @@
 			);
 			return;
 		}
+		releaseItemScorer?.();
+		releaseItemScorer = detail.controller.registerItemScorer?.(scoreItem) ?? null;
 		readyController = { cohort, controller: detail.controller };
 		// Readies only the current cohort, whose composition the kernel now holds.
 		if (cohortsEqual(cohort, currentCohort())) sectionReady = true;
@@ -491,13 +495,14 @@
 		return (await scaffoldRef?.waitForSectionController?.(timeoutMs)) || null;
 	}
 
-	// The items pane holds the item cards, so a layout without one scores nothing.
-	export async function provideScore(): Promise<SectionItemScore[]> {
+	// The controller scores through the items pane, which holds the item cards,
+	// so a layout without one scores nothing.
+	const scoreItem: SectionItemScorer = async (canonicalItemId) => {
 		const pane = activePanes.items as
-			| (Element & { provideScore?: () => Promise<SectionItemScore[]> })
+			| (Element & { scoreItem?: SectionItemScorer })
 			| null;
-		return (await pane?.provideScore?.()) ?? [];
-	}
+		return (await pane?.scoreItem?.(canonicalItemId)) ?? false;
+	};
 
 	// A layout with no items pane leaves the items unrendered and readiness short
 	// of `interactive`. Checked a task after the section is ready with items, so a
@@ -655,6 +660,8 @@
 	$effect(() => {
 		return () => {
 			untrack(() => {
+				releaseItemScorer?.();
+				releaseItemScorer = null;
 				engine.dispose();
 				paneRegistry.dispose();
 			});

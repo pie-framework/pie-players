@@ -65,6 +65,7 @@ Section player for a host that lays out the section itself: it runs the toolkit,
 @fires {CustomEvent<{ runtimeId: string; assessmentId: string; sectionId: string; itemPlayer: ItemPlayerConfig; coordinator: ToolkitCoordinator }>} toolkit-ready - Bubbles from the inner toolkit. For every section the toolkit initializes, once its section controller resolves.
 @fires {CustomEvent<{ sectionId: string; attemptId: string; controller: unknown }>} section-ready - Bubbles from the inner toolkit. Right after `toolkit-ready`, with the section's controller or null.
 @fires {CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: "teardown" | "navigate" | "page-hidden" }>} item-session-changed - Bubbles from an item scope when the item player reports a response change; the player's own `session-changed` stops at the scope.
+@fires {CustomEvent<{ itemId: string; canonicalItemId: string; type: "load-complete" | "player-error" | "correct-responses-populated" | "bundle-retry-status" | "session-snapshot-available" | "backend-load-complete" | "backend-model-complete" | "backend-session-saved" | "backend-score-complete" | "backend-error"; detail: unknown }>} item-player-event - Bubbles from an item scope when the item player fires one of these events, carrying its detail; the player's own `load-complete` and `player-error` stop at the scope.
 @slot - The host's layout, holding the items pane and, optionally, the passages pane.
 -->
 
@@ -92,7 +93,6 @@ Section player for a host that lays out the section itself: it runs the toolkit,
 		withHostMethods,
 	} from "./shared/layout-host-methods.js";
 	import type {
-		SectionItemScore,
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
@@ -157,10 +157,6 @@ Section player for a host that lays out the section itself: it runs the toolkit,
 
 	export function getSectionController() {
 		return kernelRef?.getSectionController?.() || null;
-	}
-
-	export function provideScore(): Promise<SectionItemScore[]> {
-		return kernelRef?.provideScore?.() ?? Promise.resolve([]);
 	}
 
 	// A host that places its own panes as children gets its layout; one that

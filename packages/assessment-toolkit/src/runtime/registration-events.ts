@@ -10,6 +10,28 @@ export const PIE_UNREGISTER_EVENT = "pie-unregister";
 export const PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT =
 	"pie-item-session-changed";
 export const PIE_ITEM_SESSION_CHANGED_EVENT = "item-session-changed";
+export const PIE_ITEM_PLAYER_EVENT = "item-player-event";
+
+/**
+ * The item-player events an item scope in a section relays as
+ * `item-player-event`. Each keeps its own behaviour: `load-complete` and
+ * `player-error` still stop at the scope, the rest still bubble.
+ */
+export const RELAYED_ITEM_PLAYER_EVENTS = [
+	"load-complete",
+	"player-error",
+	"correct-responses-populated",
+	"bundle-retry-status",
+	"session-snapshot-available",
+	"backend-load-complete",
+	"backend-model-complete",
+	"backend-session-saved",
+	"backend-score-complete",
+	"backend-error",
+] as const;
+
+export type RelayedItemPlayerEventType =
+	(typeof RELAYED_ITEM_PLAYER_EVENTS)[number];
 export const PIE_INTERNAL_CONTENT_LOADED_EVENT = "pie-content-loaded";
 export const PIE_INTERNAL_CONTENT_IDENTITY_EVENT = "pie-content-identity";
 export const PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT = "pie-item-player-error";
@@ -44,6 +66,15 @@ export interface ItemSessionChangedDetail {
 	sourceRuntimeId?: string;
 	/** Set when the change is a commit at a teardown, navigation or page-hidden seam. */
 	sessionCommitReason?: SessionCommitReason;
+}
+
+/** An item player's event, with the item it came from. */
+export interface ItemPlayerEventDetail {
+	itemId: string;
+	canonicalItemId: string;
+	type: RelayedItemPlayerEventType;
+	/** The item player's own event detail. */
+	detail: unknown;
 }
 
 export interface InternalItemSessionChangedDetail {

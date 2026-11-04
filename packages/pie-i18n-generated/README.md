@@ -68,6 +68,7 @@ loaded catalog.
 | `sv` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `sv`, `sv-SE`, `sv-FI`) | [`briefs/sv.md`](./briefs/sv.md) | 2026-10-19 |
 | `ro` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `ro`, `ro-RO`, `ro-MD`; three CLDR plural categories, `other` takes `de`) | [`briefs/ro.md`](./briefs/ro.md) | 2026-10-19 |
 | `vi` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `vi`, `vi-VN`; one CLDR plural category) | [`briefs/vi.md`](./briefs/vi.md) | 2026-11-03 |
+| `nl-NL` | reviewed (**native-speaker audit** — the framework's audit language; carried over from `players-shared`'s bundled set on 2026-11-04, verbatim) | [`briefs/nl-NL.md`](./briefs/nl-NL.md) | 2026-10-18 |
 
 Locale tags are chosen for variant reach: bare tags (`es`, `fr`, `ar`) let
 `es-MX`, `fr-CA` and `ar-SA` widen onto them through RFC 4647 lookup, while

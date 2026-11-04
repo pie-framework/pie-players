@@ -6,6 +6,15 @@
 		DebugPanelInstrumentationProvider,
 		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
+	import {
+		BUNDLED_LOCALES,
+		createPieI18n,
+		loadBundledCatalog
+	} from '@pie-players/pie-players-shared/i18n';
+	import {
+		GENERATED_LOCALES,
+		loadGeneratedCatalog
+	} from '@pie-players/pie-i18n-generated';
 	import { onDestroy } from 'svelte';
 	import {
 		createToolsConfig,
@@ -41,6 +50,18 @@
 
 	let { data }: { data: PageData } = $props();
 	const toolRegistry = createSectionDemoToolRegistry();
+
+	// The composed interface-locale provider this demo host supplies through the
+	// layout's `runtime.i18n`: bundled catalogs first, the generated tier behind
+	// them. The bundled set is `en-US` alone, so a locale a host names on the
+	// layout — the overlay spec's `nl-NL` — resolves Dutch only through this.
+	const composedI18n = browser
+		? createPieI18n({
+				availableLocales: [...BUNDLED_LOCALES, ...GENERATED_LOCALES],
+				loadCatalog: (locale) =>
+					loadBundledCatalog(locale).catch(() => loadGeneratedCatalog(locale))
+			})
+		: null;
 
 	// Level 4: CE setup plus controller JS API subscriptions.
 	const sectionInstrumentationProvider = new CompositeInstrumentationProvider([
@@ -413,7 +434,8 @@ const sectionPlayerHooks = $derived.by(() =>
 					tools: toolkitToolsConfig,
 					player: sectionPlayerConfig,
 					env: pieEnv,
-					coordinator: coordinator
+					coordinator: coordinator,
+					i18n: composedI18n ?? undefined
 				} }
 				section={resolvedSectionForPlayer}
 				{toolRegistry}
@@ -434,7 +456,8 @@ const sectionPlayerHooks = $derived.by(() =>
 					tools: toolkitToolsConfig,
 					player: sectionPlayerConfig,
 					env: pieEnv,
-					coordinator: coordinator
+					coordinator: coordinator,
+					i18n: composedI18n ?? undefined
 				} }
 				section={resolvedSectionForPlayer}
 				{toolRegistry}

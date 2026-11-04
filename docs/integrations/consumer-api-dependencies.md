@@ -725,6 +725,18 @@ recorded checkout's source still finds `locale` passed to a `pie-*` element
 only inside the two internally-controlled demo apps, so no listed host is
 affected.
 
+On 2026-11-04 the bundled interface-locale set shrank to `en-US` alone:
+`@pie-players/pie-players-shared/i18n`'s `BUNDLED_LOCALES` drops `nl-NL`,
+`loadBundledCatalog("nl-NL")` now rejects, and the Dutch catalog — the
+framework's audit language, moved verbatim — ships as a `reviewed` catalog of
+the optional `@pie-players/pie-i18n-generated` tier instead. A host composing
+both loaders (the tier README's wiring, which every internally-controlled demo
+uses) resolves Dutch unchanged through the catch. A host composing only
+`loadBundledCatalog` that requests `nl-NL` renders the English fallback where
+it rendered Dutch, since no recorded host requests any locale at all this is
+the grep-verified null set. The 2026-10-24 content-language default is
+unaffected: with no requested locale the content root still carries no
+language claim.
 Also on 2026-11-04 the section-player layouts lost `provideScore()`, which
 became the section controller's optional `score()`, and the controller gained
 optional `commitPendingSessions()` and `registerItemScorer()`. Item shells

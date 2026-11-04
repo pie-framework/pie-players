@@ -27,6 +27,7 @@ import {
 	normalizeSpeechMarks,
 	resolveSpeedRateBucket,
 } from "@pie-players/pie-tts";
+import { languageTagWithoutVariants } from "@pie-players/pie-players-shared/i18n/language-tags";
 import {
 	createPieLogger,
 	isTtsDebugEnabled,
@@ -451,13 +452,17 @@ const resolveSpeedRate = (config: ServerTTSProviderConfig): SpeedRateBucket => {
 	return resolveSpeedRateBucket(config.rate);
 };
 
-/** The language a speak named for its content, if any. */
+/**
+ * The language a speak named for its content, if any, without variant or
+ * private-use subtags: voices are keyed by language and region, so
+ * `en-GB-x-gulf` is read by an `en-GB` voice.
+ */
 const contentLanguageOf = (
 	config: ServerTTSProviderConfig,
 ): string | undefined => {
 	const language = config.providerOptions?.contentLanguage;
 	return typeof language === "string" && language.trim()
-		? language.trim()
+		? languageTagWithoutVariants(language)
 		: undefined;
 };
 

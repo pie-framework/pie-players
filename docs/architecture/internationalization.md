@@ -199,6 +199,11 @@ Each transport sends the language as follows:
 | `pie` (Polly, Google) | `language`: the content language, else the tool config's `language` | the configured `defaultVoice` when one is set; otherwise the server picks one for `language` |
 | `custom` (`tts-server-sc`) | `lang_id`: the pinned `lang_id`, else the content language, else the tool config's `language`, else `en-US` | the service's own, from `lang_id` |
 
+Both server transports and the browser voice drop variant and private-use
+subtags from the content language, since voices are keyed by language and
+region: `en-GB-x-gulf` content is read by an `en-GB` voice. A pinned `lang_id`
+is sent as set.
+
 A Polly or Google server given no voice keeps its configured default voice when
 that voice speaks `language`, and otherwise takes the first voice it lists for
 the exact tag, then for the primary subtag (`es` matches `es-US`); Google

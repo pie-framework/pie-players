@@ -157,8 +157,9 @@ family on import.
 ## Test Plan
 
 - Unit: `negotiateContentLanguage` against the conformance fixtures, including
-  script boundaries (`zh-TW` never reaches `zh-Hans`), `matching: "exact"`, the
-  fallback chain and `null` for undeclared content.
+  script boundaries (`zh-TW` never reaches `zh-Hans`), variant subtags
+  (`en-GB` never reaches `en-GB-x-gulf`), sibling order, `matching: "exact"`,
+  the fallback chain and `null` for undeclared content.
 - Item player: a load with `requestedLanguages` refetches on change, and a
   response `identity` sets `env.locale` for render, save and score.
 - Section player: two items in different languages in one section stamp their

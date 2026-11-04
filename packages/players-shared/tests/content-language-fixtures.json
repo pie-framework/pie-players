@@ -27,6 +27,13 @@
 		{ "requested": ["es"], "available": [null, "fr"], "defaultLanguage": "en-US", "source": "fr", "expected": { "language": null, "substitution": "fallback" } },
 		{ "requested": ["es"], "available": ["fr", "de"], "defaultLanguage": "en-US", "source": "fr", "expected": { "language": "fr", "substitution": "fallback" } },
 		{ "requested": ["es"], "available": ["fr"], "defaultLanguage": "en-US", "source": "fr", "fallback": "none", "expected": null },
-		{ "requested": [], "available": [null, "fr"], "defaultLanguage": "en-US", "expected": { "language": null } }
+		{ "requested": [], "available": [null, "fr"], "defaultLanguage": "en-US", "expected": { "language": null } },
+		{ "requested": ["es-MX"], "available": ["en-US", "es-US", "es-ES"], "defaultLanguage": "en-US", "expected": { "language": "es-ES" } },
+		{ "requested": ["es-MX"], "available": ["en-US", "es-ES", "es-US"], "defaultLanguage": "en-US", "expected": { "language": "es-ES" } },
+		{ "requested": ["es-MX"], "available": ["es-ES", "es-US"], "defaultLanguage": "en-US", "source": "es-US", "expected": { "language": "es-US" } },
+		{ "requested": ["en-GB-x-gulf"], "available": ["en-US", "en-GB"], "defaultLanguage": "en-US", "expected": { "language": "en-GB" } },
+		{ "requested": ["en-US-x-gulf"], "available": ["en-GB", "en-GB-x-gulf"], "defaultLanguage": "en-US", "expected": { "language": "en-GB-x-gulf" } },
+		{ "requested": ["en-GB"], "available": ["en-GB-x-gulf", "fr"], "defaultLanguage": "en-US", "source": "en-GB-x-gulf", "expected": { "language": "en-GB-x-gulf", "substitution": "fallback" } },
+		{ "requested": ["en-GB"], "available": ["en-GB-x-gulf", "fr"], "defaultLanguage": "en-US", "source": "en-GB-x-gulf", "fallback": "none", "expected": null }
 	]
 }

@@ -97,7 +97,11 @@ resolves variants:
 **Language matching** is BCP 47 lookup that never crosses scripts:
 `negotiateContentLanguage` in `@pie-players/pie-players-shared/i18n/language-tags`
 walks `zh-TW → zh-Hant`, skips a bare `zh` held in another script, and then
-widens to a sibling in the same language and script, `es-MX → es-ES`. Its
+widens to a sibling in the same language and script, `es-MX → es-ES`. A sibling
+carries the request's variant and private-use subtags, so a variety such as
+`en-GB-x-gulf` is served only to a request that names it; that request itself
+truncates to `en-GB`. Siblings rank the family source first, then by tag, so
+the order a backend lists members in never decides. Its
 `matching` option applies the policy's `matching`; a `null` entry in its
 `available` list stands for content that declares no language, and `source`
 names the family source the fallback chain ends at. A backend that negotiates

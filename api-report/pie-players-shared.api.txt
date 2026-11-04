@@ -407,6 +407,7 @@
   languageTagScript
   languageTagScriptLookupSequence
   languageTagScriptsMatch
+  languageTagWithoutVariants
   languageTagsEqual
   negotiateContentLanguage
   normalizeLanguageTag

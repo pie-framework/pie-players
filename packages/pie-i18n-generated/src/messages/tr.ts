@@ -417,7 +417,7 @@ const tr = {
 			highlightBlueA11y: "Mavi vurgu",
 			highlightGreenA11y: "Yeşil vurgu",
 			selectionAvailableA11y:
-				"“{text}” için metin açıklaması araç çubuğu kullanılabilir. Açıklama araçları için Shift+F10 tuşlarına basın.",
+				"“{text}” için metin açıklaması araç çubuğu kullanılabilir hâle geldi. Açıklama araçları için Shift+F10 tuşlarına basın.",
 			highlightedYellowA11y: "“{text}” sarıyla vurgulandı",
 			highlightedPinkA11y: "“{text}” pembeyle vurgulandı",
 			highlightedBlueA11y: "“{text}” maviyle vurgulandı",

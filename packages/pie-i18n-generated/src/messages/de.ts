@@ -450,7 +450,7 @@ const de = {
 			highlightBlueA11y: "Blau hervorheben",
 			highlightGreenA11y: "Grün hervorheben",
 			selectionAvailableA11y:
-				"Werkzeugleiste für Textanmerkungen für „{text}“ verfügbar. Drücken Sie Shift+F10 für die Anmerkungswerkzeuge.",
+				"Die Werkzeugleiste für Textanmerkungen ist für „{text}“ verfügbar. Drücken Sie Shift+F10 für die Anmerkungswerkzeuge.",
 			highlightedYellowA11y: "„{text}“ wurde gelb hervorgehoben",
 			highlightedPinkA11y: "„{text}“ wurde rosa hervorgehoben",
 			highlightedBlueA11y: "„{text}“ wurde blau hervorgehoben",

@@ -163,7 +163,7 @@
 			"brief": "briefs/de.md",
 			"generatedAt": "2026-11-04",
 			"reviewedAt": "2026-11-04",
-			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/briefs/de.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/de.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; international deployment set (Renaissance Global-facing locales), authored per its terminology brief with CLDR plural categories one/other; the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04",
 			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
 		},
@@ -172,7 +172,7 @@
 			"brief": "briefs/it.md",
 			"generatedAt": "2026-11-04",
 			"reviewedAt": "2026-11-04",
-			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/briefs/it.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/it.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; international deployment set (Renaissance Global-facing locales), authored per its terminology brief with CLDR plural categories one/many (CLDR `many` covers the -iono/-ione large-number forms, e.g. un milione); the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04",
 			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
 		},
@@ -181,7 +181,7 @@
 			"brief": "briefs/pl.md",
 			"generatedAt": "2026-11-04",
 			"reviewedAt": "2026-11-04",
-			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/briefs/pl.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/pl.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; international deployment set (Renaissance Global-facing locales), authored per its terminology brief with CLDR plural categories one/few/many/other (the full Slavic four; `few` for 2-4 and fractions, `many` for large and fractional counts); the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04",
 			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
 		},
@@ -190,7 +190,7 @@
 			"brief": "briefs/tr.md",
 			"generatedAt": "2026-11-04",
 			"reviewedAt": "2026-11-04",
-			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/briefs/tr.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/tr.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; international deployment set (Renaissance Global-facing locales), authored per its terminology brief with CLDR plural categories one/other; the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04",
 			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
 		},
@@ -199,7 +199,7 @@
 			"brief": "briefs/uk.md",
 			"generatedAt": "2026-11-04",
 			"reviewedAt": "2026-11-04",
-			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/briefs/uk.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/uk.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; international deployment set (Renaissance Global-facing locales), authored per its terminology brief with CLDR plural categories one/few/many/other (the full Slavic four); the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04",
 			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
 		},
@@ -208,8 +208,143 @@
 			"brief": "briefs/el.md",
 			"generatedAt": "2026-11-04",
 			"reviewedAt": "2026-11-04",
-			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/briefs/el.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/el.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; international deployment set (Renaissance Global-facing locales), authored per its terminology brief with CLDR plural categories one/other; the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"ru": {
+			"status": "reviewed",
+			"brief": "briefs/ru.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; big-US wave; Slavic one/few/many/other with numeral rules; exam-register terminology pinned in the brief",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"fil": {
+			"status": "reviewed",
+			"brief": "briefs/fil.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; big-US wave; Filipino per CLDR fil categories, verified programmatically; the tl tag aliases this catalog (US systems label the language Tagalog)",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"ht": {
+			"status": "reviewed",
+			"brief": "briefs/ht.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; big-US wave; Haitian Creole one/other; terminology pinned in the brief",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"ur": {
+			"status": "reviewed",
+			"brief": "briefs/ur.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; second RTL wave; the RTL layout contract is audited (ar's geometry spec), so this inherits a verified mirroring path; Urdu register and digit convention pinned in the brief",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"fa": {
+			"status": "reviewed",
+			"brief": "briefs/fa.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; second RTL wave; Persian register pinned in the brief",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"he": {
+			"status": "reviewed",
+			"brief": "briefs/he.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; second RTL wave; Hebrew carries a CLDR two category; geresh/gershayim conventions pinned in the brief",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"zh-Hant": {
+			"status": "reviewed",
+			"brief": "briefs/zh-Hant.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; script variant; Taiwan-register Traditional Chinese authored from en-US — deliberately NOT a character conversion of the Simplified zh catalog, with the term divergences from a naive conversion documented; regional tag so bare zh stays Simplified while zh-TW/zh-HK widen onto it",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"so": {
+			"status": "reviewed",
+			"brief": "briefs/so.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; state/regional wave; Somali (Latin script); assessment terminology partially standardized — flagged in the brief; native review strongly advised",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"hmn": {
+			"status": "reviewed",
+			"brief": "briefs/hmn.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; state/regional wave; White Hmong in Romanized Popular Alphabet (CLDR hmn is undersourced — other-only plurals); assessment terminology not standardized — flagged in the brief; native review strongly advised",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"km": {
+			"status": "reviewed",
+			"brief": "briefs/km.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; state/regional wave; Khmer script; other-only plurals; assessment terminology partially standardized — flagged in the brief; native review strongly advised",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"lo": {
+			"status": "reviewed",
+			"brief": "briefs/lo.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; state/regional wave; Lao script; plurals per CLDR lo; assessment terminology partially standardized — flagged in the brief; native review strongly advised",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"bn": {
+			"status": "reviewed",
+			"brief": "briefs/bn.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; state/regional wave; Bengali script; plurals per CLDR bn; terminology pinned in the brief; native review strongly advised",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"pa": {
+			"status": "reviewed",
+			"brief": "briefs/pa.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; state/regional wave; Punjabi in Gurmukhi script (Shahmukhi out of scope, documented); plurals per CLDR pa; native review strongly advised",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"ne": {
+			"status": "reviewed",
+			"brief": "briefs/ne.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; state/regional wave; Nepali in Devanagari script; plurals per CLDR ne; terminology pinned in the brief; native review strongly advised",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"am": {
+			"status": "reviewed",
+			"brief": "briefs/am.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against its brief with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement). A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; state/regional wave; Amharic in Ethiopic script; plurals per CLDR am; terminology pinned in the brief; native review strongly advised",
 			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
 		}
 	}

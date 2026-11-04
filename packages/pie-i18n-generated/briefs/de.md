@@ -132,6 +132,12 @@ string's fidelity.
 - The gas phase value is the adjective `Gasförmig` like Fest and Flüssig,
   matching the German periodic-table convention (the Spanish catalog's
   noun-rule does not transfer).
+- The annotation strip's live-region announcements keep the passive-event
+  rule: `„{text}“ wurde gelb hervorgehoben`, `Anmerkung von „{text}“ wurde
+  entfernt`, `{count} Anmerkung wurde gelöscht`. With
+  `hervorheben`/`unterstreichen` the colour is adverbial and undeclined, so
+  German has no colour-agreement problem here; the `{text}` span keeps the
+  German quotes „…“, and `Shift+F10` stays Latin.
 
 ## Grammar and agreement
 

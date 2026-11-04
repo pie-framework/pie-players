@@ -460,7 +460,7 @@ const it = {
 			highlightBlueA11y: "Evidenziazione blu",
 			highlightGreenA11y: "Evidenziazione verde",
 			selectionAvailableA11y:
-				"Barra degli strumenti per l'annotazione disponibile per «{text}». Premere Shift+F10 per gli strumenti di annotazione.",
+				"La barra degli strumenti per l'annotazione del testo è disponibile per «{text}». Premere Shift+F10 per gli strumenti di annotazione.",
 			highlightedYellowA11y: "Testo «{text}» evidenziato in giallo",
 			highlightedPinkA11y: "Testo «{text}» evidenziato in rosa",
 			highlightedBlueA11y: "Testo «{text}» evidenziato in blu",

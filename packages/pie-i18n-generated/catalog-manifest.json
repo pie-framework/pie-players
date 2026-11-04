@@ -157,6 +157,60 @@
 			"reviewedAt": "2026-10-18",
 			"reviewedBy": "Native-speaker audit with assessment-domain context — the framework's audit language and the calibration report's ground truth. The catalog predates this package: it was players-shared's bundled nl-NL and moved here verbatim on 2026-11-04 when only en-US stayed bundled; regeneration is surgical against its English snapshot, so the audit work is preserved.",
 			"model": "not machine-generated: authored and audited directly in players-shared (the pre-tier bundled set), carried over verbatim; the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04"
+		},
+		"de": {
+			"status": "reviewed",
+			"brief": "briefs/de.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/briefs/de.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; international deployment set (Renaissance Global-facing locales), authored per its terminology brief with CLDR plural categories one/other; the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"it": {
+			"status": "reviewed",
+			"brief": "briefs/it.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/briefs/it.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; international deployment set (Renaissance Global-facing locales), authored per its terminology brief with CLDR plural categories one/many (CLDR `many` covers the -iono/-ione large-number forms, e.g. un milione); the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"pl": {
+			"status": "reviewed",
+			"brief": "briefs/pl.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/briefs/pl.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; international deployment set (Renaissance Global-facing locales), authored per its terminology brief with CLDR plural categories one/few/many/other (the full Slavic four; `few` for 2-4 and fractions, `many` for large and fractional counts); the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"tr": {
+			"status": "reviewed",
+			"brief": "briefs/tr.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/briefs/tr.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; international deployment set (Renaissance Global-facing locales), authored per its terminology brief with CLDR plural categories one/other; the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"uk": {
+			"status": "reviewed",
+			"brief": "briefs/uk.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/briefs/uk.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; international deployment set (Renaissance Global-facing locales), authored per its terminology brief with CLDR plural categories one/few/many/other (the full Slavic four); the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"el": {
+			"status": "reviewed",
+			"brief": "briefs/el.md",
+			"generatedAt": "2026-11-04",
+			"reviewedAt": "2026-11-04",
+			"reviewedBy": "Agent generation-and-review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Generated against briefs/briefs/el.md with the calibration finding list applied at authoring time (domain register, loanwords, register, grammar agreement); the catalog was written deliberately per its brief, not machine-translated generically. A native pass remains open work.",
+			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; international deployment set (Renaissance Global-facing locales), authored per its terminology brief with CLDR plural categories one/other; the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04",
+			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
 		}
 	}
 }

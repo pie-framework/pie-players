@@ -196,12 +196,21 @@ async function main(): Promise<void> {
 	].filter(([locale]) => !only || locale === only);
 
 	if (targets.length === 0) {
-		console.error(
-			only
-				? `Unknown locale: ${only}. Known: ${[...COMPLETE_LOCALES, ...CARRIED_LOCALES].join(", ")}`
-				: "No locales configured.",
+		// `en-US` is the reference and needs no coverage against itself; with it
+		// alone in `BUNDLED_LOCALES`, an empty complete/carried set is the
+		// legitimate steady state — every other locale this repository ships is
+		// the generated tier's, gated by its own check. Only an explicit
+		// `--locale` naming nothing is an error.
+		if (only) {
+			console.error(
+				`Unknown locale: ${only}. Known: ${[...COMPLETE_LOCALES, ...CARRIED_LOCALES].join(", ")}`,
+			);
+			process.exit(1);
+		}
+		console.log(
+			`No bundled locales to check: \`en-US\` is the reference and the only bundled catalog. Coverage for every other locale this repository ships is \`check:i18n-generated\`'s.`,
 		);
-		process.exit(1);
+		return;
 	}
 
 	console.log(

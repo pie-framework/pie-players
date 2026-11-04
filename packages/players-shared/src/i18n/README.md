@@ -152,25 +152,33 @@ Conventions the catalog follows:
 | Tag | Coverage |
 |---|---|
 | `en-US` | source |
-| `nl-NL` | complete |
 
-Two locales, because two are audited. The pre-adoption `es`/`zh`/`ar` catalogs
-were removed rather than re-keyed: they were harvested from a design rather than
-from call sites, so over half their keys named UI this codebase does not render,
-and no version ever published could load them outside a bundler.
+One locale, because one is the fallback: `en-US` is the statically resident
+source of truth every other locale falls back through, and nothing else ships
+in this package. The audited Dutch catalog — the framework's audit language and
+the calibration report's ground truth — lives in the optional generated tier
+since 2026-11-04, carried over verbatim as a `reviewed` catalog. The
+pre-adoption `es`/`zh`/`ar` catalogs were removed rather than re-keyed: they
+were harvested from a design rather than from call sites, so over half their
+keys named UI this codebase does not render, and no version ever published
+could load them outside a bundler.
 
-Machine-generated, unreviewed locales live outside this package:
+Machine-generated and carried locales live outside this package:
 [`@pie-players/pie-i18n-generated`](../../../pie-i18n-generated/README.md)
-generates them from `en-US` against per-locale terminology briefs and gates
-their structure and freshness against this catalog. Hosts compose its loaders
-after `loadBundledCatalog`, so a locale promoted from there into `messages/`
-silently wins over its generated predecessor with no host action.
+ships them — generated from `en-US` against per-locale terminology briefs, or
+carried over audited, as `nl-NL` was — and gates their structure and freshness
+against this catalog. Hosts compose its loaders after `loadBundledCatalog`, so
+a locale promoted from there into `messages/` silently wins over its generated
+predecessor with no host action.
 
-To add a locale: copy `messages/nl-NL.ts`, translate, add the tag to
-`BundledLocaleCode` in `types.ts` and to both maps in `catalogs.ts`, then add it
-to `COMPLETE_LOCALES` in `scripts/check-coverage.ts`. A locale still under review
-can sit in `CARRIED_LOCALES` meanwhile — reported, not gating, gaps resolving to
-English.
+Adding a locale to the bundled set is now an extraordinary decision — it means
+shipping a catalog to every host whether or not any of them asks for it, under
+a native-audit bar only `nl-NL` ever met. The ordinary path is the generated
+tier: brief, generate, review pass. A bundled locale would mean: author the
+catalog in `messages/`, add the tag to `BundledLocaleCode` in `types.ts` and to
+`BUNDLED_LOCALES` in `catalogs.ts`. A locale still under review has no place
+here — `CARRIED_LOCALES` in `scripts/check-coverage.ts` remains for one only if
+the extraordinary decision above is made mid-review; gaps resolve to English.
 
 ## Hardcoded strings
 

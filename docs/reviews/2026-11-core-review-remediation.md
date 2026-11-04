@@ -245,6 +245,38 @@ for numeric `0`); lowercase-only version-suffix regex in `default-tool-loaders`;
 assessment-player selector trio. These are absorbed into R-17/R-18/R-21-R-25
 scopes rather than tracked one by one.
 
+## Maintainer authorizations — 2026-11-04 decision review
+
+These decisions supersede the pending/defer recommendations in the execution
+plan and client-impact table below where they conflict. They authorize scope,
+not a claim that consumer verification or implementation has already happened.
+
+- **D6:** keep coordinator provider defaults as intentional 1.0 behavior;
+  document them and test explicit overrides.
+- **D4:** keep route-level TTS caching; verify the documented integration and
+  add no provider cache hook for 1.0.
+- **D5:** keep calculator adapter implementations separate for 1.0 and fill
+  meaningful lifecycle-test gaps. The maintainer expects Desmos to be the
+  practical client choice and considers its package stable; no new shared
+  calculator package is justified now.
+- **R-12 / i18n:** refactor the i18n API into the intended 1.0 shape, including
+  breaking changes if useful. The maintainer reports no current i18n consumers
+  except the internally controlled API host and authorizes fixing that host,
+  repository documentation and published Confluence pages. Verify the actual
+  callers before changing them. This authorization is scoped to i18n.
+- **R-22 / cleanup policy:** aggressively remove duplication, obsolete backward
+  compatibility constructs/shims and APIs unnecessary for 1.0. Check the known
+  clients through the consumer-pad procedure to establish actual impact; do
+  not retain code solely because it was once published. The exact-list approval
+  hold in batch 12 is lifted for verified unnecessary surfaces. This is not
+  blanket permission to remove behavior still required by a known client: bring
+  back concrete client breakage needing a product decision. Existing permission
+  to fix internally controlled consumers applies; i18n explicitly includes its
+  API host. This policy does not reverse D4/D5/D6 or authorize publishing.
+- **D7/D8:** evaluate shims and registry exports under that cleanup policy;
+  neither all session shims nor the theme lifecycle is automatically retained
+  or deleted. Establish client need and purposeful 1.0 contract first.
+
 ## Sequential execution plan — 1.0 stabilization
 
 Reordered 2026-11-04 at the maintainer's request. Execute the numbered batches
@@ -328,9 +360,9 @@ explicit client-impact decisions. D7's recommended path preserves behavior.
 | D1 | `scripts/smoke-pie-elements-ng-esm.mjs` (~950 lines, zero callers) | wire into docs / delete | delete | pending |
 | D2 | Escape-close semantics for obscuring overlay tools | page-wide close with `defaultPrevented` guard (magnifier, WCAG 2.4.11) / focused-panel only (line-reader) | page-wide | pending |
 | D3 | `langId`/`lang_id` wire reconciliation | both spellings everywhere / single spelling | both spellings (client's documented camelCase accommodation) | pending |
-| D4 | TTS cache module | add optional cache hook to `BaseTTSProvider`/`ITTSServerProvider` / document route-level caching as the story | add the hook | pending |
-| D5 | Calculator shared runtime | tiny `calculator-shared` package / parity tests only | package (tts core/client split precedent) | pending |
-| D6 | Move default-enabled toolkit providers to the composition layer | move (consumer-visible: hosts composing their own set no longer get two providers enabled by default) / keep in coordinator | move, with pad + changeset | pending |
+| D4 | TTS cache module | add optional cache hook to `BaseTTSProvider`/`ITTSServerProvider` / document route-level caching as the story | route-level caching | resolved: keep route-level caching; no provider hook for 1.0 |
+| D5 | Calculator shared runtime | tiny `calculator-shared` package / parity tests only | separate implementations for 1.0 | resolved: no new package; meaningful lifecycle parity tests |
+| D6 | Move default-enabled toolkit providers to the composition layer | move (consumer-visible: hosts composing their own set no longer get two providers enabled by default) / keep in coordinator | keep defaults | resolved: preserve coordinator defaults, document and test overrides |
 | D7 | item-player legacy session projection | add `pie-item contract compatibility:` markers + covering tests / declare canonical and drop "legacy" phrasing | markers now | pending |
 | D8 | Theme provider registry trio (`getPieThemeProvider`/`unregisterPieThemeProvider`) | keep (host-symmetric registry; Host M uses `register`) / trim | keep only if symmetry is intended | pending |
 

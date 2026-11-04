@@ -3,7 +3,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
-import { markdownDocs } from "./lib/markdown-docs.mjs";
+import { markdownAnchors, markdownDocs } from "./lib/markdown-docs.mjs";
 
 const ROOT = process.cwd();
 const toPosix = (value) => value.replaceAll(path.sep, "/");
@@ -40,12 +40,23 @@ const normalizeTarget = (rawTarget) => {
 	return target;
 };
 
-const isExternalOrAnchor = (target) =>
-	target === "" ||
-	target.startsWith("#") ||
-	/^[a-z][a-z0-9+.-]*:/i.test(target);
+const isExternal = (target) =>
+	target === "" || /^[a-z][a-z0-9+.-]*:/i.test(target);
 
-const stripHash = (target) => target.split("#", 1)[0];
+const splitHash = (target) => {
+	const index = target.indexOf("#");
+	return index === -1
+		? [target, null]
+		: [target.slice(0, index), target.slice(index + 1)];
+};
+
+const anchorCache = new Map();
+const anchorsOf = (filePath) => {
+	if (!anchorCache.has(filePath)) {
+		anchorCache.set(filePath, markdownAnchors(readFileSync(filePath, "utf8")));
+	}
+	return anchorCache.get(filePath);
+};
 
 const extractTargets = (line) => {
 	const targets = [];
@@ -94,10 +105,17 @@ for (const filePath of markdownDocs(ROOT)) {
 		const lineWithoutInlineCode = line.replace(/`[^`]*`/g, "");
 		for (const rawTarget of extractTargets(lineWithoutInlineCode)) {
 			const target = normalizeTarget(rawTarget);
-			if (isExternalOrAnchor(target)) continue;
+			if (isExternal(target)) continue;
 
-			const targetWithoutHash = stripHash(target);
-			if (targetWithoutHash === "") continue;
+			const [targetWithoutHash, fragment] = splitHash(target);
+			if (targetWithoutHash === "") {
+				if (fragment && !anchorsOf(filePath).has(fragment)) {
+					failures.push(
+						`${rel(filePath)}:${index + 1} missing anchor: ${target}`,
+					);
+				}
+				continue;
+			}
 
 			const resolved = path.resolve(path.dirname(filePath), targetWithoutHash);
 			if (!isInsideRoot(resolved)) {
@@ -120,6 +138,15 @@ for (const filePath of markdownDocs(ROOT)) {
 			) {
 				failures.push(
 					`${rel(filePath)}:${index + 1} links to a file with a trailing slash: ${target}`,
+				);
+				continue;
+			}
+
+			// Only Markdown headings are checkable; a fragment on a source file is
+			// a line range (`#L10-L20`) GitHub resolves on its own.
+			if (fragment && resolved.endsWith(".md") && !anchorsOf(resolved).has(fragment)) {
+				failures.push(
+					`${rel(filePath)}:${index + 1} missing anchor: ${target}`,
 				);
 			}
 		}

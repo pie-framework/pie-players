@@ -61,3 +61,63 @@ export function markdownDocs(root) {
 	walk(root);
 	return files.sort();
 }
+
+/**
+ * GitHub's heading slug: lower-cased, punctuation other than `-` and `_` dropped,
+ * spaces to hyphens. Link and inline-HTML syntax is reduced to its text first,
+ * because GitHub slugs the rendered heading; a code span's text is literal, so
+ * the `<pie-item-list>` in `` ## `<pie-item-list>` `` is not a tag.
+ */
+export function headingSlug(heading) {
+	return heading
+		.split(/(`[^`]*`)/)
+		.map((part, index) =>
+			index % 2 === 1
+				? part
+				: part
+						.replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+						.replace(/!?\[([^\]]*)\]\[[^\]]*\]/g, "$1")
+						.replace(/<[^>]+>/g, ""),
+		)
+		.join("")
+		.trim()
+		.toLowerCase()
+		.replace(/[^\p{L}\p{M}\p{N}\p{Pc}\- ]/gu, "")
+		.replace(/ /g, "-");
+}
+
+/**
+ * The fragments a Markdown document answers to on GitHub: one per ATX heading
+ * (a repeated slug gains `-1`, `-2`, ... as GitHub numbers it) and one per
+ * explicit `<a id>` / `<a name>`. Fenced code is not scanned.
+ */
+export function markdownAnchors(content) {
+	const anchors = new Set();
+	const seen = new Map();
+	let fence = null;
+
+	for (const line of content.split(/\r?\n/)) {
+		const fenceMatch = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
+		if (fenceMatch) {
+			const marker = fenceMatch[1];
+			if (fence === null) fence = marker;
+			else if (marker[0] === fence[0] && marker.length >= fence.length)
+				fence = null;
+			continue;
+		}
+		if (fence !== null) continue;
+
+		for (const match of line.matchAll(/<a\s[^>]*\b(?:id|name)=["']([^"']+)["']/gi)) {
+			anchors.add(match[1]);
+		}
+
+		const heading = /^\s{0,3}#{1,6}\s+(.*?)(?:\s+#+)?\s*$/.exec(line);
+		if (!heading) continue;
+		const slug = headingSlug(heading[1]);
+		const count = seen.get(slug) ?? 0;
+		seen.set(slug, count + 1);
+		anchors.add(count === 0 ? slug : `${slug}-${count}`);
+	}
+
+	return anchors;
+}

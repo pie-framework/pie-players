@@ -485,7 +485,8 @@ failure that only appears under load.
 - A suite joins the gate in `scripts/lib/local-e2e-suites.mjs`, and its
   `test:e2e:<suite>` script, which CI runs, stays
   `bun run build:e2e:<name> && bun run test:e2e:<suite>:prebuilt`.
-  `bun run check:local-pr-gate` enforces both.
+  `bun run check:local-pr-gate` enforces both, and fails when a suite in CI's e2e
+  matrix is missing from the gate.
 - `scripts/pre-push-gate.mjs` skips the gate when the push carries no new commits
   (creating a branch at a commit already on the remote, or deleting a ref, transfers
   nothing to validate), and runs only `check:docs` when the new commits change

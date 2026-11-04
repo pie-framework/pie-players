@@ -47,6 +47,8 @@ const requiredCiLintTypecheckCommands = [
 	"check:ce-define-safety",
 	"check:speech-composition-purity",
 	"check:api-report",
+	"check:theme-tokens",
+	"check:css-import-delivery",
 	"check:scripts",
 	"build",
 	// Reads build output, so it must follow the build: ahead of it, it reads a
@@ -189,6 +191,21 @@ export function collectGateFailures({
 		}
 	}
 	failures.push(...planLocalE2e(scripts, localE2eSuites).failures);
+
+	// Every suite in CI's e2e matrix also runs before push, so a failure there is
+	// never the first anyone hears of it. A required suite is reported above.
+	for (const [, suite] of ciWorkflow.matchAll(
+		/^\s*(?:-\s+)?command:\s*test:e2e:([\w:-]+)\s*$/gm,
+	)) {
+		if (
+			!localE2eSuites.includes(suite) &&
+			!requiredLocalE2eSuites.includes(suite)
+		) {
+			failures.push(
+				`test:e2e:local-gate does not run "test:e2e:${suite}", which CI's e2e matrix runs.`,
+			);
+		}
+	}
 
 	// The pre-push hook reaches verify:pre-push through scripts/pre-push-gate.mjs, which
 	// skips the gate for pushes that carry no new commits. That indirection is only safe

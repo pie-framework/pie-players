@@ -9,6 +9,7 @@ import {
 	isPackedMatch,
 	mapConcurrent,
 	readJson,
+	readPublishPolicy,
 	runPack,
 	runPackDryRun,
 	toPosix,
@@ -19,7 +20,6 @@ import {
 } from "./lib/publish-surface.mjs";
 
 const ROOT = process.cwd();
-const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
 const MAX_DETAILS_PER_PACKAGE = 30;
 const HASH_ONLY_FILE_PATTERN = /^(?:module|chunk|index)?-?[a-f0-9]{8,}\.m?js$/i;
 const HASH_SUFFIX_FILE_PATTERN = /-[a-f0-9]{8,}\.m?js$/i;
@@ -132,11 +132,6 @@ const collectSourcemapSourceViolations = (dir, packedFiles) => {
 	return violations;
 };
 
-const readPolicy = () => {
-	if (!existsSync(POLICY_PATH)) return {};
-	return readJson(POLICY_PATH);
-};
-
 const checkPackage = async ({ dir, pkg }, forbiddenPublicExports) => {
 	const violations = collectManifestSurfaceViolations(
 		pkg,
@@ -181,7 +176,7 @@ const checkPackage = async ({ dir, pkg }, forbiddenPublicExports) => {
 };
 
 const run = async () => {
-	const policy = readPolicy();
+	const policy = readPublishPolicy(ROOT);
 	const forbiddenPublicExports = new Map(
 		Object.entries(policy.forbiddenPublicExports || {}),
 	);

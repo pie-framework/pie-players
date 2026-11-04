@@ -3,7 +3,11 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { markdownDocs } from "../lib/markdown-docs.mjs";
+import {
+	headingSlug,
+	markdownAnchors,
+	markdownDocs,
+} from "../lib/markdown-docs.mjs";
 
 test("lists docs, package docs and documentation-named files", () => {
 	const root = mkdtempSync(path.join(tmpdir(), "pie-markdown-docs-"));
@@ -36,4 +40,32 @@ test("lists docs, package docs and documentation-named files", () => {
 		"packages/lib/README.md",
 		"packages/lib/docs/usage.md",
 	]);
+});
+
+test("slugs headings the way GitHub renders them", () => {
+	expect(headingSlug("Local PR Gate")).toBe("local-pr-gate");
+	expect(headingSlug("Guards (required)")).toBe("guards-required");
+	expect(headingSlug("`<pie-item-list>`")).toBe("pie-item-list");
+	expect(headingSlug("Step 3: wire the [routes](./routes.md)")).toBe(
+		"step-3-wire-the-routes",
+	);
+	expect(headingSlug("`check:deps` and snake_case")).toBe(
+		"checkdeps-and-snake_case",
+	);
+});
+
+test("collects heading and explicit anchors outside fenced code", () => {
+	const anchors = markdownAnchors(
+		[
+			"# Title",
+			"## Usage",
+			"```sh",
+			"# not a heading",
+			"```",
+			"## Usage",
+			'<a id="pinned"></a>',
+		].join("\n"),
+	);
+
+	expect([...anchors].sort()).toEqual(["pinned", "title", "usage", "usage-1"]);
 });

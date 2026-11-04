@@ -3,11 +3,12 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import { readPublishPolicy } from "./lib/pack-inspection.mjs";
+
 const ROOT = process.cwd();
 const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
-const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
 const readJson = (p) => JSON.parse(readFileSync(p, "utf8"));
-const policy = existsSync(POLICY_PATH) ? readJson(POLICY_PATH) : {};
+const policy = readPublishPolicy(ROOT);
 const allowedSveltePeerDependencies = new Map(
 	Object.entries(policy.allowedSveltePeerDependencies || {}),
 );

@@ -533,7 +533,8 @@ the controller and view state by `section-controller-formative.test.ts` and
 `section-player-formative-env.test.ts` in `packages/section-player/tests/`, and
 the browser cases by `section-player-formative-delivery.spec.ts` beside them.
 Run `bun run typecheck`, `bun run test` and the
-[high-value checks](../../AGENTS.md#high-value-checks); Playwright-backed tests
+[packaging](../../AGENTS.md#custom-element-import-and-packaging-boundaries) and
+[toolkit boundary](../../AGENTS.md#monorepo-map) checks; Playwright-backed tests
 run outside the sandbox
 ([Playwright and sandboxed execution](../../AGENTS.md#playwright-and-sandboxed-execution)).
 

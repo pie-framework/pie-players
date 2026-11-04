@@ -164,7 +164,7 @@ bun run typecheck
 bun run test
 ```
 
-For custom-element, export-boundary, toolkit-core or player changes, also run the [high-value checks](../../../AGENTS.md#high-value-checks). Playwright-backed tests run outside the sandbox; see [Playwright and sandboxed execution](../../../AGENTS.md#playwright-and-sandboxed-execution).
+For custom-element or export-boundary changes, also run the [packaging checks](../../../AGENTS.md#custom-element-import-and-packaging-boundaries), and for toolkit-core or player changes the [toolkit boundary checks](../../../AGENTS.md#monorepo-map). Playwright-backed tests run outside the sandbox; see [Playwright and sandboxed execution](../../../AGENTS.md#playwright-and-sandboxed-execution).
 
 ## Rollout And Release Notes
 

@@ -21,7 +21,7 @@ const basePackageJson = {
 		"verify:pre-commit":
 			"bun run check:changeset-patch-only && bun run check:local-pr-gate && bun run check:resolution-boundary && bun run check:deps && bun run check:lock-consistency && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:source-exports && bun run check:api-report && bun run check:consumer-boundaries && bun run check:scripts && bun run lint:biome && bun run check",
 		"verify:ci-lint-typecheck":
-			"bun run check:local-pr-gate && bun run check:resolution-boundary && bun run check:deps && bun run check:lock-consistency && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:api-report && bun run check:scripts && bun run build && bun run check:custom-elements:dist && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:portable-build-paths && bun run check:publint && bun run check:types-publish && bun run check:svelte-type-imports && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:ce-composition && bun run check:consumer-boundaries && bun run lint:all",
+			"bun run check:local-pr-gate && bun run check:resolution-boundary && bun run check:deps && bun run check:lock-consistency && bun run check:package-metadata && bun run check:docs:publishable-packages && bun run check:svelte-runtime-deps && bun run check:custom-elements && bun run check:ce-define-safety && bun run check:speech-composition-purity && bun run check:api-report && bun run check:theme-tokens && bun run check:css-import-delivery && bun run check:scripts && bun run build && bun run check:custom-elements:dist && bun run check:player-tool-boundaries && bun run check:bundle-safety && bun run check:portable-build-paths && bun run check:publint && bun run check:types-publish && bun run check:svelte-type-imports && bun run check:pack-integrity && bun run check:node-consumer-imports && bun run check:ce-composition && bun run check:consumer-boundaries && bun run lint:all",
 		"verify:local-pr":
 			"bun run check:changeset-patch-only && bun run verify:ci-lint-typecheck && bun run test:e2e:local-gate",
 		"verify:pre-push": "bun run verify:local-pr",
@@ -42,6 +42,25 @@ const basePrePushGate =
 const basePrePushHookScript = 'exec bun ./scripts/pre-push-gate.mjs "$@"\n';
 
 describe("check-local-pr-gate policy", () => {
+	test("requires the local gate to run every suite in CI's e2e matrix", () => {
+		const failures = collectGateFailures({
+			packageJson: basePackageJson,
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow.replace(
+				"    - command: test:e2e:assessment-player\n",
+				"    - command: test:e2e:assessment-player\n    - command: test:e2e:item-list\n",
+			),
+			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
+			localE2eSuites: LOCAL_GATE_E2E_SUITES.filter(
+				(suite) => suite !== "item-list",
+			),
+		});
+		expect(failures).toContain(
+			'test:e2e:local-gate does not run "test:e2e:item-list", which CI\'s e2e matrix runs.',
+		);
+	});
+
 	test("rejects a fixed item-player shard that silently omits coverage", () => {
 		const failures = collectGateFailures({
 			packageJson: basePackageJson,

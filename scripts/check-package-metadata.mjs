@@ -1,12 +1,11 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { getWorkspaceDirs } from "./lib/pack-inspection.mjs";
+import { getWorkspaceDirs, readPublishPolicy } from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
-const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
 const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
@@ -24,10 +23,7 @@ const isValidBugs = (bugs) => {
 };
 
 const run = () => {
-	if (!existsSync(POLICY_PATH)) {
-		throw new Error(`Policy file missing: ${POLICY_PATH}`);
-	}
-	const policy = readJson(POLICY_PATH);
+	const policy = readPublishPolicy(ROOT);
 	const rootPackage = readJson(ROOT_PACKAGE_JSON);
 	const workspaceDirs = getWorkspaceDirs({
 		workspaceRoots: policy.workspaceRoots ?? ["packages"],

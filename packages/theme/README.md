@@ -382,6 +382,15 @@ Registered names and values are stable:
   host-visible defect, and the changeset names the change and the relationship it
   repairs.
 
+`--pie-focus-keyboard-outline` is the keyboard focus ring for a control drawn
+on its own fill rather than the page, such as a keypad key, where
+`--pie-button-focus-outline` can fall under 3:1. It is read ahead of
+`--pie-focus-outline` and `--pie-button-focus-outline`, and every Base Theme and
+scheme sets it to hold 3:1 against the page and that fill. A provider, a
+registered custom scheme or `variables` that set `--pie-button-focus-outline`
+without it get the same value for it, so a palette written before it existed
+keeps its focus colour. Set both to give them different colours.
+
 The registry is published so a host can show a person what a token is for and
 who owns it. Read the registry rather than deriving grouping from token names or
 keeping a local copy: both drift as soon as a token is added here, and

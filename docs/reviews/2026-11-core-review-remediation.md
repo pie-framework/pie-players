@@ -259,7 +259,7 @@ scopes rather than tracked one by one.
 | R-07 | ItemToolBar `$effect`: no tracked-state writes | Defer `syncRenderedToolsState()` via the file's own `queueMicrotask` pattern (or `untrack`), matching `:1146/:1220/:1244`. | Existing tests | S | done (branch `fix/r07-itemtoolbar-effect-mutation`, a484e36c, PR pending) |
 | R-08 | Extract the floating-window shell | Lift `mountElementWithShell` to a headless module beside `tool-surface-host` with `{update, destroy}`; `use:` action becomes an adapter. Include: `role="dialog"` + accessible name; reuse players-shared `getDeepActiveElement`. | e2e shell specs; new unit seam for geometry/focus; no public API change; pad check on host attributes | L | todo |
 | R-09 | Composition revision logic out of the CE | Move the six functions to `runtime/composition-revision.ts` (or `SectionControllerBinding`); component keeps emit wiring. | runtime tests extended; after R-08 (same-file chain) | S–M | todo |
-| R-10 | TTS: one wire protocol, one parser, one bucket type | Wire types once in `tts-server-core` (D3 reconciles `langId`); type-preserving JSONL parser, Polly + client adopt, delete `parseInlineSpeechMarks`; `SpeedRateBucket` single-sourced in `pie-tts`; D4 decides the cache hook; timeout parity for Google/Polly. | TTS suites; tts-server-core api-report/dep changes → pad/changeset | M–L | todo |
+| R-10 | TTS: one wire protocol, one parser | Request–response wire types once in the `pie-tts` contract (per `8abe1b28`'s precedent; D3 reconciles `langId` dual-send vs `lang_id`-only and the client-only inline `speechMarks`); type-preserving JSONL parser, Polly adopts it (fixes the fail-whole-synthesis robustness gap), delete `parseInlineSpeechMarks`; D4 decides the cache hook; timeout parity for Google/Polly. Bucket type and word-timing format already single-sourced upstream. | TTS suites; contract surface grows → api-report/pad/changeset | M | in progress — bucket type + word-timing format closed upstream (`8abe1b28`/`ee1018da`); remainder above |
 | R-11 | Calculator adapters: shared lifecycle/telemetry | D5 picks tiny `calculator-shared` runtime package (recommended) vs parity tests; migrate the four sites; joins Changesets fixed block in the same change if the package is created. | new package → fixed block + api-report + pad | M | todo |
 | R-12 | Interface-i18n wiring: adopt `useInterfaceI18n` | Host-getter param; migrate item-player pair; toolkit optional after. | export signature change → api-report/pad/changeset; i18n suites | S–M | todo |
 
@@ -267,7 +267,7 @@ scopes rather than tracked one by one.
 
 | ID | Title | Scope & fix | Gates / impact | Size | Status |
 |---|---|---|---|---|---|
-| R-13 | Toolkit: neutrality back inside the gate | Widen `check-capability-neutrality` SCOPED_TARGETS (ToolkitCoordinator, tools-config-normalizer, tool-icons); move per-tool nested-merge onto `ToolProviderDescriptor`; D6 moves default-enabled providers to the composition layer. | check widened + green; toolkit suites | M | todo |
+| R-13 | Toolkit: neutrality back inside the gate | Add `tool-icons.ts` + `tools-config-normalizer.ts` to the scan list (coordinator already added upstream); the per-tool nested-merge and coordinator quoting left with the TTS lifecycle move; D6 (defaults to the composition layer) softened — defaults now isolated in `services/tool-provider-defaults.ts`, decision still open. | check widened + green; toolkit suites | S | in progress — coordinator + lifecycle move closed upstream (`ff8ab388`); remainder above |
 | R-14 | Tool icons: registry complete, one markup path | Add `highlighter`/`strikethrough` entries; drop the eliminator's inline SVG; rename icon keys to shape names. | registrations tests; visual check | S | todo |
 | R-15 | tts-settings declarations: drop the toolkit type | Local structural coordinator type; align toolkit dep to `devDependencies` across the five packages. | api-report regen + pad note; rides R-02's package | S | todo |
 | R-16 | assessment-player batch | Hoist cycle-safe `sameContent` to players-shared (adopts item-list + assessment-player); fix `@fires` placement + regenerate manifest; delete `AssessmentReadinessChangeDetail`; type the section element; collapse navigation methods; drop the selector trio. | api-report regen; `check:custom-elements-manifest`; lifecycle spec | M | todo |
@@ -319,3 +319,39 @@ anything a refactor invalidated. Full local gate before any push
   `refactor/coordinator-tts-lifecycle`, `fix/print-player-declaration-closure`,
   `fix/ce-manifest-ts-classes` — a full re-triage of the remaining findings
   against the new `develop` is the next verification-loop step.
+- **2026-11-04 (re-triage, `d6403f8a..origin/develop`)** — every non-dep,
+  non-catalog commit checked against the finding list:
+  - **R-10 narrowed** by `8abe1b28` + `ee1018da` (both cite the review's seam):
+    `SpeechMark`/`anchorSpeechMarks`/`normalizeSpeechMarks`/
+    `resolveSpeedRateBucket` moved into the `pie-tts` contract with server-core
+    re-exporting, the duplicated `SpeedRateBucket` converged on the contract's,
+    and the client dropped its server-core dependency. Still open: the
+    SC/custom-transport request–response types remain duplicated across
+    `tts-server-sc` and `tts-client-server` (the `langId` dual-send divergence
+    and client-only inline `speechMarks` asymmetry included, so D3 stays
+    open), Polly still hand-rolls its NDJSON parse with the
+    fail-whole-synthesis robustness gap, the cache module still has no
+    provider hook (D4), and Google/Polly still expose no request timeout.
+  - **R-13 mostly closed** by `ff8ab388`: the TTS lifecycle (init, readiness,
+    reconfiguration, degradation, missing-provider report, defaults, the
+    capability-specific config merge; `textToSpeech` quoted 22×) moved out of
+    `ToolkitCoordinator` into `services/tts/tts-lifecycle.ts` behind a
+    `TtsLifecycleHost` adapter, packaged defaults into
+    `services/tool-provider-defaults.ts`, and the coordinator joined
+    `check-capability-neutrality`'s scan list. Remainder: `tool-icons.ts` and
+    `tools-config-normalizer.ts` are still outside the scan list, and D6 is
+    softened but open — the defaults are now isolated in a toolkit service
+    rather than moved to the composition layer.
+  - **No overlap found** for R-03, R-04, R-05, R-06, R-08, R-09, R-11, R-12,
+    R-14, R-15, R-16–R-19, R-21, R-22: every named target file is unchanged
+    upstream (`hashCode` still exported at `print-player/src/index.ts:48`;
+    the overlay tools and the publish-surface check pair only took one-line
+    dep bumps; `PieAssessmentToolkit.svelte` and
+    `AccessibilityCatalogResolver.ts` untouched; `element-props.ts`
+    unchanged). `94aaca50` removed a dead coordinator record guard (direction
+    consistent with the tracker, no finding impact); `d1fdc735`'s manifest
+    classes feature and `22a2e39c`'s section-player literal pin do not touch
+    any finding.
+  - **Plan correction absorbed:** R-10's "wire types once" home is now the
+    `pie-tts` contract, following `8abe1b28`'s precedent — not
+    `tts-server-core` as originally written.

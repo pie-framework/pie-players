@@ -737,6 +737,24 @@ it rendered Dutch, since no recorded host requests any locale at all this is
 the grep-verified null set. The 2026-10-24 content-language default is
 unaffected: with no requested locale the content root still carries no
 language claim.
+Also on 2026-11-04 the section-player layouts lost `provideScore()`, which
+became the section controller's optional `score()`, and the controller gained
+optional `commitPendingSessions()` and `registerItemScorer()`. Item shells
+announce ten item-player events as `item-player-event`, with the item's
+identity; `runtime.player` gained `resolveItemProps` for per-item properties.
+A section no longer takes the correct responses `addCorrectResponse` fills
+into its session: no `item-session-changed` or toolkit `session-changed`
+announces them, and `persist()` keeps the learner's. `pie-item-player`'s
+`session-changed` carries an optional `sessionSource: "correct-response"`
+while they fill its session, and the player neither saves that session to
+`backend.delivery` nor snapshots it; `saveSession()` and `score()` reject. A
+grep of every recorded checkout's source, outside vendored player bundles and
+build output, and of Hosts P and S on their preloaded-player branches, finds
+no `provideScore` called on a section layout, no `item-player-event`,
+`resolveItemProps` or `sessionSource`, and `addCorrectResponse` set only by
+Host R, whose committed source scores through `pie-item-player` alone and sets
+no `backend` on it. Host R's Browse in a section renders the correct responses
+without saving them. Row verification dates are unchanged.
 
 Also on 2026-10-24 language variants landed as additive surfaces: optional
 `language` and `isAdaptationOf` on `ItemEntity` and `PassageEntity`, optional
@@ -1554,7 +1572,7 @@ API**.
 | `section-loading-complete` | `subscribeSectionLifecycleEvents` | A, R, S | A subscribes with an empty handler; R logs it; S shows the item on it, as on `content-loaded` |
 | `section-items-complete-changed` | `subscribeSectionLifecycleEvents` | A, R | A subscribes with no handler body; R logs it |
 | `section-error` | `subscribeSectionLifecycleEvents` | A, R, S | Fatal for A and S: exits the delivery session. R logs it. Since 2026-10-08 a section that fails to start, or a revisited section that fails to update, delivers it to the subscriptions already registered. A subscribes on `toolkit-ready`, so from its second section on such a failure ends the session at once, where its load timeout ended it before |
-| `item-session-changed` | DOM, bubbling and composed | A, R | `document`-level listener → snapshot + persist. R adds two listeners per route in the **capture** phase, so it depends on the event reaching `document` during capture as well as bubble. A change of an element's `complete` around an unchanged session dispatches one too, carrying that session, so each such change persists the session again |
+| `item-session-changed` | DOM, bubbling and composed | A, R | `document`-level listener → snapshot + persist. R adds two listeners per route in the **capture** phase, so it depends on the event reaching `document` during capture as well as bubble. A change of an element's `complete` around an unchanged session dispatches one too, carrying that session, so each such change persists the session again. Correct responses that `addCorrectResponse` fills dispatch none |
 | `session-changed` | DOM event out of the section player's toolkit, bubbling and composed | A, R | The same `document`-level handlers as `item-session-changed`, so each answer persists once per event. R listens in the capture phase here too |
 | `session-changed` | DOM event out of `pie-item-player`, bubbling | P | Response capture; the fields it reads are below |
 | `load-complete` | DOM event out of `pie-item-player`, bubbling | P, M | Half of P's item display gate. M's readiness signal to its shell, which times the remote out without it |

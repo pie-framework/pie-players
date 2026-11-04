@@ -17,6 +17,7 @@ Items pane of a section player: renders the item cards of the current compositio
 	import { onMount, untrack } from "svelte";
 	import type {
 		AssessmentToolkitRuntimeContext,
+		SectionItemScorer,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
@@ -47,7 +48,6 @@ Items pane of a section player: renders the item cards of the current compositio
 		getItemSettings,
 		getTimedMediaItemView,
 	} from "./section-player-view-state.js";
-	import type { SectionItemScore } from "../../contracts/runtime-host-contract.js";
 	import {
 		connectSectionPlayerLayoutContext,
 		type SectionPlayerLayoutContext,
@@ -381,24 +381,27 @@ Items pane of a section player: renders the item cards of the current compositio
 	const gateHolding = $derived(gate?.holding === true);
 
 	type ScorableItemCard = HTMLElement & {
-		provideScore?: () => Promise<false | SectionItemScore["outcomes"]>;
+		provideScore?: () => ReturnType<SectionItemScorer>;
 	};
 
 	// By render index. A shorter composition leaves stale slots past its end, which
-	// `provideScore` never reads.
+	// `scoreItem` never reads.
 	const itemCards = $state<Array<ScorableItemCard | null>>([]);
 
 	/**
-	 * Scores each item through its card, which owns the item player node. An item
-	 * whose card or player has not mounted reports `false`.
+	 * Scores one item through its card, which owns the item player node: the
+	 * section controller's item scorer. An item whose card or player has not
+	 * mounted reports `false`.
 	 */
-	export async function provideScore(): Promise<SectionItemScore[]> {
-		return Promise.all(
-			items.map(async (item: ItemEntity, itemIndex: number) => ({
-				canonicalItemId: getCanonicalItemId({ compositionModel, item }),
-				outcomes: (await itemCards[itemIndex]?.provideScore?.()) ?? false,
-			})),
+	export async function scoreItem(
+		canonicalItemId: string,
+	): ReturnType<SectionItemScorer> {
+		const itemIndex = items.findIndex(
+			(item: ItemEntity) =>
+				getCanonicalItemId({ compositionModel, item }) === canonicalItemId,
 		);
+		if (itemIndex < 0) return false;
+		return (await itemCards[itemIndex]?.provideScore?.()) ?? false;
 	}
 
 	/** 1-based position of an item in the pane, for the announcements. */

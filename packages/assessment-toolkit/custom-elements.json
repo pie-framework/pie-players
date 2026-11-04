@@ -174,6 +174,13 @@
 							"description": "In a toolkit that holds a section, when the item player reports a response change; the player's own `session-changed` stops at the scope."
 						},
 						{
+							"name": "item-player-event",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; type: \"load-complete\" | \"player-error\" | \"correct-responses-populated\" | \"bundle-retry-status\" | \"session-snapshot-available\" | \"backend-load-complete\" | \"backend-model-complete\" | \"backend-session-saved\" | \"backend-score-complete\" | \"backend-error\"; detail: unknown }>"
+							},
+							"description": "In a toolkit that holds a section, when the item player fires one of these events, carrying its detail; `load-complete` and `player-error` still stop at the scope."
+						},
+						{
 							"name": "pie-item-session-changed",
 							"type": {
 								"text": "CustomEvent<{ itemId: string; session: unknown; runtimeId: string }>"

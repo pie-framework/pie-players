@@ -274,7 +274,7 @@ Only MathJax containers are marked: natively rendered MathML keeps real text in 
 
 All three treatments — the text line-through, the diagonals over an image, the line over math — are drawn in one color, `--pie-answer-eliminator-strike-color` (a registered `component-public` token, defaulting to `--pie-incorrect`), so a choice mixing prose, pictures, and math reads as a single strike and can be restyled from one place.
 
-For browsers without the Highlight API, each strategy falls back to a class on the choice container. Either way the eliminated choice also receives ARIA hooks (`data-pie-answer-eliminated`, plus `aria-disabled`/`aria-hidden` and an offscreen "(eliminated)" announcement) for assistive technology.
+For browsers without the Highlight API, each strategy falls back to a class on the choice container. Either way the eliminated choice also receives ARIA hooks (`data-pie-answer-eliminated`, `aria-disabled`, and an offscreen "(eliminated)" announcement in the interface language) for assistive technology. The choice container is never `aria-hidden` — it hosts the strategy's toggle, which must stay reachable for screen-reader and keyboard users (WCAG 4.1.2).
 
 ### 4. Toggle Behavior
 

@@ -59,3 +59,13 @@ export interface EliminationChrome {
 	/** Stamps the interface `lang` and `dir` on an element the strategy adds. */
 	stamp(element: Element): void;
 }
+
+/**
+ * The chrome a strategy announces with before the core applies the
+ * interface-locale wording; the English default is the announcement the
+ * strikethrough strategy has always made.
+ */
+export const defaultEliminationChrome = (): EliminationChrome => ({
+	eliminatedText: "(eliminated)",
+	stamp: () => {},
+});

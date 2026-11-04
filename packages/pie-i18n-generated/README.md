@@ -59,7 +59,7 @@ loaded catalog.
 | `en-AU` | reviewed (agent verification pass, 2026-11-03; delta locale) | [`briefs/en-AU.md`](./briefs/en-AU.md) | 2026-10-19 |
 | `es` | reviewed (agent pass in lieu of a native reader, 2026-11-03; Latin-American neutral; serves `es*`) | [`briefs/es.md`](./briefs/es.md) | 2026-10-19 |
 | `fr` | reviewed (agent pass in lieu of a native reader, 2026-11-03; France flavour; serves `fr*`) | [`briefs/fr.md`](./briefs/fr.md) | 2026-10-19 |
-| `ar` | generated, unreviewed — string-level language pass landed 2026-11-03 (decisions pinned in the brief); promotion to reviewed awaits the RTL layout audit, see [The RTL layout audit](#the-rtl-layout-audit-ar) (MSA; serves `ar*`; RTL) | [`briefs/ar.md`](./briefs/ar.md) | 2026-10-19 |
+| `ar` | reviewed (agent pass in lieu of a native reader, 2026-11-04, after the RTL layout audit below landed; MSA; serves `ar*`; RTL) | [`briefs/ar.md`](./briefs/ar.md) | 2026-10-19 |
 | `pt` | reviewed (agent pass in lieu of a native reader, 2026-11-03; Brazilian; serves `pt*`) | [`briefs/pt.md`](./briefs/pt.md) | 2026-10-19 |
 | `ko` | reviewed (agent pass in lieu of a native reader, 2026-11-03) | [`briefs/ko.md`](./briefs/ko.md) | 2026-10-19 |
 | `ja` | reviewed (agent pass in lieu of a native reader, 2026-11-03) | [`briefs/ja.md`](./briefs/ja.md) | 2026-10-19 |
@@ -162,49 +162,62 @@ only deliberately, by flipping the status back to `generated` first.
 
 ## The RTL layout audit (`ar`)
 
+Status: **landed 2026-11-04**, and `ar`'s promotion followed it. This section
+is the audit's record; the checks it added run in the suite.
+
 `ar` is the framework's first right-to-left interface locale, and the audit
-that gates its review pass is a layout audit, not a translation one: a native
+that gated its review pass was a layout audit, not a translation one: a native
 reviewer certifying strings that render mirrored would certify the wrong
-product. `direction` already derives from `Intl.Locale.prototype.textInfo` and
-the shell stamps `lang`/`dir` on its own host
-([adoption record](../../docs/architecture/i18n-interface-locale-adoption.md)),
-and one geometry spec exists:
-`packages/section-player/tests/section-player-rtl-layout.spec.ts` holds the
-content-card header's toolbar to trailing-edge geometry both under a forced
-`dir="rtl"` and under the real `ar` catalog's own stamps.
+product. `direction` derives from `Intl.Locale.prototype.textInfo` and the
+shell stamps `lang`/`dir` on its own host
+([adoption record](../../docs/architecture/i18n-interface-locale-adoption.md)).
 
-The audit extends that verified surface until every point below is either a
-geometry assertion in that spec (extend it — do not verify by eye) or an
-explicit rendered check recorded here:
+`packages/section-player/tests/section-player-rtl-layout.spec.ts` holds seven
+rendered cases against the `ar` demo
+(`/interface-locale?locale=ar`), run outside the sandbox per the repository's
+Playwright rules:
 
-1. **Card footer.** The formative check-answer button mirrors under the same
-   `margin-inline-start` trailing-edge rule as the header toolbar. One spec
-   case mirrors the existing header case.
-2. **Split-pane layout.** Pane *order* flips (passage pane leading in RTL);
-   each pane keeps `min-height: 0` / `min-width: 0` and contained overflow.
-   These are grid properties, direction-neutral by construction — assert pane
-   order flips and scrollbars stay functional.
-3. **Toolbar internals.** Button row order flips, the overflow menu opens on
-   the trailing side, tooltips do not clip at the leading viewport edge.
-4. **Navigation chrome.** Back/Next order flips; the question-position live
-   region reads correctly.
-5. **Tool windows at `document.body`.** Their *contents* lay out by direction;
-   their *positions* do not — a window the learner dragged to the top-left
-   stays at the top-left (the adoption record's free-window rule). Assert
-   content mirroring and position stability for one representative shell.
-6. **Standalone item player.** Its own chrome stamps and mirrors like the
-   section shell.
-7. **Text-level checks.** Latin product names inside Arabic sentences (`TTS`,
-   `SSML`, `WaveNet`, `PIE`) must not strand adjacent punctuation on the wrong
-   side; the `…` and `“”` glyphs read correctly; numerals stay Western digits
-   per the brief.
-8. **Metrics.** Arabic script needs taller line boxes: no toolbar label,
-   panel title or dialog string clips or ellipsizes at default sizes.
+1. **Card header** (pre-existing): the item toolbar hugs the trailing edge,
+   under a forced `dir` and under the real `ar` stamps.
+2. **Card footer**: the formative check-answer button mirrors under the same
+   `margin-inline-start` trailing-edge rule (`/formative-delivery`, forced
+   `dir` — the rule reads inherited direction, and case 1 proves the stamping
+   path end to end).
+3. **Split-pane layout**: pane *order* flips — passages pane leads in LTR,
+   trails in RTL; containment stays with the scroll contract.
+4. **Toolbar pane**: the shell's toolbar pane hugs the trailing viewport edge
+   and follows the direction (right under LTR, left under `ar`); the vertical
+   tool column's reading order is direction-independent by design and is
+   pinned as stable.
+5. **Tool windows at `document.body`**: the graph shell's contents mirror
+   (title leads from the right under `ar`) while its screen position and size
+   stay put — the adoption record's free-window rule.
+6. **Metrics**: no chrome control clips (`scrollWidth` past the box) and no
+   horizontal page overflow appears under `ar`; the sweep covers the chrome
+   subtrees through the custom elements' open shadow roots and excludes the
+   item players' content roots, which are the content-language channel.
+7. **Text-level rendered inspection** (recorded, not asserted): a full-page
+   screenshot of the `ar` demo was inspected — Arabic labels sit at the
+   trailing edges with Western digits per the brief, English content keeps
+   its own LTR inside the content root's `dir="auto"`, and no punctuation
+   strands on the wrong side of an embedded Latin run in the rendered chrome.
 
-A rendered pass runs the section-player e2e suite against the `ar` demo
-(`/interface-locale?locale=ar`), outside the sandbox per the repository's
-Playwright rules. When every point above holds, the `ar` row loses this
-pending note and the review lifecycle may start.
+**Defect found and repaired by the audit**: the toolbar pane's divider was a
+physical `border-left`/`border-right`
+(`SectionPlayerShell.svelte`), so under RTL the divider rendered on the
+pane's outer screen edge instead of the content side. It now uses
+`border-inline-start`/`border-inline-end`, and case 4's pane-flip assertion
+pins the geometry.
+
+**Recorded without assertions** — the surfaces the section demo cannot
+exercise: the toolbar scrolls rather than collapsing into an overflow menu
+when it overflows, and its tooltips are the browser's `title` rendering, so
+neither has an assertion to carry; Back/Next navigation chrome belongs to the
+assessment player (the reference assembly), not this building block; the
+standalone item player (`<pie-item-player>` on its own) has no locale-driven
+demo route, so its chrome mirror is covered only at the stamp level (the
+interface-locale spec asserts its content-root stamps) — a follow-up demo
+route would close that.
 
 ## Adding a locale
 

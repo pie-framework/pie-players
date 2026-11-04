@@ -1,5 +1,7 @@
 /**
- * Arabic message catalog — machine-generated, not reviewed.
+ * Arabic message catalog — reviewed (agent string pass 2026-11-03; promotion
+ * waited on the RTL layout audit, which landed 2026-11-04; see `reviewedBy`
+ * in `catalog-manifest.json`).
  *
  * Serves every Arabic host: registered under the bare `ar` tag, so `ar`,
  * `ar-SA`, `ar-AE` and `ar-EG` all widen to it. Content flavour is Modern
@@ -10,9 +12,11 @@
  * interpolation contract stays identical across locales.
  *
  * Arabic is RTL; `dir` comes from the provider (`localeDirection`), never
- * from this data. Provenance — the source hash, model and generation date —
- * is recorded in `catalog-manifest.json`; `scripts/check-catalogs.ts` fails
- * this file against the English source when either drifts.
+ * from this data. Regeneration is surgical, never wholesale:
+ * `scripts/check-catalogs.ts` diffs the English snapshot
+ * (`ar.english-snapshot.json`) against the live `en-US` source and lists
+ * exactly the keys whose English moved; translate only those, keep every
+ * reviewed string, then refresh the snapshot per the package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/ar
  */

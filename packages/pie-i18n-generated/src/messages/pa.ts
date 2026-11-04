@@ -417,6 +417,18 @@ const pa = {
 			highlightPinkA11y: "ਗੁਲਾਬੀ ਹਾਈਲਾਈਟ",
 			highlightBlueA11y: "ਨੀਲਾ ਹਾਈਲਾਈਟ",
 			highlightGreenA11y: "ਹਰਾ ਹਾਈਲਾਈਟ",
+			selectionAvailableA11y:
+				"“{text}” ਲਈ ਟਿੱਪਣੀ ਟੂਲਬਾਰ ਉਪਲਬਧ ਹੈ। ਟਿੱਪਣੀ ਸਾਧਨਾਂ ਲਈ Shift+F10 ਦਬਾਓ।",
+			highlightedYellowA11y: "“{text}” ਨੂੰ ਪੀਲੇ ਰੰਗ ਵਿੱਚ ਹਾਈਲਾਈਟ ਕੀਤਾ ਗਿਆ",
+			highlightedPinkA11y: "“{text}” ਨੂੰ ਗੁਲਾਬੀ ਰੰਗ ਵਿੱਚ ਹਾਈਲਾਈਟ ਕੀਤਾ ਗਿਆ",
+			highlightedBlueA11y: "“{text}” ਨੂੰ ਨੀਲੇ ਰੰਗ ਵਿੱਚ ਹਾਈਲਾਈਟ ਕੀਤਾ ਗਿਆ",
+			highlightedGreenA11y: "“{text}” ਨੂੰ ਹਰੇ ਰੰਗ ਵਿੱਚ ਹਾਈਲਾਈਟ ਕੀਤਾ ਗਿਆ",
+			underlinedA11y: "“{text}” ਨੂੰ ਅੰਡਰਲਾਈਨ ਕੀਤਾ ਗਿਆ",
+			removedA11y: "“{text}” ਤੋਂ ਟਿੱਪਣੀ ਹਟਾਈ ਗਈ",
+			clearedA11y: {
+				one: "{count} ਟਿੱਪਣੀ ਸਾਫ਼ ਕੀਤੀ ਗਈ",
+				other: "{count} ਟਿੱਪਣੀਆਂ ਸਾਫ਼ ਕੀਤੀਆਂ ਗਈਆਂ",
+			},
 		},
 		theme: {
 			name: "ਥੀਮ",

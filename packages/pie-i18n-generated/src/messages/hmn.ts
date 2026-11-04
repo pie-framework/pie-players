@@ -417,6 +417,17 @@ const hmn = {
 			highlightPinkA11y: "Kev ua xim liab",
 			highlightBlueA11y: "Kev ua xim xiav",
 			highlightGreenA11y: "Kev ua xim ntsuab",
+			selectionAvailableA11y:
+				"Cov khoom siv sau cim ntawv siv tau rau “{text}”. Nias Shift+F10 rau cov khoom siv sau cim.",
+			highlightedYellowA11y: "“{text}” ua xim daj lawm",
+			highlightedPinkA11y: "“{text}” ua xim liab lawm",
+			highlightedBlueA11y: "“{text}” ua xim xiav lawm",
+			highlightedGreenA11y: "“{text}” ua xim ntsuab lawm",
+			underlinedA11y: "“{text}” ua kab qab lawm",
+			removedA11y: "Tshem cov cim tawm ntawm “{text}”",
+			clearedA11y: {
+				other: "Tshem tawm {count} cov cim lawm",
+			},
 		},
 		theme: {
 			name: "Hom Xim",

@@ -399,6 +399,17 @@ const vi = {
 			highlightPinkA11y: "Tô sáng màu hồng",
 			highlightBlueA11y: "Tô sáng màu xanh dương",
 			highlightGreenA11y: "Tô sáng màu xanh lá",
+			selectionAvailableA11y:
+				"Thanh công cụ chú thích sẵn có cho “{text}”. Nhấn Shift+F10 để mở công cụ chú thích.",
+			highlightedYellowA11y: "Đã tô sáng “{text}” màu vàng",
+			highlightedPinkA11y: "Đã tô sáng “{text}” màu hồng",
+			highlightedBlueA11y: "Đã tô sáng “{text}” màu xanh dương",
+			highlightedGreenA11y: "Đã tô sáng “{text}” màu xanh lá",
+			underlinedA11y: "Đã gạch chân “{text}”",
+			removedA11y: "Đã xóa chú thích khỏi “{text}”",
+			clearedA11y: {
+				other: "Đã xóa {count} chú thích",
+			},
 		},
 		theme: {
 			name: "Giao diện",

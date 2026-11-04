@@ -138,6 +138,26 @@ string's fidelity: the learner must see one word for one concept everywhere.
 | custom | προσαρμοσμένος | the Microsoft term (custom provider); unrelated to the PNP `προσαρμογή` despite the shared root |
 | host (dev strings) | host | keep Latin `host` in developer panels |
 
+## Selection announcements (annotation live region)
+
+The annotation strip announces what a learner just did, for screen readers.
+The strings carry a `{text}` placeholder holding the learner's selection and
+follow the register rules above, with these pinned shapes:
+
+- The availability announcement names the toolbar by its own name and stays
+  impersonal, with the follow-up command in the polite imperative plural:
+  `Η γραμμή εργαλείων σχολιασμού κειμένου είναι διαθέσιμη για «{text}».
+  Πατήστε Shift+F10 για τα εργαλεία σχολιασμού.` (`Shift+F10` stays Latin).
+- Colour, underline and removal announcements are aorist events with the
+  neuter article before the quoted selection, the colour as `με` plus the
+  bare colour word, and no trailing periods (the English they mirror have
+  none): `Το «{text}» επισημάνθηκε με κίτρινο`,
+  `Το «{text}» υπογραμμίστηκε`, `Το σχόλιο αφαιρέθηκε από το «{text}»`
+  (`σχόλιο`, matching `removeA11y`).
+- `clearedA11y` inflects verb and noun with the count:
+  `Απαλείφθηκε {count} σχόλιο / Απαλείφθηκαν {count} σχόλια`
+  (`απαλοιφή`, matching `clearAll`).
+
 ## Punctuation
 
 - Quotes are the Greek guillemets `«»`, applied in `lookingUp`, `noEntryFor`

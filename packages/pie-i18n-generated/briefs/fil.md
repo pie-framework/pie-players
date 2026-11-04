@@ -153,6 +153,30 @@ string's fidelity.
 - `Graph point {id}` renders without the tool name: `Punto {id}`, following
   the audited Dutch de-duplication.
 
+## Selection announcements (annotation live region)
+
+The eight annotation-strip live-region keys (`selectionAvailableA11y`,
+`highlightedYellow/Pink/Blue/GreenA11y`, `underlinedA11y`, `removedA11y`,
+`clearedA11y`) are announcements, never rendered. Sentence shapes, pinned so
+regeneration reproduces them:
+
+- `selectionAvailableA11y` — the full two-sentence availability message:
+  `Available ang toolbar ng anotasyon para sa “{text}”. Pindutin ang
+  Shift+F10 para sa mga kagamitan sa anotasyon.` (Latin `Shift+F10`).
+- `highlightedYellow/Pink/Blue/GreenA11y` — perfective `na-` events,
+  verb-first, colors from the `Dilaw/Rosas/Asul/Berde na highlight`
+  family: `Nai-highlight sa dilaw ang “{text}”` (rosas/asul/berde
+  likewise).
+- `underlinedA11y` — perfective of the Salungguhitan pin: `Naisalungguhitan
+  ang “{text}”`.
+- `removedA11y` — perfective of the `Alisin` pin: `Inalis ang anotasyon sa
+  “{text}”`.
+- `clearedA11y` — plural group carrying one/other with identical text per
+  the noun-invariance rule: `Nabura ang {count} anotasyon` (both) —
+  perfective of the `Burahin Lahat` pin.
+- The quoted selection takes curly “” quotes — this brief's glyph
+  convention, matching the dictionary notices.
+
 ## Untranslated product names
 
 PIE, PNP, TTS, SSML, WaveNet, Studio, Desmos, Polly, AWS, Google Cloud TTS,

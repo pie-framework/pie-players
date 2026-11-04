@@ -153,6 +153,25 @@ glyphs survive.
   (`{count}টি নিবন্ধ`); the categories are kept so `Intl.PluralRules`
   resolves correctly for every runtime.
 
+## Annotation live-region phrases (2026-11-04 keys)
+
+The annotation toolbar's result announcements (`selectionAvailableA11y`,
+`highlightedYellowA11y`…`highlightedGreenA11y`, `underlinedA11y`,
+`removedA11y`, `clearedA11y`) follow the catalog's existing pins:
+
+- `{text}` keeps the curly “” quotes everywhere it interpolates, like
+  `{term}` in the dictionary panels.
+- Event phrasing with the impersonal perfect: “{text}” হলুদ হাইলাইট করা
+  হয়েছে, “{text}”-এর আন্ডারলাইন করা হয়েছে, “{text}” থেকে টীকা সরানো
+  হয়েছে — টীকা stays the annotation word, হাইলাইট/আন্ডারলাইন stay the
+  established loans.
+- `selectionAvailableA11y` is a complete two-sentence instruction with
+  Shift+F10 in Latin: “{text}”-এর জন্য টীকা টুলবার উপলব্ধ। টীকার
+  সরঞ্জামের জন্য Shift+F10 চাপুন।
+- `clearedA11y` carries `one`/`other` (CLDR bn) with identical surface
+  text, `{count}টি টীকা মুছা হয়েছে` — Bengali does not inflect the noun
+  after a numeral, and মুছা matches the মুছুন register of `clearAllA11y`.
+
 ## Untranslated product names
 
 PIE, PNP, TTS, SSML, WaveNet, Studio, Desmos, Polly, AWS, Google Cloud TTS,

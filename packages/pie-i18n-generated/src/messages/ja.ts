@@ -408,6 +408,17 @@ const ja = {
 			highlightPinkA11y: "ピンクの強調",
 			highlightBlueA11y: "青の強調",
 			highlightGreenA11y: "緑の強調",
+			selectionAvailableA11y:
+				"「{text}」の注釈ツールバーを使用できます。Shift+F10キーで注釈ツールを開きます。",
+			highlightedYellowA11y: "「{text}」を黄色で強調しました",
+			highlightedPinkA11y: "「{text}」をピンクで強調しました",
+			highlightedBlueA11y: "「{text}」を青で強調しました",
+			highlightedGreenA11y: "「{text}」を緑で強調しました",
+			underlinedA11y: "「{text}」に下線を引きました",
+			removedA11y: "「{text}」の注釈を削除しました",
+			clearedA11y: {
+				other: "{count}件の注釈を消去しました",
+			},
 		},
 		theme: {
 			name: "テーマ",

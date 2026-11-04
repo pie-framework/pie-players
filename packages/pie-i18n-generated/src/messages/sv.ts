@@ -417,6 +417,18 @@ const sv = {
 			highlightPinkA11y: "Rosa markering",
 			highlightBlueA11y: "Blå markering",
 			highlightGreenA11y: "Grön markering",
+			selectionAvailableA11y:
+				"Verktygsfält för annotering tillgängligt för ”{text}”. Tryck på Skift+F10 för annoteringsverktyg.",
+			highlightedYellowA11y: "”{text}” markerad med gult",
+			highlightedPinkA11y: "”{text}” markerad med rosa",
+			highlightedBlueA11y: "”{text}” markerad med blått",
+			highlightedGreenA11y: "”{text}” markerad med grönt",
+			underlinedA11y: "”{text}” understruken",
+			removedA11y: "Annoteringen togs bort från ”{text}”",
+			clearedA11y: {
+				one: "{count} annotering rensad",
+				other: "{count} annoteringar rensade",
+			},
 		},
 		theme: {
 			name: "Tema",

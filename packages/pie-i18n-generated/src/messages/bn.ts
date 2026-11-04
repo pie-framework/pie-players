@@ -415,6 +415,18 @@ const bn = {
 			highlightPinkA11y: "গোলাপি হাইলাইট",
 			highlightBlueA11y: "নীল হাইলাইট",
 			highlightGreenA11y: "সবুজ হাইলাইট",
+			selectionAvailableA11y:
+				"“{text}”-এর জন্য টীকা টুলবার উপলব্ধ। টীকার সরঞ্জামের জন্য Shift+F10 চাপুন।",
+			highlightedYellowA11y: "“{text}” হলুদ হাইলাইট করা হয়েছে",
+			highlightedPinkA11y: "“{text}” গোলাপি হাইলাইট করা হয়েছে",
+			highlightedBlueA11y: "“{text}” নীল হাইলাইট করা হয়েছে",
+			highlightedGreenA11y: "“{text}” সবুজ হাইলাইট করা হয়েছে",
+			underlinedA11y: "“{text}”-এর আন্ডারলাইন করা হয়েছে",
+			removedA11y: "“{text}” থেকে টীকা সরানো হয়েছে",
+			clearedA11y: {
+				one: "{count}টি টীকা মুছা হয়েছে",
+				other: "{count}টি টীকা মুছা হয়েছে",
+			},
 		},
 		theme: {
 			name: "থিম",

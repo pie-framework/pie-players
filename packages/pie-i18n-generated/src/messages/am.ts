@@ -420,6 +420,21 @@ const am = {
 			highlightPinkA11y: "ሮዝ ማስደመቅ",
 			highlightBlueA11y: "ሰማያዊ ማስደመቅ",
 			highlightGreenA11y: "አረንጓዴ ማስደመቅ",
+			// Live-region strip announcements: perfective-passive events, Amharic
+			// colour words in በ- phrases, Ethiopic marks only where the English
+			// carries sentence punctuation.
+			selectionAvailableA11y:
+				"ለ“{text}” የማስታወሻ አሞሌ ይገኛል። ለማስታወሻ መሣሪያዎች Shift+F10 ይጫኑ።",
+			highlightedYellowA11y: "“{text}” በቢጫ ተስደመቀ",
+			highlightedPinkA11y: "“{text}” በሮዝ ተስደመቀ",
+			highlightedBlueA11y: "“{text}” በሰማያዊ ተስደመቀ",
+			highlightedGreenA11y: "“{text}” በአረንጓዴ ተስደመቀ",
+			underlinedA11y: "በ“{text}” ታች መስመር ተሳል",
+			removedA11y: "ከ“{text}” ላይ ማስታወሻ ተወግዷል",
+			clearedA11y: {
+				one: "{count} ማስታወሻ ተጸድቷል",
+				other: "{count} ማስታወሻዎች ተጸድተዋል",
+			},
 		},
 		theme: {
 			name: "ገጽታ",

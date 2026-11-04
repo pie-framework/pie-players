@@ -426,6 +426,21 @@ const ne = {
 			highlightPinkA11y: "गुलाबी हाइलाइट",
 			highlightBlueA11y: "निलो हाइलाइट",
 			highlightGreenA11y: "हरियो हाइलाइट",
+			// Live-region strip announcements: passive past events, danda only where
+			// the English carries sentence punctuation, colour words reusing the
+			// established हाइलाइट vocabulary.
+			selectionAvailableA11y:
+				"“{text}”का लागि टिप्पणी टूलबार उपलब्ध छ। टिप्पणी उपकरणहरूका लागि Shift+F10 थिच्नुहोस्।",
+			highlightedYellowA11y: "“{text}” पहेंलो हाइलाइट गरियो",
+			highlightedPinkA11y: "“{text}” गुलाबी हाइलाइट गरियो",
+			highlightedBlueA11y: "“{text}” निलो हाइलाइट गरियो",
+			highlightedGreenA11y: "“{text}” हरियो हाइलाइट गरियो",
+			underlinedA11y: "“{text}”मा अधोरेखांकन गरियो",
+			removedA11y: "“{text}”बाट टिप्पणी हटाइयो",
+			clearedA11y: {
+				one: "{count} टिप्पणी खाली गरियो",
+				other: "{count} टिप्पणीहरू खाली गरिए",
+			},
 		},
 		theme: {
 			name: "थिम",

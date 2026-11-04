@@ -183,6 +183,29 @@ the key set carries only `inchesInSentence`/`centimetersInSentence`.
 - Control labels and enum values are sentence-case; sentence-internal
   labels lowercase (above).
 
+## Selection announcements (annotation live region)
+
+The eight annotation-strip live-region keys (`selectionAvailableA11y`,
+`highlightedYellow/Pink/Blue/GreenA11y`, `underlinedA11y`, `removedA11y`,
+`clearedA11y`) are announced, never rendered. Sentence shapes, pinned so
+regeneration reproduces them:
+
+- `selectionAvailableA11y` — the full two-sentence availability message:
+  `Доступна панель аннотирования для «{text}». Нажмите Shift+F10, чтобы
+  открыть инструменты аннотирования.` (вы-imperative, Latin `Shift+F10`).
+- `highlightedYellow/Pink/Blue/GreenA11y` — impersonal neuter short-passive
+  events in the instrumental, colors from the `Жёлтое/Розовое/Синее/Зелёное
+  выделение` family: `«{text}» выделено жёлтым` (розовым/синим/зелёным
+  likewise). The -о ending genders nothing — the event rule above.
+- `underlinedA11y` — same frame: `«{text}» подчёркнуто`.
+- `removedA11y` — named subject with perfective passive, the
+  `Ответ зафиксирован` family: `Аннотация удалена из «{text}»`.
+- `clearedA11y` — plural group with the `browserAvailable` verb-agreement
+  pattern: **one** `Удалена {count} аннотация`, **few** `Удалено {count}
+  аннотации`, **many** `Удалено {count} аннотаций`, **other** `Удалено
+  {count} аннотации`.
+- The quoted selection takes «ёлочки» per the punctuation rule above.
+
 ## Untranslated product names
 
 PIE, PNP, TTS, SSML, WaveNet, Studio, Desmos, Polly, AWS, Google Cloud TTS,

@@ -416,6 +416,19 @@ const he = {
 			highlightPinkA11y: "הדגשה ורודה",
 			highlightBlueA11y: "הדגשה כחולה",
 			highlightGreenA11y: "הדגשה ירוקה",
+			selectionAvailableA11y:
+				"סרגל כלים להערות זמין עבור “{text}”. לחצו על Shift+F10 לכלי ההערות.",
+			highlightedYellowA11y: "“{text}” הודגש בצהוב",
+			highlightedPinkA11y: "“{text}” הודגש בורוד",
+			highlightedBlueA11y: "“{text}” הודגש בכחול",
+			highlightedGreenA11y: "“{text}” הודגש בירוק",
+			underlinedA11y: "“{text}” סומן בקו תחתון",
+			removedA11y: "ההערה שעל “{text}” הוסרה",
+			clearedA11y: {
+				one: "{count} הערה נוקתה",
+				two: "{count} הערות נוקו",
+				other: "{count} הערות נוקו",
+			},
 		},
 		theme: {
 			name: "ערכת נושא",

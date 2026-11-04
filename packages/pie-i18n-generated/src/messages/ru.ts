@@ -427,6 +427,23 @@ const ru = {
 			highlightPinkA11y: "Розовое выделение",
 			highlightBlueA11y: "Синее выделение",
 			highlightGreenA11y: "Зелёное выделение",
+			// Объявления полосы в live-region: безличные краткие причастия
+			// (событие, не состояние), текст в «ёлочках»; clearedA11y несёт
+			// полную славянскую четвёрку, как в triesLeft.
+			selectionAvailableA11y:
+				"Доступна панель аннотирования для «{text}». Нажмите Shift+F10, чтобы открыть инструменты аннотирования.",
+			highlightedYellowA11y: "«{text}» выделено жёлтым",
+			highlightedPinkA11y: "«{text}» выделено розовым",
+			highlightedBlueA11y: "«{text}» выделено синим",
+			highlightedGreenA11y: "«{text}» выделено зелёным",
+			underlinedA11y: "«{text}» подчёркнуто",
+			removedA11y: "Аннотация удалена из «{text}»",
+			clearedA11y: {
+				one: "Удалена {count} аннотация",
+				few: "Удалено {count} аннотации",
+				many: "Удалено {count} аннотаций",
+				other: "Удалено {count} аннотации",
+			},
 		},
 		theme: {
 			name: "Тема",

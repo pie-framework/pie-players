@@ -446,6 +446,20 @@ const fil = {
 			highlightPinkA11y: "Rosas na highlight",
 			highlightBlueA11y: "Asul na highlight",
 			highlightGreenA11y: "Berde na highlight",
+			// Mga announcement ng live region: perpektibong event (na-), curly
+			// quotes; clearedA11y ay may CLDR one/other, pareho ang teksto.
+			selectionAvailableA11y:
+				"Available ang toolbar ng anotasyon para sa “{text}”. Pindutin ang Shift+F10 para sa mga kagamitan sa anotasyon.",
+			highlightedYellowA11y: "Nai-highlight sa dilaw ang “{text}”",
+			highlightedPinkA11y: "Nai-highlight sa rosas ang “{text}”",
+			highlightedBlueA11y: "Nai-highlight sa asul ang “{text}”",
+			highlightedGreenA11y: "Nai-highlight sa berde ang “{text}”",
+			underlinedA11y: "Naisalungguhitan ang “{text}”",
+			removedA11y: "Inalis ang anotasyon sa “{text}”",
+			clearedA11y: {
+				one: "Nabura ang {count} anotasyon",
+				other: "Nabura ang {count} anotasyon",
+			},
 		},
 		theme: {
 			name: "Tema",

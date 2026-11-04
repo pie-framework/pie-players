@@ -126,6 +126,13 @@ string's fidelity.
 - Colour highlights are nouns agreeing with `evidenziazione` (feminine):
   `Evidenziazione gialla`, `Evidenziazione rosa`, `Evidenziazione blu`
   (invariable), `Evidenziazione verde`.
+- The annotation strip's live-region announcements cannot presume the
+  interpolated span's gender, so the participle agrees with an explicit
+  `Testo` subject and the colour stays adverbial: `Testo «{text}» evidenziato
+  in giallo`, `Testo «{text}» sottolineato`. Removal and clearing agree with
+  their own nouns: `Annotazione rimossa da «{text}»`, `{count} annotazione
+  cancellata` / `{count} annotazioni cancellate`. The `«{text}»` span keeps
+  the caporali, and `Shift+F10` stays Latin.
 - The instrumentation kinds (`all`, `event`, `error`, `metric`,
   `user-context`, `global-attributes`) and the session-db field names
   (`assessmentId:` … `mode:`) stay verbatim identifiers; the debug detail

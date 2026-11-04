@@ -416,6 +416,17 @@ const lo = {
 			highlightPinkA11y: "ການເນັ້ນສີບົວ",
 			highlightBlueA11y: "ການເນັ້ນສີຟ້າ",
 			highlightGreenA11y: "ການເນັ້ນສີຂຽວ",
+			selectionAvailableA11y:
+				"ແຖບເຄື່ອງມືໝາຍຂໍ້ຄວາມ ສາມາດໃຊ້ໄດ້ສຳລັບ “{text}”. ກົດ Shift+F10 ເພື່ອໃຊ້ເຄື່ອງມືໝາຍຂໍ້ຄວາມ.",
+			highlightedYellowA11y: "“{text}” ຖືກເນັ້ນສີເຫຼືອງແລ້ວ",
+			highlightedPinkA11y: "“{text}” ຖືກເນັ້ນສີບົວແລ້ວ",
+			highlightedBlueA11y: "“{text}” ຖືກເນັ້ນສີຟ້າແລ້ວ",
+			highlightedGreenA11y: "“{text}” ຖືກເນັ້ນສີຂຽວແລ້ວ",
+			underlinedA11y: "“{text}” ຖືກຂີດເສັ້ນໃຕ້ແລ້ວ",
+			removedA11y: "ລຶບການໝາຍເຫດອອກຈາກ “{text}” ແລ້ວ",
+			clearedA11y: {
+				other: "{count} ການໝາຍເຫດຖືກລຶບອອກແລ້ວ",
+			},
 		},
 		theme: {
 			name: "ຮູບແບບ",

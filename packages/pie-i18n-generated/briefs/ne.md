@@ -198,6 +198,27 @@ native reviewer:
 12. **pause = विराम** as both noun and `{state}`-adjacent value;
     `अस्थायी रोक्का` (temporary stop) is the verbose alternative.
 
+## Review pins (2026-11-04, annotation live-region keys)
+
+Decisions the pass on the eight `tools.annotationToolbar` announcement keys
+pinned so a regeneration reproduces them:
+
+- `selectionAvailableA11y` reads `“{text}”का लागि टिप्पणी टूलबार उपलब्ध छ।
+  टिप्पणी उपकरणहरूका लागि Shift+F10 थिच्नुहोस्।` — the established टिप्पणी
+  टूलबार, थिच्नुहोस् for press, `Shift+F10` stays Latin, danda after both
+  sentences because the English carries periods.
+- Colour phrases are passive past with the established colour words:
+  `“{text}” पहेंलो/गुलाबी/निलो/हरियो हाइलाइट गरियो` — no colour-number
+  agreement exists in Nepali, so one phrase serves every noun.
+- `underlinedA11y` is `“{text}”मा अधोरेखांकन गरियो` (the established
+  अधोरेखांकन, oblique मा); `removedA11y` is `“{text}”बाट टिप्पणी हटाइयो`
+  (ablative बाट, the हटाउनु passive).
+- `clearedA11y` uses the खाली गर्नुहोस् passive with the verb varying per the
+  बाँकी छ/छन् pattern: `{count} टिप्पणी खाली गरियो` / `{count} टिप्पणीहरू
+  खाली गरिए`.
+- Danda follows the English shape: only in `selectionAvailableA11y`; the
+  short announcements carry none, like the existing reading announcements.
+
 ## Plurals, punctuation
 
 - `Intl.PluralRules("ne")` selects exactly `one` (n = 1) and `other`; both

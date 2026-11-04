@@ -399,6 +399,17 @@ const thTH = {
 			highlightPinkA11y: "เน้นสีชมพู",
 			highlightBlueA11y: "เน้นสีน้ำเงิน",
 			highlightGreenA11y: "เน้นสีเขียว",
+			selectionAvailableA11y:
+				"แถบเครื่องมือใส่หมายเหตุพร้อมใช้สำหรับ “{text}” กด Shift+F10 เพื่อเปิดเครื่องมือใส่หมายเหตุ",
+			highlightedYellowA11y: "เน้น “{text}” ด้วยสีเหลืองแล้ว",
+			highlightedPinkA11y: "เน้น “{text}” ด้วยสีชมพูแล้ว",
+			highlightedBlueA11y: "เน้น “{text}” ด้วยสีน้ำเงินแล้ว",
+			highlightedGreenA11y: "เน้น “{text}” ด้วยสีเขียวแล้ว",
+			underlinedA11y: "ขีดเส้นใต้ “{text}” แล้ว",
+			removedA11y: "นำหมายเหตุออกจาก “{text}” แล้ว",
+			clearedA11y: {
+				other: "ล้างหมายเหตุ {count} รายการแล้ว",
+			},
 		},
 		theme: {
 			name: "ธีม",

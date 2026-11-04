@@ -309,6 +309,17 @@
 	"tools.annotationToolbar.highlightPinkA11y": "Pink highlight",
 	"tools.annotationToolbar.highlightBlueA11y": "Blue highlight",
 	"tools.annotationToolbar.highlightGreenA11y": "Green highlight",
+	"tools.annotationToolbar.selectionAvailableA11y": "Annotation toolbar available for “{text}”. Press Shift+F10 for annotation tools.",
+	"tools.annotationToolbar.highlightedYellowA11y": "“{text}” highlighted in yellow",
+	"tools.annotationToolbar.highlightedPinkA11y": "“{text}” highlighted in pink",
+	"tools.annotationToolbar.highlightedBlueA11y": "“{text}” highlighted in blue",
+	"tools.annotationToolbar.highlightedGreenA11y": "“{text}” highlighted in green",
+	"tools.annotationToolbar.underlinedA11y": "“{text}” underlined",
+	"tools.annotationToolbar.removedA11y": "Removed annotation from “{text}”",
+	"tools.annotationToolbar.clearedA11y": {
+		"one": "{count} annotation cleared",
+		"other": "{count} annotations cleared"
+	},
 	"tools.theme.name": "Theme",
 	"tools.theme.description": "Accessible themes and contrast",
 	"tools.theme.buttonA11y": "Theme, change colors and contrast",

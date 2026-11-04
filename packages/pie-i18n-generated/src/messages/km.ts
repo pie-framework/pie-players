@@ -415,6 +415,17 @@ const km = {
 			highlightPinkA11y: "ការបន្លិចពណ៌ស្វាយចន្ទី",
 			highlightBlueA11y: "ការបន្លិចពណ៌ខៀវ",
 			highlightGreenA11y: "ការបន្លិចពណ៌បៃតង",
+			selectionAvailableA11y:
+				"របារឧបករណ៍សម្គាល់អត្ថបទអាចប្រើបានសម្រាប់ “{text}”។ ចុច Shift+F10 ដើម្បីប្រើឧបករណ៍សម្គាល់អត្ថបទ។",
+			highlightedYellowA11y: "បានបន្លិច “{text}” ជាពណ៌លឿង",
+			highlightedPinkA11y: "បានបន្លិច “{text}” ជាពណ៌ស្វាយចន្ទី",
+			highlightedBlueA11y: "បានបន្លិច “{text}” ជាពណ៌ខៀវ",
+			highlightedGreenA11y: "បានបន្លិច “{text}” ជាពណ៌បៃតង",
+			underlinedA11y: "បានគូសបន្ទាត់ក្រោម “{text}”",
+			removedA11y: "បានលុបការសម្គាល់ចេញពី “{text}”",
+			clearedA11y: {
+				other: "បានសម្អាតការសម្គាល់ចំនួន {count}",
+			},
 		},
 		theme: {
 			name: "ប្រធានបទ",

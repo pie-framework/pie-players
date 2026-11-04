@@ -186,6 +186,27 @@ native reviewer:
     (`siyaasadda maamulka imtixanka`), where the source itself says
     test administration.
 
+## Review pins (2026-11-04, annotation live-region keys)
+
+Decisions the pass on the eight `tools.annotationToolbar` announcement keys
+pinned so a regeneration reproduces them:
+
+- `selectionAvailableA11y` reads `Baarka faallada qoraalka ayaa la heli karaa
+  “{text}”. Riix Shift+F10 si aad u hesho qalabka faallada.` — the focus
+  (`ayaa`) construction for the availability statement, `Riix` for press,
+  `Shift+F10` stays Latin.
+- Colour phrases reuse the English loans where no Somali word was verified:
+  `waa la calaamadeeyay midab Yellow ah` / `midab Pink ah`; the verified
+  words stay translated (`midab Buluug ah`, `midab Cagaar ah`).
+- `underlinedA11y` is the passive of the established `khad hoos ku rid`:
+  `Waa la riday khad hoosta “{text}”`; `removedA11y` uses the `laga` passive:
+  `Faallada “{text}” waa laga saaray`.
+- `clearedA11y` carries the passive of `nadiifi` and, per the noun-invariance
+  rule above, identical `one`/`other` text: `{count} faallo ayaa la
+  nadiifiyay`.
+- Sentence marks follow the English shape: `… “{text}”.` keeps its periods;
+  the short announcements carry none.
+
 ## Plurals, punctuation
 
 - `Intl.PluralRules("so")` selects exactly `one` (n = 1) and `other`; both

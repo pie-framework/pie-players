@@ -172,7 +172,9 @@ calls a native reviewer should check first, in rough priority order:
    the translated underline. The four highlight colors: yellow `daj`,
    pink `liab` (machine output renders pink as red — no distinct pink
    word was verifiable; review should supply one), blue `xiav`,
-   green `ntsuab`.
+   green `ntsuab`. The strip's live-region announcements
+   (`highlightYellowA11y`, `highlightedPinkA11y`, …) carry the same
+   four color words, so a pink decision lands on both key sets at once.
 8. **underline → kab qab** — "bottom line"; a verbal compound
    (`ua kab qab`) appears inside A11y sentences.
 9. **clockwise/counterclockwise → raws tus moos / rov tus moos**

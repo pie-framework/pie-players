@@ -412,6 +412,18 @@ const ur = {
 			highlightPinkA11y: "گلابی نمایاں کاری",
 			highlightBlueA11y: "نیلی نمایاں کاری",
 			highlightGreenA11y: "سبز نمایاں کاری",
+			selectionAvailableA11y:
+				"“{text}” کے لیے حاشیہ نویسی کے اوزار دستیاب ہیں۔ حاشیہ نویسی کے اوزاروں کے لیے Shift+F10 دبائیں۔",
+			highlightedYellowA11y: "“{text}” زرد رنگ میں نمایاں کیا گیا",
+			highlightedPinkA11y: "“{text}” گلابی رنگ میں نمایاں کیا گیا",
+			highlightedBlueA11y: "“{text}” نیلے رنگ میں نمایاں کیا گیا",
+			highlightedGreenA11y: "“{text}” سبز رنگ میں نمایاں کیا گیا",
+			underlinedA11y: "“{text}” کے نیچے لکیر کھینچی گئی",
+			removedA11y: "“{text}” کا حاشیہ ہٹا دیا گیا",
+			clearedA11y: {
+				one: "{count} حاشیہ صاف کیا گیا",
+				other: "{count} حاشیے صاف کیے گئے",
+			},
 		},
 		theme: {
 			name: "تھیم",

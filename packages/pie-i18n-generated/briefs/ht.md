@@ -170,6 +170,27 @@ string's fidelity.
 - Control labels and enum values are sentence-case; sentence-internal
   labels lowercase (above).
 
+## Selection announcements (annotation live region)
+
+The eight annotation-strip live-region keys (`selectionAvailableA11y`,
+`highlightedYellow/Pink/Blue/GreenA11y`, `underlinedA11y`, `removedA11y`,
+`clearedA11y`) are announcements, never rendered. Sentence shapes, pinned so
+regeneration reproduces them:
+
+- `selectionAvailableA11y` — the full two-sentence availability message:
+  `Bar anotasyon tèks la disponib pou «{text}». Peze Shift+F10 pou zouti
+  anotasyon yo.` (Latin `Shift+F10`; `peze` = press).
+- `highlightedYellow/Pink/Blue/GreenA11y` — `te`-marked events with the core
+  color words of the `Mak Jòn` family: `Te make «{text}» an jòn`
+  (an woz/an ble/an vèt likewise).
+- `underlinedA11y` — `te`-event of the Souliye pin: `Te souliye «{text}»`.
+- `removedA11y` — `te`-event of the `Retire` pin: `Te retire anotasyon nan
+  «{text}»`.
+- `clearedA11y` — plural group carrying one/other with identical text per
+  the no-inflection rule: `Te efase {count} anotasyon` (both) — `te`-event
+  of the `Efase Tout` pin.
+- The quoted selection takes « » guillemets per the punctuation rule above.
+
 ## Untranslated product names
 
 PIE, PNP, TTS, SSML, WaveNet, Studio, Desmos, Polly, AWS, Google Cloud TTS,

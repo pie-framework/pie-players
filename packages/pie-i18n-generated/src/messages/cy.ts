@@ -428,6 +428,22 @@ const cy = {
 			highlightPinkA11y: "Amlygu pinc",
 			highlightBlueA11y: "Amlygu glas",
 			highlightGreenA11y: "Amlygu gwyrdd",
+			selectionAvailableA11y:
+				"Mae'r bar offer anodi ar gael ar gyfer “{text}”. Pwyswch Shift+F10 i gael yr offer anodi.",
+			highlightedYellowA11y: "Amlygwyd “{text}” mewn melyn",
+			highlightedPinkA11y: "Amlygwyd “{text}” mewn pinc",
+			highlightedBlueA11y: "Amlygwyd “{text}” mewn glas",
+			highlightedGreenA11y: "Amlygwyd “{text}” mewn gwyrdd",
+			underlinedA11y: "Tanlinellwyd “{text}”",
+			removedA11y: "Tynnwyd yr anodiad oddi ar “{text}”",
+			clearedA11y: {
+				zero: "Cliriwyd {count} o anodiadau",
+				one: "Cliriwyd {count} anodiad",
+				two: "Cliriwyd {count} anodiad",
+				few: "Cliriwyd {count} anodiad",
+				many: "Cliriwyd {count} anodiad",
+				other: "Cliriwyd {count} o anodiadau",
+			},
 		},
 		theme: {
 			name: "Themâ",

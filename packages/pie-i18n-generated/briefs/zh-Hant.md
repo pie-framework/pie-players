@@ -137,7 +137,8 @@ Beyond the divergence table above, the pins reused for every occurrence:
   為, 著 — not the Hong Kong variants 衞, 綫 etc.).
 - Taiwan punctuation: corner brackets 「」 for quoted terms — including the
   interpolated `{term}`/`{id}` quotes the dictionary panels and provider
-  notices carry. This is a deliberate divergence from `zh`, which keeps the
+  notices carry, and the `{text}` of the annotation toolbar's live-region
+  announcements. This is a deliberate divergence from `zh`, which keeps the
   curly “” glyphs.
 - Full-width punctuation in Chinese contexts: ：，（）、「。；！？
 - No spaces between CJK characters; Latin product names and code
@@ -145,6 +146,22 @@ Beyond the divergence table above, the pins reused for every occurrence:
   (`HTTP {status}: {message}` keeps its ASCII colon).
 - Western digits as the placeholders interpolate; the `°` glyph and `×`
   are kept.
+
+## Annotation live-region phrases (2026-11-04 keys)
+
+The annotation toolbar's result announcements (`selectionAvailableA11y`,
+`highlightedYellowA11y`…`highlightedGreenA11y`, `underlinedA11y`,
+`removedA11y`, `clearedA11y`) follow the catalog's existing pins:
+
+- Event form with the 已… resultative, colour first:
+  已以黃色醒目提示「{text}」 — the colour adjective takes 醒目提示, the
+  same verb `highlighter`/`highlightYellowA11y` use, and `{text}` keeps
+  its 「」 brackets.
+- `selectionAvailableA11y` is a complete two-sentence instruction:
+  「{text}」已可使用標註工具列。按 Shift+F10 使用標註工具。
+- `clearedA11y` carries `other` only (Chinese's single CLDR category):
+  已清除 {count} 條標註 — 條 is the counter for annotation records,
+  matching 筆 for dictionary entries in register.
 
 ## Plurals
 

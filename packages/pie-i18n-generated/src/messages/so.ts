@@ -433,6 +433,22 @@ const so = {
 			highlightPinkA11y: "Calaamad Pink ah",
 			highlightBlueA11y: "Calaamad Buluug ah",
 			highlightGreenA11y: "Calaamad Cagaar ah",
+			// Live-region strip announcements: Somali renders the passive events,
+			// reuses the established colour loans (Yellow/Pink) and sentence marks
+			// only where the English carries them.
+			selectionAvailableA11y:
+				"Baarka faallada qoraalka ayaa la heli karaa “{text}”. Riix Shift+F10 si aad u hesho qalabka faallada.",
+			highlightedYellowA11y: "“{text}” waa la calaamadeeyay midab Yellow ah",
+			highlightedPinkA11y: "“{text}” waa la calaamadeeyay midab Pink ah",
+			highlightedBlueA11y: "“{text}” waa la calaamadeeyay midab Buluug ah",
+			highlightedGreenA11y: "“{text}” waa la calaamadeeyay midab Cagaar ah",
+			underlinedA11y: "Waa la riday khad hoosta “{text}”",
+			removedA11y: "Faallada “{text}” waa laga saaray",
+			// Nouns stay singular after a numeral; one and other match by grammar.
+			clearedA11y: {
+				one: "{count} faallo ayaa la nadiifiyay",
+				other: "{count} faallo ayaa la nadiifiyay",
+			},
 		},
 		theme: {
 			name: "Qaab",

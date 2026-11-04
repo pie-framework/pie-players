@@ -415,6 +415,18 @@ const fa = {
 			highlightPinkA11y: "برجسته‌سازی صورتی",
 			highlightBlueA11y: "برجسته‌سازی آبی",
 			highlightGreenA11y: "برجسته‌سازی سبز",
+			selectionAvailableA11y:
+				"نوار ابزار حاشیه‌نویسی برای «{text}» در دسترس است. برای ابزارهای حاشیه‌نویسی، Shift+F10 را فشار دهید.",
+			highlightedYellowA11y: "«{text}» به رنگ زرد برجسته شد",
+			highlightedPinkA11y: "«{text}» به رنگ صورتی برجسته شد",
+			highlightedBlueA11y: "«{text}» به رنگ آبی برجسته شد",
+			highlightedGreenA11y: "«{text}» به رنگ سبز برجسته شد",
+			underlinedA11y: "«{text}» زیرخط‌دار شد",
+			removedA11y: "حاشیه‌نویسی «{text}» برداشته شد",
+			clearedA11y: {
+				one: "{count} حاشیه‌نویسی پاک شد",
+				other: "{count} حاشیه‌نویسی پاک شد",
+			},
 		},
 		theme: {
 			name: "پوسته",

@@ -434,6 +434,20 @@ const ht = {
 			highlightPinkA11y: "Mak Woz",
 			highlightBlueA11y: "Mak Ble",
 			highlightGreenA11y: "Mak Vèt",
+			// Anons nan live region ba a: evènman ki make ak `te`, gyomet « »;
+			// clearedA11y gen CLDR one/other, menm tèks la.
+			selectionAvailableA11y:
+				"Bar anotasyon tèks la disponib pou «{text}». Peze Shift+F10 pou zouti anotasyon yo.",
+			highlightedYellowA11y: "Te make «{text}» an jòn",
+			highlightedPinkA11y: "Te make «{text}» an woz",
+			highlightedBlueA11y: "Te make «{text}» an ble",
+			highlightedGreenA11y: "Te make «{text}» an vèt",
+			underlinedA11y: "Te souliye «{text}»",
+			removedA11y: "Te retire anotasyon nan «{text}»",
+			clearedA11y: {
+				one: "Te efase {count} anotasyon",
+				other: "Te efase {count} anotasyon",
+			},
 		},
 		theme: {
 			name: "Tèm",

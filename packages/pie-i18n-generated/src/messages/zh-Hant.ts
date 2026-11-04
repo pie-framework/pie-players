@@ -402,6 +402,16 @@ const zhHant = {
 			highlightPinkA11y: "粉紅色醒目提示",
 			highlightBlueA11y: "藍色醒目提示",
 			highlightGreenA11y: "綠色醒目提示",
+			selectionAvailableA11y: "「{text}」已可使用標註工具列。按 Shift+F10 使用標註工具。",
+			highlightedYellowA11y: "已以黃色醒目提示「{text}」",
+			highlightedPinkA11y: "已以粉紅色醒目提示「{text}」",
+			highlightedBlueA11y: "已以藍色醒目提示「{text}」",
+			highlightedGreenA11y: "已以綠色醒目提示「{text}」",
+			underlinedA11y: "已為「{text}」加上底線",
+			removedA11y: "已移除「{text}」的標註",
+			clearedA11y: {
+				other: "已清除 {count} 條標註",
+			},
 		},
 		theme: {
 			name: "主題",

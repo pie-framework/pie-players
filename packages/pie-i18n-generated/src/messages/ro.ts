@@ -427,6 +427,19 @@ const ro = {
 			highlightPinkA11y: "Evidențiere roz",
 			highlightBlueA11y: "Evidențiere albastră",
 			highlightGreenA11y: "Evidențiere verde",
+			selectionAvailableA11y:
+				"Bara de instrumente pentru adnotare este disponibilă pentru „{text}”. Apasă Shift+F10 pentru instrumentele de adnotare.",
+			highlightedYellowA11y: "„{text}” evidențiat cu galben",
+			highlightedPinkA11y: "„{text}” evidențiat cu roz",
+			highlightedBlueA11y: "„{text}” evidențiat cu albastru",
+			highlightedGreenA11y: "„{text}” evidențiat cu verde",
+			underlinedA11y: "„{text}” subliniat",
+			removedA11y: "Adnotarea a fost eliminată de pe „{text}”",
+			clearedA11y: {
+				one: "{count} adnotare ștearsă",
+				few: "{count} adnotări șterse",
+				other: "{count} de adnotări șterse",
+			},
 		},
 		theme: {
 			name: "Temă",

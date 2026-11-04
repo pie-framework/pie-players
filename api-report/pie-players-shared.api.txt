@@ -823,3 +823,9 @@
   contentStylesPresent
   installContentStyles
   resetContentStylesWarningForTesting
+
+./ui/fontawesome
+  type NdsGlyphVariant
+  applyNdsGlyphVariant
+  ensureFontAwesome
+  installFontAwesomeInShadow

@@ -103,6 +103,24 @@ Every required half-space (U+200C) is present, consistently:
 | debugger | اشکال‌زدا | |
 | snapshot | تصویر لحظه‌ای | |
 
+## Selection announcements (annotation live region)
+
+The eight keys added after `highlightGreenA11y` (`selectionAvailableA11y`,
+`highlighted*A11y`, `underlinedA11y`, `removedA11y`, `clearedA11y`) pin:
+
+- The term rides the guillemets `«{text}»` — the Persian lookup-notice
+  glyph — and `{text}` stays inside them in every key.
+- ZWNJ orthography holds (حاشیه‌نویسی، زیرخط‌دار): `زیرخط‌دار شد`.
+- Events, never participles, in the `به رنگ + colour برجسته شد` shape;
+  Persian colour adjectives are invariant, so the en-US comment's
+  colour-agreement concern does not bite. `removedA11y` reuses the
+  برداشتن pin: `حاشیه‌نویسی «{text}» برداشته شد`.
+- `selectionAvailableA11y` closes with the polite imperative
+  (`Shift+F10 را فشار دهید`).
+- `clearedA11y` is the `one`/`other` group with both categories
+  identical — `{count} حاشیه‌نویسی پاک شد` — the documented Persian noun
+  invariance, not an omission.
+
 ## RTL conventions
 
 - Persian is RTL; `dir` comes from the provider (`localeDirection`),

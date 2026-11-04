@@ -171,6 +171,28 @@ survive.
   ਹਨ।`, `{count} ਐਂਟਰੀ` vs `{count} ਐਂਟਰੀਆਂ`, `{count} ਮਿਲਦੀ ਆਵਾਜ਼` vs
   `{count} ਮਿਲਦੀਆਂ ਆਵਾਜ਼ਾਂ`.
 
+## Annotation live-region phrases (2026-11-04 keys)
+
+The annotation toolbar's result announcements (`selectionAvailableA11y`,
+`highlightedYellowA11y`…`highlightedGreenA11y`, `underlinedA11y`,
+`removedA11y`, `clearedA11y`) follow the catalog's existing pins:
+
+- `{text}` keeps the curly “” quotes everywhere it interpolates, like
+  `{term}` in the dictionary panels.
+- Event phrasing with the impersonal passive, the object marked ਨੂੰ and
+  the colour in the oblique ਰੰਗ ਵਿੱਚ frame: “{text}” ਨੂੰ ਪੀਲੇ ਰੰਗ ਵਿੱਚ
+  ਹਾਈਲਾਈਟ ਕੀਤਾ ਗਿਆ — colours take the same ਹਾਈਲਾਈਟ verb family the
+  toolbar buttons use; underlined reads “{text}” ਨੂੰ ਅੰਡਰਲਾਈਨ ਕੀਤਾ ਗਿਆ.
+- `{text}`'s gender is unknown, so the participle takes the unmarked
+  masculine (ਕੀਤਾ ਗਿਆ); where the fixed subject is ਟਿੱਪਣੀ (feminine), the
+  agreement follows it: “{text}” ਤੋਂ ਟਿੱਪਣੀ ਹਟਾਈ ਗਈ.
+- `selectionAvailableA11y` is a complete two-sentence instruction with
+  Shift+F10 in Latin: “{text}” ਲਈ ਟਿੱਪਣੀ ਟੂਲਬਾਰ ਉਪਲਬਧ ਹੈ। ਟਿੱਪਣੀ ਸਾਧਨਾਂ
+  ਲਈ Shift+F10 ਦਬਾਓ।
+- `clearedA11y` carries the real Punjabi plurals with feminine agreement:
+  `{count} ਟਿੱਪਣੀ ਸਾਫ਼ ਕੀਤੀ ਗਈ` / `{count} ਟਿੱਪਣੀਆਂ ਸਾਫ਼ ਕੀਤੀਆਂ ਗਈਆਂ`,
+  matching the ਸਾਫ਼ ਕਰੋ register of `clearAllA11y`.
+
 ## Untranslated product names
 
 PIE, PNP, TTS, SSML, WaveNet, Studio, Desmos, Polly, AWS, Google Cloud TTS,

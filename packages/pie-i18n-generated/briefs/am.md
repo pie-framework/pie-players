@@ -196,6 +196,27 @@ native reviewer:
     question (`ጥያቄ`) in the developer panel; accepted because the two
     never sit in the same view, and `መጠየቅ` reads as a verb.
 
+## Review pins (2026-11-04, annotation live-region keys)
+
+Decisions the pass on the eight `tools.annotationToolbar` announcement keys
+pinned so a regeneration reproduces them:
+
+- `selectionAvailableA11y` reads `ለ“{text}” የማስታወሻ አሞሌ ይገኛል። ለማስታወሻ
+  መሣሪያዎች Shift+F10 ይጫኑ።` — ለ- for "for", the established አሞሌ toolbar,
+  polite-plural `ይጫኑ` (press), `Shift+F10` stays Latin, Ethiopic ። because
+  the English carries periods.
+- Colour phrases are `በ`-instrumental with the passive `ተስደመቀ` (was
+  highlighted, from the established ማስደመቅ): `በቢጫ`, `በሮዝ`, `በሰማያዊ`,
+  `በአረንጓዴ` — the contracted passive spelling (ተስደመቀ, not ተአስደመቀ).
+- `underlinedA11y` is the passive of the established `በታች መስመር ስል`:
+  `በ“{text}” ታች መስመር ተሳል`; `removedA11y` uses the አስወግድ passive:
+  `ከ“{text}” ላይ ማስታወሻ ተወግዷል`.
+- `clearedA11y` uses the አጽዳ passive with Amharic number agreement, per the
+  ቀርቧል/ቀርበዋል pattern: `{count} ማስታወሻ ተጸድቷል` / `{count} ማስታወሻዎች
+  ተጸድተዋል`.
+- Terminal marks follow the English shape: ። only in
+  `selectionAvailableA11y`; the short announcements carry none.
+
 ## Plurals, punctuation
 
 - `Intl.PluralRules("am")` selects exactly `one` (n in 0..1) and `other`;

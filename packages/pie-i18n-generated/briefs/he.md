@@ -94,6 +94,25 @@ convention: gershayim inside a multi-letter form (צ״ו style), geresh
 after a single letter (מ׳), never a bare apostrophe. None appears in
 this catalog as authored.
 
+## Selection announcements (annotation live region)
+
+The eight keys added after `highlightGreenA11y` (`selectionAvailableA11y`,
+`highlighted*A11y`, `underlinedA11y`, `removedA11y`, `clearedA11y`) pin:
+
+- The term rides the curly `“{text}”` and `{text}` stays inside the
+  quotes in every key.
+- Event passives, never participles: `הודגש`/`סומן` unmarked masculine
+  for the unknown referent, while `removedA11y`'s `הוסרה` agrees feminine
+  with ההערה. Colours take the bare noun with the `-ב` prefix (`בצהוב`,
+  `בורוד`, `בכחול`, `בירוק`) — invariant, so the en-US comment's
+  colour-agreement concern does not bite.
+- `selectionAvailableA11y` closes with the plural-polite imperative
+  (`לחצו על Shift+F10 לכלי ההערות`).
+- `clearedA11y` is the wave's only `one`/`two`/`other` count group:
+  `{count} הערה נוקתה` (feminine singular) and `{count} הערות נוקו` for
+  both `two` and `other` (numeral + plural noun, per the plurals
+  section).
+
 ## RTL conventions
 
 - Hebrew is RTL; `dir` comes from the provider (`localeDirection`),

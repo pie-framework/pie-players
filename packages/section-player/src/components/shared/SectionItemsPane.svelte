@@ -27,6 +27,11 @@ Items pane of a section player: renders the item cards of the current compositio
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import "../section-player-item-card-element.js";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+	import {
+		applyNdsGlyphVariant,
+		ensureFontAwesome,
+		installFontAwesomeInShadow,
+	} from "@pie-players/pie-players-shared/ui/fontawesome";
 	import { usePromise } from "@pie-players/pie-players-shared/ui/use-promise";
 	import { EMPTY_COMPOSITION } from "./composition.js";
 	import {
@@ -542,6 +547,14 @@ Items pane of a section player: renders the item cards of the current compositio
 		);
 	});
 
+	// The NDS glyph needs FontAwesome, in <head> and in whatever shadow root the
+	// pane renders in: see players-shared `ui/fontawesome`.
+	const ndsIconButtonAction = (node: HTMLElement) => {
+		ensureFontAwesome(chromeRuntimeContext?.itemPlayer?.loaderOptions);
+		installFontAwesomeInShadow(node);
+		return { destroy: applyNdsGlyphVariant(node, "fa-light") };
+	};
+
 	const SCROLL_STEP_PX = 150;
 	const scrollDown = () =>
 		scrollContainer?.scrollBy({ top: SCROLL_STEP_PX, behavior: "smooth" });
@@ -768,6 +781,7 @@ Items pane of a section player: renders the item cards of the current compositio
 				icon-name="chevron-down"
 				button-aria-label={interfaceI18n.t("player.scrollDownA11y")}
 				onclick={scrollDown}
+				use:ndsIconButtonAction
 			></nds-icon-button>
 		{:else}
 			<!-- Non-NDS fallback: plain <button> with a self-contained inline SVG

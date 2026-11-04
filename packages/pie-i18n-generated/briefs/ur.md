@@ -80,6 +80,25 @@ Gender agreement follows the head noun, not the tool: حسابی مشین is
 feminine (`کھل گئی`), اوزار masculine (`گھوم گیا`), انتخاب masculine
 (`کاٹا گیا`).
 
+## Selection announcements (annotation live region)
+
+The eight keys added after `highlightGreenA11y` (`selectionAvailableA11y`,
+`highlighted*A11y`, `underlinedA11y`, `removedA11y`, `clearedA11y`) pin:
+
+- The term is quoted with the curly `“{text}”` — the lookup-notice glyph —
+  and `{text}` stays inside the quotes in every key.
+- The toolbar name reuses `toolbarA11y`'s compound حاشیہ نویسی کے اوزار;
+  `selectionAvailableA11y` ends on an Urdu clause with Shift+F10 kept
+  Latin (`…Shift+F10 دبائیں۔`), so no sentence ends on a bare Latin token.
+- Event passives agree with the head noun, not the tool: متن masculine
+  (`نمایاں کیا گیا`), لکیر feminine (`لکیر کھینچی گئی`), حاشیہ masculine
+  (`ہٹا دیا گیا`). Colours ride the نمایاں کاری family in the
+  `زرد رنگ میں نمایاں کیا گیا` shape.
+- `clearedA11y` is the locale's `one`/`other` count group:
+  `{count} حاشیہ صاف کیا گیا` / `{count} حاشیے صاف کیے گئے` (singular /
+  plural noun, the 2–10 register). Western digits are n/a across these
+  keys — the only numeral is the interpolated `{count}`.
+
 ## RTL conventions
 
 - Urdu is RTL; `dir` comes from the provider (`localeDirection`), never

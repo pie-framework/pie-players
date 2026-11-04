@@ -5,6 +5,7 @@
  * Works in all modern browsers that support SpeechSynthesis.
  */
 
+import { languageTagWithoutVariants } from "@pie-players/pie-players-shared/i18n/language-tags";
 import {
 	createPieLogger,
 	isTtsDebugEnabled,
@@ -464,10 +465,11 @@ class BrowserTTSProviderImpl implements ITTSProviderImplementation {
 	 * The language of the content being read, which the toolkit sets per speak as
 	 * `providerOptions.contentLanguage` when the content or the host names one.
 	 */
+	/** The content language without variant or private-use subtags, which voices lack. */
 	private getContentLocale(): string | undefined {
 		const language = this.config?.providerOptions?.contentLanguage;
 		return typeof language === "string" && language.trim()
-			? language.trim()
+			? languageTagWithoutVariants(language)
 			: undefined;
 	}
 

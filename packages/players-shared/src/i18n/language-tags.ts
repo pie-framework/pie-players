@@ -177,10 +177,44 @@ export function findBestLanguageMatch(
 }
 
 /**
+ * A tag's subtags split at the end of its language, script and region:
+ * `en-GB-x-gulf` yields `[["en", "GB"], ["x", "gulf"]]`. The second part holds
+ * variants, extensions and private use, as authored.
+ */
+function splitVariantSubtags(
+	tag: string | null | undefined,
+): [string[], string[]] {
+	const subtags = toLanguageTag(tag).split(/[.@]/)[0].split("-");
+	let length = 1;
+	if (/^[a-z]{4}$/i.test(subtags[length] ?? "")) length++;
+	if (/^([a-z]{2}|\d{3})$/i.test(subtags[length] ?? "")) length++;
+	return [subtags.slice(0, length), subtags.slice(length)];
+}
+
+/** The variant, extension and private-use subtags as a comparison key. */
+function variantSubtagsKey(tag: string | null | undefined): string {
+	return splitVariantSubtags(tag)[1].join("-").toLowerCase();
+}
+
+/**
+ * A tag without its variant, extension and private-use subtags, casing kept:
+ * `en-GB-x-gulf` yields `en-GB`. The form for a speech engine, whose voices
+ * are keyed by language and region.
+ */
+export function languageTagWithoutVariants(
+	tag: string | null | undefined,
+): string {
+	return splitVariantSubtags(tag)[0].join("-");
+}
+
+/**
  * `findBestLanguageMatch`, then primary-subtag widening, so `nl-BE` and a bare
- * `nl` reach a regional `nl-NL` and `es-MX` reaches `es-ES`. Both stay within
- * the request's script: `zh` never reaches `zh-TW`, and `sr-Latn` may reach
- * `sr-ME`. The rule that picks an interface catalog and a content variant alike.
+ * `nl` reach a regional `nl-NL` and `es-MX` reaches `es-ES`. Widening stays
+ * within the request's script and keeps its variant subtags: `zh` never
+ * reaches `zh-TW`, `sr-Latn` may reach `sr-ME`, `en-GB` never reaches
+ * `en-GB-x-gulf`, and `en-US-x-gulf` may reach `en-GB-x-gulf`. Among several
+ * siblings the first in `available` wins. The rule that picks an interface
+ * catalog and a content variant alike.
  */
 export function findClosestLanguageMatch(
 	requested: string | null | undefined,
@@ -190,9 +224,11 @@ export function findClosestLanguageMatch(
 	if (best !== undefined) return best;
 	const language = normalizeLanguageTag(requested).split("-")[0];
 	if (!language) return undefined;
+	const variants = variantSubtagsKey(requested);
 	const sibling = available.find(
 		(candidate) =>
 			normalizeLanguageTag(candidate).split("-")[0] === language &&
+			variantSubtagsKey(candidate) === variants &&
 			languageTagScriptsMatch(requested, candidate),
 	);
 	return sibling ?? undefined;
@@ -214,7 +250,9 @@ export interface ContentLanguageMatch {
  * chain serves the closest match for `defaultLanguage` (`en-US` reaches `en`),
  * then content that declares no language (a `null` entry), then `source`;
  * `matching` does not narrow it. `undefined` means nothing can be served. No
- * requested languages run the chain without a substitution.
+ * requested languages run the chain without a substitution. Candidates rank
+ * `source` first, then by tag, so the order of `available` never decides
+ * between two siblings.
  */
 export function negotiateContentLanguage(
 	requested: readonly string[],
@@ -228,15 +266,21 @@ export function negotiateContentLanguage(
 	} = {},
 ): ContentLanguageMatch | undefined {
 	const { defaultLanguage, fallback = "default", matching = "closest", source } = options;
+	const candidates = [...available].sort((a, b) => {
+		if ((a === source) !== (b === source)) return a === source ? -1 : 1;
+		const left = normalizeLanguageTag(a);
+		const right = normalizeLanguageTag(b);
+		return left < right ? -1 : left > right ? 1 : 0;
+	});
 	for (const tag of requested) {
 		const language =
 			matching === "exact"
-				? available.find((candidate) => languageTagsEqual(candidate, tag))
-				: findClosestLanguageMatch(tag, available);
+				? candidates.find((candidate) => languageTagsEqual(candidate, tag))
+				: findClosestLanguageMatch(tag, candidates);
 		if (language != null) return { language };
 	}
 	if (requested.length > 0 && fallback === "none") return undefined;
-	let language: string | null | undefined = findClosestLanguageMatch(defaultLanguage, available);
+	let language: string | null | undefined = findClosestLanguageMatch(defaultLanguage, candidates);
 	if (language === undefined && available.includes(null)) language = null;
 	if (language === undefined && source !== undefined && available.includes(source)) {
 		language = source;

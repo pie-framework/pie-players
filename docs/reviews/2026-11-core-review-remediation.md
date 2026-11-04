@@ -15,7 +15,11 @@ Tracking convention:
 - PR titles cite the ids: `fix(tools): … (R-01)`; changeset descriptions cite
   them too. The R-id takes the slot a `PIE-####` ticket key would otherwise
   occupy. Consumer-pad trailers keep their existing checked format.
-- One item = one PR = one patch changeset unless the row says otherwise.
+- One execution batch below = one branch and PR, with one patch changeset for
+  published changes citing every included R-id. Use the leading R-id in the
+  branch name and all included ids in the PR title/body. Infrastructure-only
+  batches retain their no-changeset exception. This replaces the original
+  one-item rule where the batch explicitly groups items.
 - Status updates are documentation-only edits to this file and commit straight
   to `develop` (no PR, no gate beyond `check:docs`).
 
@@ -241,50 +245,81 @@ for numeric `0`); lowercase-only version-suffix regex in `default-tool-loaders`;
 assessment-player selector trio. These are absorbed into R-17/R-18/R-21-R-25
 scopes rather than tracked one by one.
 
-## Wave 0 — P1 defects
+## Sequential execution plan — 1.0 stabilization
 
-| ID | Title | Scope & fix | Gates / impact | Size | Status |
-|---|---|---|---|---|---|
-| R-01 | Answer-eliminator mask strategy: keep undo reachable | Wire `EliminationChrome`/`setChrome` for mask (announce like strikethrough) and scope `aria-hidden` to the content element, never the container hosting the toggle. Tests for both strategies' aria states. | bun tests; patch changeset; WCAG note | S | done (branch `fix/r01-eliminator-mask-aria-hidden`, c84fa59f, PR pending) |
-| R-02 | Published light-DOM panels off host framework classes | Replace DaisyUI/Tailwind classes in `TtsSettingsPanel` + `DebugPanelToggles` with `pie-*` classes styled from component `<style>` on certified `--pie-*` tokens. Extend `tests/panel-theming.test.ts` (or add `check:ce-class-hooks`) to gate the class half. | Visual check in non-DaisyUI host; pad note for Host R; changeset | M | in progress — tts-settings half closed upstream (969b27ab, PR #920: `pie-tts-*` self-styled hooks, manifest updated); remaining: `DebugPanelToggles` + the class-hygiene gate |
-| R-03 | FA/NDS glyph machinery: one owner, three consumers | New `players-shared` module beside the vendored NDS bundle owning pin + detection + shadow install; migrate `tool-tts-inline` + `ItemToolBar` (toolbar keeps Pro-aware layer); give `SectionItemsPane` the install. | api-report + pad + changeset (new export); extend fontawesome-assets spec; single-pin grep guard | M | todo |
-| R-04 | Publish-surface validation: one implementation | Reduce `check-publish-surface.mjs` to a caller of pack-integrity's collectors (or retire `check:source-exports`); delete the four superseded scripts + root entries; update `docs/setup/publishing.md`, `docs/setup/library-packaging-strategy.md`. D1 decides the smoke tool. | scripts/tests; `check:scripts`; no changeset | S–M | todo |
+Reordered 2026-11-04 at the maintainer's request. Execute the numbered batches
+in order, merge each before branching the next from fresh `origin/develop`, and
+re-verify the included findings first. These tables replace the former wave
+order. The findings appendix remains the evidence inventory; a listed finding
+is not authorization to execute every cleanup it originally proposed.
 
-## Wave 1 — Divergence-stoppers
+The sequence is executable without architectural decisions: where an optional
+change is still pending, keep existing behavior and leave that part open. No
+D1–D8 decision has been approved by this reorder. Client-visible corrections
+below are recommendations awaiting maintainer approval, not recorded approvals.
 
-| ID | Title | Scope & fix | Gates / impact | Size | Status |
-|---|---|---|---|---|---|
-| R-05 | Overlay-tool lifecycle: one wiring helper | Extract `createOverlayToolLifecycle` next to `createOverlayPlacement` (or beside `createToolCoordinatorRegistration`); migrate the four tools; D2 unifies Escape semantics; extract announce-timer helper. | Per-tool contract tests updated; api-report/pad/changeset; e2e tool suites | L | todo |
-| R-06 | Composed-ancestor walk + unmount key: single homes | Export `findComposedAncestor` from players-shared/ui; move `__pieToolElementUnmount` to toolkit `tools/registration`; cache imports it; pinning test. | api-report/pad for new export; may ride R-05 | S | todo |
-| R-07 | ItemToolBar `$effect`: no tracked-state writes | Defer `syncRenderedToolsState()` via the file's own `queueMicrotask` pattern (or `untrack`), matching `:1146/:1220/:1244`. | Existing tests | S | done (branch `fix/r07-itemtoolbar-effect-mutation`, a484e36c, PR pending) |
-| R-08 | Extract the floating-window shell | Lift `mountElementWithShell` to a headless module beside `tool-surface-host` with `{update, destroy}`; `use:` action becomes an adapter. Include: `role="dialog"` + accessible name; reuse players-shared `getDeepActiveElement`. | e2e shell specs; new unit seam for geometry/focus; no public API change; pad check on host attributes | L | todo |
-| R-09 | Composition revision logic out of the CE | Move the six functions to `runtime/composition-revision.ts` (or `SectionControllerBinding`); component keeps emit wiring. | runtime tests extended; after R-08 (same-file chain) | S–M | todo |
-| R-10 | TTS: one wire protocol, one parser | Request–response wire types once in the `pie-tts` contract (per `8abe1b28`'s precedent; D3 reconciles `langId` dual-send vs `lang_id`-only and the client-only inline `speechMarks`); type-preserving JSONL parser, Polly adopts it (fixes the fail-whole-synthesis robustness gap), delete `parseInlineSpeechMarks`; D4 decides the cache hook; timeout parity for Google/Polly. Bucket type and word-timing format already single-sourced upstream. | TTS suites; contract surface grows → api-report/pad/changeset | M | in progress — bucket type + word-timing format closed upstream (`8abe1b28`/`ee1018da`); remainder above |
-| R-11 | Calculator adapters: shared lifecycle/telemetry | D5 picks tiny `calculator-shared` runtime package (recommended) vs parity tests; migrate the four sites; joins Changesets fixed block in the same change if the package is created. | new package → fixed block + api-report + pad | M | todo |
-| R-12 | Interface-i18n wiring: adopt `useInterfaceI18n` | Host-getter param; migrate item-player pair; toolkit optional after. | export signature change → api-report/pad/changeset; i18n suites | S–M | todo |
+A batch closes only its stated scope. An R-id spanning batches stays partially
+open until its remaining scope is completed or explicitly declined. Do not count
+verified local work as merged. R-26 is decision bookkeeping throughout the run
+and a final audit, rather than a decision prerequisite left until the end.
 
-## Wave 2 — Package batches
+### Wave 0 — Correct defects and establish trustworthy release checks
 
-| ID | Title | Scope & fix | Gates / impact | Size | Status |
-|---|---|---|---|---|---|
-| R-13 | Toolkit: neutrality back inside the gate | Add `tool-icons.ts` + `tools-config-normalizer.ts` to the scan list (coordinator already added upstream); the per-tool nested-merge and coordinator quoting left with the TTS lifecycle move; D6 (defaults to the composition layer) softened — defaults now isolated in `services/tool-provider-defaults.ts`, decision still open. | check widened + green; toolkit suites | S | in progress — coordinator + lifecycle move closed upstream (`ff8ab388`); remainder above |
-| R-14 | Tool icons: registry complete, one markup path | Add `highlighter`/`strikethrough` entries; drop the eliminator's inline SVG; rename icon keys to shape names. | registrations tests; visual check | S | todo |
-| R-15 | tts-settings declarations: drop the toolkit type | Local structural coordinator type; align toolkit dep to `devDependencies` across the five packages. | api-report regen + pad note; rides R-02's package | S | todo |
-| R-16 | assessment-player batch | Hoist cycle-safe `sameContent` to players-shared (adopts item-list + assessment-player); fix `@fires` placement + regenerate manifest; delete `AssessmentReadinessChangeDetail`; type the section element; collapse navigation methods; drop the selector trio. | api-report regen; `check:custom-elements-manifest`; lifecycle spec | M | todo |
-| R-17 | section-player batch | Delete five dead controller methods; extract `attachSectionPlayerTelemetry` (×4 → 1); extract card context wiring + shared chrome CSS; heading-id uniqueness via sectionId/mount counter; port `SectionSplitDivider` to pointer events; narrow `SessionChangedResult` (with R-22's pad batch if it touches published types). | typecheck + e2e; (a) internal-only | M | todo |
-| R-18 | item-player batch | D7: markers (or canonicalize) for the two legacy behaviors; fix `showBottomBorder`; shared error banner in players-shared. | players-shared surface → api-report/pad/changeset; e2e session specs | S–M | todo |
-| R-19 | players-shared: one tag-rewrite regex | Extract `rewriteExactTag`; `makeUniqueTags` maps through it; overrides copy leaves with R-22. | helper unit tests | S | todo |
-| R-21 | AccessibilityCatalogResolver: retire the second store | Remove `itemCatalogs` + writers from resolver and published API; reconcile enumeration precedence; fix stale comment. | breaking published API → pad + changeset (batch with R-22) | S–M | todo |
-| R-22 | Dead-surface hygiene batch (pre-release) | The R-22 list above; internal dead code deletes in owning packages' batch PRs. | per removal: pad row/trailer, api-report regen, patch changeset; time immediately before a release | M | todo |
-
-## Wave 3 — Odds and ends
-
-| ID | Title | Contents | Status |
+| Order / branch anchor | Included scope, performed together | Verification / completion condition | Status |
 |---|---|---|---|
-| R-23 | Cross-package helper dedupe | `cloneUnproxied` (×4; keep orchestrator's throw), `errorMessage`, cortex `configureComputeEngine` + narrowed `validateExpression` param, desmos falsy-zero fix + test, version-suffix regex → `parseVersionedTagName`, debug-panel helpers into `-shared` (context anchor ×5, coordinator subscription ×2, clone/cap ×2, list scaffold CSS, drop redundant chrome + divergent `ToolkitCoordinatorLike`). | todo |
-| R-24 | A11y tail | Annotation toolbar announcement keys (en-US + nl-NL); periodic-table `role="grid"` demotion + typed data import; magnifier typed element interface; shell dialog semantics if not in R-08. | todo |
-| R-25 | Infra odds | CLI command inheritance; npm auth YAML → one script/composite action; drop root `resolutions`; CI dist-artifact comment-or-drop; local-esm-cdn dead `cache` field + eslint comments; svelte-check invocation consistency + documented suppressions; `SessionDbPanel` strings via `interfaceI18n`. | todo |
-| R-26 | Decision sweep | Resolve D1–D8; each resolution spawns a ticket or closes with recorded rationale here. | todo |
+| 1 / R-01, then R-07 | Finish the two existing branches as separate PRs; do not combine or rewrite already verified fixes merely to fit the new grouping. R-01 restores accessible undo; R-07 defers tracked-effect writes. | Re-verify against current develop, per-item tests and full push gate; changeset in each; record PR and merge separately. R-07 must merge before batch 5. | R-01: locally verified c84fa59f, PR/remote state needs recheck. R-07: locally verified a484e36c, PR/remote state needs recheck. |
+| 2 / R-04 | Make source-export and pack-integrity validation share the existing collectors. Keep existing command entrypoints initially. Leave unrelated script deletions and D1 out. | `check:scripts`, collector regression tests, both validation callers agree on build-config declarations; no changeset. | todo |
+| 3 / R-02 + R-15 | Finish self-contained debug-panel styles and their class gate; fix tts-settings declarations to use the minimal structural coordinator contract. Inspect all five packages, but change dependency classification only where runtime imports permit it. | Non-DaisyUI visual/keyboard check; panel tests; declaration consumer check without toolkit/skipLibCheck; API report, pad, packaging checks and changeset. Upstream TTS styling is retained. | partial: R-02 TTS panel half shipped upstream; remainder and R-15 todo |
+| 4 / R-03 + R-13 + R-14 + annotation portion of R-24 | One icon pass: centralize FA pin/detection/shadow installation; wire all three consumers; complete fallback glyphs; migrate affected registrations and widen neutrality checks in the same PR. Localize annotation announcements while those controls are under verification. Preserve current provider defaults and public icon keys; defer a rename if it would break callers. | FontAwesome asset/browser specs, single-pin guard, registration and neutrality tests, visual checks, API report/pad for added shared surface; changeset. R-13/R-14 land atomically. | todo; R-13 upstream coordinator work already closed |
+
+### Wave 1 — Interaction and data correctness
+
+| Order / branch anchor | Included scope, performed together | Verification / completion condition | Status |
+|---|---|---|---|
+| 5 / R-05 + R-06 + R-08 + magnifier portion of R-24 | One overlay pass: shared lifecycle and announcement cleanup, composed-ancestor and unmount-key ownership, shell module and named-dialog semantics, typed magnifier seam. Extract shell without redesigning geometry or focus behavior. Preserve each tool's Escape policy unless D2 is approved first. | All four tool contracts and shell E2E, geometry/focus seam tests, teardown/unmount regression checks; API report/pad for shared exports and host attributes; changeset. Requires merged R-07. | todo |
+| 6 / R-09 | Move composition snapshot/revision logic out of the element after the overlay pass; preserve revision keys and event emission behavior. | Runtime tests pin equivalent snapshots, revisions and emission cardinality; changeset. | todo |
+| 7 / R-10 | One TTS correctness pass: converge parsing and wire definitions on the existing contract; preserve current request spellings, precedence and response acceptance. Polly retains valid marks when a line is malformed. No cache hook, wire normalization or default timeout change without explicit approval. | TTS contract/server/client tests, malformed-mark cases, wire compatibility cases, API report/pad and changeset for added declarations. | partial: bucket/word-timing convergence upstream; remaining scope todo |
+| 8 / R-16 + R-17 + remaining R-24 | One player-boundary pass: cycle-safe comparison shared with item-list, accurate event manifest, typed section integration, globally unique internal heading IDs, pointer-based split divider, correct periodic-table semantics. Do not change PIE/model IDs. Include only local dedupe needed for these fixes. Public method/type/selector removals go exclusively to batch 12. | Cyclic-session regression, manifest check, lifecycle/navigation tests, multi-player heading and pointer/keyboard browser checks; API report/pad for shared helper or declarations; changeset. | todo |
+| 9 / R-12 + R-18 + SessionDbPanel portion of R-25 | One locale/session UI pass: adopt existing i18n wiring where current signature permits it; add D7 compatibility markers/tests without changing session projection; fix border cleanup/remount; localize debugger strings. Avoid extracting a new shared error-banner component or breaking the i18n helper signature solely for dedupe. | Locale loading/failure and session tests, border remount check, API report/pad if a signature must change; stop for approval before a break; changeset. | todo |
+| 10 / correctness subset of R-19 + R-21 + R-23 | Finish isolated correctness defects: calculator zero result, versioned-tag parsing, catalog enumeration matching scoped lookup. Preserve published catalog writers/store during this pass. Consolidate tag rewriting only if behavior can be pinned without widening scope; override-loader removal stays in batch 12. | Zero regression, full versioned-tag/contract-ID tests, duplicate catalog-ID precedence test; pad assessment and changeset for observable fixes. | todo |
+
+### Wave 2 — Conditional cleanup after the defect pass
+
+These batches do not block 1.0 merely because the review found duplication or
+unused code. Reassess after batch 10; execute only with an approved benefit or
+an observed release risk. Their pending status is not an instruction to delay
+release until every original finding is eliminated.
+
+| Order / branch anchor | Grouped scope | Admission / gates | Status |
+|---|---|---|---|
+| 11 / R-11 + remaining R-23, then remaining R-25/R-04 | Calculator lifecycle/telemetry and helper dedupe together if a demonstrated leak/divergence warrants it; otherwise defer the new package (D5). Separately finish release-infrastructure cleanup only where it fixes a verified gate/build risk. Unused smoke tool (D1), auth refactors, resolutions removal and broad svelte-check alignment are not automatic stabilization work. | Package/fixed-versioning checks if D5 approved; relevant regressions and scripts tests; separate runtime and infrastructure PRs rather than one cross-cutting cleanup PR. | deferred recommendation; pending maintainer disposition |
+| 12 / R-22 + removal portions of R-16/R-17/R-21 | One explicit public-surface batch: exact symbol list, consumer verification and migration notes before editing. Includes assessment readiness type/selectors, public controller methods and session-result narrowing, catalog-store writers, and the R-22 inventory. D8 governs registry retention. No removals elsewhere. | Maintainer-approved removal list; pad procedure, API report, type/consumer and packaging checks; patch changeset names affected host shapes. If approved, land immediately before the coordinated lockstep release, with time for release-candidate verification. Publishing itself needs a separate instruction. | held; no blanket approval and no scheduled release |
+| 13 / R-26 | Audit every original R-id and D-id: completed scope, deferred scope with rationale, remaining client impacts, and release-candidate evidence. | No silent omissions; unresolved choices cannot be treated as accepted defaults. | ongoing, final audit after applicable batches |
+
+## Client-visible changes: the 1.0 case
+
+The bar is a broken supported workflow, an accessibility defect, incorrect data,
+or an installation/typechecking failure. Dedupe alone does not justify new API
+or changed behavior during stabilization. Each row below still needs pre-item
+verification; the review references are evidence to investigate, not a fresh
+consumer audit.
+
+| Change | Why take it before 1.0? | Recommended boundary / approval needed |
+|---|---|---|
+| Accessible undo, named tool dialogs, valid periodic-table semantics, unique heading IDs (R-01/R-08/R-17/R-24) | A learner must be able to find, understand and operate the existing controls. Shipping inaccessible controls would freeze a known defect into the release. | Approve semantic corrections; retain focus/geometry behavior and contract IDs; browser/assistive-technology evidence where relevant. |
+| Self-styled panels and fixed coordinator declarations (R-02/R-15) | Registration-only integration must work without a host CSS framework, and its types must compile without an undeclared toolkit dependency. These repair the package's existing delivery promise. | Approve required PIE styles and minimal structural declarations; no theme redesign or blanket dependency moves. |
+| Missing glyphs and localized existing announcements (R-03/R-14/R-24/R-25) | Blank icon-only controls obscure available actions. Existing locale selection should govern the labels users hear. | Approve missing-glyph/translation fixes; retain host FA/Pro behavior and public icon keys. Shared helper exports are justified only for actual package consumers. |
+| Overlay lifecycle consolidation / Escape change (R-05/R-06/R-08, D2) | Shared teardown can prevent stale listeners, orphan shells and focus bugs; a large extraction also carries regression risk. The extraction is justified only with equivalent behavior pinned by tests. | Preserve Escape behavior initially. Page-wide dismissal is a separate interaction decision, not required merely to share lifecycle code. |
+| TTS malformed marks, wire declarations, timeout/cache proposals (R-10, D3/D4) | One bad timing line should not discard usable speech. Shared declarations can prevent the existing transports from drifting. | Approve parser resilience and behavior-preserving type convergence. Preserve wire inputs. Defer cache API and default timeouts until a concrete requirement and failure policy justify them. |
+| Cycle safety, border remount, pointer divider, calculator zero, catalog precedence (R-16/R-17/R-18/R-21/R-23) | These fix crashes, lost styling, unavailable input interaction, wrong evaluation output and disagreement about which authored alternative wins. | Approve narrowly tested corrections. Catalog precedence is visible for duplicate IDs: confirm the scoped-lookup rule is intended before changing enumeration. |
+| I18n helper signature / shared UI exports (R-12/R-18) | Reusing a helper is useful but is not by itself a reason to make hosts migrate or publish another component. | Preserve the public signature where possible; defer extraction if it requires a breaking signature without a demonstrated user defect. |
+| Provider defaults (D6) | No stabilization case established: upstream already isolated the defaults. Moving ownership can silently remove read-aloud and annotation tools for custom compositions. | Recommend keeping behavior through 1.0; pending maintainer decision. |
+| Cache hook / calculator package (D4/D5) | No current caller for the hook or need for a new package has been established in this review. Both expand the contract we must stabilize. | Recommend defer; fix any concrete calculator lifecycle defect without requiring a new public package first. |
+| Published removals / theme registry (R-22, D8) | Before 1.0 is the last convenient point to avoid committing to accidental APIs, but absence of observed use is weaker evidence than a broken contract. | No general deletion mandate. Remove only an approved exact list with consumer evidence and migration cost justified; otherwise retain. |
+
+The plan recommendations above do not resolve the decision log. In particular,
+D3 precedence, D2 dismissal, default timeouts and the exact removal list remain
+explicit client-impact decisions. D7's recommended path preserves behavior.
 
 ## Decision log
 
@@ -301,7 +336,7 @@ scopes rather than tracked one by one.
 
 ## Verification loop
 
-After each wave: a focused delta re-review of the touched files (same method as
+After each execution batch: a focused delta re-review of the touched files (same method as
 the 2026-11-03 refresh), and a re-triage of the remaining findings to catch
 anything a refactor invalidated. Full local gate before any push
 (`verify:local-pr`; Playwright outside the sandbox).
@@ -355,3 +390,10 @@ anything a refactor invalidated. Full local gate before any push
   - **Plan correction absorbed:** R-10's "wire types once" home is now the
     `pie-tts` contract, following `8abe1b28`'s precedent — not
     `tts-server-core` as originally written.
+
+- **2026-11-04 (stabilization reorder)** — replaced item-by-item wave order
+  with sequential execution batches, grouped same-owner fixes and their gates,
+  moved every published removal into the conditional R-22 batch, and separated
+  defect repair from optional architecture/cleanup. D1–D8 remain pending; this
+  edit records recommendations, not authorization. No item was marked fixed
+  based on the reorder.

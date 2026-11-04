@@ -305,9 +305,13 @@ not a claim that consumer verification or implementation has already happened.
   back concrete client breakage needing a product decision. Existing permission
   to fix internally controlled consumers applies; i18n explicitly includes its
   API host. This policy does not reverse D4/D5/D6 or authorize publishing.
-- **D7/D8:** evaluate shims and registry exports under that cleanup policy;
-  neither all session shims nor the theme lifecycle is automatically retained
-  or deleted. Establish client need and purposeful 1.0 contract first.
+- **D7:** evaluate session compatibility shims under the approved cleanup
+  policy; retain only behavior required by a verified client contract.
+- **D8:** support mounted integrations: retain and test theme-provider
+  unregistration, including connected-element invalidation and lifecycle
+  cleanup. Assess lookup separately and remove it in R-22 if client verification
+  and the intended 1.0 contract establish no purposeful need. Registration and
+  removal are supported lifecycle operations, not accidental symmetry.
 
 ## Deferred work-computer check — R-10 / D3 client compatibility
 
@@ -424,7 +428,7 @@ explicit client-impact decisions. D7's recommended path preserves behavior.
 | D5 | Calculator shared runtime | tiny `calculator-shared` package / parity tests only | separate implementations for 1.0 | resolved: no new package; meaningful lifecycle parity tests |
 | D6 | Move default-enabled toolkit providers to the composition layer | move (consumer-visible: hosts composing their own set no longer get two providers enabled by default) / keep in coordinator | keep defaults | resolved: preserve coordinator defaults, document and test overrides |
 | D7 | item-player legacy session projection | add `pie-item contract compatibility:` markers + covering tests / declare canonical and drop "legacy" phrasing | markers now | pending |
-| D8 | Theme provider registry trio (`getPieThemeProvider`/`unregisterPieThemeProvider`) | keep (host-symmetric registry; Host M uses `register`) / trim | keep only if symmetry is intended | pending |
+| D8 | Theme provider registry trio (`getPieThemeProvider`/`unregisterPieThemeProvider`) | keep (host-symmetric registry; Host M uses `register`) / trim | mounted-integration lifecycle | resolved: keep/test unregistration; independently assess lookup for R-22 removal |
 
 ## Verification loop
 

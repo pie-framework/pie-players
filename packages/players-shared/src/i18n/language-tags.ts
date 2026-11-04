@@ -197,6 +197,31 @@ function variantSubtagsKey(tag: string | null | undefined): string {
 }
 
 /**
+ * Whether `served` is another variety of `requested`: it names a different
+ * region, or different variant or private-use subtags. `es-MX` served `es-ES`
+ * or `en-GB-x-gulf` served `en-GB` is; `es-MX` served `es`, or `zh-TW` served
+ * `zh-Hant`, is not.
+ */
+function isOtherLanguageVariety(
+	requested: string | null | undefined,
+	served: string | null | undefined,
+): boolean {
+	const region = (tag: string | null | undefined) => {
+		const [base] = splitVariantSubtags(tag);
+		const last = base.length > 1 ? base[base.length - 1] : "";
+		return /^([a-z]{2}|\d{3})$/i.test(last) ? last.toLowerCase() : undefined;
+	};
+	const requestedRegion = region(requested);
+	const servedRegion = region(served);
+	return (
+		(requestedRegion !== undefined &&
+			servedRegion !== undefined &&
+			requestedRegion !== servedRegion) ||
+		variantSubtagsKey(requested) !== variantSubtagsKey(served)
+	);
+}
+
+/**
  * A tag without its variant, extension and private-use subtags, casing kept:
  * `en-GB-x-gulf` yields `en-GB`. The form for a speech engine, whose voices
  * are keyed by language and region.
@@ -238,8 +263,11 @@ export function findClosestLanguageMatch(
 export interface ContentLanguageMatch {
 	/** The `available` entry served, as authored; `null` for content that declares no language. */
 	language: string | null;
-	/** `"fallback"` when the served content stands in for the request. */
-	substitution?: "fallback";
+	/**
+	 * `"fallback"` when the served content stands in for the request;
+	 * `"variety"` when it is another variety of the requested language.
+	 */
+	substitution?: "fallback" | "variety";
 }
 
 /**
@@ -250,7 +278,10 @@ export interface ContentLanguageMatch {
  * chain serves the closest match for `defaultLanguage` (`en-US` reaches `en`),
  * then content that declares no language (a `null` entry), then `source`;
  * `matching` does not narrow it. `undefined` means nothing can be served. No
- * requested languages run the chain without a substitution. Candidates rank
+ * requested languages run the chain without a substitution. A closest match
+ * in another variety, `es-MX` served `es-ES`, records `"variety"`; a host
+ * that must not serve one sets `matching: "exact"` and lists the varieties it
+ * accepts. Candidates rank
  * `source` first, then by tag, so the order of `available` never decides
  * between two siblings.
  */
@@ -277,7 +308,11 @@ export function negotiateContentLanguage(
 			matching === "exact"
 				? candidates.find((candidate) => languageTagsEqual(candidate, tag))
 				: findClosestLanguageMatch(tag, candidates);
-		if (language != null) return { language };
+		if (language != null) {
+			return isOtherLanguageVariety(tag, language)
+				? { language, substitution: "variety" }
+				: { language };
+		}
 	}
 	if (requested.length > 0 && fallback === "none") return undefined;
 	let language: string | null | undefined = findClosestLanguageMatch(defaultLanguage, candidates);

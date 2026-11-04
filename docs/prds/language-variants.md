@@ -145,8 +145,8 @@ screen readers switch voice and right-to-left content lays out correctly per
 item. Read-aloud picks its voice from the stamp
 ([TTS language](../architecture/internationalization.md#tts-language)). A
 fallback substitution leaves the item in a language the learner did not
-request; a host should tell the learner, and the identity carries what it needs
-to.
+request, and a variety substitution in another variety of it; a host should
+tell the learner, and the identity carries what it needs to.
 
 ## Standards Or Adapter Impact
 
@@ -158,7 +158,8 @@ family on import.
 
 - Unit: `negotiateContentLanguage` against the conformance fixtures, including
   script boundaries (`zh-TW` never reaches `zh-Hans`), variant subtags
-  (`en-GB` never reaches `en-GB-x-gulf`), sibling order, `matching: "exact"`,
+  (`en-GB` never reaches `en-GB-x-gulf`), sibling order, `"variety"` for
+  another region or variant (`es-MX` served `es-ES`), `matching: "exact"`,
   the fallback chain and `null` for undeclared content.
 - Item player: a load with `requestedLanguages` refetches on change, and a
   response `identity` sets `env.locale` for render, save and score.

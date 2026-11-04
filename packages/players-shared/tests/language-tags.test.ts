@@ -215,7 +215,10 @@ describe("content-language negotiation conformance", () => {
 			fallback?: "default" | "none";
 			matching?: "closest" | "exact";
 			source?: string | null;
-			expected: { language: string | null; substitution?: "fallback" } | null;
+			expected: {
+				language: string | null;
+				substitution?: "fallback" | "variety";
+			} | null;
 		}[];
 	}
 	const fixtures: Fixtures = JSON.parse(

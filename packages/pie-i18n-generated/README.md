@@ -75,6 +75,22 @@ loaded catalog.
 | `tr` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `tr`, `tr-CY`) | [`briefs/tr.md`](./briefs/tr.md) | 2026-11-04 |
 | `uk` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `uk`; four CLDR plural categories) | [`briefs/uk.md`](./briefs/uk.md) | 2026-11-04 |
 | `el` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `el`, `el-CY`) | [`briefs/el.md`](./briefs/el.md) | 2026-11-04 |
+| `ru` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; big-US wave; four CLDR plural categories) | [`briefs/ru.md`](./briefs/ru.md) | 2026-11-04 |
+| `fil` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; big-US wave; the `tl` tag aliases this catalog) | [`briefs/fil.md`](./briefs/fil.md) | 2026-11-04 |
+| `tl` | alias of `fil` (US systems label the language Tagalog) | [`briefs/fil.md`](./briefs/fil.md) | 2026-11-04 |
+| `ht` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; big-US wave) | [`briefs/ht.md`](./briefs/ht.md) | 2026-11-04 |
+| `ur` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; second RTL wave — inherits the audited RTL layout contract) | [`briefs/ur.md`](./briefs/ur.md) | 2026-11-04 |
+| `fa` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; second RTL wave) | [`briefs/fa.md`](./briefs/fa.md) | 2026-11-04 |
+| `he` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; second RTL wave; CLDR `two` category) | [`briefs/he.md`](./briefs/he.md) | 2026-11-04 |
+| `zh-Hant` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; Taiwan-register Traditional — regional tag, bare `zh` stays Simplified) | [`briefs/zh-Hant.md`](./briefs/zh-Hant.md) | 2026-11-04 |
+| `so` | reviewed (agent pass, 2026-11-04; state/regional wave — terminology partially standardized, **native review strongly advised**) | [`briefs/so.md`](./briefs/so.md) | 2026-11-04 |
+| `hmn` | reviewed (agent pass, 2026-11-04; state/regional wave — White Hmong RPA, CLDR-undersourced, **native review strongly advised**) | [`briefs/hmn.md`](./briefs/hmn.md) | 2026-11-04 |
+| `km` | reviewed (agent pass, 2026-11-04; state/regional wave — Khmer script, **native review strongly advised**) | [`briefs/km.md`](./briefs/km.md) | 2026-11-04 |
+| `lo` | reviewed (agent pass, 2026-11-04; state/regional wave — Lao script, **native review strongly advised**) | [`briefs/lo.md`](./briefs/lo.md) | 2026-11-04 |
+| `bn` | reviewed (agent pass, 2026-11-04; state/regional wave — Bengali script, **native review strongly advised**) | [`briefs/bn.md`](./briefs/bn.md) | 2026-11-04 |
+| `pa` | reviewed (agent pass, 2026-11-04; state/regional wave — Gurmukhi script, **native review strongly advised**) | [`briefs/pa.md`](./briefs/pa.md) | 2026-11-04 |
+| `ne` | reviewed (agent pass, 2026-11-04; state/regional wave — Devanagari script, **native review strongly advised**) | [`briefs/ne.md`](./briefs/ne.md) | 2026-11-04 |
+| `am` | reviewed (agent pass, 2026-11-04; state/regional wave — Ethiopic script, **native review strongly advised**) | [`briefs/am.md`](./briefs/am.md) | 2026-11-04 |
 
 Locale tags are chosen for variant reach: bare tags (`es`, `fr`, `ar`) let
 `es-MX`, `fr-CA` and `ar-SA` widen onto them through RFC 4647 lookup, while

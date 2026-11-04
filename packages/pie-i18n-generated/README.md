@@ -69,6 +69,12 @@ loaded catalog.
 | `ro` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `ro`, `ro-RO`, `ro-MD`; three CLDR plural categories, `other` takes `de`) | [`briefs/ro.md`](./briefs/ro.md) | 2026-10-19 |
 | `vi` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `vi`, `vi-VN`; one CLDR plural category) | [`briefs/vi.md`](./briefs/vi.md) | 2026-11-03 |
 | `nl-NL` | reviewed (**native-speaker audit** — the framework's audit language; carried over from `players-shared`'s bundled set on 2026-11-04, verbatim) | [`briefs/nl-NL.md`](./briefs/nl-NL.md) | 2026-10-18 |
+| `de` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `de`, `de-AT`, `de-CH`) | [`briefs/de.md`](./briefs/de.md) | 2026-11-04 |
+| `it` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `it`) | [`briefs/it.md`](./briefs/it.md) | 2026-11-04 |
+| `pl` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `pl`; four CLDR plural categories) | [`briefs/pl.md`](./briefs/pl.md) | 2026-11-04 |
+| `tr` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `tr`, `tr-CY`) | [`briefs/tr.md`](./briefs/tr.md) | 2026-11-04 |
+| `uk` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `uk`; four CLDR plural categories) | [`briefs/uk.md`](./briefs/uk.md) | 2026-11-04 |
+| `el` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `el`, `el-CY`) | [`briefs/el.md`](./briefs/el.md) | 2026-11-04 |
 
 Locale tags are chosen for variant reach: bare tags (`es`, `fr`, `ar`) let
 `es-MX`, `fr-CA` and `ar-SA` widen onto them through RFC 4647 lookup, while

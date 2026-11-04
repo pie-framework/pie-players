@@ -83,6 +83,14 @@ const GENERATED_CATALOG_LOADERS: Record<string, CatalogLoader> = {
 	// availableLocales, and its absence from the bundled set means a host that
 	// never wires this package never fetches it.
 	"nl-NL": () => import("./messages/nl-NL.js"),
+	// Bare tags: `de-AT`/`de-CH` widen to `de`, `tr` covers `tr-TR`, `el` covers
+	// Greece and Cyprus, `uk` covers Ukrainian everywhere.
+	de: () => import("./messages/de.js"),
+	it: () => import("./messages/it.js"),
+	pl: () => import("./messages/pl.js"),
+	tr: () => import("./messages/tr.js"),
+	uk: () => import("./messages/uk.js"),
+	el: () => import("./messages/el.js"),
 };
 
 /**
@@ -107,6 +115,12 @@ export const GENERATED_LOCALES: readonly string[] = [
 	"ro",
 	"vi",
 	"nl-NL",
+	"de",
+	"it",
+	"pl",
+	"tr",
+	"uk",
+	"el",
 ];
 
 /**

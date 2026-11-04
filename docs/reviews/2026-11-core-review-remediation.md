@@ -251,6 +251,20 @@ These decisions supersede the pending/defer recommendations in the execution
 plan and client-impact table below where they conflict. They authorize scope,
 not a claim that consumer verification or implementation has already happened.
 
+- **R-05/R-06/R-08 overlay batch:** maintainer explicitly approved shell
+  extraction and consolidation before 1.0, including further simplification,
+  better abstractions, robustness and testing support in the involved code.
+  Inspect existing owners before adding helpers; keep the shell internal and
+  the Svelte action thin. Preserve host hooks, context propagation, events,
+  geometry and focus contracts except approved accessibility/D2 corrections.
+  Review idempotent update/destroy, teardown of listeners/timers/gestures/context
+  providers, content replacement and persistent-shell handoff. Reuse existing
+  pointer/focus/placement machinery; share repeated lifecycle/announcement
+  ownership where meaningful. Add behavioral seams for geometry and lifecycle
+  tests plus browser evidence for focus, Shadow DOM, pointer cancellation,
+  stacked Escape and localized shell chrome. Do not turn the extraction into
+  a generic windowing framework or add public API solely for testing.
+  Additional client-visible behavior changes still require review.
 - **D2:** approved consistent Escape dismissal: within the tool, close it;
   from assessment content, dismiss the relevant obscuring overlay without
   moving content focus. Respect Escape already handled by menus/dialogs, and

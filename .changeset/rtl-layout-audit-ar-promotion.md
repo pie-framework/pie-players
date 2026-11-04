@@ -1,0 +1,6 @@
+---
+"@pie-players/pie-i18n-generated": patch
+"@pie-players/pie-section-player": patch
+---
+
+The RTL layout audit that gated the Arabic locale's review has landed, and `ar` is promoted to `reviewed` on its agent string pass (the audit was the gate). The section player's rtl-layout spec grows from two cases to seven rendered ones against the `ar` demo — formative footer mirror, split-pane order flip, toolbar-pane flip, tool-window contents mirroring with screen-position stability, and a chrome-only clipping/overflow sweep collected through the custom elements' open shadow roots — plus a recorded screenshot inspection of the bidi-sensitive text. The audit found and repairs one defect: the toolbar pane's divider was a physical `border-left`/`border-right`, which under RTL rendered on the pane's outer screen edge instead of the content side; it now uses `border-inline-start`/`border-inline-end`, and the pane-flip assertion pins the geometry. Recorded without assertions: the toolbar scrolls (no overflow menu) and its tooltips are browser `title` rendering; Back/Next chrome belongs to the assessment player; the standalone item player has no locale-driven demo route (a follow-up would close that). With no native readers available, `reviewedBy` in the manifest records the agent provenance; the native pass remains open work.

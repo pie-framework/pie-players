@@ -89,8 +89,11 @@ resolves variants:
   `"default"`;
 - `matching`: `"closest"`, the default, serves the nearest variant in the
   requested language, so `es-MX` is served `es` or `es-ES` when the family has
-  no `es-MX`; `"exact"` serves only the requested tag and leaves the rest to
-  `fallback`;
+  no `es-MX`. A variant in another variety, one naming a different region or
+  different variant subtags (`es-ES`, not `es`), records
+  `substitution: "variety"`. `"exact"` serves only the requested tag and leaves
+  the rest to `fallback`, so a host that accepts some varieties and not others
+  lists them in order (`en-GB`, `en-US`);
 - `staleness`: `"serve"` serves a variant whose source has a newer release,
   recording `substitution: "stale"`; `"require-current"` treats it as missing.
 

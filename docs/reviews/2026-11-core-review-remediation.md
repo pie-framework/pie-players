@@ -245,8 +245,8 @@ scopes rather than tracked one by one.
 
 | ID | Title | Scope & fix | Gates / impact | Size | Status |
 |---|---|---|---|---|---|
-| R-01 | Answer-eliminator mask strategy: keep undo reachable | Wire `EliminationChrome`/`setChrome` for mask (announce like strikethrough) and scope `aria-hidden` to the content element, never the container hosting the toggle. Tests for both strategies' aria states. | bun tests; patch changeset; WCAG note | S | todo |
-| R-02 | Published light-DOM panels off host framework classes | Replace DaisyUI/Tailwind classes in `TtsSettingsPanel` + `DebugPanelToggles` with `pie-*` classes styled from component `<style>` on certified `--pie-*` tokens. Extend `tests/panel-theming.test.ts` (or add `check:ce-class-hooks`) to gate the class half. | Visual check in non-DaisyUI host; pad note for Host R; changeset | M | todo |
+| R-01 | Answer-eliminator mask strategy: keep undo reachable | Wire `EliminationChrome`/`setChrome` for mask (announce like strikethrough) and scope `aria-hidden` to the content element, never the container hosting the toggle. Tests for both strategies' aria states. | bun tests; patch changeset; WCAG note | S | done (branch `fix/r01-eliminator-mask-aria-hidden`, c84fa59f, PR pending) |
+| R-02 | Published light-DOM panels off host framework classes | Replace DaisyUI/Tailwind classes in `TtsSettingsPanel` + `DebugPanelToggles` with `pie-*` classes styled from component `<style>` on certified `--pie-*` tokens. Extend `tests/panel-theming.test.ts` (or add `check:ce-class-hooks`) to gate the class half. | Visual check in non-DaisyUI host; pad note for Host R; changeset | M | in progress — tts-settings half closed upstream (969b27ab, PR #920: `pie-tts-*` self-styled hooks, manifest updated); remaining: `DebugPanelToggles` + the class-hygiene gate |
 | R-03 | FA/NDS glyph machinery: one owner, three consumers | New `players-shared` module beside the vendored NDS bundle owning pin + detection + shadow install; migrate `tool-tts-inline` + `ItemToolBar` (toolbar keeps Pro-aware layer); give `SectionItemsPane` the install. | api-report + pad + changeset (new export); extend fontawesome-assets spec; single-pin grep guard | M | todo |
 | R-04 | Publish-surface validation: one implementation | Reduce `check-publish-surface.mjs` to a caller of pack-integrity's collectors (or retire `check:source-exports`); delete the four superseded scripts + root entries; update `docs/setup/publishing.md`, `docs/setup/library-packaging-strategy.md`. D1 decides the smoke tool. | scripts/tests; `check:scripts`; no changeset | S–M | todo |
 
@@ -256,7 +256,7 @@ scopes rather than tracked one by one.
 |---|---|---|---|---|---|
 | R-05 | Overlay-tool lifecycle: one wiring helper | Extract `createOverlayToolLifecycle` next to `createOverlayPlacement` (or beside `createToolCoordinatorRegistration`); migrate the four tools; D2 unifies Escape semantics; extract announce-timer helper. | Per-tool contract tests updated; api-report/pad/changeset; e2e tool suites | L | todo |
 | R-06 | Composed-ancestor walk + unmount key: single homes | Export `findComposedAncestor` from players-shared/ui; move `__pieToolElementUnmount` to toolkit `tools/registration`; cache imports it; pinning test. | api-report/pad for new export; may ride R-05 | S | todo |
-| R-07 | ItemToolBar `$effect`: no tracked-state writes | Defer `syncRenderedToolsState()` via the file's own `queueMicrotask` pattern (or `untrack`), matching `:1146/:1220/:1244`. | Existing tests | S | todo |
+| R-07 | ItemToolBar `$effect`: no tracked-state writes | Defer `syncRenderedToolsState()` via the file's own `queueMicrotask` pattern (or `untrack`), matching `:1146/:1220/:1244`. | Existing tests | S | done (branch `fix/r07-itemtoolbar-effect-mutation`, a484e36c, PR pending) |
 | R-08 | Extract the floating-window shell | Lift `mountElementWithShell` to a headless module beside `tool-surface-host` with `{update, destroy}`; `use:` action becomes an adapter. Include: `role="dialog"` + accessible name; reuse players-shared `getDeepActiveElement`. | e2e shell specs; new unit seam for geometry/focus; no public API change; pad check on host attributes | L | todo |
 | R-09 | Composition revision logic out of the CE | Move the six functions to `runtime/composition-revision.ts` (or `SectionControllerBinding`); component keeps emit wiring. | runtime tests extended; after R-08 (same-file chain) | S–M | todo |
 | R-10 | TTS: one wire protocol, one parser, one bucket type | Wire types once in `tts-server-core` (D3 reconciles `langId`); type-preserving JSONL parser, Polly + client adopt, delete `parseInlineSpeechMarks`; `SpeedRateBucket` single-sourced in `pie-tts`; D4 decides the cache hook; timeout parity for Google/Polly. | TTS suites; tts-server-core api-report/dep changes → pad/changeset | M–L | todo |
@@ -305,3 +305,17 @@ After each wave: a focused delta re-review of the touched files (same method as
 the 2026-11-03 refresh), and a re-triage of the remaining findings to catch
 anything a refactor invalidated. Full local gate before any push
 (`verify:local-pr`; Playwright outside the sandbox).
+
+### Re-triage log
+
+- **2026-11-04** — `develop` advanced ~40 commits while this tracker first
+  landed (PRs up to #926). Verified before rebasing: no upstream change touched
+  the R-01 targets (answer-eliminator strategies/README) or R-07's
+  `ItemToolBar.svelte` effect; both branches rebased cleanly and re-verified.
+  R-02's tts-settings half was closed upstream by PR #920 (`969b27ab`) while
+  this tracker was in flight; its remaining scope is `DebugPanelToggles` and
+  the class-hygiene gate. Upstream also landed adjacent work worth re-triaging
+  against the finding list: `refactor/tts-shared-utils-contract`,
+  `refactor/coordinator-tts-lifecycle`, `fix/print-player-declaration-closure`,
+  `fix/ce-manifest-ts-classes` — a full re-triage of the remaining findings
+  against the new `develop` is the next verification-loop step.

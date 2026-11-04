@@ -287,7 +287,8 @@ Developer panel for the section player demos that shows how the toolkit coordina
 									{#if row.supportedLevels.includes(level)}
 										<button
 											type="button"
-											class:active={row.placement[level]}
+											class:pie-section-player-tools-pnp-debugger__toggle--on={row.placement[level]}
+											aria-pressed={row.placement[level]}
 											onclick={() => togglePlacement(row, level)}
 											data-testid={`pnp-tool-toggle-${row.toolId}-${level}`}
 										>
@@ -312,7 +313,8 @@ Developer panel for the section player demos that shows how the toolkit coordina
 						<div>
 							<button
 								type="button"
-								class:active={row.providerEnabled}
+								class:pie-section-player-tools-pnp-debugger__toggle--on={row.providerEnabled}
+								aria-pressed={row.providerEnabled}
 								onclick={() => toggleProvider(row)}
 								data-testid={`pnp-provider-toggle-${row.toolId}`}
 							>
@@ -322,7 +324,8 @@ Developer panel for the section player demos that shows how the toolkit coordina
 						<div class="pie-section-player-tools-pnp-debugger__button-row">
 							<button
 								type="button"
-								class:active={row.pnpSupported}
+								class:pie-section-player-tools-pnp-debugger__toggle--on={row.pnpSupported}
+								aria-pressed={row.pnpSupported}
 								onclick={() => togglePnp(row, 'supports')}
 								data-testid={`pnp-support-toggle-${row.toolId}`}
 							>
@@ -330,7 +333,8 @@ Developer panel for the section player demos that shows how the toolkit coordina
 							</button>
 							<button
 								type="button"
-								class:danger={row.pnpProhibited}
+								class:pie-section-player-tools-pnp-debugger__toggle--prohibited={row.pnpProhibited}
+								aria-pressed={row.pnpProhibited}
 								onclick={() => togglePnp(row, 'prohibitedSupports')}
 								data-testid={`pnp-prohibit-toggle-${row.toolId}`}
 							>
@@ -372,11 +376,12 @@ Developer panel for the section player demos that shows how the toolkit coordina
 	 * classes no component owns; these are private to this panel, and 10 of its 13
 	 * classes were already defined here, so the split was drift rather than design.
 	 *
-	 * :global() on the first two is required, not decorative. They are applied by
-	 * SharedFloatingPanel rather than by this template -- `className` lands on its
-	 * root element and `bodyClass` on its body element -- so Svelte would scope the
-	 * selectors to this component and they would match nothing. The rest sit on
-	 * elements in this file's markup and scope normally.
+	 * :global() on the root and body classes is required, not decorative. They are
+	 * applied by SharedFloatingPanel rather than by this template -- `className`
+	 * lands on its root element and `bodyClass` on its body element -- so Svelte
+	 * would scope a selector naming them to this component and prune it, as it
+	 * did the toggle rules. The rest sit on elements in this file's markup and
+	 * scope normally.
 	 */
 	:global(.pie-section-player-tools-pnp-debugger) {
 		position: fixed;
@@ -522,7 +527,7 @@ Developer panel for the section player demos that shows how the toolkit coordina
 		font-size: 0.75rem;
 	}
 
-	.pie-section-player-tools-pnp-debugger button {
+	:global(.pie-section-player-tools-pnp-debugger) button {
 		border: 1px solid var(--pie-button-border, #8f8f8f);
 		border-radius: 0.375rem;
 		background: var(--pie-button-bg, #ffffff);
@@ -532,7 +537,7 @@ Developer panel for the section player demos that shows how the toolkit coordina
 		padding: 0.25rem 0.5rem;
 	}
 
-	.pie-section-player-tools-pnp-debugger button.active {
+	:global(.pie-section-player-tools-pnp-debugger) button.pie-section-player-tools-pnp-debugger__toggle--on {
 		border-color: var(--pie-button-hover-border, #8b919c);
 		/* `--pie-button-active-bg` is certified against `--pie-button-color` and
 		   nothing else, so the two move together. */
@@ -541,7 +546,7 @@ Developer panel for the section player demos that shows how the toolkit coordina
 		font-weight: 600;
 	}
 
-	.pie-section-player-tools-pnp-debugger button.danger {
+	:global(.pie-section-player-tools-pnp-debugger) button.pie-section-player-tools-pnp-debugger__toggle--prohibited {
 		/* The destructive state rides the border, which keeps the label on a
 		   certified pair; `--pie-incorrect` clears 4.5:1 against the page on every
 		   scheme, past the 3:1 a boundary owes. */

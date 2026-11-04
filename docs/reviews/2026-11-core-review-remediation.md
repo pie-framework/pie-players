@@ -260,6 +260,17 @@ not a claim that consumer verification or implementation has already happened.
   chosen to support WCAG 2.2 focus visibility, not a claim WCAG mandates Escape.
 - **D6:** keep coordinator provider defaults as intentional 1.0 behavior;
   document them and test explicit overrides.
+- **R-10 / request budgets:** approved configurable finite request budgets
+  for Google and Polly. Choose defaults after checking known-client limits and
+  representative synthesis requests; do not copy SC's 15 seconds blindly.
+  Cancel underlying work, define coverage across retries and synthesis stages,
+  and test timeout reporting and cleanup.
+- **D3:** approved one canonical internal language field; adapters emit the
+  fields required by their endpoint, preserving explicit host language overrides.
+  Double-check known client implementations before removing dual-send. The
+  local consumer map is absent and recorded client checkouts were not located.
+  Maintainer deferred verification to a work computer; see the separate handoff
+  below. Do not remove dual-send based on this incomplete local check.
 - **D4:** keep route-level TTS caching; verify the documented integration and
   add no provider cache hook for 1.0.
 - **D5:** keep calculator adapter implementations separate for 1.0 and fill
@@ -283,6 +294,34 @@ not a claim that consumer verification or implementation has already happened.
 - **D7/D8:** evaluate shims and registry exports under that cleanup policy;
   neither all session shims nor the theme lifecycle is automatically retained
   or deleted. Establish client need and purposeful 1.0 contract first.
+
+## Deferred work-computer check — R-10 / D3 client compatibility
+
+**Status:** deferred by maintainer on 2026-11-04; requires client checkouts on
+a different computer. This is a separate verification task, not an unresolved
+design choice and not a reason to stop unrelated remediation.
+
+**Question:** for every known client and its actual TTS endpoint, which language
+fields are configured, sent and accepted; which override wins; and are speech
+marks inline, fetched by URL or both? Establish where dual-send can safely go.
+Use the consumer-pad maintenance procedure's targeted-surface scope; resolve
+every recorded consumer, explicitly report missing checkouts, and inspect the
+backend implementation as well as browser configuration. Preserve existing
+explicit host language overrides. A browser payload alone is not proof of what
+a remote endpoint accepts.
+
+**Approved direction:** one canonical internal language field; each adapter
+emits only the fields its endpoint requires. Keep current wire behavior until
+verified. Keep route-level caching (D4); add no provider cache hook. Google and
+Polly request budgets are authorized separately, but their defaults must also
+be informed by client limits and representative synthesis requests.
+
+**Deliverable:** redacted per-host evidence and safe migration plan; verified
+required spellings, precedence, marks formats, missing evidence and regression
+cases. Update consumer-pad rows only when evidence contradicts them; do not
+advance full-refresh dates for a targeted check. Record results here. No wire
+implementation, external client migration, release or publish is implied by
+this verification handoff.
 
 ## Sequential execution plan — 1.0 stabilization
 
@@ -317,7 +356,7 @@ and a final audit, rather than a decision prerequisite left until the end.
 |---|---|---|---|
 | 5 / R-05 + R-06 + R-08 + magnifier portion of R-24 | One overlay pass: shared lifecycle and announcement cleanup, composed-ancestor and unmount-key ownership, shell module and named-dialog semantics, typed magnifier seam. Extract shell without redesigning geometry or focus behavior. Preserve each tool's Escape policy unless D2 is approved first. | All four tool contracts and shell E2E, geometry/focus seam tests, teardown/unmount regression checks; API report/pad for shared exports and host attributes; changeset. Requires merged R-07. | todo |
 | 6 / R-09 | Move composition snapshot/revision logic out of the element after the overlay pass; preserve revision keys and event emission behavior. | Runtime tests pin equivalent snapshots, revisions and emission cardinality; changeset. | todo |
-| 7 / R-10 | One TTS correctness pass: converge parsing and wire definitions on the existing contract; preserve current request spellings, precedence and response acceptance. Polly retains valid marks when a line is malformed. No cache hook, wire normalization or default timeout change without explicit approval. | TTS contract/server/client tests, malformed-mark cases, wire compatibility cases, API report/pad and changeset for added declarations. | partial: bucket/word-timing convergence upstream; remaining scope todo |
+| 7 / R-10 | One TTS correctness pass: converge parsing and wire definitions on the existing contract; preserve current request spellings, precedence and response acceptance. Polly retains valid marks when a line is malformed. No cache hook or wire normalization without approval; configurable finite Google/Polly request budgets are approved, with defaults derived from client limits and representative requests. | TTS contract/server/client tests, malformed-mark cases, wire compatibility cases, API report/pad and changeset for added declarations. | partial: bucket/word-timing convergence upstream; remaining scope todo |
 | 8 / R-16 + R-17 + remaining R-24 | One player-boundary pass: cycle-safe comparison shared with item-list, accurate event manifest, typed section integration, globally unique internal heading IDs, pointer-based split divider, correct periodic-table semantics. Do not change PIE/model IDs. Include only local dedupe needed for these fixes. Public method/type/selector removals go exclusively to batch 12. | Cyclic-session regression, manifest check, lifecycle/navigation tests, multi-player heading and pointer/keyboard browser checks; API report/pad for shared helper or declarations; changeset. | todo |
 | 9 / R-12 + R-18 + SessionDbPanel portion of R-25 | One locale/session UI pass: adopt existing i18n wiring where current signature permits it; add D7 compatibility markers/tests without changing session projection; fix border cleanup/remount; localize debugger strings. Avoid extracting a new shared error-banner component or breaking the i18n helper signature solely for dedupe. | Locale loading/failure and session tests, border remount check, API report/pad if a signature must change; stop for approval before a break; changeset. | todo |
 | 10 / correctness subset of R-19 + R-21 + R-23 | Finish isolated correctness defects: calculator zero result, versioned-tag parsing, catalog enumeration matching scoped lookup. Preserve published catalog writers/store during this pass. Consolidate tag rewriting only if behavior can be pinned without widening scope; override-loader removal stays in batch 12. | Zero regression, full versioned-tag/contract-ID tests, duplicate catalog-ID precedence test; pad assessment and changeset for observable fixes. | todo |
@@ -349,7 +388,7 @@ consumer audit.
 | Self-styled panels and fixed coordinator declarations (R-02/R-15) | Registration-only integration must work without a host CSS framework, and its types must compile without an undeclared toolkit dependency. These repair the package's existing delivery promise. | Approve required PIE styles and minimal structural declarations; no theme redesign or blanket dependency moves. |
 | Missing glyphs and localized existing announcements (R-03/R-14/R-24/R-25) | Blank icon-only controls obscure available actions. Existing locale selection should govern the labels users hear. | Approve missing-glyph/translation fixes; retain host FA/Pro behavior and public icon keys. Shared helper exports are justified only for actual package consumers. |
 | Overlay lifecycle consolidation / Escape change (R-05/R-06/R-08, D2) | Shared teardown can prevent stale listeners, orphan shells and focus bugs; a large extraction also carries regression risk. The extraction is justified only with equivalent behavior pinned by tests. | Preserve Escape behavior initially. Page-wide dismissal is a separate interaction decision, not required merely to share lifecycle code. |
-| TTS malformed marks, wire declarations, timeout/cache proposals (R-10, D3/D4) | One bad timing line should not discard usable speech. Shared declarations can prevent the existing transports from drifting. | Approve parser resilience and behavior-preserving type convergence. Preserve wire inputs. Defer cache API and default timeouts until a concrete requirement and failure policy justify them. |
+| TTS malformed marks, wire declarations, timeout/cache proposals (R-10, D3/D4) | One bad timing line should not discard usable speech. Shared declarations can prevent the existing transports from drifting. | Approve parser resilience and behavior-preserving type convergence. Preserve wire inputs. No provider cache API for 1.0 (D4). Finite configurable Google/Polly request budgets are approved; verify defaults, cancellation and failure policy. |
 | Cycle safety, border remount, pointer divider, calculator zero, catalog precedence (R-16/R-17/R-18/R-21/R-23) | These fix crashes, lost styling, unavailable input interaction, wrong evaluation output and disagreement about which authored alternative wins. | Approve narrowly tested corrections. Catalog precedence is visible for duplicate IDs: confirm the scoped-lookup rule is intended before changing enumeration. |
 | I18n helper signature / shared UI exports (R-12/R-18) | Reusing a helper is useful but is not by itself a reason to make hosts migrate or publish another component. | Preserve the public signature where possible; defer extraction if it requires a breaking signature without a demonstrated user defect. |
 | Provider defaults (D6) | No stabilization case established: upstream already isolated the defaults. Moving ownership can silently remove read-aloud and annotation tools for custom compositions. | Recommend keeping behavior through 1.0; pending maintainer decision. |
@@ -366,7 +405,7 @@ explicit client-impact decisions. D7's recommended path preserves behavior.
 |---|---|---|---|---|
 | D1 | `scripts/smoke-pie-elements-ng-esm.mjs` (~950 lines, zero callers) | wire into docs / delete | delete | pending |
 | D2 | Escape-close semantics for obscuring overlay tools | page-wide close with `defaultPrevented` guard (magnifier, WCAG 2.4.11) / focused-panel only (line-reader) | ordered dismissal | resolved: relevant obscuring overlay, handled-event protection, one layer per press; preserve content focus |
-| D3 | `langId`/`lang_id` wire reconciliation | both spellings everywhere / single spelling | both spellings (client's documented camelCase accommodation) | pending |
+| D3 | `langId`/`lang_id` wire reconciliation | both spellings everywhere / single spelling | canonical internal field, endpoint-specific adapters | resolved direction; known-client verification required before dual-send removal |
 | D4 | TTS cache module | add optional cache hook to `BaseTTSProvider`/`ITTSServerProvider` / document route-level caching as the story | route-level caching | resolved: keep route-level caching; no provider hook for 1.0 |
 | D5 | Calculator shared runtime | tiny `calculator-shared` package / parity tests only | separate implementations for 1.0 | resolved: no new package; meaningful lifecycle parity tests |
 | D6 | Move default-enabled toolkit providers to the composition layer | move (consumer-visible: hosts composing their own set no longer get two providers enabled by default) / keep in coordinator | keep defaults | resolved: preserve coordinator defaults, document and test overrides |

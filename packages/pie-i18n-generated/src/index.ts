@@ -77,6 +77,12 @@ const GENERATED_CATALOG_LOADERS: Record<string, CatalogLoader> = {
 	ro: () => import("./messages/ro.js"),
 	// Bare tag: `vi-VN` widens to `vi`.
 	vi: () => import("./messages/vi.js"),
+	// Regional on purpose, like en-GB/en-AU: the framework's audit language,
+	// native-speaker-reviewed, carried over from players-shared's bundled set
+	// on 2026-11-04. A bare `nl` widens onto it through the host's composed
+	// availableLocales, and its absence from the bundled set means a host that
+	// never wires this package never fetches it.
+	"nl-NL": () => import("./messages/nl-NL.js"),
 };
 
 /**
@@ -100,6 +106,7 @@ export const GENERATED_LOCALES: readonly string[] = [
 	"sv",
 	"ro",
 	"vi",
+	"nl-NL",
 ];
 
 /**

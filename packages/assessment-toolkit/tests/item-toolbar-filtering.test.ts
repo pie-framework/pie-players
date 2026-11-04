@@ -322,3 +322,84 @@ describe("<pie-item-toolbar> coordinator entries", () => {
 		expect(coordinator.getToolState("probe:item:item-2")).toBeUndefined();
 	});
 });
+
+describe("<pie-item-toolbar> active-state wiring", () => {
+	/**
+	 * A tool whose `sync` reads reactive state, as a tool syncing from its
+	 * element or coordinator does, and counts its active-state subscriptions.
+	 */
+	function syncingRegistry(cell: { value: number }) {
+		const counts = { syncs: 0, subscribes: 0, unsubscribes: 0 };
+		let notify: ((active: boolean) => void) | null = null;
+		const base = toolbarTool({ toolId: "syncing" });
+		const registry = new ToolRegistry();
+		registry.register({
+			...base,
+			renderToolbar: () => ({
+				toolId: "syncing",
+				button: {
+					toolId: "syncing",
+					label: "syncing",
+					icon: "test",
+					ariaLabel: "syncing",
+					onClick: () => {},
+				},
+				sync: () => {
+					void cell.value;
+					counts.syncs += 1;
+				},
+				subscribeActive: (callback) => {
+					counts.subscribes += 1;
+					notify = callback;
+					return () => {
+						counts.unsubscribes += 1;
+					};
+				},
+			}),
+		});
+		registry.setToolModuleLoaders({ syncing: async () => {} });
+		return { registry, counts, notify: (active: boolean) => notify?.(active) };
+	}
+
+	test("a tool's sync reading state does not resubscribe its active state", async () => {
+		const { reactiveCell } = await import("./fixtures/reactive-cell.svelte.ts");
+		const cell = reactiveCell(0);
+		const { registry, counts } = syncingRegistry(cell);
+		const toolbar = await mountItemToolbar({
+			registry,
+			placed: [{ toolId: "syncing", alwaysAvailable: true }],
+		});
+		mounted.push(toolbar);
+		await settle();
+		const settled = { ...counts };
+		expect(settled.subscribes).toBeGreaterThan(0);
+		expect(settled.syncs).toBeGreaterThan(0);
+
+		cell.value = 1;
+		await settle();
+		expect(counts.subscribes).toBe(settled.subscribes);
+		expect(counts.unsubscribes).toBe(settled.unsubscribes);
+	});
+
+	test("an active-state signal reaches the button and unsubscribes on removal", async () => {
+		const { reactiveCell } = await import("./fixtures/reactive-cell.svelte.ts");
+		const { registry, counts, notify } = syncingRegistry(reactiveCell(0));
+		const toolbar = await mountItemToolbar({
+			registry,
+			placed: [{ toolId: "syncing", alwaysAvailable: true }],
+		});
+		await settle();
+		const button = () =>
+			toolbar.toolbar.shadowRoot?.querySelector<HTMLButtonElement>(
+				"button.item-toolbar__button",
+			);
+		expect(button()?.getAttribute("aria-pressed")).toBe("false");
+
+		notify(true);
+		await settle();
+		expect(button()?.getAttribute("aria-pressed")).toBe("true");
+
+		await toolbar.remove();
+		expect(counts.unsubscribes).toBe(counts.subscribes);
+	});
+});

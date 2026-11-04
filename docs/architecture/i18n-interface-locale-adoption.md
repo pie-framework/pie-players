@@ -255,8 +255,13 @@ the catalog conventions.
 
 ## Locale set and coverage policy
 
-`en-US` and `nl-NL` ship, both complete. `nl-NL` is the audit language and gets
-every key.
+`en-US` is the only catalog `players-shared` bundles — statically resident, the
+fallback every other locale resolves through. `nl-NL`, the audit language, gets
+every key; it moved on 2026-11-04 into the optional generated tier as a
+`reviewed` catalog, carried over verbatim, so a host that composes that tier's
+loaders still serves Dutch while a host that never wires it never fetches it.
+The tier's README holds the locale table; its review lifecycle and English
+snapshots now protect the audit work.
 
 The replaced layer's `es`, `zh` and `ar` catalogs were deleted, not re-keyed, for
 three reasons, each sufficient alone:

@@ -4,7 +4,9 @@ import { afterEach, expect, test } from "bun:test";
 const ownsDom = typeof window === "undefined";
 if (ownsDom) GlobalRegistrator.register();
 
-const { createPieI18n } = await import("@pie-players/pie-players-shared/i18n");
+const { createPieI18n, loadBundledCatalog } = await import(
+	"@pie-players/pie-players-shared/i18n"
+);
 await import("../tool-annotation-toolbar.svelte");
 
 const RUNTIME = Symbol.for("pie.assessmentToolkit.runtimeContext");
@@ -66,8 +68,25 @@ afterEach(async () => {
 	await settle();
 });
 
+// The bundled set is `en-US` only, so the test composes a provider over a Dutch
+// slice, as a host wiring the generated tier would.
+const dutchCatalog = {
+	tools: {
+		annotationToolbar: {
+			selectionAvailableA11y:
+				"Werkbalk voor aantekeningen beschikbaar voor “{text}”. Druk op Shift+F10 voor de aantekeninghulpmiddelen.",
+		},
+	},
+};
+const dutchProvider = () =>
+	createPieI18n({
+		availableLocales: ["en-US", "nl-NL"],
+		loadCatalog: async (locale) =>
+			locale === "nl-NL" ? (dutchCatalog as never) : loadBundledCatalog(locale),
+	});
+
 test("a selection is announced in the interface locale", async () => {
-	const i18n = createPieI18n();
+	const i18n = dutchProvider();
 	await i18n.setLocale("nl-NL");
 	const { toolbar, paragraph } = mount(i18n);
 	await settle();

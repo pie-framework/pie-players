@@ -149,6 +149,14 @@
 			"reviewedBy": "Agent review pass (GLM, Z.ai) standing in for a native reader, none available; accepted by the maintainer. Register and terminology pass per the calibration finding list, verifying the brief's pins (Nộp, bảng, kính lúp, phân loại) and the pronoun-free impersonal register; decisions pinned in briefs/vi.md. A native pass remains open work.",
 			"model": "GLM (Z.ai), agent-driven generation in the pie-players repo; language pass on 2026-11-03 (GLM, Z.ai): previous/maximize button register (Trước, Tối đa hóa), enabled/disabled toggle-state pair (Bật/Tắt), window maximize no longer clashes with zoom-in, media-prose aspect added (khi đa phương tiện đang phát), district reads học khu, host kept Latin in developer strings (máy chủ is a false friend for server), tất cả + các on countable nouns, lowercase mid-string noun in speedOptionsHelp, previewUnavailable disambiguated with trong khi, protractor description drops the đo góc tautology — pinned into briefs/vi.md in the same change; the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04",
 			"sourceHash": "c8ae6d74525d1eea3acb576682690ad169ec4a35ef0a785153c84dca803ea970"
+		},
+		"nl-NL": {
+			"status": "reviewed",
+			"brief": "briefs/nl-NL.md",
+			"generatedAt": "2026-10-18",
+			"reviewedAt": "2026-10-18",
+			"reviewedBy": "Native-speaker audit with assessment-domain context — the framework's audit language and the calibration report's ground truth. The catalog predates this package: it was players-shared's bundled nl-NL and moved here verbatim on 2026-11-04 when only en-US stayed bundled; regeneration is surgical against its English snapshot, so the audit work is preserved.",
+			"model": "not machine-generated: authored and audited directly in players-shared (the pre-tier bundled set), carried over verbatim; the annotation-toolbar announcement keys by Claude (claude-opus-5-5) on 2026-11-04"
 		}
 	}
 }

@@ -1,5 +1,5 @@
 /**
- * Lazy catalog loaders for every locale this repository ships.
+ * The bundled catalog loader: `en-US`, the one statically shipped catalog.
  *
  * Imported by players, never by tools. A tool resolves its provider from the
  * toolkit runtime context and needs only the interface plus the English
@@ -7,16 +7,21 @@
  * into a bundle that never calls `setLocale`, because every tool
  * `vite.config.ts` sets `external: []`.
  *
- * An explicit static map rather than a bundler macro: `tsc` emits these
- * `import()` calls verbatim, so `players-shared/dist` evaluates anywhere ESM
- * does — webpack, esbuild, Rollup, Node, or a browser loading the files
- * directly. `pie-qti` used `import.meta.glob` and shipped a `dist` that throws
- * under every one of those. Each bundler still sees the specifiers statically,
- * so each locale stays its own chunk. Adding a locale means adding one line here
- * alongside the file.
+ * `en-US` is the source of truth — the fallback for every missing key in every
+ * other locale — so the provider imports it statically and it is always
+ * resident. It is the only catalog this package ships: every other locale this
+ * repository ships lives in the optional generated tier
+ * (`@pie-players/pie-i18n-generated`), whose loaders a host composes after
+ * this one. The composed shape is that package's README's wiring example:
  *
- * `en-US` is absent: it is the fallback for every missing key in every other
- * locale, so the provider imports it statically and it is always resident.
+ * ```ts
+ * loadCatalog: (locale) =>
+ *   loadBundledCatalog(locale).catch(() => loadGeneratedCatalog(locale));
+ * ```
+ *
+ * A request this function cannot serve rejects, and the provider treats that
+ * as "resolve through the fallback chain" rather than an error, so a host
+ * locale nothing ships still renders English.
  *
  * @module @pie-players/pie-players-shared/i18n/catalogs
  */
@@ -24,22 +29,15 @@
 import enUS from "./messages/en-US.js";
 import type { BundledLocaleCode, MessageCatalog } from "./types.js";
 
-type CatalogLoader = () => Promise<{ default: MessageCatalog }>;
-
-const CATALOG_LOADERS: Record<
-	Exclude<BundledLocaleCode, "en-US">,
-	CatalogLoader
-> = {
-	"nl-NL": () => import("./messages/nl-NL.js"),
-};
-
 /**
- * Every locale tag this repository ships a catalog for, English included.
+ * Every locale tag this repository bundles a catalog for. `en-US` alone: the
+ * statically resident source of truth.
  *
  * The provider resolves a request against this list through RFC 4647 lookup and
- * primary-subtag widening, so `nl`, `nl_NL` and `nl-BE` all reach `nl-NL`.
+ * primary-subtag widening, so `en`, `en_US` and `en-GB`-without-a-catalog all
+ * land on `en-US` unless a composed loader serves the region.
  */
-export const BUNDLED_LOCALES: readonly BundledLocaleCode[] = ["en-US", "nl-NL"];
+export const BUNDLED_LOCALES: readonly BundledLocaleCode[] = ["en-US"];
 
 /**
  * Load one shipped catalog.
@@ -49,7 +47,7 @@ export const BUNDLED_LOCALES: readonly BundledLocaleCode[] = ["en-US", "nl-NL"];
  * or a pseudo-localization of the English catalog — asks for it by name like
  * any other locale.
  *
- * Throws for a locale with no shipped catalog; the provider treats that as
+ * Rejects for a locale with no bundled catalog; the provider treats that as
  * "resolve through the fallback chain" rather than an error, so a host locale we
  * do not ship still renders.
  */
@@ -59,10 +57,5 @@ export async function loadBundledCatalog(
 	if (locale === "en-US") {
 		return enUS;
 	}
-	const loader = CATALOG_LOADERS[locale as Exclude<BundledLocaleCode, "en-US">];
-	if (!loader) {
-		throw new Error(`No bundled i18n catalog for locale: ${locale}`);
-	}
-	const module = await loader();
-	return module.default;
+	throw new Error(`No bundled i18n catalog for locale: ${locale}`);
 }

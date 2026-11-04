@@ -40,10 +40,20 @@ afterAll(async () => {
 	if (GlobalRegistrator.isRegistered) await GlobalRegistrator.unregister();
 });
 
+// The bundled set is `en-US` only — the audited Dutch catalog lives in the
+// optional generated tier, which this package cannot reach across to. These
+// tests only need a Dutch slice to exercise resolution, overrides and
+// direction, so one is synthesized here; a key the fixture lacks falls back
+// to English exactly as a real catalog gap would.
+const nlNLFixture: MessageCatalog = {
+	common: { close: "Sluiten", cancel: "Annuleren" },
+};
+
 function createProvider(locale?: string) {
 	return new SimpleI18n({
 		locale,
-		loadCatalog: loadBundledCatalog,
+		loadCatalog: async (requested) =>
+			requested === "nl-NL" ? nlNLFixture : await loadBundledCatalog(requested),
 		availableLocales: ["en-US", "nl-NL"],
 	});
 }

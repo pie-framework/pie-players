@@ -416,6 +416,18 @@ const tr = {
 			highlightPinkA11y: "Pembe vurgu",
 			highlightBlueA11y: "Mavi vurgu",
 			highlightGreenA11y: "Yeşil vurgu",
+			selectionAvailableA11y:
+				"“{text}” için metin açıklaması araç çubuğu kullanılabilir. Açıklama araçları için Shift+F10 tuşlarına basın.",
+			highlightedYellowA11y: "“{text}” sarıyla vurgulandı",
+			highlightedPinkA11y: "“{text}” pembeyle vurgulandı",
+			highlightedBlueA11y: "“{text}” maviyle vurgulandı",
+			highlightedGreenA11y: "“{text}” yeşille vurgulandı",
+			underlinedA11y: "“{text}” ifadesinin altı çizildi",
+			removedA11y: "“{text}” ifadesindeki açıklama kaldırıldı",
+			clearedA11y: {
+				one: "{count} açıklama temizlendi",
+				other: "{count} açıklama temizlendi",
+			},
 		},
 		theme: {
 			name: "Tema",

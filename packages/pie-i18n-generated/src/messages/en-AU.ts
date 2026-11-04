@@ -406,6 +406,18 @@ const enAU = {
 			highlightPinkA11y: "Pink highlight",
 			highlightBlueA11y: "Blue highlight",
 			highlightGreenA11y: "Green highlight",
+			selectionAvailableA11y:
+				"Annotation toolbar available for “{text}”. Press Shift+F10 for annotation tools.",
+			highlightedYellowA11y: "“{text}” highlighted in yellow",
+			highlightedPinkA11y: "“{text}” highlighted in pink",
+			highlightedBlueA11y: "“{text}” highlighted in blue",
+			highlightedGreenA11y: "“{text}” highlighted in green",
+			underlinedA11y: "“{text}” underlined",
+			removedA11y: "Removed annotation from “{text}”",
+			clearedA11y: {
+				one: "{count} annotation cleared",
+				other: "{count} annotations cleared",
+			},
 		},
 		theme: {
 			name: "Theme",

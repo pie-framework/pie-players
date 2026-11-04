@@ -432,6 +432,18 @@ const el = {
 			highlightPinkA11y: "Ροζ επισήμανση",
 			highlightBlueA11y: "Μπλε επισήμανση",
 			highlightGreenA11y: "Πράσινη επισήμανση",
+			selectionAvailableA11y:
+				"Η γραμμή εργαλείων σχολιασμού κειμένου είναι διαθέσιμη για «{text}». Πατήστε Shift+F10 για τα εργαλεία σχολιασμού.",
+			highlightedYellowA11y: "Το «{text}» επισημάνθηκε με κίτρινο",
+			highlightedPinkA11y: "Το «{text}» επισημάνθηκε με ροζ",
+			highlightedBlueA11y: "Το «{text}» επισημάνθηκε με μπλε",
+			highlightedGreenA11y: "Το «{text}» επισημάνθηκε με πράσινο",
+			underlinedA11y: "Το «{text}» υπογραμμίστηκε",
+			removedA11y: "Το σχόλιο αφαιρέθηκε από το «{text}»",
+			clearedA11y: {
+				one: "Απαλείφθηκε {count} σχόλιο",
+				other: "Απαλείφθηκαν {count} σχόλια",
+			},
 		},
 		theme: {
 			name: "Θέμα",

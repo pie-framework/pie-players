@@ -45,7 +45,7 @@ const context: ToolContext = {
 	item: { id: "i1", config: { elements: {} } } as any,
 };
 
-const renderStrategy = (parameters: Record<string, unknown> | null) => {
+const renderToolbar = (parameters: Record<string, unknown> | null) => {
 	const toolbarContext = {
 		scope: { level: "item", scopeId: "i1" },
 		itemId: "i1",
@@ -63,12 +63,17 @@ const renderStrategy = (parameters: Record<string, unknown> | null) => {
 			toolComponentFactories: { answerEliminator: () => createFakeElement() },
 		},
 	} as unknown as ToolbarContext;
-	const element = answerEliminatorToolRegistration.renderToolbar?.(
-		context,
-		toolbarContext,
-	)?.elements?.[0]?.element;
-	return element?.getAttribute("strategy");
+	return answerEliminatorToolRegistration.renderToolbar?.(context, toolbarContext);
 };
+
+const renderStrategy = (parameters: Record<string, unknown> | null) =>
+	renderToolbar(parameters)?.elements?.[0]?.element?.getAttribute("strategy");
+
+test("the answer eliminator's button draws its registration's icon", () => {
+	expect(renderToolbar(null)?.button?.icon).toBe(
+		answerEliminatorToolRegistration.icon,
+	);
+});
 
 test("the answer eliminator takes its strategy from its policy parameters", () => {
 	expect(renderStrategy({ strategy: "mask" })).toBe("mask");

@@ -424,6 +424,22 @@ const ar = {
 			highlightPinkA11y: "تظليل وردي",
 			highlightBlueA11y: "تظليل أزرق",
 			highlightGreenA11y: "تظليل أخضر",
+			selectionAvailableA11y:
+				"شريط أدوات التعليق متاح لـ«{text}». اضغط Shift+F10 لأدوات التعليق.",
+			highlightedYellowA11y: "تم تظليل «{text}» باللون الأصفر",
+			highlightedPinkA11y: "تم تظليل «{text}» باللون الوردي",
+			highlightedBlueA11y: "تم تظليل «{text}» باللون الأزرق",
+			highlightedGreenA11y: "تم تظليل «{text}» باللون الأخضر",
+			underlinedA11y: "تم وضع خط تحت «{text}»",
+			removedA11y: "تمت إزالة التعليق من «{text}»",
+			clearedA11y: {
+				zero: "لم يُمسح أي تعليق ({count})",
+				one: "تم مسح تعليق واحد ({count})",
+				two: "تم مسح تعليقين ({count})",
+				few: "تم مسح {count} تعليقات",
+				many: "تم مسح {count} تعليقًا",
+				other: "تم مسح {count} تعليق",
+			},
 		},
 		theme: {
 			name: "المظهر",

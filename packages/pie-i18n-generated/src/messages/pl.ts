@@ -424,6 +424,20 @@ const pl = {
 			highlightPinkA11y: "Wyróżnienie różowe",
 			highlightBlueA11y: "Wyróżnienie niebieskie",
 			highlightGreenA11y: "Wyróżnienie zielone",
+			selectionAvailableA11y:
+				"Pasek adnotacji tekstu jest dostępny dla „{text}”. Naciśnij Shift+F10, aby użyć narzędzi adnotacji.",
+			highlightedYellowA11y: "Wyróżniono „{text}” na żółto",
+			highlightedPinkA11y: "Wyróżniono „{text}” na różowo",
+			highlightedBlueA11y: "Wyróżniono „{text}” na niebiesko",
+			highlightedGreenA11y: "Wyróżniono „{text}” na zielono",
+			underlinedA11y: "Podkreślono „{text}”",
+			removedA11y: "Usunięto adnotację z „{text}”",
+			clearedA11y: {
+				one: "Usunięto {count} adnotację",
+				few: "Usunięto {count} adnotacje",
+				many: "Usunięto {count} adnotacji",
+				other: "Usunięto {count} adnotacji",
+			},
 		},
 		theme: {
 			name: "Motyw",

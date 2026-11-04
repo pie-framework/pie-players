@@ -425,6 +425,18 @@ const nlNL = {
 			highlightPinkA11y: "Roze markeren",
 			highlightBlueA11y: "Blauw markeren",
 			highlightGreenA11y: "Groen markeren",
+			selectionAvailableA11y:
+				"Werkbalk voor aantekeningen beschikbaar voor “{text}”. Druk op Shift+F10 voor de aantekeninghulpmiddelen.",
+			highlightedYellowA11y: "“{text}” geel gemarkeerd",
+			highlightedPinkA11y: "“{text}” roze gemarkeerd",
+			highlightedBlueA11y: "“{text}” blauw gemarkeerd",
+			highlightedGreenA11y: "“{text}” groen gemarkeerd",
+			underlinedA11y: "“{text}” onderstreept",
+			removedA11y: "Aantekening verwijderd van “{text}”",
+			clearedA11y: {
+				one: "{count} aantekening gewist",
+				other: "{count} aantekeningen gewist",
+			},
 		},
 		theme: {
 			name: "Thema",

@@ -404,6 +404,17 @@ const ko = {
 			highlightPinkA11y: "분홍색 형광펜",
 			highlightBlueA11y: "파란색 형광펜",
 			highlightGreenA11y: "초록색 형광펜",
+			selectionAvailableA11y:
+				"“{text}”에 주석 도구 모음을 사용할 수 있습니다. 주석 도구를 사용하려면 Shift+F10을 누르세요.",
+			highlightedYellowA11y: "“{text}”을(를) 노란색으로 강조했습니다",
+			highlightedPinkA11y: "“{text}”을(를) 분홍색으로 강조했습니다",
+			highlightedBlueA11y: "“{text}”을(를) 파란색으로 강조했습니다",
+			highlightedGreenA11y: "“{text}”을(를) 초록색으로 강조했습니다",
+			underlinedA11y: "“{text}”에 밑줄을 그었습니다",
+			removedA11y: "“{text}”에서 주석을 제거했습니다",
+			clearedA11y: {
+				other: "주석 {count}개를 지웠습니다",
+			},
 		},
 		theme: {
 			name: "테마",

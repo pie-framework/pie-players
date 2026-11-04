@@ -416,6 +416,18 @@ const es = {
 			highlightPinkA11y: "Resaltado rosa",
 			highlightBlueA11y: "Resaltado azul",
 			highlightGreenA11y: "Resaltado verde",
+			selectionAvailableA11y:
+				"Barra de herramientas de anotación disponible para “{text}”. Presiona Shift+F10 para ver las herramientas de anotación.",
+			highlightedYellowA11y: "“{text}” resaltado en amarillo",
+			highlightedPinkA11y: "“{text}” resaltado en rosa",
+			highlightedBlueA11y: "“{text}” resaltado en azul",
+			highlightedGreenA11y: "“{text}” resaltado en verde",
+			underlinedA11y: "“{text}” subrayado",
+			removedA11y: "Se eliminó la anotación de “{text}”",
+			clearedA11y: {
+				one: "Se borró {count} anotación",
+				other: "Se borraron {count} anotaciones",
+			},
 		},
 		theme: {
 			name: "Tema",

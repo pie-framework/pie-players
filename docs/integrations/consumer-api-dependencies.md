@@ -710,6 +710,21 @@ names of Hosts V, P, M and R collides with `contentLanguage`. The item player
 also logs one `console.warn` when undeclared content's script contradicts a
 named default's direction.
 
+On 2026-11-04 a standalone `pie-item-player` with a requested `locale` began
+stamping the interface locale's `lang` and `dir` on itself (the custom element
+host): standalone, the player is the outermost chrome — its configuration-error
+banner renders interface strings — and no stamped ancestor exists above it,
+where before the element carried only the content stamp on its inner root and
+the banner rendered without a language or direction. Rendered-attribute
+visible only when `locale` is requested: a host that passes none, including
+every nested player a section mounts (the shell above remains the stamped
+ancestor), renders what it did before, and the element removes the stamp if
+the locale it stamped is cleared. The RTL layout audit's item-player gap
+(demo route + rendered assertions) closes in the same change. A grep of every
+recorded checkout's source still finds `locale` passed to a `pie-*` element
+only inside the two internally-controlled demo apps, so no listed host is
+affected.
+
 Also on 2026-10-24 language variants landed as additive surfaces: optional
 `language` and `isAdaptationOf` on `ItemEntity` and `PassageEntity`, optional
 `languagePolicy` on `AssessmentEntity`, optional `requestedLanguages` on the

@@ -241,6 +241,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		resolveInterfaceI18n,
 		reportInterfaceLocaleLoadError,
 		stampContentLanguage,
+		stampInterfaceLocale,
 		undeclaredDirectionMismatch,
 	} from "@pie-players/pie-players-shared/i18n";
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
@@ -979,6 +980,39 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		const currentEnv = elementEnv();
 		const target = hostElement;
 		stampContentLanguage(target, currentEnv, contentLanguageDefault);
+	});
+	// The interface-locale stamp on the custom element host. Standalone, this
+	// player is the outermost chrome — its error banner renders interface
+	// strings — and no stamped ancestor exists above it, so per the adoption
+	// record it stamps its own host. A player a section mounts carries no
+	// `locale` of its own (the shell above is the stamped ancestor), and a host
+	// that passes no locale keeps today's attributes: the stamp follows a
+	// requested locale only, and the host's own `lang`/`dir` are never removed
+	// unless this effect wrote them. Reads the version counter, not just the
+	// provider: `getLocale` moves once the requested catalog is resident, and
+	// the stamp must name the locale that rendered.
+	let interfaceStampTarget: HTMLElement | null = null;
+	$effect(() => {
+		const requested = typeof locale === "string" ? locale.trim() : "";
+		void interfaceI18nVersion;
+		const target = customElementHost ?? hostElement;
+		if (!requested) {
+			if (interfaceStampTarget) {
+				const stamped = interfaceStampTarget;
+				interfaceStampTarget = null;
+				untrack(() => {
+					stamped.removeAttribute("lang");
+					stamped.removeAttribute("dir");
+				});
+			}
+			return;
+		}
+		if (!target) return;
+		const provider = interfaceI18n;
+		untrack(() => {
+			stampInterfaceLocale(target, provider);
+			interfaceStampTarget = target;
+		});
 	});
 	// Once per player: a default that names a direction is a guess about
 	// content that declared nothing, and RTL content under an LTR default lays

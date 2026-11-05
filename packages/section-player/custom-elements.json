@@ -3144,10 +3144,10 @@
 						{
 							"kind": "method",
 							"name": "provideScore",
-							"description": "The item player's `provideScore()`, for the pane's host-facing score; `false` until the player has mounted.",
+							"description": "The item player's `provideScore()`, for the pane's host-facing score; `null` until the player has mounted.",
 							"return": {
 								"type": {
-									"text": "Promise<false | unknown[]>"
+									"text": "Promise<false | null | unknown[]>"
 								}
 							}
 						}
@@ -3346,7 +3346,7 @@
 						{
 							"kind": "method",
 							"name": "scoreItem",
-							"description": "Scores one item through its card, which owns the item player node: the section controller's item scorer. An item whose card or player has not mounted reports `false`.",
+							"description": "Scores one item through its card, which owns the item player node: the section controller's item scorer. An item whose card or player has not mounted reports `null`.",
 							"parameters": [
 								{
 									"name": "canonicalItemId",

@@ -335,11 +335,12 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 	}
 
 	/**
-	 * The item player's `provideScore()`, for the pane's host-facing score; `false`
+	 * The item player's `provideScore()`, for the pane's host-facing score; `null`
 	 * until the player has mounted.
 	 */
-	export async function provideScore(): Promise<false | unknown[]> {
-		return (await itemPlayerScorer()?.()) ?? false;
+	export async function provideScore(): Promise<false | null | unknown[]> {
+		const scorer = itemPlayerScorer();
+		return scorer ? scorer() : null;
 	}
 
 	async function handleFormativeClick(): Promise<void> {

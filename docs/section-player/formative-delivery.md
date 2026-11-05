@@ -156,7 +156,7 @@ controller?.hideFormativeItem?.({ itemId: "decimals-item" });
 
 | Method | Effect |
 | --- | --- |
-| `checkFormativeItem({ itemId })` | Scores the rendered item and records one Try, as Check answer does. Rejects, spending no Try, when scoring throws or no layout is mounted |
+| `checkFormativeItem({ itemId })` | Scores the rendered item and records one Try, as Check answer does. Rejects, spending no Try, when scoring throws or the item or its layout has not mounted; ignored while a check of the item is pending |
 | `recordFormativeTry({ itemId, outcomes })` | Records one Try from `provideScore()` outcomes, as Check answer does. Ignored while the item is revealed or out of Tries |
 | `retryFormativeItem({ itemId })` | Withdraws the reveal of an item with Tries left, as Try again does |
 | `revealFormativeItem({ itemId, feedback })` | A **Forced Reveal** at `"correctness"` or `"solution"`: spends no Try, ignores the Try budget and `revealOn`, and works before the first Try |

@@ -503,7 +503,7 @@
 		const pane = activePanes.items as
 			| (Element & { scoreItem?: SectionItemScorer })
 			| null;
-		return (await pane?.scoreItem?.(canonicalItemId)) ?? false;
+		return (await pane?.scoreItem?.(canonicalItemId)) ?? null;
 	};
 
 	// A layout with no items pane leaves the items unrendered and readiness short

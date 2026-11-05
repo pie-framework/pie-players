@@ -388,4 +388,28 @@ describe("SectionController formative delivery", () => {
 			"correct",
 		);
 	});
+
+	test("checkFormativeItem spends no Try on an unmounted item and drops a pending duplicate", async () => {
+		const { controller, events } = await bootstrap(
+			makeSection({ formative: { enabled: true }, items: [{ identifier: "q1" }] }),
+		);
+		controller.registerItemScorer(async () => null);
+		await expect(controller.checkFormativeItem({ itemId: "q1" })).rejects.toThrow();
+		expect(events.filter((event) => event.type === "formative-try-recorded")).toHaveLength(0);
+
+		let release: (value: ReturnType<typeof scored>) => void = () => {};
+		let calls = 0;
+		controller.registerItemScorer(() => {
+			calls += 1;
+			return new Promise((resolve) => {
+				release = resolve;
+			});
+		});
+		const first = controller.checkFormativeItem({ itemId: "q1" });
+		await controller.checkFormativeItem({ itemId: "q1" });
+		release(scored(1));
+		await first;
+		expect(calls).toBe(1);
+		expect(controller.getFormativeProjection()?.states.q1?.tryCount).toBe(1);
+	});
 });

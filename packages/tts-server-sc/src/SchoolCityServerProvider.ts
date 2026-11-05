@@ -84,9 +84,12 @@ export interface SchoolCityProviderConfig extends TTSServerConfig {
 	 */
 	assetOrigins?: string[];
 	/**
-	 * When true (default), asset URLs that resolve to RFC1918 / loopback /
-	 * link-local / IPv6 unique-local hosts are rejected as a defense against
-	 * SSRF. Set to `false` only for deployments where the SchoolCity
+	 * When true (default), asset URLs whose host is `localhost` or an IP
+	 * literal outside public unicast space (loopback, RFC 1918, link-local,
+	 * unique-local, carrier-grade NAT, multicast, documentation, reserved,
+	 * NAT64, 6to4, Teredo, per the IANA special-purpose registries) are
+	 * rejected as a defense against SSRF. Only the literal host is checked,
+	 * never the address a name resolves to. Set to `false` only for deployments where the SchoolCity
 	 * service legitimately lives on a private network (on-prem CDN,
 	 * in-cluster K8s service, VPC endpoint, air-gapped install). When you
 	 * disable this guard, always also pass an explicit `assetOrigins`

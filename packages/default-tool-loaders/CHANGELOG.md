@@ -1,5 +1,70 @@
 # @pie-players/pie-default-tool-loaders
 
+## 1.0.0-beta.8
+
+### Patch Changes
+
+- bfd0d5f: A host can limit the answer eliminator to the elements whose support it has vetted with `tools.providers.answerEliminator.elements`, such as `["multiple-choice"]`. An item with no listed element loses the eliminator, even under a PNP grant, and in a mixed item only the listed elements' choices take a toggle. Omitted, every element that supports answer masking keeps it. To support this, `isApplicableToContent` receives the tool's `tools.providers` entry, which `filterDecidedToolIds` takes as a `getToolConfig` argument.
+- 4c6773a: The content surface ids `CONTENT_LEAD_SURFACE` and `CONTENT_MEDIA_SURFACE` have
+  one home: `@pie-players/pie-assessment-toolkit/tools/registration`. The
+  composition layer, the section player's card media region and print re-export or
+  import them from there instead of defining the same string again.
+  
+  This repairs print-player's published types, which imported
+  `@pie-players/pie-default-tool-loaders` — a package print-player does not
+  declare, so a host type-checking print-player alone failed with TS2307 under
+  `skipLibCheck: false` and silently typed the constant `any` under
+  `skipLibCheck: true`. Its surface is unchanged: the constant is still exported
+  from the package root.
+  
+  The instrumentation debugger and TTS settings panels promote
+  `@pie-players/pie-players-shared` and `@pie-players/pie-assessment-toolkit`
+  respectively from devDependencies to dependencies: their published declarations
+  reference them, so a host type-checking a panel needs them installed.
+  
+  `check-svelte-type-imports` now enforces the whole rule its header claimed: a
+  published declaration reachable from a type entry may import only svelte-free
+  and declared-dependency specifiers. It found and this change repairs the two
+  panels and print-player; calculator-cortex's unreachable `dist/src`
+  declarations still name bundled-away vendor packages and remain outside the
+  reachable rule until their declarations are typed without them.
+- a9695b7: Toolbar glyphs no longer render blank (R-03, R-13, R-14, R-24). The FontAwesome that `<nds-icon-button>` needs comes from one place, `@pie-players/pie-players-shared/ui/fontawesome`, now used by the item toolbar, the inline TTS control and the section player's scroll hint, which under `ndsIcons` previously had no FontAwesome in its shadow root. The highlighter and strikethrough icon names gain built-in glyphs, and the answer eliminator's button draws its registration's icon. The annotation toolbar's screen-reader announcements follow the interface locale.
+- Updated dependencies [bfd0d5f]
+- Updated dependencies [551ffeb]
+- Updated dependencies [ff8ab38]
+- Updated dependencies [525c81c]
+- Updated dependencies [da39465]
+- Updated dependencies [e79c775]
+- Updated dependencies [ca970e3]
+- Updated dependencies [d29b05c]
+- Updated dependencies [4c6773a]
+- Updated dependencies [b408dec]
+- Updated dependencies [a9695b7]
+- Updated dependencies [18ef9e6]
+- Updated dependencies [dfa89e1]
+- Updated dependencies [f486194]
+- Updated dependencies [0e6352f]
+- Updated dependencies [8abe1b2]
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.8
+  - @pie-players/pie-tool-answer-eliminator@1.0.0-beta.8
+  - @pie-players/pie-players-shared@1.0.0-beta.8
+  - @pie-players/pie-tool-dictionary@1.0.0-beta.8
+  - @pie-players/pie-tool-periodic-table@1.0.0-beta.8
+  - @pie-players/pie-tool-picture-dictionary@1.0.0-beta.8
+  - @pie-players/tts-client-server@1.0.0-beta.8
+  - @pie-players/pie-tool-tts-inline@1.0.0-beta.8
+  - @pie-players/pie-tool-annotation-toolbar@1.0.0-beta.8
+  - @pie-players/pie-tool-calculator-shared@1.0.0-beta.8
+  - @pie-players/pie-tool-theme@1.0.0-beta.8
+  - @pie-players/pie-tool-graph@1.0.0-beta.8
+  - @pie-players/pie-tool-line-reader@1.0.0-beta.8
+  - @pie-players/pie-tool-magnifier@1.0.0-beta.8
+  - @pie-players/pie-tool-protractor@1.0.0-beta.8
+  - @pie-players/pie-tool-ruler@1.0.0-beta.8
+  - @pie-players/pie-calculator@1.0.0-beta.8
+  - @pie-players/pie-calculator-desmos@1.0.0-beta.8
+  - @pie-players/pie-calculator-geogebra@1.0.0-beta.8
+
 ## 1.0.0-beta.7
 
 ### Patch Changes

@@ -1,5 +1,64 @@
 # @pie-players/section-demos
 
+## 0.1.89-beta.8
+
+### Patch Changes
+
+- Updated dependencies [bfd0d5f]
+- Updated dependencies [551ffeb]
+- Updated dependencies [ff8ab38]
+- Updated dependencies [525c81c]
+- Updated dependencies [da39465]
+- Updated dependencies [2e692fa]
+- Updated dependencies [08d1f9a]
+- Updated dependencies [e578fc8]
+- Updated dependencies [e79c775]
+- Updated dependencies [ca970e3]
+- Updated dependencies [d29b05c]
+- Updated dependencies [4c6773a]
+- Updated dependencies [b408dec]
+- Updated dependencies [ce5cb52]
+- Updated dependencies [a9695b7]
+- Updated dependencies [18ef9e6]
+- Updated dependencies [b87143e]
+- Updated dependencies [ebd3a05]
+- Updated dependencies [dfa89e1]
+- Updated dependencies [f486194]
+- Updated dependencies [0e6352f]
+- Updated dependencies [969b27a]
+- Updated dependencies [8abe1b2]
+- Updated dependencies [fb5c616]
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.8
+  - @pie-players/pie-default-tool-loaders@1.0.0-beta.8
+  - @pie-players/pie-tool-answer-eliminator@1.0.0-beta.8
+  - @pie-players/pie-players-shared@1.0.0-beta.8
+  - @pie-players/pie-tool-dictionary@1.0.0-beta.8
+  - @pie-players/pie-tool-picture-dictionary@1.0.0-beta.8
+  - @pie-players/pie-i18n-generated@1.0.0-beta.8
+  - @pie-players/pie-item-player@1.0.0-beta.8
+  - @pie-players/pie-theme@1.0.0-beta.8
+  - @pie-players/tts-client-server@1.0.0-beta.8
+  - @pie-players/pie-print-player@1.0.0-beta.8
+  - @pie-players/pie-section-player@1.0.0-beta.8
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@1.0.0-beta.8
+  - @pie-players/pie-section-player-tools-tts-settings@1.0.0-beta.8
+  - @pie-players/pie-section-player-tools-pnp-debugger@1.0.0-beta.8
+  - @pie-players/pie-tool-tts-inline@1.0.0-beta.8
+  - @pie-players/pie-tool-annotation-toolbar@1.0.0-beta.8
+  - @pie-players/tts-server-sc@1.0.0-beta.8
+  - @pie-players/tts-server-core@1.0.0-beta.8
+  - @pie-players/pie-section-player-tools-event-debugger@1.0.0-beta.8
+  - @pie-players/pie-section-player-tools-session-debugger@1.0.0-beta.8
+  - @pie-players/pie-tool-sign-language@1.0.0-beta.8
+  - @pie-players/demo-ui@0.1.3-beta.8
+  - @pie-players/pie-section-player-tools-shared@1.0.0-beta.8
+  - @pie-players/tts-server-google@1.0.0-beta.8
+  - @pie-players/tts-server-polly@1.0.0-beta.8
+  - @pie-players/pie-tool-calculator-desmos@1.0.0-beta.8
+  - @pie-players/pie-calculator-cortex@1.0.0-beta.8
+  - @pie-players/pie-calculator-geogebra@1.0.0-beta.8
+  - @pie-players/pie-context@1.0.0-beta.8
+
 ## 0.1.89-beta.7
 
 ### Patch Changes

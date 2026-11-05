@@ -1,5 +1,37 @@
 # @pie-players/pie-i18n-generated
 
+## 1.0.0-beta.8
+
+### Patch Changes
+
+- da39465: `en-US` is the only catalog `players-shared` bundles. `BUNDLED_LOCALES` drops `nl-NL`, `BundledLocaleCode` narrows to `en-US`, and `loadBundledCatalog("nl-NL")` rejects — the provider treats that as the fallback chain, so a host whose loaders compose the generated tier resolves Dutch unchanged through the catch, while a host composing only `loadBundledCatalog` that requests `nl-NL` renders English where it rendered Dutch. The Dutch catalog itself — the framework's audit language, native-speaker-reviewed — moves verbatim into `@pie-players/pie-i18n-generated` as a `reviewed` catalog with its English snapshot, so a host that never installs the optional tier never fetches it. The provider unit tests exercise Dutch through a synthesized fixture now, and the item-list tests pin that a bare requested `locale` alone renders English while a composed host serves Dutch.
+- 2e692fa: The international deployment set joins the tier: German (`de`, serves `de-AT`/`de-CH`), Italian (`it`), Polish (`pl`, four CLDR plural categories), Turkish (`tr`, serves `tr-CY`), Ukrainian (`uk`, four CLDR plural categories) and Greek (`el`, serves `el-CY`). Each catalog was authored against its own terminology brief with the calibration finding list applied at authoring time — exam-register domain terms (Polish zadanie/tekst, German Aufgabe/Text, Italian brano/prova, Turkish soru/metin, Greek ερώτηση/κείμενο, Ukrainian завдання/текст), impersonal or per-convention register, event-form state announcements, and the Slavic four-category plural systems with correct numeral rules. All six carry agent generation-and-review provenance in the manifest (`reviewedBy`; a native pass remains open work) and English snapshots anchoring them, so regeneration is surgical from here. The tier is now twenty-one reviewed locales.
+- d29b05c: The periodic table's phase value (solid, liquid, gas) now shows in the interface locale. A phase the catalog does not carry shows as the data file writes it.
+- a9695b7: Toolbar glyphs no longer render blank (R-03, R-13, R-14, R-24). The FontAwesome that `<nds-icon-button>` needs comes from one place, `@pie-players/pie-players-shared/ui/fontawesome`, now used by the item toolbar, the inline TTS control and the section player's scroll hint, which under `ndsIcons` previously had no FontAwesome in its shadow root. The highlighter and strikethrough icon names gain built-in glyphs, and the answer eliminator's button draws its registration's icon. The annotation toolbar's screen-reader announcements follow the interface locale.
+- b87143e: The remaining roadmap waves land, fifteen locales in one tier expansion — the tier is now **thirty-six reviewed catalogs**.
+  
+  **Big US wave**: Russian (`ru`, Slavic one/few/many/other with numeral rules verified against sampled `Intl.PluralRules`), Filipino (`fil`, CLDR `fil` categories verified programmatically; exam register with deliberate homonym rejections — `regla` and `lupa` rejected), Haitian Creole (`ht`, reformed orthography, generic-`ou` impersonal).
+  
+  **Second RTL wave**: Urdu (`ur`), Persian (`fa`, full ZWNJ orthography), Hebrew (`he`, the wave's only CLDR `two` category, geresh/gershayim conventions pinned). These inherit the audited RTL layout contract — no new layout work.
+  
+  **Script variant**: `zh-Hant` — Taiwan-register Traditional Chinese authored from `en-US`, deliberately **not** a character conversion of the Simplified catalog, with the term divergences from a naive conversion (軟體/資訊/網路/朗讀…) documented in the brief. Regional tag: bare `zh` stays Simplified; `zh-TW`/`zh-HK` widen onto it.
+  
+  **State/regional wave**: Somali (`so`), White Hmong (`hmn`, RPA orthography, CLDR-undersourced), Khmer (`km`), Lao (`lo`), Bengali (`bn`), Punjabi (`pa`, Gurmukhi; Shahmukhi documented out of scope), Nepali (`ne`, Devanagari numerals pinned deliberately), Amharic (`am`, Ethiopic punctuation). Each brief carries a **Terminology confidence** section listing judgment calls made without strong evidence, and those README rows state that native review is strongly advised.
+  
+  All fifteen carry agent generation-and-review provenance in the manifest and English snapshots — regeneration is surgical from here.
+- ebd3a05: The RTL layout audit that gated the Arabic locale's review has landed, and `ar` is promoted to `reviewed` on its agent string pass (the audit was the gate). The section player's rtl-layout spec grows from two cases to seven rendered ones against the `ar` demo — formative footer mirror, split-pane order flip, toolbar-pane flip, tool-window contents mirroring with screen-position stability, and a chrome-only clipping/overflow sweep collected through the custom elements' open shadow roots — plus a recorded screenshot inspection of the bidi-sensitive text. The audit found and repairs one defect: the toolbar pane's divider was a physical `border-left`/`border-right`, which under RTL rendered on the pane's outer screen edge instead of the content side; it now uses `border-inline-start`/`border-inline-end`, and the pane-flip assertion pins the geometry. Recorded without assertions: the toolbar scrolls (no overflow menu) and its tooltips are browser `title` rendering; Back/Next chrome belongs to the assessment player; the standalone item player has no locale-driven demo route (a follow-up would close that). With no native readers available, `reviewedBy` in the manifest records the agent provenance; the native pass remains open work.
+- fb5c616: Vietnamese (`vi`) joins the generated locale tier as its fourteenth catalog: a bare tag, so `vi-VN` widens to it, generated against a new terminology brief (`briefs/vi.md`) under the same structural gate as the rest of the tier. The Spanish catalog takes a domain-register pass — impersonal `se`-form state announcements (`Se abrió la calculadora básica`), unmarked-masculine enums (`Todos`/`Ninguno`), the `Seleccionar` graph mode, noun phase values (`Gas`), curly quotes over guillemets, singular dictionary misses, and `conjunto de herramientas`/`anfitrión` in place of the `toolkit`/`host` loanwords — with every decision pinned into `briefs/es.md` so a regeneration reproduces it. With no native readers available, the maintainer accepted agent review in their place: `es`, `en-GB` and `en-AU` are now `reviewed` with English snapshots anchoring the passes (`reviewedBy` in the manifest records the agent provenance; the native pass remains open work and corrects in place under the surgical regime). en-GB and en-AU were verification passes: delta sets complete, no missed anglicizations, nothing to correct. The package README gains the RTL layout audit checklist that gates the `ar` review pass, and records that the card-header geometry spec already exists.
+- Updated dependencies [551ffeb]
+- Updated dependencies [525c81c]
+- Updated dependencies [da39465]
+- Updated dependencies [e79c775]
+- Updated dependencies [ca970e3]
+- Updated dependencies [d29b05c]
+- Updated dependencies [a9695b7]
+- Updated dependencies [dfa89e1]
+- Updated dependencies [0e6352f]
+  - @pie-players/pie-players-shared@1.0.0-beta.8
+
 ## 1.0.0-beta.7
 
 ### Patch Changes

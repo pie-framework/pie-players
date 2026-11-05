@@ -13,6 +13,10 @@ import { SignJWT } from "jose";
 import { getDomain } from "tldts";
 
 import {
+	isCloudMetadataHostname,
+	isPrivateHostname,
+} from "@pie-players/pie-players-shared/security/private-hosts";
+import {
 	BaseTTSProvider,
 	type GetVoicesOptions,
 	normalizeSpeechMarks,
@@ -117,91 +121,6 @@ const DEFAULT_SPEED_RATE: SpeedRateBucket = "medium";
 const DEFAULT_CACHE = true;
 const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
 const DEFAULT_MAX_ASSET_REDIRECTS = 2;
-
-// Cloud-metadata / IMDS endpoints are ALWAYS blocked, even when
-// `blockPrivateAssetHosts` is `false`. These have no legitimate TTS-asset
-// use case and are the primary SSRF payoff target (they return IAM
-// credentials, instance tokens, and provisioning secrets).
-const CLOUD_METADATA_HOSTNAME_PATTERNS: RegExp[] = [
-	/^169\.254\.169\.254$/,
-	/^fd00:ec2::254$/i,
-	/^metadata\.google\.internal$/i,
-	/^metadata\.azure\.internal$/i,
-	/^metadata\.packet\.net$/i,
-	/^metadata\.oci\.oraclecloud\.com$/i,
-];
-
-// Private / internal-network patterns. Blocked by default, can be
-// opted-out via `blockPrivateAssetHosts: false` for deployments where
-// the TTS service legitimately runs on a private network.
-const PRIVATE_HOSTNAME_PATTERNS: RegExp[] = [
-	/^localhost$/i,
-	/^127(?:\.\d{1,3}){3}$/,
-	/^0(?:\.\d{1,3}){3}$/,
-	/^10(?:\.\d{1,3}){3}$/,
-	/^192\.168(?:\.\d{1,3}){2}$/,
-	/^172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}$/,
-	/^169\.254(?:\.\d{1,3}){2}$/,
-	/^::1$/,
-	/^0:0:0:0:0:0:0:1$/,
-	/^fe80:/i,
-	/^fc00:/i,
-	/^fd[0-9a-f]{2}:/i,
-];
-
-const ipv4BareToDotted = (hostname: string): string | null => {
-	// Reject obviously non-numeric inputs fast; numeric IPv4 encodings
-	// (bare decimal, hex, or octal) are a classic SSRF bypass.
-	if (!/^(?:0x[0-9a-f]+|0[0-7]*|\d+)$/i.test(hostname)) return null;
-	let asInt: number;
-	try {
-		asInt = Number.parseInt(hostname, hostname.startsWith("0x") ? 16 : 10);
-	} catch {
-		return null;
-	}
-	if (!Number.isFinite(asInt) || asInt < 0 || asInt > 0xff_ff_ff_ff)
-		return null;
-	return [
-		(asInt >>> 24) & 0xff,
-		(asInt >>> 16) & 0xff,
-		(asInt >>> 8) & 0xff,
-		asInt & 0xff,
-	].join(".");
-};
-
-const normalizeHostnameForSafetyCheck = (hostname: string): string => {
-	let host = hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "");
-	// Unmap IPv4-in-IPv6. The URL parser serialises `::ffff:127.0.0.1` as
-	// `::ffff:7f00:1`, so a parsed hostname carries the hex form.
-	const mapped = host.match(
-		/^::ffff:(?:(\d+\.\d+\.\d+\.\d+)|([0-9a-f]{1,4}):([0-9a-f]{1,4}))$/i,
-	);
-	if (mapped) {
-		const [, dotted, high, low] = mapped;
-		if (dotted) return dotted;
-		const words = [Number.parseInt(high, 16), Number.parseInt(low, 16)];
-		host = words
-			.flatMap((word) => [(word >>> 8) & 0xff, word & 0xff])
-			.join(".");
-	}
-	return host;
-};
-
-const hostnameMatchesAny = (hostname: string, patterns: RegExp[]): boolean => {
-	const normalized = normalizeHostnameForSafetyCheck(hostname);
-	const numericDotted = ipv4BareToDotted(normalized);
-	const candidates = [normalized.toLowerCase()];
-	if (numericDotted) candidates.push(numericDotted);
-	return candidates.some((candidate) =>
-		patterns.some((pattern) => pattern.test(candidate)),
-	);
-};
-
-const hostnameIsCloudMetadata = (hostname: string): boolean =>
-	hostnameMatchesAny(hostname, CLOUD_METADATA_HOSTNAME_PATTERNS);
-
-const hostnameIsPrivate = (hostname: string): boolean =>
-	hostnameMatchesAny(hostname, PRIVATE_HOSTNAME_PATTERNS);
 
 interface ResolvedAssetPolicy {
 	/** Explicit origin allow-list (empty when host did not configure one). */
@@ -325,8 +244,9 @@ const validateAssetUrl = (
 		);
 	}
 	// Cloud-metadata / IMDS is always blocked, even when the private-host
-	// guard is intentionally disabled for internal-network deployments.
-	if (hostnameIsCloudMetadata(parsed.hostname)) {
+	// guard is intentionally disabled for internal-network deployments: it has
+	// no TTS-asset use and hands out credentials and instance tokens.
+	if (isCloudMetadataHostname(parsed.hostname)) {
 		throw new TTSError(
 			TTSErrorCode.PROVIDER_ERROR,
 			"SchoolCity asset URL resolves to a cloud metadata endpoint",
@@ -336,7 +256,7 @@ const validateAssetUrl = (
 	}
 	if (
 		config.blockPrivateAssetHosts !== false &&
-		hostnameIsPrivate(parsed.hostname)
+		isPrivateHostname(parsed.hostname)
 	) {
 		throw new TTSError(
 			TTSErrorCode.PROVIDER_ERROR,

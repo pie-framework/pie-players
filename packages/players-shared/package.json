@@ -29,6 +29,10 @@
 			"types": "./dist/security/index.d.ts",
 			"import": "./dist/security/index.js"
 		},
+		"./security/private-hosts": {
+			"types": "./dist/security/private-hosts.d.ts",
+			"import": "./dist/security/private-hosts.js"
+		},
 		"./object": {
 			"types": "./dist/object/index.d.ts",
 			"import": "./dist/object/index.js"

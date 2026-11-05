@@ -271,6 +271,7 @@ describe("SchoolCity asset URL guard", () => {
 		"http://192.168.1.1/a.mp3",
 		"http://169.254.10.10/a.mp3",
 		"http://[::1]/a.mp3",
+		"http://[::]/a.mp3",
 		"http://[::ffff:127.0.0.1]/a.mp3",
 		"http://[::ffff:a01:203]/a.mp3",
 		"http://[fe80::1]/a.mp3",

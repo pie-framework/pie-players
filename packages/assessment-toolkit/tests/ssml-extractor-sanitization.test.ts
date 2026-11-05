@@ -122,6 +122,8 @@ describe("SSMLExtractor sanitization", () => {
 		"http://[::ffff:169.254.169.254]/latest/meta-data/",
 		"http://[0:0:0:0:0:ffff:a9fe:a9fe]/latest/meta-data/",
 		"http://[::ffff:a01:203]/a.mp3",
+		"http://[::]/a.mp3",
+		"http://[0:0:0:0:0:0:0:0]/a.mp3",
 	])("strips private / metadata host %s from audio src", (src) => {
 		const ssml = extractSsml(
 			`<p><speak><audio src="${src}">fallback</audio></speak></p>`,

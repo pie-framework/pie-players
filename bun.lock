@@ -992,6 +992,7 @@
       "name": "@pie-players/tts-server-sc",
       "version": "1.0.0-beta.7",
       "dependencies": {
+        "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/tts-server-core": "workspace:*",
         "jose": "^6.2.14",
         "tldts": "^7.4.19",

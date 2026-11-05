@@ -122,6 +122,9 @@ when `blockPrivateAssetHosts` is `false`.
   (`::ffff:…`), trailing-dot hostnames (`host.`), bare decimal / hex /
   octal IPv4 encodings are all rewritten before matching so they cannot
   be used to bypass the blocklists.
+- The metadata and private-host lists and their normalization come from
+  `@pie-players/pie-players-shared/security/private-hosts`, which the
+  assessment toolkit's SSML sanitizer also checks `<audio src>` against.
 - Manual redirect handling with a bounded hop count; each redirect target
   is re-validated against the same policy.
 - Authorization / cookie headers are scrubbed for cross-origin asset fetches.

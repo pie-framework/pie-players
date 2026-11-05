@@ -189,6 +189,4 @@ function main() {
 	console.log(`${LABEL} OK: workspace dependencies resolve to this checkout; nothing stale resolves from above it`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-	main();
-}
+if (import.meta.main) main();

@@ -61,6 +61,46 @@ describe("check-local-pr-gate policy", () => {
 		);
 	});
 
+	test("reads a quoted or commented CI matrix entry", () => {
+		const failures = collectGateFailures({
+			packageJson: basePackageJson,
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow.replace(
+				"    - command: test:e2e:assessment-player\n",
+				"    - command: 'test:e2e:assessment-player'\n    - command: \"test:e2e:item-list\" # sanitizer suite\n",
+			),
+			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
+			localE2eSuites: LOCAL_GATE_E2E_SUITES.filter(
+				(suite) => suite !== "item-list",
+			),
+		});
+		expect(failures).toEqual([
+			'test:e2e:local-gate does not run "test:e2e:item-list", which CI\'s e2e matrix runs.',
+		]);
+	});
+
+	test("fails when it can read no suite from CI's e2e matrix", () => {
+		const failures = collectGateFailures({
+			packageJson: basePackageJson,
+			lefthook: baseLefthook,
+			ciWorkflow: baseCiWorkflow
+				.replace(
+					"    - command: test:e2e:item-player:critical\n",
+					"    - { command: test:e2e:item-player:critical }\n",
+				)
+				.replace(
+					"    - command: test:e2e:assessment-player\n",
+					"    - { command: test:e2e:assessment-player }\n",
+				),
+			prePushGate: basePrePushGate,
+			prePushHookScript: basePrePushHookScript,
+		});
+		expect(failures).toEqual([
+			"Found no `command: test:e2e:<suite>` entry in CI's e2e matrix to compare the local gate with.",
+		]);
+	});
+
 	test("rejects a fixed item-player shard that silently omits coverage", () => {
 		const failures = collectGateFailures({
 			packageJson: basePackageJson,

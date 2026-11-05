@@ -194,9 +194,21 @@ export function collectGateFailures({
 
 	// Every suite in CI's e2e matrix also runs before push, so a failure there is
 	// never the first anyone hears of it. A required suite is reported above.
-	for (const [, suite] of ciWorkflow.matchAll(
-		/^\s*(?:-\s+)?command:\s*test:e2e:([\w:-]+)\s*$/gm,
-	)) {
+	// The value may be quoted or followed by a comment, as YAML allows.
+	const ciMatrixSuites = Array.from(
+		ciWorkflow.matchAll(
+			/^\s*(?:-\s+)?command:\s*(["']?)test:e2e:([\w:-]+)\1\s*(?:#.*)?$/gm,
+		),
+		(match) => match[2],
+	);
+	// Reading no suite at all means the matrix changed shape, not that it is empty;
+	// passing then would compare the local gate with nothing.
+	if (ciMatrixSuites.length === 0) {
+		failures.push(
+			"Found no `command: test:e2e:<suite>` entry in CI's e2e matrix to compare the local gate with.",
+		);
+	}
+	for (const suite of ciMatrixSuites) {
 		if (
 			!localE2eSuites.includes(suite) &&
 			!requiredLocalE2eSuites.includes(suite)
@@ -316,6 +328,4 @@ function main() {
 	);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-	main();
-}
+if (import.meta.main) main();

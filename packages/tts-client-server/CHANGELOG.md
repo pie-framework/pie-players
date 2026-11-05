@@ -1,5 +1,37 @@
 # @pie-players/tts-client-server
 
+## 1.0.0-beta.8
+
+### Patch Changes
+
+- e79c775: `negotiateContentLanguage` and `findClosestLanguageMatch` widen to a sibling only when it carries the request's variant and private-use subtags, so `en-GB` is never served `en-GB-x-gulf`, and `negotiateContentLanguage` ranks siblings source first, then by tag, so the order of `available` never decides. Read-aloud sends the content language without variant subtags, so `en-GB-x-gulf` is read by an `en-GB` voice. New export: `languageTagWithoutVariants`.
+- 8abe1b2: The word-timing wire format — `SpeechMark`, `anchorSpeechMarks`,
+  `normalizeSpeechMarks` and `resolveSpeedRateBucket` — moves into
+  `@pie-players/pie-tts`, the contract package both sides of the wire already
+  depend on. They were `tts-server-core` exports, which is why the browser-side
+  `ServerTTSProvider` imported three pure text functions from a package named
+  "server-core"; any future node-only addition to that root entry would have
+  pulled toward every browser bundle shipping the server TTS provider. The
+  duplicated `SpeedRateBucket` type definition (it existed in both `pie-tts` and
+  `tts-server-core`) converges on the contract's.
+  
+  `tts-server-core` re-exports all of it, so its published surface is unchanged
+  and a host importing the utilities from there keeps working;
+  `tts-client-server` imports them from the contract now. The speech-marks test
+  suite moves with the code, to the contract package.
+- Updated dependencies [551ffeb]
+- Updated dependencies [525c81c]
+- Updated dependencies [da39465]
+- Updated dependencies [e79c775]
+- Updated dependencies [ca970e3]
+- Updated dependencies [d29b05c]
+- Updated dependencies [a9695b7]
+- Updated dependencies [dfa89e1]
+- Updated dependencies [0e6352f]
+- Updated dependencies [8abe1b2]
+  - @pie-players/pie-players-shared@1.0.0-beta.8
+  - @pie-players/pie-tts@1.0.0-beta.8
+
 ## 1.0.0-beta.7
 
 ### Patch Changes

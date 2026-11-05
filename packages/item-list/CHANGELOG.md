@@ -1,5 +1,22 @@
 # @pie-players/pie-item-list
 
+## 1.0.0-beta.8
+
+### Patch Changes
+
+- Updated dependencies [551ffeb]
+- Updated dependencies [525c81c]
+- Updated dependencies [da39465]
+- Updated dependencies [08d1f9a]
+- Updated dependencies [e79c775]
+- Updated dependencies [ca970e3]
+- Updated dependencies [d29b05c]
+- Updated dependencies [a9695b7]
+- Updated dependencies [dfa89e1]
+- Updated dependencies [0e6352f]
+  - @pie-players/pie-players-shared@1.0.0-beta.8
+  - @pie-players/pie-item-player@1.0.0-beta.8
+
 ## 1.0.0-beta.7
 
 ### Patch Changes

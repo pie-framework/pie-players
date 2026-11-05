@@ -1,5 +1,32 @@
 # @pie-players/item-demos
 
+## 0.1.83-beta.8
+
+### Patch Changes
+
+- Updated dependencies [551ffeb]
+- Updated dependencies [525c81c]
+- Updated dependencies [da39465]
+- Updated dependencies [2e692fa]
+- Updated dependencies [08d1f9a]
+- Updated dependencies [e578fc8]
+- Updated dependencies [e79c775]
+- Updated dependencies [ca970e3]
+- Updated dependencies [d29b05c]
+- Updated dependencies [4c6773a]
+- Updated dependencies [a9695b7]
+- Updated dependencies [b87143e]
+- Updated dependencies [ebd3a05]
+- Updated dependencies [dfa89e1]
+- Updated dependencies [0e6352f]
+- Updated dependencies [fb5c616]
+  - @pie-players/pie-players-shared@1.0.0-beta.8
+  - @pie-players/pie-i18n-generated@1.0.0-beta.8
+  - @pie-players/pie-item-player@1.0.0-beta.8
+  - @pie-players/pie-theme@1.0.0-beta.8
+  - @pie-players/pie-section-player-tools-instrumentation-debugger@1.0.0-beta.8
+  - @pie-players/demo-ui@0.1.3-beta.8
+
 ## 0.1.83-beta.7
 
 ### Patch Changes

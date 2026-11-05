@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-i18n-generated",
-	"version": "1.0.0-beta.7",
+	"version": "1.0.0-beta.8",
 	"type": "module",
 	"description": "Optional machine-generated interface locale catalogs for PIE players",
 	"repository": {

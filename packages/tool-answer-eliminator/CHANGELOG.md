@@ -1,5 +1,28 @@
 # @pie-players/pie-tool-answer-eliminator
 
+## 1.0.0-beta.8
+
+### Patch Changes
+
+- bfd0d5f: A host can limit the answer eliminator to the elements whose support it has vetted with `tools.providers.answerEliminator.elements`, such as `["multiple-choice"]`. An item with no listed element loses the eliminator, even under a PNP grant, and in a mixed item only the listed elements' choices take a toggle. Omitted, every element that supports answer masking keeps it. To support this, `isApplicableToContent` receives the tool's `tools.providers` entry, which `filterDecidedToolIds` takes as a `getToolConfig` argument.
+- b408dec: The `mask` elimination strategy now announces the eliminated state to assistive technology the way `strikethrough` does (R-01): the choice is marked `aria-disabled` and carries an offscreen, interface-locale "(eliminated)" announcement that is relabelled on locale change, instead of `aria-hidden` on the choice container. The container hosts the strategy's toggle, so `aria-hidden` there hid the undo control from screen-reader and keyboard users along with the masked answer (WCAG 4.1.2). The README's ARIA-hooks description now matches both strategies.
+- Updated dependencies [bfd0d5f]
+- Updated dependencies [551ffeb]
+- Updated dependencies [ff8ab38]
+- Updated dependencies [525c81c]
+- Updated dependencies [da39465]
+- Updated dependencies [e79c775]
+- Updated dependencies [ca970e3]
+- Updated dependencies [d29b05c]
+- Updated dependencies [4c6773a]
+- Updated dependencies [a9695b7]
+- Updated dependencies [18ef9e6]
+- Updated dependencies [dfa89e1]
+- Updated dependencies [f486194]
+- Updated dependencies [0e6352f]
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.8
+  - @pie-players/pie-players-shared@1.0.0-beta.8
+
 ## 1.0.0-beta.7
 
 ### Patch Changes

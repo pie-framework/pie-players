@@ -1,5 +1,43 @@
 # @pie-players/pie-section-player-tools-instrumentation-debugger
 
+## 1.0.0-beta.8
+
+### Patch Changes
+
+- 4c6773a: The content surface ids `CONTENT_LEAD_SURFACE` and `CONTENT_MEDIA_SURFACE` have
+  one home: `@pie-players/pie-assessment-toolkit/tools/registration`. The
+  composition layer, the section player's card media region and print re-export or
+  import them from there instead of defining the same string again.
+  
+  This repairs print-player's published types, which imported
+  `@pie-players/pie-default-tool-loaders` — a package print-player does not
+  declare, so a host type-checking print-player alone failed with TS2307 under
+  `skipLibCheck: false` and silently typed the constant `any` under
+  `skipLibCheck: true`. Its surface is unchanged: the constant is still exported
+  from the package root.
+  
+  The instrumentation debugger and TTS settings panels promote
+  `@pie-players/pie-players-shared` and `@pie-players/pie-assessment-toolkit`
+  respectively from devDependencies to dependencies: their published declarations
+  reference them, so a host type-checking a panel needs them installed.
+  
+  `check-svelte-type-imports` now enforces the whole rule its header claimed: a
+  published declaration reachable from a type entry may import only svelte-free
+  and declared-dependency specifiers. It found and this change repairs the two
+  panels and print-player; calculator-cortex's unreachable `dist/src`
+  declarations still name bundled-away vendor packages and remain outside the
+  reachable rule until their declarations are typed without them.
+- Updated dependencies [551ffeb]
+- Updated dependencies [525c81c]
+- Updated dependencies [da39465]
+- Updated dependencies [e79c775]
+- Updated dependencies [ca970e3]
+- Updated dependencies [d29b05c]
+- Updated dependencies [a9695b7]
+- Updated dependencies [dfa89e1]
+- Updated dependencies [0e6352f]
+  - @pie-players/pie-players-shared@1.0.0-beta.8
+
 ## 1.0.0-beta.7
 
 ### Patch Changes

@@ -1,5 +1,22 @@
 # @pie-players/pie-section-player-tools-pnp-debugger
 
+## 1.0.0-beta.8
+
+### Patch Changes
+
+- ce5cb52: The PNP debugger's buttons are styled by the panel itself: their rules never reached the build, so the toggles showed state only through a host's own `active` and `danger` classes. The toggles now report state with `aria-pressed` and use `pie-section-player-tools-pnp-debugger__toggle--on` and `__toggle--prohibited`, so host rules for those common names no longer reach them (R-02). The TTS settings panel types `toolkitCoordinator` structurally, so its declarations no longer need the toolkit installed (R-15).
+- Updated dependencies [bfd0d5f]
+- Updated dependencies [551ffeb]
+- Updated dependencies [ff8ab38]
+- Updated dependencies [e79c775]
+- Updated dependencies [4c6773a]
+- Updated dependencies [a9695b7]
+- Updated dependencies [18ef9e6]
+- Updated dependencies [dfa89e1]
+- Updated dependencies [f486194]
+- Updated dependencies [0e6352f]
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.8
+
 ## 1.0.0-beta.7
 
 ### Patch Changes

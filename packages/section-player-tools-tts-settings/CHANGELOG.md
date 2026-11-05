@@ -1,5 +1,48 @@
 # @pie-players/pie-section-player-tools-tts-settings
 
+## 1.0.0-beta.8
+
+### Patch Changes
+
+- 4c6773a: The content surface ids `CONTENT_LEAD_SURFACE` and `CONTENT_MEDIA_SURFACE` have
+  one home: `@pie-players/pie-assessment-toolkit/tools/registration`. The
+  composition layer, the section player's card media region and print re-export or
+  import them from there instead of defining the same string again.
+  
+  This repairs print-player's published types, which imported
+  `@pie-players/pie-default-tool-loaders` — a package print-player does not
+  declare, so a host type-checking print-player alone failed with TS2307 under
+  `skipLibCheck: false` and silently typed the constant `any` under
+  `skipLibCheck: true`. Its surface is unchanged: the constant is still exported
+  from the package root.
+  
+  The instrumentation debugger and TTS settings panels promote
+  `@pie-players/pie-players-shared` and `@pie-players/pie-assessment-toolkit`
+  respectively from devDependencies to dependencies: their published declarations
+  reference them, so a host type-checking a panel needs them installed.
+  
+  `check-svelte-type-imports` now enforces the whole rule its header claimed: a
+  published declaration reachable from a type entry may import only svelte-free
+  and declared-dependency specifiers. It found and this change repairs the two
+  panels and print-player; calculator-cortex's unreachable `dist/src`
+  declarations still name bundled-away vendor packages and remain outside the
+  reachable rule until their declarations are typed without them.
+- ce5cb52: The PNP debugger's buttons are styled by the panel itself: their rules never reached the build, so the toggles showed state only through a host's own `active` and `danger` classes. The toggles now report state with `aria-pressed` and use `pie-section-player-tools-pnp-debugger__toggle--on` and `__toggle--prohibited`, so host rules for those common names no longer reach them (R-02). The TTS settings panel types `toolkitCoordinator` structurally, so its declarations no longer need the toolkit installed (R-15).
+- 969b27a: The TTS settings panel styles itself. It renders into the host page's light DOM,
+  and it emitted DaisyUI utility classes (`btn`, `select`, `input`, `toggle`,
+  `alert`, `fieldset`, `join`, plus Tailwind spacing and typography utilities) it
+  never defined — so it depended on the host having loaded DaisyUI to be usable,
+  and a host that had loaded it had its CSS reaching into the panel's controls.
+  Every styled node now carries a `pie-tts-*` class hook the panel defines
+  itself, styled from the same `--pie-button-*` / `--pie-text` tokens the PnP
+  panel uses, with the status variants riding the border so the ink stays on a
+  certified pair. The availability message's ok/error signal moves to a marker
+  dot for the same reason — the status colours as 0.75rem text on the dialog
+  surface miss 4.5:1 on some schemes — and the field labels drop their 85%
+  opacity, which missed it on one; the message and label ink stays on the
+  certified text pair. The new hooks are in the package's `custom-elements.json`;
+  the element tag, props and events are unchanged.
+
 ## 1.0.0-beta.7
 
 ### Patch Changes

@@ -1,5 +1,38 @@
 # @pie-players/pie-assessment-player
 
+## 1.0.0-beta.8
+
+### Patch Changes
+
+- d1fdc73: `<pie-assessment-player-default>`'s light-DOM class hooks
+  (`pie-assessment-player-default`, `-navigation`, `-nav-btn`, `-status-message`,
+  `-announcer` and the rest) are now recorded in the package's
+  `custom-elements.json`. They were always part of the element's styling surface
+  — in a light-DOM element every class name is public API — but the manifest
+  generator only read Svelte templates, so the classes a TypeScript element
+  writes from script (`className =`, `classList.add`/`remove`/`toggle`) were
+  invisible to tooling and to the surface-drift check. The generator now reads
+  both, which is what makes a future rename of one of these hooks register as a
+  reviewed surface change.
+- Updated dependencies [bfd0d5f]
+- Updated dependencies [551ffeb]
+- Updated dependencies [ff8ab38]
+- Updated dependencies [525c81c]
+- Updated dependencies [da39465]
+- Updated dependencies [e79c775]
+- Updated dependencies [ca970e3]
+- Updated dependencies [d29b05c]
+- Updated dependencies [4c6773a]
+- Updated dependencies [a9695b7]
+- Updated dependencies [18ef9e6]
+- Updated dependencies [ebd3a05]
+- Updated dependencies [dfa89e1]
+- Updated dependencies [f486194]
+- Updated dependencies [0e6352f]
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.8
+  - @pie-players/pie-players-shared@1.0.0-beta.8
+  - @pie-players/pie-section-player@1.0.0-beta.8
+
 ## 1.0.0-beta.7
 
 ### Patch Changes

@@ -1,5 +1,23 @@
 # @pie-players/pie-item-player
 
+## 1.0.0-beta.8
+
+### Patch Changes
+
+- 08d1f9a: A standalone item player with a requested `locale` now stamps the interface locale's `lang` and `dir` on itself. Standalone, the player is the outermost chrome — its configuration-error banner renders interface strings — and no stamped ancestor exists above it, so under `locale="ar"` the banner read without a language and laid out left-to-right. Rendered-attribute visible only when `locale` is requested: a host that passes none, including every nested player a section mounts (the shell above remains the stamped ancestor), renders what it did before, and the element removes the stamp if the locale it stamped is cleared. The item-demos delivery page gains the `?locale=` param with the generated-tier provider composition, and a new interface-locale spec asserts the standalone stamp, the behaviour preservation, and the mirrored Arabic error banner — closing the RTL layout audit's recorded item-player gap.
+- dfa89e1: The section controller scores the section in the browser with `score()`, which resolves `{ items }` with each item's `provideScore()` outcomes in section order, and `commitPendingSessions()` commits pending element responses before a host reads or submits the session. The layout elements no longer have `provideScore()`; hosts call `getSectionController()?.score()` instead. An item player's load, error, backend and snapshot events reach the host as `item-player-event`, carrying the item's identity. `runtime.player.resolveItemProps(context)` sets player properties per item, and `runtime.player` is typed with the item player properties it forwards. Correct responses that `addCorrectResponse` fills render in a section's item players without entering the section session; the item player marks every `session-changed` it sends while they fill its session with `sessionSource: "correct-response"`, and neither saves nor snapshots that session: autosaves are skipped, and `saveSession()` and `score()` reject.
+- Updated dependencies [551ffeb]
+- Updated dependencies [525c81c]
+- Updated dependencies [da39465]
+- Updated dependencies [e79c775]
+- Updated dependencies [ca970e3]
+- Updated dependencies [d29b05c]
+- Updated dependencies [a9695b7]
+- Updated dependencies [dfa89e1]
+- Updated dependencies [0e6352f]
+  - @pie-players/pie-players-shared@1.0.0-beta.8
+  - @pie-players/pie-context@1.0.0-beta.8
+
 ## 1.0.0-beta.7
 
 ### Patch Changes

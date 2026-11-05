@@ -1,5 +1,73 @@
 # @pie-players/pie-assessment-toolkit
 
+## 1.0.0-beta.8
+
+### Patch Changes
+
+- bfd0d5f: A host can limit the answer eliminator to the elements whose support it has vetted with `tools.providers.answerEliminator.elements`, such as `["multiple-choice"]`. An item with no listed element loses the eliminator, even under a PNP grant, and in a mixed item only the listed elements' choices take a toggle. Omitted, every element that supports answer masking keeps it. To support this, `isApplicableToContent` receives the tool's `tools.providers` entry, which `filterDecidedToolIds` takes as a `getToolConfig` argument.
+- 551ffeb: Arabic content gets the same calculator, graph, ruler and periodic-table visibility as its English counterpart: the math and science gates read Arabic-Indic and Persian digits, Arabic punctuation and currency words, and Arabic science vocabulary. The dictionary and picture dictionary mark their results with the corpus language and direction, and the periodic table names elements in Arabic under an Arabic interface locale.
+- ff8ab38: The toolkit coordinator no longer carries the text-to-speech lifecycle. Its
+  initialization, readiness, reconfiguration, degradation tracking and
+  missing-provider report move to `services/tts/tts-lifecycle.ts` — the toolkit's
+  TTS-specific area, where the capability may be named — and the coordinator now
+  answers only generic questions about it (`ownsTool`, `isStarted`) through a
+  `TtsLifecycleHost` adapter bound once at construction. The packaged default
+  provider configs move to `services/tool-provider-defaults.ts`, a
+  capability-naming module like `support-conflicts.ts`, so applying a default is
+  no longer a capability decision in the neutral layer. Hosts see no change:
+  every public method keeps its name and signature, and the read-aloud-typed
+  config accessors take their literal from `TTS_TOOL_ID`, so the id is named
+  where the capability lives.
+  
+  With the coordinator clean, `check:capability-neutrality` now holds it to
+  capability-neutrality — the gate covered a named file list that the
+  coordinator, the toolkit's largest service, sat outside, so a capability
+  branch added there would have passed CI. It now validates 20 core files, and a
+  `toolId === "calculator"` branch in the coordinator fails it.
+- e79c775: `negotiateContentLanguage` and `findClosestLanguageMatch` widen to a sibling only when it carries the request's variant and private-use subtags, so `en-GB` is never served `en-GB-x-gulf`, and `negotiateContentLanguage` ranks siblings source first, then by tag, so the order of `available` never decides. Read-aloud sends the content language without variant subtags, so `en-GB-x-gulf` is read by an `en-GB` voice. New export: `languageTagWithoutVariants`.
+- 4c6773a: The content surface ids `CONTENT_LEAD_SURFACE` and `CONTENT_MEDIA_SURFACE` have
+  one home: `@pie-players/pie-assessment-toolkit/tools/registration`. The
+  composition layer, the section player's card media region and print re-export or
+  import them from there instead of defining the same string again.
+  
+  This repairs print-player's published types, which imported
+  `@pie-players/pie-default-tool-loaders` — a package print-player does not
+  declare, so a host type-checking print-player alone failed with TS2307 under
+  `skipLibCheck: false` and silently typed the constant `any` under
+  `skipLibCheck: true`. Its surface is unchanged: the constant is still exported
+  from the package root.
+  
+  The instrumentation debugger and TTS settings panels promote
+  `@pie-players/pie-players-shared` and `@pie-players/pie-assessment-toolkit`
+  respectively from devDependencies to dependencies: their published declarations
+  reference them, so a host type-checking a panel needs them installed.
+  
+  `check-svelte-type-imports` now enforces the whole rule its header claimed: a
+  published declaration reachable from a type entry may import only svelte-free
+  and declared-dependency specifiers. It found and this change repairs the two
+  panels and print-player; calculator-cortex's unreachable `dist/src`
+  declarations still name bundled-away vendor packages and remain outside the
+  reachable rule until their declarations are typed without them.
+- a9695b7: Toolbar glyphs no longer render blank (R-03, R-13, R-14, R-24). The FontAwesome that `<nds-icon-button>` needs comes from one place, `@pie-players/pie-players-shared/ui/fontawesome`, now used by the item toolbar, the inline TTS control and the section player's scroll hint, which under `ndsIcons` previously had no FontAwesome in its shadow root. The highlighter and strikethrough icon names gain built-in glyphs, and the answer eliminator's button draws its registration's icon. The annotation toolbar's screen-reader announcements follow the interface locale.
+- 18ef9e6: `<pie-item-toolbar>` resubscribes its tools' active state only when the rendered tools change (R-07). Its first sync ran a tool's `sync()` inside a tracked effect, so any state that `sync()` read tore down and re-created every tool's subscription when it changed; the first sync is now deferred like the later ones.
+- dfa89e1: The section controller scores the section in the browser with `score()`, which resolves `{ items }` with each item's `provideScore()` outcomes in section order, and `commitPendingSessions()` commits pending element responses before a host reads or submits the session. The layout elements no longer have `provideScore()`; hosts call `getSectionController()?.score()` instead. An item player's load, error, backend and snapshot events reach the host as `item-player-event`, carrying the item's identity. `runtime.player.resolveItemProps(context)` sets player properties per item, and `runtime.player` is typed with the item player properties it forwards. Correct responses that `addCorrectResponse` fills render in a section's item players without entering the section session; the item player marks every `session-changed` it sends while they fill its session with `sessionSource: "correct-response"`, and neither saves nor snapshots that session: autosaves are skipped, and `saveSession()` and `score()` reject.
+- f486194: The section player records the identity a backend reports in an item's delivery `backend-load-complete`, including `family` and `substitution`, as that item session's `content`. Items loaded without one keep the identity they declare.
+- 0e6352f: The SSML sanitizer and the SchoolCity TTS provider now classify hosts through one module, the new `@pie-players/pie-players-shared/security/private-hosts` entry (`isCloudMetadataHostname`, `isPrivateHostname`), so they can no longer drift apart. It classifies IP literals with `ipaddr.js` against the IANA special-purpose address registries in place of hand-written patterns, and treats every address outside public unicast space as private. Both checks now refuse carrier-grade NAT (`100.64.0.0/10`), multicast, broadcast, documentation and reserved ranges, all of `fc00::/7` and `fe80::/10`, and the NAT64, 6to4 and Teredo forms that embed an IPv4 address, as well as the IPv6 unspecified address `[::]` and `*.localhost`; IPv4-compatible IPv6, like IPv4-mapped, is judged by the IPv4 address it carries. The SSML sanitizer also gains the Oracle Cloud metadata host and IPv4-mapped IPv6, which the provider already refused. `@pie-players/tts-server-sc` now depends on `@pie-players/pie-players-shared`, and `@pie-players/pie-players-shared` on `ipaddr.js`.
+- Updated dependencies [551ffeb]
+- Updated dependencies [525c81c]
+- Updated dependencies [da39465]
+- Updated dependencies [e79c775]
+- Updated dependencies [ca970e3]
+- Updated dependencies [d29b05c]
+- Updated dependencies [a9695b7]
+- Updated dependencies [dfa89e1]
+- Updated dependencies [0e6352f]
+- Updated dependencies [8abe1b2]
+  - @pie-players/pie-players-shared@1.0.0-beta.8
+  - @pie-players/pie-tts@1.0.0-beta.8
+  - @pie-players/pie-calculator@1.0.0-beta.8
+  - @pie-players/pie-context@1.0.0-beta.8
+
 ## 1.0.0-beta.7
 
 ### Patch Changes

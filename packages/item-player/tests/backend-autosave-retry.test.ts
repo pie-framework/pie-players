@@ -40,6 +40,7 @@ function setup(failCalls: number[], slowCalls: number[] = []) {
 		getPassageConfig: () => null,
 		getEnv: () => ({ mode: "gather", role: "student" }),
 		getSessionContainer: () => ({ id: "session-1", data: [answer] }),
+		holdsCorrectResponses: () => false,
 		loadPlayerConfig: async () => true,
 		dispatchPlayerEvent: (event) => {
 			if (event.type === "backend-error") errors.push(event.type);

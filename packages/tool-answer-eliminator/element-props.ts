@@ -11,4 +11,9 @@ export interface AnswerEliminatorProps {
 	alwaysOn?: boolean;
 	buttonAlignment?: 'start' | 'end' | 'inline' | 'left' | 'right';
 	elementStateKeys?: ElementStateKeys;
+	/**
+	 * Model ids of the PIE elements whose choices take a toggle. Unset, every
+	 * element's choices do.
+	 */
+	elementIds?: readonly string[];
 }

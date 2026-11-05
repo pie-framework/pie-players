@@ -272,7 +272,7 @@ bun run typecheck
 bun run test
 ```
 
-Run the [high-value checks](../../AGENTS.md#high-value-checks) for the toolkit and item player
+Run the [toolkit boundary checks](../../AGENTS.md#monorepo-map) for the toolkit and item player
 changes. Playwright-backed tests run outside the sandbox; see
 [Playwright and sandboxed execution](../../AGENTS.md#playwright-and-sandboxed-execution).
 

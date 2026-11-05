@@ -17,7 +17,10 @@ import {
 	catalogSourceSignature,
 } from "../services/catalog-owner.js";
 import type { TTSHighlightTargetResolver } from "../services/tts/highlight-target-resolver.js";
-import { PIE_INTERNAL_CONTENT_LOADED_EVENT } from "./registration-events.js";
+import {
+	PIE_INTERNAL_CONTENT_IDENTITY_EVENT,
+	PIE_INTERNAL_CONTENT_LOADED_EVENT,
+} from "./registration-events.js";
 import {
 	createShellRegistrationDispatcher,
 	type ShellRegistrationIdentity,
@@ -166,8 +169,8 @@ const setAttributeIfChanged = (
  * replays the request instead, once the toolkit's provider connects. A
  * different runtime answering later, a nearer toolkit taking over, moves the
  * registration: the old runtime is told to unregister by its id, and the new
- * one gets the registration and the content's last load, which only the old
- * one heard.
+ * one gets the registration and the content's last load and served identity,
+ * which only the old one heard.
  */
 export function createShellScope(): ShellScope {
 	const registration = createShellRegistrationDispatcher();
@@ -181,6 +184,7 @@ export function createShellScope(): ShellScope {
 	let identity: ShellRegistrationIdentity | null = null;
 	let held: Array<{ type: string; detail: object }> = [];
 	let loaded: object | null = null;
+	let served: object | null = null;
 
 	const syncRegistration = () => {
 		if (runtime !== null) registration.sync(identity, runtime);
@@ -197,6 +201,7 @@ export function createShellScope(): ShellScope {
 
 	function send(type: string, detail: object): void {
 		if (type === PIE_INTERNAL_CONTENT_LOADED_EVENT) loaded = detail;
+		if (type === PIE_INTERNAL_CONTENT_IDENTITY_EVENT) served = detail;
 		if (host && runtime !== null && !runtimeDeparted(host, runtime)) {
 			dispatchCrossBoundaryEvent(shellEventTarget(host, runtime), type, {
 				...detail,
@@ -219,10 +224,13 @@ export function createShellScope(): ShellScope {
 		const pending = held;
 		held = [];
 		for (const event of pending) send(event.type, event.detail);
-		const replayed = pending.some(
-			(event) => event.type === PIE_INTERNAL_CONTENT_LOADED_EVENT,
-		);
-		if (moved && loaded && !replayed) {
+		if (!moved) return;
+		const replayed = (type: string) =>
+			pending.some((event) => event.type === type);
+		if (served && !replayed(PIE_INTERNAL_CONTENT_IDENTITY_EVENT)) {
+			send(PIE_INTERNAL_CONTENT_IDENTITY_EVENT, served);
+		}
+		if (loaded && !replayed(PIE_INTERNAL_CONTENT_LOADED_EVENT)) {
 			send(PIE_INTERNAL_CONTENT_LOADED_EVENT, loaded);
 		}
 	}
@@ -234,6 +242,7 @@ export function createShellScope(): ShellScope {
 		runtime = null;
 		held = [];
 		loaded = null;
+		served = null;
 		identity = null;
 		shell = null;
 		region = null;

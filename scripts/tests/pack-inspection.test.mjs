@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 import {
 	collectDeclaredTargets,
@@ -8,11 +11,26 @@ import {
 	mapConcurrent,
 	parsePackJson,
 	packedFilesFromPackData,
+	readPublishPolicy,
 	splitPackageSpecifier,
 	toPosix,
 } from "../lib/pack-inspection.mjs";
 
 describe("pack inspection helpers", () => {
+	test("reads the publish policy and fails when it is missing", () => {
+		const root = mkdtempSync(path.join(tmpdir(), "pie-publish-policy-"));
+		// An empty policy allows nothing and checks nothing, so every reader
+		// would pass; a missing file is an error, not a default.
+		expect(() => readPublishPolicy(root)).toThrow("publish policy is missing");
+
+		mkdirSync(path.join(root, "scripts"));
+		writeFileSync(
+			path.join(root, "scripts", "publish-policy.json"),
+			JSON.stringify({ workspaceRoots: ["packages"] }),
+		);
+		expect(readPublishPolicy(root)).toEqual({ workspaceRoots: ["packages"] });
+	});
+
 	test("collects package entry targets from top-level fields and nested exports", () => {
 		const targets = collectDeclaredTargets({
 			main: "./dist/index.js",

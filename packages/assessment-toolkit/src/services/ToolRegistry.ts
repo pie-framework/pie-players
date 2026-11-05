@@ -668,8 +668,15 @@ export interface ToolRegistration {
 	 * Declare this only where the tool's own controls provably do nothing:
 	 * withdrawing a granted accommodation on a false negative is the more
 	 * expensive failure. Omitting it means "applicable".
+	 *
+	 * `config` is this tool's `tools.providers.<toolId>` entry, when the surface
+	 * asking has one: host configuration can narrow what a tool acts on, and a
+	 * tool that acts on nothing here is not applicable.
 	 */
-	isApplicableToContent?(context: ToolContext): boolean;
+	isApplicableToContent?(
+		context: ToolContext,
+		config?: ToolProviderConfig,
+	): boolean;
 
 	/**
 	 * Toolbar render contract. Required for `toolbar-toggle` and
@@ -1157,18 +1164,21 @@ export class ToolRegistry {
 	 * @param contexts - Every context the tool could act on at this placement
 	 * @param onFailure - Receives the gate's throw; the tool then counts as
 	 *   applicable. Logs when omitted.
+	 * @param config - The tool's `tools.providers.<toolId>` entry, passed to the
+	 *   gate
 	 */
 	isApplicableToAnyContext(
 		toolId: string,
 		contexts: readonly ToolContext[],
 		onFailure: ToolCallbackFailureHandler = logToolCallbackFailure,
+		config?: ToolProviderConfig,
 	): boolean {
 		const tool = this.get(toolId);
 		if (!tool?.isApplicableToContent) return true;
 		if (contexts.length === 0) return true;
 		return contexts.some((context) => {
 			try {
-				return tool.isApplicableToContent?.(context) ?? true;
+				return tool.isApplicableToContent?.(context, config) ?? true;
 			} catch (error) {
 				onFailure(toolId, "tool-applicability", error);
 				// A gate that throws has not established that the tool is useless.
@@ -1196,6 +1206,8 @@ export class ToolRegistry {
 	 * @param contexts - Every context the tools could act on at that surface
 	 * @param onFailure - Receives a relevance or applicability check's throw.
 	 *   Logs when omitted.
+	 * @param getToolConfig - A tool's `tools.providers.<toolId>` entry, which
+	 *   applicability receives; a toolkit coordinator's `getToolConfig`
 	 */
 	filterDecidedToolIds(
 		entries: readonly Pick<
@@ -1205,6 +1217,7 @@ export class ToolRegistry {
 		level: ToolLevel,
 		contexts: readonly ToolContext[],
 		onFailure: ToolCallbackFailureHandler = logToolCallbackFailure,
+		getToolConfig?: (toolId: string) => ToolProviderConfig | null,
 	): string[] {
 		const granted = new Set<string>();
 		const decided: string[] = [];
@@ -1235,7 +1248,12 @@ export class ToolRegistry {
 		return decided.filter(
 			(toolId) =>
 				relevant.has(toolId) &&
-				this.isApplicableToAnyContext(toolId, contexts, onFailure),
+				this.isApplicableToAnyContext(
+					toolId,
+					contexts,
+					onFailure,
+					getToolConfig?.(toolId) ?? undefined,
+				),
 		);
 	}
 

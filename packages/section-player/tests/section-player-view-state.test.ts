@@ -680,4 +680,80 @@ describe("section player view state", () => {
 		expect(withoutSession.session).toEqual({ id: "", data: [] });
 		expect(Object.isFrozen(EMPTY_ITEM_SESSION)).toBe(true);
 	});
+
+	test("resolveItemProps sets one item's player properties over the section's", async () => {
+		const { getItemPlayerParams } = await loadViewStateModule();
+		const resolveItemProps = mock(({ itemId }: any) =>
+			itemId === "item-1"
+				? {
+						addCorrectResponse: true,
+						config: { elements: {} },
+						session: { id: "x", data: [] },
+						env: { mode: "evaluate" },
+					}
+				: null,
+		);
+		const paramsFor = (id: string) =>
+			getItemPlayerParams({
+				item: { id, config: {} } as any,
+				compositionModel: { itemSessions: {}, itemViewModels: [] } as any,
+				resolvedPlayerEnv: { mode: "gather", role: "student" },
+				resolvedPlayerAttributes: {},
+				resolvedPlayerProps: {
+					addCorrectResponse: false,
+					debug: true,
+					resolveItemProps,
+				},
+				playerStrategy: "iife",
+			});
+
+		const first = paramsFor("item-1");
+		const second = paramsFor("item-2");
+
+		expect(first.props).toMatchObject({ addCorrectResponse: true, debug: true });
+		expect(first.props).not.toHaveProperty("resolveItemProps");
+		expect(first.props).not.toHaveProperty("config");
+		expect(first.props).not.toHaveProperty("session");
+		expect(first.props).not.toHaveProperty("env");
+		expect(first.session).toEqual({ id: "", data: [] });
+		expect(second.props).toMatchObject({ addCorrectResponse: false, debug: true });
+		expect(resolveItemProps.mock.calls[0]?.[0]).toMatchObject({
+			itemId: "item-1",
+			itemIndex: 0,
+			env: { mode: "gather", role: "student" },
+		});
+	});
+
+	test("a backend from resolveItemProps is the item's base, and null gives it none", async () => {
+		const { getItemPlayerParams } = await loadViewStateModule();
+		const resolveBackend = mock((_context: any, baseBackend: any) => ({
+			...baseBackend,
+			delivery: { ...baseBackend.delivery, assignmentId: "resolved" },
+		}));
+		const paramsFor = (id: string) =>
+			getItemPlayerParams({
+				item: { id, config: {} } as any,
+				compositionModel: { itemSessions: {}, itemViewModels: [] } as any,
+				resolvedPlayerEnv: {},
+				resolvedPlayerAttributes: {},
+				resolvedPlayerProps: {
+					backend: { delivery: { enabled: true, baseUrl: "/section" } },
+					resolveItemProps: ({ itemId }: any) =>
+						itemId === "own"
+							? { backend: { delivery: { enabled: true, baseUrl: "/item" } } }
+							: { backend: null },
+					resolveBackend,
+				},
+				playerStrategy: "iife",
+			});
+
+		const own = requireBackend(paramsFor("own"));
+		expect(own.delivery).toMatchObject({
+			baseUrl: "/item",
+			itemId: "own",
+			assignmentId: "resolved",
+		});
+		expect(paramsFor("none").props).not.toHaveProperty("backend");
+		expect(resolveBackend).toHaveBeenCalledTimes(1);
+	});
 });

@@ -13,7 +13,6 @@ export type {
 	PieSectionPlayerSplitPaneElement,
 } from "./contracts/elements.js";
 export type {
-	SectionItemScore,
 	SectionPlayerRuntimeHostContract,
 	SectionPlayerNavigationSnapshot,
 	SectionPlayerSnapshot,
@@ -37,6 +36,9 @@ export type { SectionPlayerHostHooks } from "./contracts/host-hooks.js";
 export type {
 	SectionPlayerBackendResolver,
 	SectionPlayerBackendResolverContext,
+	SectionPlayerItemContext,
+	SectionPlayerItemPlayerProps,
+	SectionPlayerItemPropsResolver,
 	SectionPlayerRuntimeConfig,
 	SectionPlayerRuntimePlayerConfig,
 } from "./components/shared/section-player-backend-delivery.js";

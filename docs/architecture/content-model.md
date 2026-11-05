@@ -1,8 +1,9 @@
 # Content Model
 
 The fields of `ItemEntity`, `PassageEntity` and `AssessmentEntity` in
-`@pie-players/pie-players-shared/types`, each with its contract tier, and the
-language-variant model those fields carry.
+`@pie-players/pie-players-shared/types`, each with its contract tier, the
+language-variant model those fields carry, and the identifier registries of the
+curriculum-standards fields.
 
 The tiers are the ones the [content extensions PRD](../prds/content-extensions.md#contract-shape)
 defines:
@@ -28,6 +29,8 @@ Fields no player reads and no interchange contract defines are listed as
 | `name` | both | runtime | The section player's fallback when a passage has no `id` |
 | `baseId`, `version` | both | interchange | The stored version. The section player records them, with `language`, as the item session's `content` |
 | `isAdaptationOf` | both | interchange | The source a translation was adapted from: `{ baseId, version? }` |
+| `curriculumStandards` | both | interchange | Standards, skills and competencies the content is aligned to, one `CurriculumStandard` per QTI CSM 1.1 `labelledGUID`; see [Curriculum standards](#curriculum-standards) |
+| `skillLevels` | both | interchange | Cognitive-complexity classifications (DOK, Bloom's), one `SkillLevel` per LOM classification "skill level" |
 | `signature` | both | untiered | A backend's content hash |
 | `retired`, `published` | both | untiered | A backend's lifecycle flags |
 | `configuration` | item | untiered | Authoring configuration |
@@ -86,15 +89,22 @@ resolves variants:
   `"default"`;
 - `matching`: `"closest"`, the default, serves the nearest variant in the
   requested language, so `es-MX` is served `es` or `es-ES` when the family has
-  no `es-MX`; `"exact"` serves only the requested tag and leaves the rest to
-  `fallback`;
+  no `es-MX`. A variant in another variety, one naming a different region or
+  different variant subtags (`es-ES`, not `es`), records
+  `substitution: "variety"`. `"exact"` serves only the requested tag and leaves
+  the rest to `fallback`, so a host that accepts some varieties and not others
+  lists them in order (`en-GB`, `en-US`);
 - `staleness`: `"serve"` serves a variant whose source has a newer release,
   recording `substitution: "stale"`; `"require-current"` treats it as missing.
 
 **Language matching** is BCP 47 lookup that never crosses scripts:
 `negotiateContentLanguage` in `@pie-players/pie-players-shared/i18n/language-tags`
 walks `zh-TW → zh-Hant`, skips a bare `zh` held in another script, and then
-widens to a sibling in the same language and script, `es-MX → es-ES`. Its
+widens to a sibling in the same language and script, `es-MX → es-ES`. A sibling
+carries the request's variant and private-use subtags, so a variety such as
+`en-GB-x-gulf` is served only to a request that names it; that request itself
+truncates to `en-GB`. Siblings rank the family source first, then by tag, so
+the order a backend lists members in never decides. Its
 `matching` option applies the policy's `matching`; a `null` entry in its
 `available` list stands for content that declares no language, and `source`
 names the family source the fallback chain ends at. A backend that negotiates
@@ -102,6 +112,51 @@ on its own side matches the conformance fixtures in
 `packages/players-shared/tests/content-language-fixtures.json`.
 
 **Sessions.** The section player records an item session's `content` from the
-entity's `language`; `family` and `substitution` reach a session only from a
-backend's `identity`. The section player does not yet read the item player's
-served identity, so in a section the recorded language is the declared one.
+`identity` in the item player's delivery `backend-load-complete`, and falls back
+to the entity's declared `baseId`, `version` and `language` when no load
+reported one. `family` and `substitution` reach a session only from a backend.
+
+## Curriculum standards
+
+`curriculumStandards` and `skillLevels` record direct alignments only: the
+link someone made, or a crosswalk generated and marked with `derivedFrom`.
+Framework structure (parents, skill-to-standard links, crosswalks, successors,
+a framework node's DOK) is resolved on read by the framework provider, and
+roll-ups, mastery and reporting belong to the host. Absent means no data; `[]`
+means the writer states that none applies. A passage's alignment belongs to
+the passage, and its items do not inherit it. The
+[curriculum standards PRD](../prds/curriculum-standards-alignment.md) has the
+decisions and the QTI 3 mapping.
+
+A `CurriculumStandard` is keyed by `providerId` + `guid`. An absent
+`providerId` means `AB`, as CSM 1.1 leaves the attribute optional. `guid` is
+stored as issued and compared case-insensitively. `label` is a display code and never a
+key, because codes repeat across frameworks. `primary` marks the record's main
+standard, at most one per `providerId`; `provenance` is `authored`, `derived`
+or `imported`.
+
+**Provider ids.** Ids come from the
+[1EdTech GUID Provider Registry](https://www.imsglobal.org/cc/guidregistry1.cfm)
+where the issuer is listed there. The registry is open: a host writes its own
+provider under its own id, and PIE validates none.
+
+| `providerId` | Issuer | `guid` |
+| --- | --- | --- |
+| `AB` | Academic Benchmarks | The AB GUID, as issued |
+| `CASE` | The CASE Network | The CFItem identifier, a lowercase UUID; `caseItemURI` holds the CFItem URI |
+| `RLI-SKILLS` | Renaissance skills (not in the 1EdTech registry) | The skill id, a lowercase hyphenated UUID |
+
+A skill framework takes its own id, distinct from any standards id its
+publisher holds, so a later standards framework from the same organization
+cannot collide with it.
+
+**Skill-level sources.** LOM has no taxonomy-source registry, so these are
+PIE's own names. A host adds its own taxonomy under its own `source`.
+
+| `source` | Taxonomy | `id` |
+| --- | --- | --- |
+| `webb-dok` | Webb's Depth of Knowledge | `"1"`, `"2"`, `"3"`, `"4"` |
+| `blooms-revised` | Bloom's taxonomy, revised (2001) | `"remember"`, `"understand"`, `"apply"`, `"analyze"`, `"evaluate"`, `"create"` |
+| `blooms-original` | Bloom's taxonomy, original (1956) | `"knowledge"`, `"comprehension"`, `"application"`, `"analysis"`, `"synthesis"`, `"evaluation"` |
+
+A combined value such as DOK 1–2 is two entries.

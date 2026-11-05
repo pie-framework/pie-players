@@ -3,6 +3,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import { stripComments } from "./lib/strip-comments.mjs";
+
 const ROOT = process.cwd();
 const SEARCH_ROOT = path.join(ROOT, "packages");
 const SOURCE_EXTENSIONS = new Set([".ts", ".js", ".mjs", ".svelte"]);
@@ -24,8 +26,6 @@ const ALLOWED_DIRECT_DEFINE_FILES = new Set([
 const DIRECT_DEFINE_PATTERN = /customElements\.define\s*\(/g;
 const LITERAL_DEFINE_PATTERN =
 	/(?:defineCustomElementSafely|customElements\.define)\(\s*["']([^"']+)["']/g;
-const stripComments = (value) =>
-	value.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
 
 const shouldSkipDir = (name) =>
 	name === "node_modules" ||

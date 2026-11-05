@@ -401,8 +401,8 @@ them.
   unchanged.
 
 Commands: `bun run typecheck` and `bun run test`, the
-[high-value checks](../../AGENTS.md#high-value-checks) for the layout elements
-and the coordinator, and `bun run check:node-consumer-imports` and
+[packaging checks](../../AGENTS.md#custom-element-import-and-packaging-boundaries) for the layout elements,
+the [toolkit boundary checks](../../AGENTS.md#monorepo-map) for the coordinator, and `bun run check:node-consumer-imports` and
 `bun run check:undeclared-subpaths` for the `./item-section` subpath.
 Playwright-backed tests run outside the sandbox; see
 [Playwright and sandboxed execution](../../AGENTS.md#playwright-and-sandboxed-execution).

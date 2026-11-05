@@ -570,7 +570,7 @@ bun run typecheck
 bun run test
 ```
 
-Also run the [high-value checks](../../AGENTS.md#high-value-checks) for the new
+Also run the [packaging checks](../../AGENTS.md#custom-element-import-and-packaging-boundaries) for the new
 custom elements and export boundary.
 
 ## Rollout And Release Notes

@@ -140,6 +140,7 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 	} from "../services/tool-config-validation.js";
 	import { parseToolList } from "../services/tools-config-normalizer.js";
 	import {
+		PIE_INTERNAL_CONTENT_IDENTITY_EVENT,
 		PIE_INTERNAL_CONTENT_LOADED_EVENT,
 		PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
 		PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
@@ -147,6 +148,7 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 		PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT,
 		PIE_REGISTER_EVENT,
 		PIE_UNREGISTER_EVENT,
+		type InternalContentIdentityDetail,
 		type InternalContentLoadedDetail,
 		type InternalFormativeActionDetail,
 		type InternalItemSessionChangedDetail,
@@ -189,6 +191,7 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 		| typeof PIE_UNREGISTER_EVENT
 		| typeof PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT
 		| typeof PIE_INTERNAL_CONTENT_LOADED_EVENT
+		| typeof PIE_INTERNAL_CONTENT_IDENTITY_EVENT
 		| typeof PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT
 		| typeof PIE_INTERNAL_FORMATIVE_ACTION_EVENT
 		| typeof PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT;
@@ -1932,6 +1935,19 @@ const DEFAULT_ENV = {
 						canonicalItemId: sectionBinding.getCanonicalItemId(detail.itemId),
 						result,
 						fallbackSession: detail.session,
+					});
+				},
+			},
+			{
+				name: PIE_INTERNAL_CONTENT_IDENTITY_EVENT,
+				handler: (event: Event) => {
+					if (!claimLocalEvent(event)) return;
+					const detail = getEventDetail<InternalContentIdentityDetail>(event);
+					if (!detail?.itemId) return;
+					sectionBinding.recordServedContentIdentity({
+						itemId: detail.itemId,
+						canonicalItemId: detail.canonicalItemId,
+						identity: detail.identity,
 					});
 				},
 			},

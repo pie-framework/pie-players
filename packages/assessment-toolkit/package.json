@@ -76,10 +76,10 @@
 		"speech-rule-engine": "5.0.0-rc.4"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.2",
+		"@biomejs/biome": "^2.6.4",
 		"@happy-dom/global-registrator": "^21.0.4",
 		"@pie-players/tts-client-server": "workspace:*",
-		"svelte": "^5.57.2",
+		"svelte": "^5.57.3",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3"
 	},

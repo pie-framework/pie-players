@@ -7,7 +7,7 @@
 			"declarations": [
 				{
 					"kind": "class",
-					"description": "Process-of-elimination tool for the item in its enclosing `<pie-item-scope>`: it adds a toggle beside each choice an element supplies for `answer-masking` that strikes the choice through or masks it, per `strategy`. It renders nothing of its own and is active while `visible` or `always-on` is set. Eliminations persist in the runtime context's element tool state store, under the key `elementStateKeys` gives each PIE element.",
+					"description": "Process-of-elimination tool for the item in its enclosing `<pie-item-scope>`: it adds a toggle beside each choice an element supplies for `answer-masking` that strikes the choice through or masks it, per `strategy`. It renders nothing of its own and is active while `visible` or `always-on` is set; `elementIds` limits the toggles to those elements' choices. Eliminations persist in the runtime context's element tool state store, under the key `elementStateKeys` gives each PIE element.",
 					"name": "ToolAnswerEliminator",
 					"tagName": "pie-tool-answer-eliminator",
 					"customElement": true,
@@ -58,6 +58,15 @@
 							"default": "{}",
 							"description": "Store key per PIE element, by model id (JS property only)",
 							"attribute": "elementstatekeys"
+						},
+						{
+							"kind": "field",
+							"name": "elementIds",
+							"type": {
+								"text": "readonly string[]"
+							},
+							"description": "Model ids of the PIE elements whose choices take a toggle. Unset, every element's choices do.",
+							"attribute": "elementids"
 						}
 					],
 					"attributes": [
@@ -102,6 +111,14 @@
 							"default": "{}",
 							"description": "Store key per PIE element, by model id (JS property only)",
 							"fieldName": "elementStateKeys"
+						},
+						{
+							"name": "elementids",
+							"type": {
+								"text": "readonly string[]"
+							},
+							"description": "Model ids of the PIE elements whose choices take a toggle. Unset, every element's choices do.",
+							"fieldName": "elementIds"
 						}
 					],
 					"cssProperties": [

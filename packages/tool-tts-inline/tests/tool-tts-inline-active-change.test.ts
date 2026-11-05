@@ -29,10 +29,11 @@ afterEach(() => {
 	document.body.replaceChildren();
 });
 
+// The DOM stays registered: the element module is cached for the whole run and
+// defined its element in this window, so a later file would mount nothing.
 afterAll(async () => {
 	document.body.replaceChildren();
 	await settle();
-	if (ownsDom && GlobalRegistrator.isRegistered) GlobalRegistrator.unregister();
 });
 
 test("mounting inactive announces nothing", async () => {

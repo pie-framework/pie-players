@@ -61,20 +61,15 @@ import {
 import { HighlightCoordinator } from "./HighlightCoordinator.js";
 import { ToolCoordinator } from "./ToolCoordinator.js";
 import type { ToolCoordinatorApi } from "./interfaces.js";
-import type { ITTSProvider } from "@pie-players/pie-tts";
 import { TTSService } from "./TTSService.js";
-import {
-	BrowserTTSProvider,
-	browserFallbackConfig,
-} from "./tts/browser-provider.js";
-import type { ToolkitTTSConfig } from "./tts/provider-options.js";
-import {
-	buildRuntimeTTSConfig,
-	resolveTTSBackend,
-	resolveTTSRuntimeSettings,
-} from "./tts-runtime-config.js";
 import { ToolProviderRegistry } from "./tool-providers/index.js";
 import type { ToolProviderApi } from "./tool-providers/ToolProviderApi.js";
+import {
+	TtsLifecycle,
+	TTS_TOOL_ID,
+	deepMergeMathSpeech,
+} from "./tts/tts-lifecycle.js";
+import { DEFAULT_TOOL_PROVIDERS } from "./tool-provider-defaults.js";
 
 import { ToolRegistry } from "./ToolRegistry.js";
 import type {
@@ -120,6 +115,9 @@ export type {
 	SectionControllerFactoryDefaults,
 	SectionControllerHandle,
 	SectionControllerKey,
+	SectionItemScore,
+	SectionItemScorer,
+	SectionScore,
 	SectionControllerLoadedRenderable,
 	SectionSessionPersistenceConfig,
 	SectionSessionPersistenceStrategy,
@@ -150,21 +148,15 @@ class SectionControllerRetiredError extends Error {
 	}
 }
 
-const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
-	!!value && typeof value === "object" && !Array.isArray(value);
-
 const mergeToolConfigUpdate = (
 	toolId: string,
 	current: ToolProviderConfig,
 	updates: Partial<ToolProviderConfig>,
 ): ToolProviderConfig => {
 	const next = { ...current, ...updates };
-	if (
-		toolId === "textToSpeech" &&
-		isPlainRecord(current.mathSpeech) &&
-		isPlainRecord(updates.mathSpeech)
-	) {
-		next.mathSpeech = { ...current.mathSpeech, ...updates.mathSpeech };
+	const deepMathSpeech = deepMergeMathSpeech(toolId, current, updates);
+	if (deepMathSpeech) {
+		next.mathSpeech = deepMathSpeech;
 	}
 	return next;
 };
@@ -591,11 +583,7 @@ export class ToolkitCoordinator {
 	readonly lazyInit: boolean;
 
 	/** Track TTS initialization state */
-	private ttsInitialized = false;
-	/** Text-to-speech failed to start and policy does not grant it. */
-	private ttsDegraded = false;
-	private ttsInitPromise?: Promise<void>;
-	private ttsReconfigurePromise?: Promise<void>;
+	private tts!: TtsLifecycle;
 	/**
 	 * The loader ran, whether or not it returned state. A failed load is
 	 * reported once and the coordinator runs without saved tool state.
@@ -739,20 +727,6 @@ export class ToolkitCoordinator {
 	private reportedUnboundFeaturePolicy = false;
 
 	/**
-	 * Whether {@link _initializeTTS} has already reported a non-browser backend
-	 * falling back to browser speech because no text-to-speech provider is registered.
-	 * Once per coordinator: a text-to-speech config change re-runs
-	 * initialization, and the missing provider is the same gap each time.
-	 */
-	private reportedMissingTTSProvider = false;
-
-	/**
-	 * The backend of a fallback {@link reportMissingTTSProvider} held back while
-	 * the registry was unsettled, reported if the bound toolkit has no registry.
-	 */
-	private heldMissingTTSProviderBackend: string | null = null;
-
-	/**
 	 * Whether {@link validateToolsConfig} has already reported validating with
 	 * no registry (`tools.registryUnavailable`). Once per coordinator: every
 	 * {@link updateToolConfig} and {@link updateToolsPlacement} re-validates, and
@@ -781,13 +755,7 @@ export class ToolkitCoordinator {
 						toolRegistry,
 					});
 		const defaultProviders: ToolkitToolsConfig["providers"] = {
-			textToSpeech: {
-				enabled: true,
-				backend: "browser",
-			},
-			annotationToolbar: {
-				enabled: true,
-			},
+			...DEFAULT_TOOL_PROVIDERS,
 		};
 
 		return {
@@ -888,12 +856,31 @@ export class ToolkitCoordinator {
 		// A caller that speaks without `ensureTTSReady()` first, such as selection
 		// read-aloud, starts the service instead of finding it uninitialized.
 		this.ttsService.setReadinessGate(() => this.ensureTTSReady());
-		this.ttsService.setMathSpeechSource(
-			() =>
-				buildRuntimeTTSConfig(
-					resolveTTSRuntimeSettings(this.resolveTTSToolConfig()),
-				).providerOptions?.mathSpeech,
-		);
+		this.tts = new TtsLifecycle({
+			assertNotDisposed: () => this.assertNotDisposed(),
+			isDisposalStarted: () => this.disposePromise !== null,
+			isDisposalError: (error) => error instanceof ToolkitCoordinatorDisposedError,
+			emitTelemetry: (eventName, payload) =>
+				this.emitTelemetry(eventName, payload),
+			hooks: this.hooks,
+			toolProviderRegistry: this.toolProviderRegistry,
+			initializeProvider: (toolId, fallbackFollows) =>
+				this.initializeProvider(toolId, fallbackFollows),
+			ttsService: this.ttsService,
+			catalogResolver: this.catalogResolver,
+			clearDegradedTool: (toolId) => void this.degradedTools.delete(toolId),
+			reportStartFailure: (error, context, toolIds) =>
+				this.reportStartFailure(error, context, toolIds),
+			isToolGranted: (toolId) => this.isToolGranted(toolId),
+			lazyInit: this.lazyInit,
+			isToolRegistryPending: () => this.toolRegistryPending(),
+			providersConfig: () => this.config.tools?.providers,
+			getProviderDescriptorTools: () => this.getProviderDescriptorTools(),
+			registerProviderFromTool: (tool, replace) =>
+				this.registerProviderFromTool(tool, replace),
+			notifyReadyChange: () => this.notifyReadyChange(),
+		});
+		this.ttsService.setMathSpeechSource(() => this.tts.mathSpeechRuntimeOptions());
 		this.setupStatePersistenceHooks();
 
 		// The unified ToolPolicyEngine, seeded with the validated tools config.
@@ -1295,19 +1282,6 @@ export class ToolkitCoordinator {
 		return !this.toolRegistrySettled && !this.toolRegistryAbsent;
 	}
 
-	private reportMissingTTSProvider(backend: string): void {
-		// The toolkit this coordinator binds to may still supply the provider.
-		if (this.toolRegistryPending()) {
-			this.heldMissingTTSProviderBackend = backend;
-			return;
-		}
-		if (this.reportedMissingTTSProvider) return;
-		this.reportedMissingTTSProvider = true;
-		console.warn(
-			`[ToolkitCoordinator] Text-to-speech is configured for the "${backend}" backend but falls back to browser speech: no "textToSpeech" tool provider is registered. A coordinator registers tool providers only from its \`toolRegistry\`, or from its toolkit's when constructed without one, so supply one that carries the text-to-speech registration — for the packaged capability set, \`createPackagedToolRegistry()\` from "@pie-players/pie-default-tool-loaders". Reported once per coordinator.`,
-		);
-	}
-
 	/**
 	 * Take the registry of the toolkit this coordinator is bound to, when the host
 	 * constructed it without one: the config is validated against it, its
@@ -1322,8 +1296,6 @@ export class ToolkitCoordinator {
 	adoptToolRegistry(registry: ToolRegistry | null): boolean {
 		if (this.disposePromise !== null || this.toolRegistrySettled) return false;
 		if (!registry && this.toolRegistryAbsent) return false;
-		const heldBackend = this.heldMissingTTSProviderBackend;
-		this.heldMissingTTSProviderBackend = null;
 		const strictness = this.config.toolConfigStrictness ?? "error";
 		const source = "ToolkitCoordinator.adoptToolRegistry";
 		if (!registry) {
@@ -1333,12 +1305,13 @@ export class ToolkitCoordinator {
 				source,
 				toolRegistry: this.toolRegistry,
 			});
-			if (heldBackend) this.reportMissingTTSProvider(heldBackend);
+			this.tts.reportHeldMissingProvider();
 			return false;
 		}
 		this.toolRegistrySettled = true;
 		this.toolRegistry = registry;
 		this.config.toolRegistry = registry;
+		this.tts.discardHeldMissingProvider();
 		try {
 			// Warn at most: the config was accepted at construction, and a binding
 			// toolkit has no caller to throw to.
@@ -1357,15 +1330,12 @@ export class ToolkitCoordinator {
 			registry,
 			this.config.tools as CanonicalToolsConfig,
 		);
-		const ttsStarted =
-			this.ttsInitialized ||
-			this.ttsInitPromise !== undefined ||
-			this.ttsReconfigurePromise !== undefined;
+		const ttsStarted = this.tts.isStarted();
 		for (const tool of this.getProviderDescriptorTools()) {
-			if (ttsStarted && tool.toolId === "textToSpeech") continue;
+			if (ttsStarted && this.tts.ownsTool(tool.toolId)) continue;
 			void this.registerProviderFromTool(tool);
 		}
-		if (ttsStarted) this.scheduleTTSReconfigure();
+		if (ttsStarted) this.tts.scheduleReconfigure();
 		return true;
 	}
 
@@ -2528,10 +2498,7 @@ export class ToolkitCoordinator {
 		if (this.coordinatorReadyPromise) {
 			pending.add(this.coordinatorReadyPromise);
 		}
-		if (this.ttsInitPromise) pending.add(this.ttsInitPromise);
-		if (this.ttsReconfigurePromise) {
-			pending.add(this.ttsReconfigurePromise);
-		}
+		this.tts.flushInitPromises(pending);
 		for (const promise of this.providerInitPromises.values()) {
 			pending.add(promise);
 		}
@@ -2539,160 +2506,12 @@ export class ToolkitCoordinator {
 	}
 
 	/**
-	 * Initialize the TTS service from the `textToSpeech` tool config.
+	 * Initialize the TTS service from the `textToSpeech` tool config. The
+	 * lifecycle itself lives in `services/tts/tts-lifecycle.ts`; the coordinator
+	 * keeps the public method hosts call.
 	 */
 	public async ensureTTSReady(): Promise<void> {
-		this.assertNotDisposed();
-		await this.waitForPendingTTSReconfigure();
-		this.assertNotDisposed();
-		if (this.ttsInitialized) return;
-		if (this.ttsInitPromise) return this.ttsInitPromise;
-		this.ttsInitPromise = this._initializeTTS()
-			.then(() => this.assertNotDisposed())
-			.finally(() => {
-				this.ttsInitPromise = undefined;
-				this.notifyReadyChange();
-			});
-		return this.ttsInitPromise;
-	}
-
-	private async waitForPendingTTSReconfigure(): Promise<void> {
-		let pending = this.ttsReconfigurePromise;
-		while (pending) {
-			await pending;
-			pending = this.ttsReconfigurePromise;
-		}
-	}
-
-	private async _initializeTTS(): Promise<void> {
-		if (this.ttsInitialized) return;
-		const resolvedToolConfig = this.resolveTTSToolConfig();
-		const runtimeSettings = resolveTTSRuntimeSettings(resolvedToolConfig);
-		const resolvedBackend = resolveTTSBackend(runtimeSettings);
-		const runtimeTTSConfig = buildRuntimeTTSConfig(runtimeSettings);
-		await this.hooks.onBeforeTTSInit?.({
-			phase: "tts-init",
-			details: {
-				backend: resolvedBackend,
-			},
-		});
-		this.assertNotDisposed();
-		await this.emitTelemetry("pie-toolkit-tts-init-start", {
-			backend: resolvedBackend,
-		});
-		await this.emitTelemetry("pie-tool-init-start", {
-			toolId: "textToSpeech",
-			operation: "tts-init",
-			backend: resolvedBackend,
-		});
-
-		if (this.toolProviderRegistry.has("textToSpeech")) {
-			try {
-				// Browser speech follows a server provider that fails to start.
-				const ttsProvider = await this.initializeProvider("textToSpeech", true);
-				const providerInstance = await ttsProvider.createInstance();
-				await this.initializeTTSService(providerInstance, runtimeTTSConfig);
-				await this.emitTelemetry("pie-toolkit-tts-init-success", {
-					provider: "registry",
-				});
-				await this.emitTelemetry("pie-tool-init-success", {
-					toolId: "textToSpeech",
-					operation: "tts-init",
-					backend: resolvedBackend,
-					provider: "registry",
-				});
-				return;
-			} catch (error) {
-				if (error instanceof ToolkitCoordinatorDisposedError) throw error;
-				const normalized =
-					error instanceof Error ? error : new Error(String(error));
-				await this.emitTelemetry("pie-tool-init-fallback", {
-					toolId: "textToSpeech",
-					operation: "tts-init",
-					backend: resolvedBackend,
-					fromProvider: "registry",
-					toProvider: "browser",
-					reason: normalized.message,
-				});
-				console.warn(
-					"[ToolkitCoordinator] Failed to initialize TTS via registry, falling back to browser provider:",
-					normalized,
-				);
-			}
-		} else if (resolvedBackend !== "browser") {
-			this.reportMissingTTSProvider(resolvedBackend);
-		}
-
-		// Browser speech, configured or standing in for a backend that has no
-		// provider or failed to start.
-		const provider = new BrowserTTSProvider();
-		try {
-			await this.initializeTTSService(
-				provider,
-				resolvedBackend === "browser"
-					? runtimeTTSConfig
-					: browserFallbackConfig(runtimeTTSConfig),
-			);
-			await this.emitTelemetry("pie-toolkit-tts-init-success", {
-				provider: "browser-fallback",
-			});
-			await this.emitTelemetry("pie-tool-init-success", {
-				toolId: "textToSpeech",
-				operation: "tts-init",
-				backend: resolvedBackend,
-				provider: "browser-fallback",
-			});
-		} catch (error) {
-			if (error instanceof ToolkitCoordinatorDisposedError) throw error;
-			const normalized =
-				error instanceof Error ? error : new Error(String(error));
-			this.reportStartFailure(normalized, { phase: "tts-init" }, ["textToSpeech"]);
-			await this.emitTelemetry("pie-toolkit-tts-init-error", {
-				message: normalized.message,
-			});
-			await this.emitTelemetry("pie-tool-init-error", {
-				toolId: "textToSpeech",
-				operation: "tts-init",
-				backend: resolvedBackend,
-				errorType: "TTSInitError",
-				message: normalized.message,
-			});
-			throw normalized;
-		}
-	}
-
-	private resolveTTSToolConfig(): TextToSpeechToolProviderConfig {
-		return this.getTTSConfigFromProviders() || {};
-	}
-
-	private async initializeTTSService(
-		provider: ITTSProvider,
-		config: Partial<ToolkitTTSConfig>,
-	): Promise<void> {
-		const nextProviderOptions = {
-			...config.providerOptions,
-			__pieTelemetry: async (
-				eventName: string,
-				payload?: Record<string, unknown>,
-			) => {
-				await this.emitTelemetry(eventName, {
-					toolId: "textToSpeech",
-					...(payload || {}),
-				});
-			},
-		};
-		const nextConfig: Partial<ToolkitTTSConfig> = {
-			...config,
-			providerOptions: nextProviderOptions,
-		};
-		await this.ttsService.initialize(provider, nextConfig);
-		this.assertNotDisposed();
-		this.ttsService.setCatalogResolver(this.catalogResolver);
-		this.ttsInitialized = true;
-		this.ttsDegraded = false;
-		this.degradedTools.delete("textToSpeech");
-		await this.hooks.onTTSReady?.();
-		this.assertNotDisposed();
+		return this.tts.ensureReady();
 	}
 
 	async waitUntilReady(): Promise<void> {
@@ -2702,8 +2521,8 @@ export class ToolkitCoordinator {
 		this.coordinatorReadyPromise = (async () => {
 			await this.ensureStateLoaded();
 			this.assertNotDisposed();
-			if (this.ttsRequiredForReadiness()) {
-				await this.startTTSForReadiness();
+			if (this.tts.requiredForReadiness()) {
+				await this.tts.startForReadiness();
 			}
 			this.assertNotDisposed();
 			if (!this.coordinatorReadyNotified) {
@@ -2723,41 +2542,10 @@ export class ToolkitCoordinator {
 	isReady(): boolean {
 		return (
 			(this.stateLoadSettled || !this.hooks.loadToolState) &&
-			(this.ttsInitialized ||
-				this.ttsDegraded ||
-				!this.ttsRequiredForReadiness())
+			(this.tts.started ||
+				this.tts.failedUngranted ||
+				!this.tts.requiredForReadiness())
 		);
-	}
-
-	/**
-	 * Readiness waits for text-to-speech when it is enabled and either starts
-	 * eagerly or is granted: a granted read-aloud fails before the learner starts.
-	 */
-	private ttsRequiredForReadiness(): boolean {
-		if (this.getTTSConfigFromProviders()?.enabled === false) return false;
-		return !this.lazyInit || this.isToolGranted("textToSpeech");
-	}
-
-	/**
-	 * Starts text-to-speech for readiness. A failure policy does not grant leaves
-	 * the tool degraded, reporting itself unavailable, and readiness settles; a
-	 * granted tool's failure rejects.
-	 */
-	private async startTTSForReadiness(): Promise<void> {
-		try {
-			await this.ensureTTSReady();
-		} catch (error) {
-			if (error instanceof ToolkitCoordinatorDisposedError) throw error;
-			if (this.isToolGranted("textToSpeech")) throw error;
-			this.ttsDegraded = true;
-			this.notifyReadyChange();
-		}
-	}
-
-	private getTTSConfigFromProviders():
-		| TextToSpeechToolProviderConfig
-		| undefined {
-		return this.config.tools?.providers?.textToSpeech;
 	}
 
 	private assertCanonicalToolId(toolId: string): void {
@@ -2818,9 +2606,12 @@ export class ToolkitCoordinator {
 	}
 
 	/**
-	 * Get tool configuration, or null if the tool is not configured.
+	 * Get tool configuration, or null if the tool is not configured. The
+	 * read-aloud overload takes its literal from `TTS_TOOL_ID` (the same type the
+	 * runtime compares against), so the capability id is named once, where the
+	 * capability lives.
 	 */
-	getToolConfig(toolId: "textToSpeech"): TextToSpeechToolProviderConfig | null;
+	getToolConfig(toolId: typeof TTS_TOOL_ID): TextToSpeechToolProviderConfig | null;
 	getToolConfig(toolId: string): ToolProviderConfig | null;
 	getToolConfig(
 		toolId: string,
@@ -2833,7 +2624,7 @@ export class ToolkitCoordinator {
 	 * Update tool configuration and apply the change to the underlying services.
 	 */
 	updateToolConfig(
-		toolId: "textToSpeech",
+		toolId: typeof TTS_TOOL_ID,
 		updates: Partial<TextToSpeechToolProviderConfig>,
 	): void;
 	updateToolConfig(toolId: string, updates: Partial<ToolProviderConfig>): void;
@@ -3259,8 +3050,8 @@ export class ToolkitCoordinator {
 	/** Apply an `updateToolConfig` change to the underlying services. */
 	private _applyToolConfigChange(toolId: string): void {
 		if (this.disposePromise !== null) return;
-		if (toolId === "textToSpeech") {
-			this.scheduleTTSReconfigure();
+		if (this.tts.ownsTool(toolId)) {
+			this.tts.scheduleReconfigure();
 			return;
 		}
 		this._registerChangedToolProvider(toolId);
@@ -3279,55 +3070,5 @@ export class ToolkitCoordinator {
 		// A failure of the replaced provider no longer describes the tool.
 		this.degradedTools.delete(toolId);
 		void this.registerProviderFromTool(registration, true);
-	}
-
-	/**
-	 * Re-register the text-to-speech provider for the current config and registry, then
-	 * re-initialize unless initialization is lazy. An initialization already
-	 * running finishes first: it would otherwise mark its provider ready after
-	 * the reset.
-	 */
-	private scheduleTTSReconfigure(): void {
-		const inFlight = this.ttsInitPromise;
-		const reconfigurePromise = inFlight
-			? inFlight.catch(() => {}).then(() => this._reconfigureTTSProvider())
-			: this._reconfigureTTSProvider();
-		this.ttsReconfigurePromise = reconfigurePromise;
-		void reconfigurePromise.finally(() => {
-			if (this.ttsReconfigurePromise === reconfigurePromise) {
-				this.ttsReconfigurePromise = undefined;
-			}
-		});
-		void reconfigurePromise
-			.then(async () => {
-				if (this.disposePromise !== null) return;
-				if (this.ttsRequiredForReadiness()) await this.startTTSForReadiness();
-			})
-			// Reported where it failed; a granted failure has nowhere else to go.
-			.catch(() => {});
-	}
-
-	private async _reconfigureTTSProvider(): Promise<void> {
-		this.ttsInitialized = false;
-		this.ttsDegraded = false;
-		this.degradedTools.delete("textToSpeech");
-		this.ttsInitPromise = undefined;
-		this.notifyReadyChange();
-		try {
-			// The next speak waits on readiness, which starts the new provider.
-			this.ttsService.releaseProvider();
-		} catch {
-			// noop: release best effort
-		}
-
-		if (this.toolProviderRegistry.has("textToSpeech")) {
-			await this.toolProviderRegistry.unregister("textToSpeech");
-		}
-		if (this.disposePromise !== null) return;
-		const ttsRegistration = this.getProviderDescriptorTools().find(
-			(tool) => tool.toolId === "textToSpeech",
-		);
-		if (!ttsRegistration) return;
-		await this.registerProviderFromTool(ttsRegistration);
 	}
 }

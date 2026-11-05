@@ -35,6 +35,7 @@
 	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #0066ff;
 	--pie-focus-checked-border: #0000cc;
+	--pie-focus-keyboard-outline: #0000cc;
 	--pie-focus-unchecked: #cccccc;
 	--pie-focus-unchecked-border: #000000;
 	--pie-incorrect: #cc0000;
@@ -92,6 +93,7 @@
 	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #ffff00;
 	--pie-focus-checked-border: #ffff00;
+	--pie-focus-keyboard-outline: #ffff00;
 	--pie-focus-unchecked: #666666;
 	--pie-focus-unchecked-border: #ffffff;
 	--pie-incorrect: #ff3333;
@@ -149,6 +151,7 @@
 	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #880055;
 	--pie-focus-checked-border: #660044;
+	--pie-focus-keyboard-outline: #660044;
 	--pie-focus-unchecked: #aaddbb;
 	--pie-focus-unchecked-border: #3d0022;
 	--pie-incorrect: #aa0044;
@@ -206,6 +209,7 @@
 	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #ffff00;
 	--pie-focus-checked-border: #cccc00;
+	--pie-focus-keyboard-outline: #ffff66;
 	--pie-focus-unchecked: #333366;
 	--pie-focus-unchecked-border: #ffff00;
 	--pie-incorrect: #ff6666;
@@ -263,6 +267,7 @@
 	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #880044;
 	--pie-focus-checked-border: #550033;
+	--pie-focus-keyboard-outline: #880044;
 	--pie-focus-unchecked: #ffddee;
 	--pie-focus-unchecked-border: #000000;
 	--pie-incorrect: #990000;
@@ -320,6 +325,7 @@
 	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #cccccc;
 	--pie-focus-checked-border: #aaaaaa;
+	--pie-focus-keyboard-outline: #ffffff;
 	--pie-focus-unchecked: #555555;
 	--pie-focus-unchecked-border: #e0e0e0;
 	--pie-incorrect: #ff6a6a;
@@ -377,6 +383,7 @@
 	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #6f6f6f;
 	--pie-focus-checked-border: #3d3d3d;
+	--pie-focus-keyboard-outline: #3d3d3d;
 	--pie-focus-unchecked: #e0e0e0;
 	--pie-focus-unchecked-border: #4a4a4a;
 	--pie-incorrect: #8c1c1c;
@@ -434,6 +441,7 @@
 	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #8e2464;
 	--pie-focus-checked-border: #6d1a4c;
+	--pie-focus-keyboard-outline: #6d1a4c;
 	--pie-focus-unchecked: #dcefe2;
 	--pie-focus-unchecked-border: #8e2464;
 	--pie-incorrect: #8c1c1c;
@@ -491,6 +499,7 @@
 	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #4a1259;
 	--pie-focus-checked-border: #330d3f;
+	--pie-focus-keyboard-outline: #4a1259;
 	--pie-focus-unchecked: #e2cbe8;
 	--pie-focus-unchecked-border: #000000;
 	--pie-incorrect: #7d1414;
@@ -548,6 +557,7 @@
 	--pie-fixed-hue-collapse: 100%;
 	--pie-focus-checked: #ffff55;
 	--pie-focus-checked-border: #e0e04a;
+	--pie-focus-keyboard-outline: #ffff99;
 	--pie-focus-unchecked: #243a63;
 	--pie-focus-unchecked-border: #ffff55;
 	--pie-incorrect: #ffbebe;

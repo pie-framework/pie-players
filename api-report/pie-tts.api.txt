@@ -6,9 +6,13 @@
 .
   type ITTSProvider
   type ITTSProviderImplementation
+  type SpeechMark
   type SpeedRateBucket
   type TTSConfig
   type TTSPlaybackStart
   type TTSProviderCapabilities
   type TTSProviderOptions
   type TTSSpeechSegment
+  anchorSpeechMarks
+  normalizeSpeechMarks
+  resolveSpeedRateBucket

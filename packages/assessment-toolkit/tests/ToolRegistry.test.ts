@@ -463,6 +463,27 @@ describe("ToolRegistry", () => {
 			).toEqual([]);
 		});
 
+		test("applicability receives the tool's host config", () => {
+			register("configured", {
+				isApplicableToContent: (_context, config) => config?.enabled !== false,
+			});
+			register("unconfigured", {
+				isApplicableToContent: (_context, config) => config === undefined,
+			});
+			const getToolConfig = (toolId: string) =>
+				toolId === "configured" ? { enabled: false } : null;
+
+			expect(
+				registry.filterDecidedToolIds(
+					[entry("configured"), entry("unconfigured")],
+					"item",
+					[itemContext],
+					undefined,
+					getToolConfig,
+				),
+			).toEqual(["unconfigured"]);
+		});
+
 		test("one relevant context is enough", () => {
 			register("elementOnly", {
 				isVisibleInContext: (context) => context.level === "element",

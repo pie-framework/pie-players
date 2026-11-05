@@ -21,7 +21,8 @@ export interface ToolConfigDiagnostic {
 		| "tools.unknownProviderKey"
 		| "tools.providerSanitizeFailed"
 		| "tools.providerValidateFailed"
-		| "tools.invalidProviderValidation";
+		| "tools.invalidProviderValidation"
+		| "tools.invalidProviderConfig";
 	severity: ToolConfigDiagnosticSeverity;
 	path: string;
 	message: string;

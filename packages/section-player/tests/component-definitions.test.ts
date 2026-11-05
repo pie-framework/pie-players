@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_PLAYER_DEFINITIONS } from "../src/component-definitions";
+
+await import("./support/item-player-load.js");
+const { DEFAULT_PLAYER_DEFINITIONS } = await import(
+	"../src/component-definitions"
+);
 
 describe("DEFAULT_PLAYER_DEFINITIONS", () => {
 	test("maps iife, esm, and preloaded to pie-item-player", () => {

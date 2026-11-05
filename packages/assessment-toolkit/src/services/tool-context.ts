@@ -184,6 +184,51 @@ function isElementContext(
 const stripHtml = (value: string): string =>
 	value.replace(/<[^>]*>/g, " ").trim();
 
+// The digit fold mirrors pie-elements-ng's response normalizer
+// (`controller-utils/src/response-normalizer.ts`), so tool visibility and
+// scoring read one number the same way. The separators fold to the
+// point-decimal marks the patterns below are written in.
+const DECIMAL_DIGIT = /\p{Nd}/u;
+const NON_ASCII_DIGITS = /(?![0-9])\p{Nd}/gu;
+// ALM, LRM, RLM, the embeddings and overrides, the isolates, and tatweel.
+const BIDI_CONTROLS_AND_TATWEEL =
+	/[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069\u0640]/g;
+
+const digitValues = new Map<number, number>();
+
+/**
+ * A decimal digit's value: its offset into its run of ten. Unicode assigns
+ * decimal digits only in ascending runs from zero, and runs can abut, hence the
+ * modulo.
+ */
+function digitValue(codePoint: number): number {
+	const cached = digitValues.get(codePoint);
+	if (cached !== undefined) return cached;
+	let offset = 0;
+	while (DECIMAL_DIGIT.test(String.fromCodePoint(codePoint - offset - 1))) {
+		offset += 1;
+	}
+	const value = offset % 10;
+	digitValues.set(codePoint, value);
+	return value;
+}
+
+/**
+ * Text with every decimal digit in ASCII, the Arabic decimal, thousands and
+ * percent signs as `.`, `,` and `%`, and bidi controls and tatweel removed, so
+ * the patterns below match `٣٫٥ × ٢ = ٧` as they match `3.5 × 2 = 7`.
+ */
+function foldNumerals(text: string): string {
+	return text
+		.replace(BIDI_CONTROLS_AND_TATWEEL, "")
+		.replace(NON_ASCII_DIGITS, (digit) =>
+			String(digitValue(digit.codePointAt(0) as number)),
+		)
+		.replace(/\u066B/g, ".")
+		.replace(/\u066C/g, ",")
+		.replace(/\u066A/g, "%");
+}
+
 /**
  * A config's `models` as a list, whether it was authored as an array or as a
  * record keyed by element id. Both forms are in the wild.
@@ -329,6 +374,11 @@ function extractTextContent(context: ToolContext): string {
 	return extractContent(context, stripHtml);
 }
 
+/** The plain text a context carries, with its numerals folded for matching. */
+function extractMatchableText(context: ToolContext): string {
+	return foldNumerals(extractTextContent(context));
+}
+
 /**
  * The authored markup a context carries, tags intact.
  *
@@ -433,11 +483,26 @@ function hasSpacedSubtraction(text: string): boolean {
 
 const PERCENTAGE = /\d\s*%/;
 
-/** A percentage taken of a number: `20% of 50`, `15% of $80`, `el 20% de 50`. */
-const PERCENTAGE_OF_NUMBER = /\d\s*%\s+(?:of|de|van)\s+[$€£]?\s?\d/i;
+/**
+ * A percentage taken of a number: `20% of 50`, `15% of $80`, `el 20% de 50`,
+ * `٢٠٪ من ٥٠`.
+ */
+const PERCENTAGE_OF_NUMBER = /\d\s*%\s+(?:of|de|van|من)\s+\p{Sc}?\s?\d/iu;
 
-/** A money amount: `$40`, `€ 12`, `12,50 €`. */
-const MONEY = /[$€£]\s?\d|\d\s?[€£]/;
+/** A money amount: `$40`, `€ 12`, `12,50 €`, `٥٠ ؋`. */
+const MONEY = /\p{Sc}\s?\d|\d\s?\p{Sc}/u;
+
+/**
+ * Currencies written as a word after the amount, by content language.
+ *
+ * Arabic writes most currencies as a word or an abbreviation where English
+ * writes a sign: `٥٠ ريالًا`, `١٢ د.إ`. English has no set, because its
+ * spelled-out "40 dollars" never counted. Script-disjoint, so every set is
+ * tried. The Arabic set is pending the native review (PIE-1364).
+ */
+const CURRENCY_WORDS: Readonly<Record<string, RegExp>> = {
+	ar: /\d\s*(?:ريال|دينار|درهم|جنيه|دولار|يورو|ليرة|ر\.س|د\.إ|د\.ك|ج\.م)/u,
+};
 
 /**
  * Whether the text applies a percentage to a quantity.
@@ -449,7 +514,11 @@ const MONEY = /[$€£]\s?\d|\d\s?[€£]/;
  */
 function hasAppliedPercentage(text: string): boolean {
 	if (PERCENTAGE_OF_NUMBER.test(text)) return true;
-	return PERCENTAGE.test(text) && MONEY.test(text);
+	if (!PERCENTAGE.test(text)) return false;
+	return (
+		MONEY.test(text) ||
+		Object.values(CURRENCY_WORDS).some((pattern) => pattern.test(text))
+	);
 }
 
 /**
@@ -468,7 +537,7 @@ export function hasMathContent(context: ToolContext): boolean {
 	];
 	if (structuralIndicators.some((pattern) => pattern.test(markup))) return true;
 
-	const text = extractTextContent(context);
+	const text = extractMatchableText(context);
 	// No bare-operator pattern: a lone hyphen or slash matches "well-known" and
 	// "and/or", which would make nearly every item mathematical. An operator
 	// counts only with operands around it, or when the character has no prose
@@ -623,16 +692,42 @@ export function hasSpokenContent(context: ToolContext): boolean {
  * (Basic heuristic - can be overridden by tools)
  */
 export function hasScienceContent(context: ToolContext): boolean {
-	const text = extractTextContent(context);
+	const text = extractMatchableText(context);
 
 	if (hasChemicalFormula(text)) return true;
 	if (/[A-Z][a-z]?[\u2080-\u2089]/.test(text)) return true; // Subscripted: H₂O, CO₂
 
-	const scienceIndicators = [
+	return Object.values(SCIENCE_KEYWORDS).some((patterns) =>
+		patterns.some((pattern) => pattern.test(text)),
+	);
+}
+
+/**
+ * Science vocabulary by content language, one pattern per field: chemistry,
+ * element naming, biology, physics.
+ *
+ * Every set is tried, because the sets are script-disjoint and content often
+ * declares no language: an Arabic pattern cannot match English text. A language
+ * is added as a set of its own.
+ *
+ * Arabic attaches the conjunction, prepositions and article to the word, so its
+ * patterns match stems unanchored. The exceptions are قوة (force) and طاقة
+ * (energy), bounded the way `\bforce\b` is: unbounded, بطاقة (card) and بقوة
+ * (strongly) would match. "compound" has no Arabic entry, since مركب is also a
+ * vehicle; كيميائي covers a chemical compound. The Arabic set is pending the
+ * native review (PIE-1364).
+ */
+const SCIENCE_KEYWORDS: Readonly<Record<string, readonly RegExp[]>> = {
+	en: [
 		/chemistry|chemical|molecule|compound|periodic\s+table/i,
 		/\bchemical\s+element\b|\belement\s+symbol\b/i,
 		/biology|organism|\bDNA\b|\bRNA\b|protein|photosynthesis|ecosystem/i,
 		/physics|\bforce\b|\benergy\b|velocity|acceleration|momentum/i,
-	];
-	return scienceIndicators.some((pattern) => pattern.test(text));
-}
+	],
+	ar: [
+		/كيمياء|كيميائي|جزيء|جزيئ|جدول\s+(?:ال)?دوري/u,
+		/رمز\s+(?:ال)?عنصر/u,
+		/علم\s+الأحياء|كائن(?:ات)?\s+(?:ال)?حي|حمض\s+(?:ال)?نووي|بروتين|(?:بناء|تمثيل)\s+(?:ال)?ضوئي|(?:نظام|نظم|أنظمة)\s+(?:ال)?بيئي/u,
+		/فيزياء|فيزيائي|(?<!\p{L})(?:و|ال|وال)?(?:قوة|قوى|طاقة)(?!\p{L})|سرعة\s+(?:ال)?متجهة|تسارع|كمية\s+(?:ال)?حركة/u,
+	],
+};

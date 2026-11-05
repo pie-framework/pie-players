@@ -6,6 +6,10 @@
 
 import "./support/dom.js";
 import { afterEach, describe, expect, test } from "bun:test";
+import {
+	createPieI18n,
+	loadBundledCatalog,
+} from "@pie-players/pie-players-shared/i18n";
 import type { PieContent } from "@pie-players/pie-players-shared/types";
 import type {
 	ItemListEntry,
@@ -164,7 +168,21 @@ describe("<pie-item-list>", () => {
 	});
 
 	test("gives every row the list's one i18n provider, which follows `locale`", async () => {
-		const { list } = await mount({ items: [{ id: "a", config: item("a"), passages: [passage] }] });
+		// The bundled set is `en-US` only: the audited Dutch catalog lives in the
+		// optional generated tier, so the Dutch assertion composes a provider over
+		// a synthesized slice — what a real host wiring the generated tier would
+		// effectively do.
+		const i18n = createPieI18n({
+			availableLocales: ["en-US", "nl-NL"],
+			loadCatalog: async (locale) =>
+				locale === "nl-NL"
+					? ({ player: { list: { expandA11y: "Volledige vraag tonen" } } } as never)
+					: loadBundledCatalog(locale),
+		});
+		const { list } = await mount({
+			items: [{ id: "a", config: item("a"), passages: [passage] }],
+			i18n,
+		});
 		const [passageRow, itemRow] = summaries(rows(list)[0]);
 		expect(passageRow.i18n).toBeTruthy();
 		expect(itemRow.i18n).toBe(passageRow.i18n);

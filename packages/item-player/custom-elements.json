@@ -761,9 +761,9 @@
 						{
 							"name": "session-changed",
 							"type": {
-								"text": "CustomEvent<{ complete: boolean; component: string; elementId?: string; session: { id: string; data: unknown[] } | null; intent?: \"metadata-only\"; sessionCommitReason?: \"teardown\" | \"navigate\" | \"page-hidden\" }>"
+								"text": "CustomEvent<{ complete: boolean; component: string; elementId?: string; session: { id: string; data: unknown[] } | null; intent?: \"metadata-only\"; sessionCommitReason?: \"teardown\" | \"navigate\" | \"page-hidden\"; sessionSource?: \"correct-response\" }>"
 							},
-							"description": "When an element's session or completion changes, and as a commit at a teardown, navigation or page-hidden seam."
+							"description": "When an element's session or completion changes, and as a commit at a teardown, navigation or page-hidden seam. `sessionSource` is set when `addCorrectResponse` filled the session."
 						},
 						{
 							"name": "player-error",

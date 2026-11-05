@@ -6,6 +6,8 @@ import { builtinModules } from "node:module";
 import { pathToFileURL } from "node:url";
 import ts from "typescript";
 
+import { stripComments } from "./lib/strip-comments.mjs";
+
 const ROOT = process.cwd();
 const rootManifestPath = path.join(ROOT, "package.json");
 
@@ -135,12 +137,6 @@ function toPackageName(specifier) {
 	return specifier.split("/")[0];
 }
 
-export function stripComments(content) {
-	return content
-		.replace(/\/\*[\s\S]*?\*\//g, "")
-		.replace(/(^|[^\\:])\/\/.*$/gm, "$1");
-}
-
 const scriptKindForPath = (filePath) => {
 	const ext = path.extname(filePath);
 	if (ext === ".tsx") return ts.ScriptKind.TSX;
@@ -200,6 +196,8 @@ function collectSpecifiersWithRegex(content) {
 	const cleanContent = stripComments(content);
 	const patterns = [
 		/import\s+[^'"`]*?\sfrom\s*['"]([^'"]+)['"]/g,
+		// Side-effect import, the form a custom-element registration takes.
+		/\bimport\s*['"]([^'"]+)['"]/g,
 		/import\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
 		/export\s+[^'"`]*?\sfrom\s*['"]([^'"]+)['"]/g,
 		/require\(\s*['"]([^'"]+)['"]\s*\)/g,

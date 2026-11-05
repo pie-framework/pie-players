@@ -33,6 +33,7 @@ import {
 	isGlobalDebugEnabled,
 } from "@pie-players/pie-players-shared";
 import type { MediaTimeSource } from "@pie-players/pie-players-shared/timed-media";
+import type { ServedContentIdentity } from "@pie-players/pie-players-shared/types";
 import type { RuntimeRegistrationDetail } from "./registration-events.js";
 import { RuntimeRegistry } from "./RuntimeRegistry.js";
 
@@ -80,6 +81,10 @@ interface RuntimeController extends SectionControllerHandle {
 		itemId: string,
 		sessionDetail: unknown,
 	) => { eventDetail?: unknown } | null;
+	recordServedContentIdentity?: (args: {
+		itemId: string;
+		identity?: ServedContentIdentity;
+	}) => void;
 	subscribe?: (listener: (event: SectionControllerEvent) => void) => () => void;
 	navigateToItem?: (index: number) => unknown;
 	attachMediaTimeSource?: (
@@ -553,6 +558,23 @@ export class SectionControllerBinding {
 			"a session update",
 		);
 		return controller?.updateItemSession?.(canonicalId, session) ?? null;
+	}
+
+	/** Canonicalized for the same reason `updateItemSession` is. */
+	recordServedContentIdentity(args: {
+		itemId: string;
+		canonicalItemId?: string;
+		identity?: ServedContentIdentity;
+	}): void {
+		const canonicalId =
+			args.canonicalItemId || this.getCanonicalItemId(args.itemId);
+		this.requireControllerFor(
+			{ itemId: args.itemId, canonicalItemId: canonicalId },
+			"a served content identity",
+		)?.recordServedContentIdentity?.({
+			itemId: canonicalId,
+			identity: args.identity,
+		});
 	}
 
 	navigateToItem(index: number): unknown {

@@ -8,6 +8,7 @@ import {
 	readTermLookupPayload,
 	TermLookupSession,
 	termPanelStatusMessage,
+	termResultLanguage,
 	type TermLookupResult,
 	type TermPanelState,
 } from "../src/tools/term-lookup.js";
@@ -590,5 +591,19 @@ describe("the panel status message", () => {
 				labels,
 			),
 		).toBe("");
+	});
+});
+
+describe("the language results are stamped with", () => {
+	test("is the language the lookup asked in, with its direction", () => {
+		expect(termResultLanguage("ar")).toEqual({ lang: "ar", dir: "rtl" });
+		expect(termResultLanguage("es_ES")).toEqual({ lang: "es-ES", dir: "ltr" });
+	});
+
+	test("is unknown when the lookup named none", () => {
+		// Not the interface locale: a corpus with no declared language is not in the
+		// panel's language just because it is shown there.
+		expect(termResultLanguage(undefined)).toEqual({ lang: "", dir: "auto" });
+		expect(termResultLanguage("  ")).toEqual({ lang: "", dir: "auto" });
 	});
 });

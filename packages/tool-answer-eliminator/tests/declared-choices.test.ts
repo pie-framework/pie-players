@@ -437,3 +437,36 @@ test("a choice laid out inline takes its toggle in the line", () => {
 	expect(button.style.position).toBe("relative");
 	expect(button.style.display).toBe("inline-flex");
 });
+
+test("element ids limit the toggles to those elements' choices", () => {
+	const root = document.createElement("div");
+	const listed = acmeChoices(["x", "y"], "q1");
+	const unlisted = acmeChoices(["z"], "q2");
+	root.append(listed, unlisted);
+	document.body.append(root);
+
+	core = new AnswerEliminatorCore("strikethrough", "end");
+	core.setElementIds(["q1"]);
+	core.initializeForQuestion(root);
+	expect(toggles(root).map((button) => button.dataset.choiceId)).toEqual(["x", "y"]);
+
+	core.setElementIds(null);
+	core.initializeForQuestion(root);
+	expect(toggles(root).map((button) => button.dataset.choiceId)).toEqual(["x", "y", "z"]);
+
+	core.setElementIds([]);
+	core.initializeForQuestion(root);
+	expect(toggles(root)).toEqual([]);
+});
+
+test("element ids reach legacy choices through their element's id", () => {
+	const root = document.createElement("div");
+	root.innerHTML = `<multiple-choice id="q1">${legacyChoice("a", "Alpha")}</multiple-choice><multiple-choice id="q2">${legacyChoice("b", "Beta")}</multiple-choice>`;
+	document.body.append(root);
+
+	core = new AnswerEliminatorCore("strikethrough", "end");
+	core.setElementIds(["q2"]);
+	core.initializeForQuestion(root);
+
+	expect(toggles(root).map((button) => button.dataset.choiceId)).toEqual(["b"]);
+});

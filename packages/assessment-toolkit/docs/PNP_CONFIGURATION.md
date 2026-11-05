@@ -592,7 +592,7 @@ Check, in order:
 5. Is it placed at this level in `tools.placement`? A grant does not place a tool.
 6. Is [PNP enforcement](#pnp-enforcement) off for this decision? Then the profile grants nothing and the next check applies.
 7. Does the tool's `isVisibleInContext()` return false? A `required` or `alwaysAvailable` grant skips this check.
-8. Does the tool's `isApplicableToContent()` return false for this content? This check removes the tool even under a grant.
+8. Does the tool's `isApplicableToContent()` return false for this content, given its `tools.providers` entry? This check removes the tool even under a grant.
 
 ### Blocked tool still on a toolbar
 

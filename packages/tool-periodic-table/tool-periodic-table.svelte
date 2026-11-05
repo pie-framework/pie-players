@@ -36,6 +36,12 @@ filter the table by de-emphasising the other elements. The host shows it with
 		resolveInterfaceI18n,
 	} from '@pie-players/pie-players-shared/i18n/provider';
 	import { categorySlug, normalizeCategory } from './categories.js';
+	import {
+		elementNamesLanguage,
+		loadElementNames,
+		localizedElementName,
+		type ElementNames,
+	} from './element-names.js';
 
 	// Shape of an entry in periodic-table-data.json
 	interface Element {
@@ -62,6 +68,20 @@ filter the table by de-emphasising the other elements. The host shows it with
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Interface locale, re-derived on every context republish.
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
+	const namesLanguage = $derived(elementNamesLanguage(interfaceI18n.getLocale()));
+	// English until the locale's names arrive, and again as soon as the locale changes.
+	let loadedNames = $state<{ language: string; names: ElementNames | undefined } | null>(null);
+	$effect(() => {
+		const language = namesLanguage;
+		void loadElementNames(language).then((names) => {
+			if (language === namesLanguage) loadedNames = { language, names };
+		});
+	});
+	const nameOf = (element: Element) =>
+		localizedElementName(
+			element,
+			loadedNames?.language === namesLanguage ? loadedNames.names : undefined,
+		);
 	$effect(() => {
 		if (!containerEl) return;
 		return connectToolRuntimeContext(containerEl, (value) => {
@@ -91,6 +111,12 @@ filter the table by de-emphasising the other elements. The host shows it with
 			.split(' ')
 			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
 			.join(' ');
+	}
+
+	/** Phase in the interface locale; a value the catalog does not carry shows as written. */
+	function formatPhase(phase: string): string {
+		const key = dynamicMessageKey(`tools.periodicTable.phaseValue.${phase.trim().toLowerCase()}`);
+		return interfaceI18n.hasKey?.(key) ? interfaceI18n.t(key) : phase;
 	}
 
 	let uniqueCategories = $derived.by(() => {
@@ -192,7 +218,7 @@ filter the table by de-emphasising the other elements. The host shows it with
 								<!-- LEFT COLUMN: Large Symbol & Element Name -->
 								<div class="pie-tool-periodic-table__left-col">
 									<div class="pie-tool-periodic-table__symbol-center">{selectedElement.symbol}</div>
-									<div class="pie-tool-periodic-table__element-name">{selectedElement.name}</div>
+									<div class="pie-tool-periodic-table__element-name">{nameOf(selectedElement)}</div>
 								</div>
 
 								<!-- RIGHT COLUMN: Two rows with additional info -->
@@ -216,7 +242,7 @@ filter the table by de-emphasising the other elements. The host shows it with
 										</div>
 										<div class="pie-tool-periodic-table__info-block">
 											<div class="pie-tool-periodic-table__label">{interfaceI18n.t('tools.periodicTable.phase')}</div>
-											<div class="pie-tool-periodic-table__value">{selectedElement.phase}</div>
+											<div class="pie-tool-periodic-table__value">{formatPhase(selectedElement.phase)}</div>
 										</div>
 									</div>
 								</div>
@@ -239,9 +265,9 @@ filter the table by de-emphasising the other elements. The host shows it with
 										showElementDetails(element);
 									}
 								}}
-							title={element.name}
+							title={nameOf(element)}
 							aria-label={interfaceI18n.t('tools.periodicTable.elementA11y', {
-								name: element.name,
+								name: nameOf(element),
 								symbol: element.symbol,
 								number: element.number,
 								mass: element.atomic_mass.toFixed(3),
@@ -253,7 +279,7 @@ filter the table by de-emphasising the other elements. The host shows it with
 						>
 							<div class="pie-tool-periodic-table__atomic-number">{element.number}</div>
 							<div class="pie-tool-periodic-table__symbol">{element.symbol}</div>
-							<div class="pie-tool-periodic-table__name">{element.name}</div>
+							<div class="pie-tool-periodic-table__name">{nameOf(element)}</div>
 							<div class="pie-tool-periodic-table__atomic-mass">{element.atomic_mass.toFixed(3)}</div>
 						</button>
 					{/each}

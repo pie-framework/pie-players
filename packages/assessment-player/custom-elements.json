@@ -315,7 +315,19 @@
 						}
 					],
 					"x-pie": {
-						"shadow": "none"
+						"shadow": "none",
+						"classes": [
+							"pie-assessment-player-announcer",
+							"pie-assessment-player-current-position",
+							"pie-assessment-player-default",
+							"pie-assessment-player-empty",
+							"pie-assessment-player-nav-btn",
+							"pie-assessment-player-nav-controls",
+							"pie-assessment-player-navigation",
+							"pie-assessment-player-retry",
+							"pie-assessment-player-section-host",
+							"pie-assessment-player-status-message"
+						]
 					}
 				},
 				{

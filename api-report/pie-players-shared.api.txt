@@ -407,6 +407,7 @@
   languageTagScript
   languageTagScriptLookupSequence
   languageTagScriptsMatch
+  languageTagWithoutVariants
   languageTagsEqual
   negotiateContentLanguage
   normalizeLanguageTag
@@ -672,6 +673,10 @@
   wrapOverwideTables
   wrapOverwideTablesInElement
 
+./security/private-hosts
+  isCloudMetadataHostname
+  isPrivateHostname
+
 ./timed-media
   type MediaElementTimeSourceOptions
   type MediaTimeRanges
@@ -729,6 +734,7 @@
   normalizeTerm
   readTermLookupPayload
   termPanelStatusMessage
+  termResultLanguage
 
 ./types
   type AccessibilityCatalog
@@ -752,6 +758,7 @@
   type ConfigResource
   type ContentSubstitution
   type ContextDeclaration
+  type CurriculumStandard
   type DeleteDone
   type DeleteImageDetail
   DeleteImageEvent
@@ -796,6 +803,7 @@
   type SemVerPrerelease
   type ServedContentIdentity
   type SignLanguageCardPayload
+  type SkillLevel
   type SoundHandler
   type SpokenAudioCardPayload
   type TestPart
@@ -820,3 +828,9 @@
   contentStylesPresent
   installContentStyles
   resetContentStylesWarningForTesting
+
+./ui/fontawesome
+  type NdsGlyphVariant
+  applyNdsGlyphVariant
+  ensureFontAwesome
+  installFontAwesomeInShadow

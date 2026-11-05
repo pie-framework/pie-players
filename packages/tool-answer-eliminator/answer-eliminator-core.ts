@@ -112,6 +112,8 @@ export class AnswerEliminatorCore {
 
 	private store: EliminatorStateStore | null = null;
 	private elementStateKeys: ElementStateKeys = {};
+	// Model ids of the elements whose choices take a toggle; null for every one.
+	private elementIds: ReadonlySet<string> | null = null;
 
 	constructor(
 		strategyType: "strikethrough" | "mask" = "strikethrough",
@@ -231,6 +233,23 @@ export class AnswerEliminatorCore {
 		return token;
 	}
 
+	/** Whether a choice belongs to an element listed in `elementIds`. */
+	private isEligible(
+		{ target, owner }: FoundChoice,
+		questionRoot: HTMLElement,
+	): boolean {
+		const elementIds = this.elementIds;
+		if (elementIds === null) return true;
+		for (
+			let node: Element | null = owner ?? target.container;
+			node !== null;
+			node = node === questionRoot ? null : node.parentElement
+		) {
+			if (node.id && elementIds.has(node.id)) return true;
+		}
+		return false;
+	}
+
 	private strategyKeyFor(key: string): string {
 		let strategyKey = this.strategyKeys.get(key);
 		if (!strategyKey) {
@@ -241,6 +260,7 @@ export class AnswerEliminatorCore {
 	}
 
 	private initializeChoice(found: FoundChoice, questionRoot: HTMLElement): void {
+		if (!this.isEligible(found, questionRoot)) return;
 		const { target, owner } = found;
 		const choiceId = target.id;
 		const group = this.resolveGroup(found, questionRoot);
@@ -422,6 +442,15 @@ export class AnswerEliminatorCore {
 	 */
 	getEliminatedCount(): number {
 		return this.eliminated.size;
+	}
+
+	/**
+	 * Limit toggles to the choices of these PIE elements, by model id; `null`
+	 * gives every element's choices one. Takes effect at the next
+	 * initialization.
+	 */
+	setElementIds(elementIds: readonly string[] | null): void {
+		this.elementIds = elementIds ? new Set(elementIds) : null;
 	}
 
 	/**

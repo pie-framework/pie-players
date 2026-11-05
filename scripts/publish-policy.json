@@ -43,6 +43,7 @@
 			"@pie-players/pie-default-tool-loaders",
 			"@pie-players/pie-players-shared",
 			"@pie-players/pie-players-shared/i18n/language-tags",
+			"@pie-players/pie-players-shared/security/private-hosts",
 			"@pie-players/pie-context",
 			"@pie-players/pie-calculator",
 			"@pie-players/pie-calculator-cortex",

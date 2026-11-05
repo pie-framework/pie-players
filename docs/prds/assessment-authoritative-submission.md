@@ -276,7 +276,7 @@ Required persistent evidence:
 - Consumer-impact verification for `submit()` and submission event payloads.
 
 Commands: `bun run typecheck`, `bun run test`, and the
-[high-value checks](../../AGENTS.md#high-value-checks) for a player change.
+[toolkit boundary checks](../../AGENTS.md#monorepo-map) for a player change.
 Playwright-backed tests run outside the sandbox; see
 [Playwright and sandboxed execution](../../AGENTS.md#playwright-and-sandboxed-execution).
 

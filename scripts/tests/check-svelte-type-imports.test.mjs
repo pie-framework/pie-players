@@ -97,19 +97,68 @@ describe("findSvelteTypeImports", () => {
 	});
 
 	test("accepts svelte named in prose, in other packages, and outside `files`", () => {
-		const fixture = createPackage(rootTypes("./dist/index.d.ts"), {
-			"dist/index.d.ts": [
-				"/**",
-				' * Svelte hosts need nothing extra: `import { mount } from "svelte"`',
-				" * is not required.",
-				" */",
-				'export type { Options } from "svelte-preprocess";',
-				'export type { Contract } from "@pie-players/pie-assessment-toolkit";',
-				"export declare const message = \"from 'svelte'\";",
-			].join("\n"),
-			// Not in `files`, so npm does not pack it.
-			"Panel.svelte.d.ts": COMPONENT_STUB,
-		});
+		const fixture = createPackage(
+			{
+				...rootTypes("./dist/index.d.ts"),
+				dependencies: {
+					"@pie-players/pie-assessment-toolkit": "workspace:*",
+					"svelte-preprocess": "^6.0.0",
+				},
+			},
+			{
+				"dist/index.d.ts": [
+					"/**",
+					' * Svelte hosts need nothing extra: `import { mount } from "svelte"`',
+					" * is not required.",
+					" */",
+					'export type { Options } from "svelte-preprocess";',
+					'export type { Contract } from "@pie-players/pie-assessment-toolkit";',
+					"export declare const message = \"from 'svelte'\";",
+				].join("\n"),
+				// Not in `files`, so npm does not pack it.
+				"Panel.svelte.d.ts": COMPONENT_STUB,
+			},
+		);
+		expect(describeFindings(fixture)).toEqual([]);
+	});
+
+	test("flags a declaration importing a package outside the declared dependencies", () => {
+		const fixture = createPackage(
+			{
+				...rootTypes("./dist/index.d.ts"),
+				dependencies: { "@pie-players/pie-players-shared": "workspace:*" },
+				devDependencies: {
+					"@pie-players/pie-default-tool-loaders": "workspace:*",
+				},
+			},
+			{
+				"dist/index.d.ts": [
+					'export { normalize } from "@pie-players/pie-players-shared";',
+					'export { CONTENT_LEAD_SURFACE } from "@pie-players/pie-default-tool-loaders";',
+					"export {};",
+				].join("\n"),
+			},
+		);
+		expect(describeFindings(fixture)).toEqual([
+			'dist/index.d.ts imports "@pie-players/pie-default-tool-loaders", which it does not declare as a dependency',
+		]);
+	});
+
+	test("accepts declared dependencies and node builtins", () => {
+		const fixture = createPackage(
+			{
+				...rootTypes("./dist/index.d.ts"),
+				dependencies: { "@pie-players/pie-players-shared": "workspace:*" },
+			},
+			{
+				"dist/index.d.ts": [
+					'export { normalize } from "@pie-players/pie-players-shared";',
+					'export declare function read(p: string): import("node:fs").Stats;',
+					'export type Catalog = import("@pie-players/pie-players-shared/types").Catalog;',
+					"export {};",
+				].join("\n"),
+			},
+		);
 		expect(describeFindings(fixture)).toEqual([]);
 	});
 

@@ -136,7 +136,7 @@ the packed tarball.
 | `@pie-players/pie-section-player` | `./contracts/runtime-host-contract`, `./contracts/host-hooks`, `./policies`, `./item-section` |
 | `@pie-players/pie-item-list` | `./summarize` |
 | `@pie-players/pie-default-tool-loaders` | `.` |
-| `@pie-players/pie-players-shared` | `.`, `./i18n/language-tags` |
+| `@pie-players/pie-players-shared` | `.`, `./i18n/language-tags`, `./security/private-hosts` |
 | `@pie-players/pie-context` | `.` |
 | `@pie-players/pie-calculator`, `@pie-players/pie-calculator-cortex`, `@pie-players/pie-calculator-desmos` | `.` |
 | `@pie-players/pie-tts`, `@pie-players/tts-client-server`, `@pie-players/tts-server-core`, `@pie-players/tts-server-google`, `@pie-players/tts-server-polly` | `.` |
@@ -189,7 +189,7 @@ Beyond their `@pie-players/*` siblings, the packages install:
 | Dependency | Installed by |
 | --- | --- |
 | `speech-rule-engine`, pinned to `5.0.0-rc.4` | the assessment toolkit, the section player, the TTS settings panel |
-| `@pie-element/shared-utils`, `@pie-lib/math-rendering-module`, `dompurify`, `semver` | `@pie-players/pie-players-shared` |
+| `@pie-element/shared-utils`, `@pie-lib/math-rendering-module`, `dompurify`, `ipaddr.js`, `semver` | `@pie-players/pie-players-shared` |
 | `lit` | the print player |
 | `@google-cloud/text-to-speech` | `@pie-players/tts-server-google` |
 | `@aws-sdk/client-polly` | `@pie-players/tts-server-polly` |

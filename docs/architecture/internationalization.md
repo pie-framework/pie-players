@@ -199,6 +199,11 @@ Each transport sends the language as follows:
 | `pie` (Polly, Google) | `language`: the content language, else the tool config's `language` | the configured `defaultVoice` when one is set; otherwise the server picks one for `language` |
 | `custom` (`tts-server-sc`) | `lang_id`: the pinned `lang_id`, else the content language, else the tool config's `language`, else `en-US` | the service's own, from `lang_id` |
 
+Both server transports and the browser voice drop variant and private-use
+subtags from the content language, since voices are keyed by language and
+region: `en-GB-x-gulf` content is read by an `en-GB` voice. A pinned `lang_id`
+is sent as set.
+
 A Polly or Google server given no voice keeps its configured default voice when
 that voice speaks `language`, and otherwise takes the first voice it lists for
 the exact tag, then for the primary subtag (`es` matches `es-US`); Google
@@ -600,6 +605,20 @@ cannot split or fingerprint locale assets itself.
 The item player and the section player's browser build set `external: []`, and the
 print player declares no externals, so each inlines a locale bundle imported from
 `players-shared` unless it is made external or fetched at runtime.
+
+Localized content other than English is lazy everywhere, because each language is
+paid for only by the hosts that set it. English stays statically resident as the
+fallback; every other locale is one chunk behind an explicit static map of
+`import()` loaders. The interface catalogs, the generated tier, the
+speech-rule-engine tables (`assessment-toolkit/src/services/tts/sre-locales.ts`)
+and the periodic table's element names (`tool-periodic-table/element-names.ts`)
+share that shape, and a tool's own per-language data follows it too. A tool builds
+with Vite, so its locale chunks sit beside its entry in `dist`; `players-shared`
+leaves the split to the consumer's bundler. `check:locale-lazy-loading` fails on a
+static import of a file named by a non-English language tag. Language-detection
+patterns are exempt: the tool-visibility gates in `tool-context.ts` run every
+language's set against content that often declares no language, so they have no
+locale to load by.
 
 Tool display names ride on `ToolRegistration.nameKey` and `descriptionKey`, which
 `default-tool-loaders` supplies. Core stays capability-neutral, as

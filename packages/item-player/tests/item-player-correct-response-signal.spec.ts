@@ -170,3 +170,118 @@ test.describe("item-player correct-response tamper signal", () => {
 		}
 	});
 });
+
+declare global {
+	interface Window {
+		__pieBackendSaves?: string[];
+		__pieCorrectResponseSessions?: string[];
+	}
+}
+
+test.describe("item-player correct responses and the delivery backend", () => {
+	test("a session filled with correct responses is never saved", async ({
+		page,
+	}) => {
+		await gotoDelivery(page);
+		await listen(page);
+
+		// A custom delivery client that serves the item already on the page and
+		// records every session the player writes. A delivery backend defaults the
+		// player to `hosted`, whose bundle has no controllers to generate correct
+		// responses with; a host that keeps controllers client-side opts out.
+		await page.evaluate(() => {
+			window.__pieBackendSaves = [];
+			window.__pieCorrectResponseSessions = [];
+			const player = document.querySelector("pie-item-player") as
+				| (HTMLElement & {
+						config?: unknown;
+						backend?: unknown;
+						hosted?: boolean;
+					})
+				| null;
+			if (!player) throw new Error("no pie-item-player");
+			const config = player.config;
+			player.addEventListener("backend-load-complete", () => {
+				player.dataset.backendLoaded = "true";
+			});
+			player.addEventListener("session-changed", (event) => {
+				const detail = (event as CustomEvent).detail ?? {};
+				if (detail.sessionSource === "correct-response") {
+					window.__pieCorrectResponseSessions?.push(
+						JSON.stringify(detail.session?.data ?? []),
+					);
+				}
+			});
+			player.hosted = false;
+			player.backend = {
+				delivery: {
+					enabled: true,
+					itemId: "correct-response-item",
+					sessionId: "correct-response-session",
+					autosave: { debounceMs: 0 },
+					client: {
+						async load() {
+							return { config };
+						},
+						async saveSession(context: { session: { data: unknown[] } }) {
+							window.__pieBackendSaves?.push(
+								JSON.stringify(context.session.data),
+							);
+						},
+					},
+				},
+			};
+		});
+		await expect(
+			page.locator('pie-item-player[data-backend-loaded="true"]'),
+		).toBeAttached({ timeout: 30_000 });
+		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible();
+
+		// Control: a learner's response does reach the backend.
+		await page
+			.locator('label[for^="choice-"]')
+			.filter({ hasText: "Mercury" })
+			.click();
+		await expect
+			.poll(() => page.evaluate(() => window.__pieBackendSaves?.length ?? 0), {
+				timeout: 10_000,
+			})
+			.toBeGreaterThan(0);
+		const learnerSaves = await page.evaluate(
+			() => window.__pieBackendSaves?.length ?? 0,
+		);
+
+		await page.evaluate(() => {
+			document
+				.querySelector("pie-item-player")
+				?.setAttribute("add-correct-response", "true");
+		});
+		await expect
+			.poll(
+				() =>
+					page.evaluate(
+						() => window.__pieCorrectResponseSessions?.length ?? 0,
+					),
+				{ timeout: 20_000 },
+			)
+			.toBeGreaterThan(0);
+
+		// The page going hidden flushes pending saves with keepalive.
+		await page.evaluate(() => {
+			Object.defineProperty(document, "visibilityState", {
+				configurable: true,
+				get: () => "hidden",
+			});
+			document.dispatchEvent(new Event("visibilitychange"));
+			window.dispatchEvent(new Event("pagehide"));
+		});
+		await page.waitForTimeout(500);
+
+		const { saves, answerKeys } = await page.evaluate(() => ({
+			saves: window.__pieBackendSaves ?? [],
+			answerKeys: window.__pieCorrectResponseSessions ?? [],
+		}));
+		expect(saves).toHaveLength(learnerSaves);
+		for (const answerKey of answerKeys) expect(saves).not.toContain(answerKey);
+	});
+});

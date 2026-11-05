@@ -37,8 +37,24 @@ const FORBIDDEN_RULES = [
 
 const importRegexes = [
 	/\bfrom\s+["']([^"']+)["']/g,
+	// Side-effect import: the usual form of a `?customElement` registration.
+	/\bimport\s*["']([^"']+)["']/g,
 	/\bimport\s*\(\s*["']([^"']+)["']\s*\)/g,
 ];
+
+/** Every module specifier `content` imports or re-exports. */
+export function collectImportSpecifiers(content) {
+	const specifiers = new Set();
+	for (const regex of importRegexes) {
+		regex.lastIndex = 0;
+		let match = regex.exec(content);
+		while (match) {
+			specifiers.add(match[1]);
+			match = regex.exec(content);
+		}
+	}
+	return specifiers;
+}
 
 const rel = (filePath) => path.relative(ROOT, filePath).replaceAll("\\", "/");
 
@@ -62,50 +78,44 @@ function walk(dirPath, visitor) {
 	}
 }
 
-const violations = [];
+function main() {
+	const violations = [];
 
-for (const dir of TARGET_DIRS) {
-	walk(dir, (filePath) => {
-		const ext = path.extname(filePath);
-		if (!VALID_EXTENSIONS.has(ext)) return;
+	for (const dir of TARGET_DIRS) {
+		walk(dir, (filePath) => {
+			const ext = path.extname(filePath);
+			if (!VALID_EXTENSIONS.has(ext)) return;
 
-		const content = readFileSync(filePath, "utf8");
-		const specifiers = new Set();
-		for (const regex of importRegexes) {
-			regex.lastIndex = 0;
-			let match = regex.exec(content);
-			while (match) {
-				specifiers.add(match[1]);
-				match = regex.exec(content);
+			const content = readFileSync(filePath, "utf8");
+			for (const specifier of collectImportSpecifiers(content)) {
+				for (const rule of FORBIDDEN_RULES) {
+					if (!rule.test(specifier)) continue;
+					violations.push({
+						file: rel(filePath),
+						specifier,
+						ruleId: rule.id,
+						description: rule.description,
+					});
+				}
 			}
-		}
-
-		for (const specifier of specifiers) {
-			for (const rule of FORBIDDEN_RULES) {
-				if (!rule.test(specifier)) continue;
-				violations.push({
-					file: rel(filePath),
-					specifier,
-					ruleId: rule.id,
-					description: rule.description,
-				});
-			}
-		}
-	});
-}
-
-if (violations.length > 0) {
-	console.error(
-		`[check-consumer-boundaries] Found ${violations.length} import boundary violation(s)`,
-	);
-	for (const violation of violations) {
-		console.error(
-			`- ${violation.file}\n  ${violation.description} (${violation.ruleId})\n  import: ${violation.specifier}`,
-		);
+		});
 	}
-	process.exit(1);
+
+	if (violations.length > 0) {
+		console.error(
+			`[check-consumer-boundaries] Found ${violations.length} import boundary violation(s)`,
+		);
+		for (const violation of violations) {
+			console.error(
+				`- ${violation.file}\n  ${violation.description} (${violation.ruleId})\n  import: ${violation.specifier}`,
+			);
+		}
+		process.exit(1);
+	}
+
+	console.log(
+		"[check-consumer-boundaries] OK: no import boundary violations found",
+	);
 }
 
-console.log(
-	"[check-consumer-boundaries] OK: no import boundary violations found",
-);
+if (import.meta.main) main();

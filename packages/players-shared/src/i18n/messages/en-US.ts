@@ -324,6 +324,12 @@ const enUS = {
 				lanthanide: "Lanthanide",
 				actinide: "Actinide",
 			},
+			/** Standard-state phase, keyed by the data file's lowercased `phase` value. */
+			phaseValue: {
+				solid: "Solid",
+				liquid: "Liquid",
+				gas: "Gas",
+			},
 		},
 		ruler: {
 			name: "Ruler",
@@ -509,6 +515,20 @@ const enUS = {
 			highlightPinkA11y: "Pink highlight",
 			highlightBlueA11y: "Blue highlight",
 			highlightGreenA11y: "Green highlight",
+			// Announced in the strip's live region. A colour is authored per phrase:
+			// a colour adjective agrees with its noun in some languages.
+			selectionAvailableA11y:
+				"Annotation toolbar available for “{text}”. Press Shift+F10 for annotation tools.",
+			highlightedYellowA11y: "“{text}” highlighted in yellow",
+			highlightedPinkA11y: "“{text}” highlighted in pink",
+			highlightedBlueA11y: "“{text}” highlighted in blue",
+			highlightedGreenA11y: "“{text}” highlighted in green",
+			underlinedA11y: "“{text}” underlined",
+			removedA11y: "Removed annotation from “{text}”",
+			clearedA11y: {
+				one: "{count} annotation cleared",
+				other: "{count} annotations cleared",
+			},
 		},
 		theme: {
 			name: "Theme",

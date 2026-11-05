@@ -152,7 +152,13 @@ bun run check:ce-define-safety
 bun run check:ce-consumer-contract
 bun run check:runtime-compat
 bun run check:bundle-safety
+bun run check:locale-lazy-loading
 ```
+
+A package that ships localized content keeps English resident and every other
+locale behind a dynamic `import()`, one chunk each; after a build, confirm `dist`
+holds each locale as its own chunk. AGENTS.md, Localized Content Loading, has the
+rule.
 
 For new packages, also:
 

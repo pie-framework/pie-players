@@ -99,8 +99,10 @@ them, live in `players-shared/types`; the `assessment-toolkit` root re-exports
 them. Neither `assessment-player` nor `assessment-toolkit` owns them: the
 toolkit complements a player and sits beneath both entry paths.
 
-Product-completing, and out of scope: standards and skill alignment; policy
-authoring surfaces; gradebooks, reporting and analytics warehouses; item banks
+Product-completing, and out of scope: alignment-based resolution, roll-ups,
+mastery and reporting by standard, while the alignment fields themselves are
+[interchange model](./content-model.md#curriculum-standards); policy authoring
+surfaces; gradebooks, reporting and analytics warehouses; item banks
 and media hosting; durable persistence; authorization and proctoring;
 psychometrics; adaptive selection engines; peer- and staff-review workflow;
 production multi-section delivery shells. `@pie-players/pie-assessment-player`

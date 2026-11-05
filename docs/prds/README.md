@@ -172,7 +172,7 @@ unbuilt framework-completing capabilities.
   [Content model](../architecture/content-model.md#language-variants).
 
 - [`curriculum-standards-alignment.md`](./curriculum-standards-alignment.md) -
-  `Draft`. `curriculumStandards` and `skillLevels` on items and passages:
+  `Ready`. `curriculumStandards` and `skillLevels` on items and passages:
   interchange fields named after QTI 3 CSM 1.1 and LOM, keyed by provider and
   issued GUID, that players carry unread and pie-qti round-trips.
 

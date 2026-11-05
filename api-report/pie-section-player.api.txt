@@ -9,12 +9,14 @@
   type ItemSectionOptions
   type PieSectionPlayerElement
   type PieSectionPlayerSplitPaneElement
-  type SectionItemScore
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
   type SectionPlayerCardTitleContext
   type SectionPlayerCardTitleFormatter
   type SectionPlayerHostHooks
+  type SectionPlayerItemContext
+  type SectionPlayerItemPlayerProps
+  type SectionPlayerItemPropsResolver
   type SectionPlayerItemTitleContext
   type SectionPlayerNavigationSnapshot
   type SectionPlayerPassageTitleContext
@@ -35,12 +37,14 @@
   type ItemSectionOptions
   type PieSectionPlayerElement
   type PieSectionPlayerSplitPaneElement
-  type SectionItemScore
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
   type SectionPlayerCardTitleContext
   type SectionPlayerCardTitleFormatter
   type SectionPlayerHostHooks
+  type SectionPlayerItemContext
+  type SectionPlayerItemPlayerProps
+  type SectionPlayerItemPropsResolver
   type SectionPlayerItemTitleContext
   type SectionPlayerNavigationSnapshot
   type SectionPlayerPassageTitleContext
@@ -62,12 +66,14 @@
   type ItemSectionOptions
   type PieSectionPlayerElement
   type PieSectionPlayerSplitPaneElement
-  type SectionItemScore
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
   type SectionPlayerCardTitleContext
   type SectionPlayerCardTitleFormatter
   type SectionPlayerHostHooks
+  type SectionPlayerItemContext
+  type SectionPlayerItemPlayerProps
+  type SectionPlayerItemPropsResolver
   type SectionPlayerItemTitleContext
   type SectionPlayerNavigationSnapshot
   type SectionPlayerPassageTitleContext
@@ -85,7 +91,6 @@
   type SectionPlayerHostHooks
 
 ./contracts/runtime-host-contract
-  type SectionItemScore
   type SectionPlayerNavigationSnapshot
   type SectionPlayerRuntimeHostContract
   type SectionPlayerSnapshot

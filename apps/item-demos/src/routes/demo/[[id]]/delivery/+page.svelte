@@ -7,6 +7,16 @@
 		DebugPanelInstrumentationProvider,
 		NewRelicInstrumentationProvider
 	} from '@pie-players/pie-players-shared';
+	import {
+		BUNDLED_LOCALES,
+		createPieI18n,
+		loadBundledCatalog,
+		type I18nServiceApi
+	} from '@pie-players/pie-players-shared/i18n';
+	import {
+		GENERATED_LOCALES,
+		loadGeneratedCatalog
+	} from '@pie-players/pie-i18n-generated';
 	import { preloadDemoElements } from '@pie-players/demo-ui/preloaded';
 	import ScoringPanel from '#lib/components/ScoringPanel.svelte';
 	import { demoHeadingName } from '#lib/utils/demo-heading-name.js';
@@ -28,6 +38,24 @@
 	let lastConfig: any = null;
 	let lastEnv: any = null;
 	let lastSession: any = null;
+
+	// The interface locale this delivery was asked to render in (`?locale=ar`):
+	// the one page where a standalone item player demonstrates the
+	// interface-locale contract. The attribute names the locale; the host —
+	// here the demo — composes the provider the element cannot know, the
+	// generated tier's README wiring: bundled catalogs first, the optional
+	// generated tier behind them. No `locale` param, no provider, no
+	// attribute: the page renders exactly what it rendered before.
+	const requestedLocale = $derived(page.url.searchParams.get('locale') || '');
+	const demoI18n: I18nServiceApi | null = $derived(
+		requestedLocale
+			? createPieI18n({
+					availableLocales: [...BUNDLED_LOCALES, ...GENERATED_LOCALES],
+					loadCatalog: (locale) =>
+						loadBundledCatalog(locale).catch(() => loadGeneratedCatalog(locale))
+				})
+			: null
+	);
 	let selectedPlayerType = $state<'iife' | 'esm' | 'preloaded'>('iife');
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
@@ -142,6 +170,17 @@
 		};
 	});
 
+	// Hand the composed provider to the element: `i18n` is a JS-only property
+	// (it carries loaders), set like the other imperative props.
+	$effect(() => {
+		const provider = demoI18n;
+		const el = playerEl;
+		if (!el || !provider) return;
+		untrack(() => {
+			el.i18n = provider;
+		});
+	});
+
 	// Listen for session changes
 	$effect(() => {
 		if (playerEl) {
@@ -188,6 +227,7 @@
 					<pie-item-player
 						bind:this={playerEl}
 						strategy={selectedPlayerType}
+						locale={requestedLocale || undefined}
 					></pie-item-player>
 				{/key}
 			{:else if !$configStore || !$envStore}

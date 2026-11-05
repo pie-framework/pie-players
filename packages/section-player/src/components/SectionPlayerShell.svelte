@@ -203,12 +203,17 @@ Section toolbar shell that renders `<pie-section-toolbar>` at the `toolbar-posit
 		background: var(--pie-background-dark, #ecedf1);
 	}
 
+	/* Logical properties: the pane's side follows the writing direction (the
+ 	   grid tracks place it at the inline end or inline start), so the divider
+ 	   must ride the content side — the pane's inline-start edge for the
+ 	   trailing pane and its inline-end edge for the leading one. A physical
+ 	   border left the divider on the screen edge under RTL. */
 	.pie-section-player-toolbar-pane--right {
-		border-left: 1px solid var(--pie-border-light, #e5e7eb);
+		border-inline-start: 1px solid var(--pie-border-light, #e5e7eb);
 	}
 
 	.pie-section-player-toolbar-pane--left {
-		border-right: 1px solid var(--pie-border-light, #e5e7eb);
+		border-inline-end: 1px solid var(--pie-border-light, #e5e7eb);
 	}
 
 	.pie-section-player-toolbar {

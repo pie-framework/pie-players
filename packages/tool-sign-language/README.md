@@ -58,6 +58,14 @@ owner snapshot for an exact requested-language match first, then permits an
 unlabeled card as the only fallback. A card labeled with another sign language
 is never substituted.
 
+Arabic content has no sign-language counterpart. There is no single Arabic sign
+language: Saudi (`sdl`), Egyptian (`esl`), Jordanian (`jos`) and the other national
+sign languages are distinct, and the signed language is the learner's, never
+derived from the content language. PIE names none of them today, so a card in one
+gets the labelled-code fallback. A learner granted signing on Arabic content with
+no matching card sees no region. Reporting that as unavailable to the host is the
+tool-unavailable event (PIE-1369), which this tool will raise once it exists.
+
 ## The element
 
 `<pie-tool-sign-language>` — open shadow root, mounted by the registration's

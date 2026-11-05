@@ -219,6 +219,22 @@ describe("check-theme-tokens", () => {
 		expect(ndsFailures).toEqual([]);
 	});
 
+	test("flags an unbridged mount that follows a line comment naming a /* glob", () => {
+		const root = createFixtureRoot();
+		write(
+			root,
+			"packages/tool-example/tool-example-nds.svelte",
+			"<script>\n// Externalizes @pie-players/*, so this is a bare import.\n</script>\n" +
+				'<nds-icon-button variant="tertiary"></nds-icon-button>\n<style>/* end */</style>\n',
+		);
+
+		const failures = checkThemeTokens(root)
+			.filter((failure) => failure.includes("nds-icon-button"))
+			.join("\n");
+
+		expect(failures).toContain("does not bridge `--color-new-gray`");
+	});
+
 	test("flags a bare colour literal set from an inline style", () => {
 		const root = createFixtureRoot();
 		write(

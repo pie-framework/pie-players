@@ -87,7 +87,7 @@
 The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or `preloaded` strategy and renders the item for delivery, evaluation or authoring as `mode` selects. A host gives it the item `config`, the learner `session` and `env`; the player owns the session from there and reports each change as `session-changed`. An optional `backend` routes delivery loads, saves and scoring, and authoring loads and saves, through the player's backend orchestrator.
 
 @fires {CustomEvent<null>} load-complete - Once the item's PIE elements have loaded and rendered and the math in its markup is typeset, waiting at most two seconds for the math.
-@fires {CustomEvent<{ complete: boolean; component: string; elementId?: string; session: { id: string; data: unknown[] } | null; intent?: "metadata-only"; sessionCommitReason?: "teardown" | "navigate" | "page-hidden" }>} session-changed - When an element's session or completion changes, and as a commit at a teardown, navigation or page-hidden seam.
+@fires {CustomEvent<{ complete: boolean; component: string; elementId?: string; session: { id: string; data: unknown[] } | null; intent?: "metadata-only"; sessionCommitReason?: "teardown" | "navigate" | "page-hidden"; sessionSource?: "correct-response" }>} session-changed - When an element's session or completion changes, and as a commit at a teardown, navigation or page-hidden seam. `sessionSource` is set when `addCorrectResponse` filled the session.
 @fires {CustomEvent<PieItemPlayerErrorDetail>} player-error - When loading, an update or a controller fails; `recoverable` is false when the player has no item to show.
 @fires {CustomEvent<{ update: unknown; reset: boolean }>} model-updated - In authoring, when a configure element updates its model.
 @fires {CustomEvent<{ models: unknown[]; configuration: unknown }>} model-loaded - In authoring, once per renderer initialization, after the configure elements receive their models and configuration.
@@ -241,6 +241,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		resolveInterfaceI18n,
 		reportInterfaceLocaleLoadError,
 		stampContentLanguage,
+		stampInterfaceLocale,
 		undeclaredDirectionMismatch,
 	} from "@pie-players/pie-players-shared/i18n";
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
@@ -505,6 +506,12 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	// The `complete` each element last announced to the host, by `elementId`, or
 	// `component` when the detail names no element.
 	const announcedCompletion = new Map<string, boolean>();
+	// The last `session-changed` carried the item's correct responses, which
+	// `addCorrectResponse` writes over the session in place. While it holds them
+	// they go to neither the backend nor the device snapshot.
+	let correctResponsesAnnounced = false;
+	const holdsCorrectResponses = () =>
+		addCorrectResponse && correctResponsesAnnounced;
 	let latestLoadRequestToken = 0;
 	let activeSessionSnapshot: SessionSnapshot | null = null;
 	let offeredSnapshotKey = "";
@@ -614,9 +621,21 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		getPassageConfig: () => passageConfig,
 		getEnv: () => parseEnvValue(env),
 		getSessionContainer: () => currentSessionContainer(),
+		holdsCorrectResponses,
 		loadPlayerConfig: (nextConfig) => loadConfig(nextConfig),
 		dispatchPlayerEvent: (event) => handlePlayerEvent(event),
 		applyRefreshedConfigs: applyRefreshedBackendConfigs,
+	});
+
+	// A debounced autosave reads the session when it fires, so one still waiting
+	// as the correct responses are generated goes out first, carrying the
+	// learner's responses. Turning them off clears the session.
+	$effect(() => {
+		if (!addCorrectResponse) {
+			correctResponsesAnnounced = false;
+			return;
+		}
+		untrack(() => backendOrchestrator.flushPendingSave());
 	});
 
 	const effectiveConfig = $derived(backendOrchestrator.configOverride ?? config);
@@ -979,6 +998,39 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		const currentEnv = elementEnv();
 		const target = hostElement;
 		stampContentLanguage(target, currentEnv, contentLanguageDefault);
+	});
+	// The interface-locale stamp on the custom element host. Standalone, this
+	// player is the outermost chrome — its error banner renders interface
+	// strings — and no stamped ancestor exists above it, so per the adoption
+	// record it stamps its own host. A player a section mounts carries no
+	// `locale` of its own (the shell above is the stamped ancestor), and a host
+	// that passes no locale keeps today's attributes: the stamp follows a
+	// requested locale only, and the host's own `lang`/`dir` are never removed
+	// unless this effect wrote them. Reads the version counter, not just the
+	// provider: `getLocale` moves once the requested catalog is resident, and
+	// the stamp must name the locale that rendered.
+	let interfaceStampTarget: HTMLElement | null = null;
+	$effect(() => {
+		const requested = typeof locale === "string" ? locale.trim() : "";
+		void interfaceI18nVersion;
+		const target = customElementHost ?? hostElement;
+		if (!requested) {
+			if (interfaceStampTarget) {
+				const stamped = interfaceStampTarget;
+				interfaceStampTarget = null;
+				untrack(() => {
+					stamped.removeAttribute("lang");
+					stamped.removeAttribute("dir");
+				});
+			}
+			return;
+		}
+		if (!target) return;
+		const provider = interfaceI18n;
+		untrack(() => {
+			stampInterfaceLocale(target, provider);
+			interfaceStampTarget = target;
+		});
 	});
 	// Once per player: a default that names a direction is a guess about
 	// content that declared nothing, and RTL content under an LTR default lays
@@ -1623,7 +1675,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	}
 
 	function writeSessionSnapshot(): void {
-		if (!activeSessionSnapshot) return;
+		if (!activeSessionSnapshot || holdsCorrectResponses()) return;
 		try {
 			activeSessionSnapshot.write(currentSessionContainer());
 		} catch (errorValue) {
@@ -2027,6 +2079,8 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		if (forwarding.action === "ignore") {
 			return;
 		}
+		correctResponsesAnnounced =
+			forwarding.detail.sessionSource === "correct-response";
 		if (forwarding.changed) {
 			const nextSession = controller.setSession(forwarding.session, {
 				persist: false,

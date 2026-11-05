@@ -8,6 +8,7 @@ import type {
 	AssessmentPlayerRuntimeHostContract,
 } from "@pie-players/pie-assessment-player";
 import type { AssessmentSession } from "@pie-players/pie-players-shared/types";
+import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 
 type Host = HTMLElement & AssessmentPlayerRuntimeHostContract & {
 	session: AssessmentSession | null;
@@ -40,6 +41,8 @@ declare global {
 			borrowedReady?: boolean;
 			hookControllerMatches?: boolean;
 			failNextLoad: () => void;
+			/** The fixture page's composed provider (bundled + generated tier). */
+			assessmentDemoI18n: I18nProvider;
 		}
 	}
 }
@@ -53,6 +56,12 @@ async function mountHost(
 	await page.waitForSelector("[data-pie-assessment-fixture]", { state: "attached" });
 	await page.evaluate((options) => {
 		const host = document.createElement("pie-assessment-player-default") as Host;
+		// The fixture page composes the generated tier (the bundled set is
+		// en-US alone); hand the host that provider so a requested locale like
+		// the presentation case's `nl-NL` resolves Dutch.
+		host.sectionPlayerRuntime = {
+			i18n: window.assessmentDemoI18n,
+		};
 		const target = document.querySelector("[data-pie-assessment-fixture]")!;
 		let release = () => {};
 		const delayed = new Promise<void>((resolve) => { release = resolve; });

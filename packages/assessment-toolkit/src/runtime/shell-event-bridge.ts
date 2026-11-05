@@ -5,14 +5,20 @@ import {
 } from "@pie-players/pie-players-shared";
 import type { ShellContextKind } from "../context/assessment-toolkit-context.js";
 import {
+	type InternalContentIdentityDetail,
 	type InternalContentLoadedDetail,
 	type InternalItemPlayerErrorDetail,
 	type InternalItemSessionChangedDetail,
+	type ItemPlayerEventDetail,
 	type ItemSessionChangedDetail,
+	PIE_INTERNAL_CONTENT_IDENTITY_EVENT,
 	PIE_INTERNAL_CONTENT_LOADED_EVENT,
 	PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
 	PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
+	PIE_ITEM_PLAYER_EVENT,
 	PIE_ITEM_SESSION_CHANGED_EVENT,
+	RELAYED_ITEM_PLAYER_EVENTS,
+	type RelayedItemPlayerEventType,
 } from "./registration-events.js";
 import { dispatchCrossBoundaryEvent } from "./tool-host-contract.js";
 
@@ -20,7 +26,13 @@ import { dispatchCrossBoundaryEvent } from "./tool-host-contract.js";
  * `section`: the shell is its content's only channel to the section. The
  * player's `session-changed`, `load-complete` and `player-error` stop at the
  * shell and travel on as the runtime's internal events, with an item's
- * response changes also announced as `item-session-changed`.
+ * response changes also announced as `item-session-changed`. A session the
+ * player filled with the item's correct responses goes neither way: it renders
+ * in the player and never enters the section session. An item's
+ * host-actionable events are also announced as `item-player-event`, with the
+ * item's identity. The identity in
+ * an item's delivery `backend-load-complete` travels on too, for the section
+ * to record on the item's session; the event itself goes on to the host.
  *
  * `plain`: the host owns the player and listens to it, so the player's events
  * pass through untouched. The runtime still hears that the content loaded or
@@ -78,6 +90,13 @@ function sessionEventFingerprint(detail: unknown): string {
 	}
 }
 
+const isCorrectResponseSession = (detail: unknown): boolean =>
+	Boolean(
+		detail &&
+			typeof detail === "object" &&
+			(detail as Record<string, unknown>).sessionSource === "correct-response",
+	);
+
 const isCommit = (detail: unknown): boolean =>
 	Boolean(
 		detail &&
@@ -131,6 +150,7 @@ export function createShellEventBridge(
 		// stream names no item a host has.
 		if (kind !== "item") return;
 		const detail = (event as CustomEvent).detail;
+		if (isCorrectResponseSession(detail)) return;
 		const fingerprint = sessionEventFingerprint(detail);
 		// A commit is the response's last chance to reach the section.
 		if (!isCommit(detail) && fingerprint === lastForwardedFingerprint) return;
@@ -149,6 +169,21 @@ export function createShellEventBridge(
 		};
 		send(PIE_INTERNAL_CONTENT_LOADED_EVENT, detail);
 	};
+	const onBackendLoadComplete = (event: Event) => {
+		if (mode() !== "section" || kind !== "item") return;
+		const loaded = (event as CustomEvent).detail as
+			| { scope?: unknown; identity?: InternalContentIdentityDetail["identity"] }
+			| undefined;
+		if (loaded?.scope !== "delivery") return;
+		const { itemId, canonicalItemId } = identity();
+		if (!itemId) return;
+		const detail: InternalContentIdentityDetail = {
+			itemId,
+			canonicalItemId: canonicalItemId || itemId,
+			...(loaded.identity ? { identity: loaded.identity } : {}),
+		};
+		send(PIE_INTERNAL_CONTENT_IDENTITY_EVENT, detail);
+	};
 	const onPlayerError = (event: Event) => {
 		if (mode() === "section") event.stopPropagation();
 		const { itemId, canonicalItemId, contentKind } = identity();
@@ -162,9 +197,26 @@ export function createShellEventBridge(
 		send(PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT, detail);
 	};
 
+	const relayItemPlayerEvent = (event: Event) => {
+		if (mode() !== "section" || kind !== "item") return;
+		const { itemId, canonicalItemId } = identity();
+		if (!itemId) return;
+		const payload: ItemPlayerEventDetail = {
+			itemId,
+			canonicalItemId: canonicalItemId || itemId,
+			type: event.type as RelayedItemPlayerEventType,
+			detail: (event as CustomEvent).detail,
+		};
+		dispatchCrossBoundaryEvent(host, PIE_ITEM_PLAYER_EVENT, payload);
+	};
+
 	host.addEventListener("session-changed", onSessionChanged);
 	host.addEventListener("load-complete", onLoadComplete);
+	host.addEventListener("backend-load-complete", onBackendLoadComplete);
 	host.addEventListener("player-error", onPlayerError);
+	for (const type of RELAYED_ITEM_PLAYER_EVENTS) {
+		host.addEventListener(type, relayItemPlayerEvent);
+	}
 
 	return {
 		disconnect: () => {
@@ -177,7 +229,11 @@ export function createShellEventBridge(
 			} finally {
 				host.removeEventListener("session-changed", onSessionChanged);
 				host.removeEventListener("load-complete", onLoadComplete);
+				host.removeEventListener("backend-load-complete", onBackendLoadComplete);
 				host.removeEventListener("player-error", onPlayerError);
+				for (const type of RELAYED_ITEM_PLAYER_EVENTS) {
+					host.removeEventListener(type, relayItemPlayerEvent);
+				}
 			}
 		},
 	};

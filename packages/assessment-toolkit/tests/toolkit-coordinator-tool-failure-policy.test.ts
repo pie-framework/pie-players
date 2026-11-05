@@ -20,7 +20,7 @@ import {
 import { contentWith } from "./fixtures/read-aloud-content.js";
 
 const ttsStarted = (coordinator: ToolkitCoordinator): boolean =>
-	(coordinator as unknown as { ttsInitialized: boolean }).ttsInitialized;
+	(coordinator as unknown as { tts: { started: boolean } }).tts.started;
 
 beforeAll(() => {
 	if (!GlobalRegistrator.isRegistered) {

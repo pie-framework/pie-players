@@ -486,6 +486,13 @@
 								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: \"teardown\" | \"navigate\" | \"page-hidden\" }>"
 							},
 							"description": "Bubbles from an item scope when the item player reports a response change; the player's own `session-changed` stops at the scope."
+						},
+						{
+							"name": "item-player-event",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; type: \"load-complete\" | \"player-error\" | \"correct-responses-populated\" | \"bundle-retry-status\" | \"session-snapshot-available\" | \"backend-load-complete\" | \"backend-model-complete\" | \"backend-session-saved\" | \"backend-score-complete\" | \"backend-error\"; detail: unknown }>"
+							},
+							"description": "Bubbles from an item scope when the item player fires one of these events, carrying its detail; the player's own `load-complete` and `player-error` stop at the scope."
 						}
 					],
 					"slots": [
@@ -733,15 +740,6 @@
 							"return": {
 								"type": {
 									"text": "SectionControllerHandle | null"
-								}
-							}
-						},
-						{
-							"kind": "method",
-							"name": "provideScore",
-							"return": {
-								"type": {
-									"text": "Promise<SectionItemScore[]>"
 								}
 							}
 						},
@@ -1016,6 +1014,13 @@
 								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: \"teardown\" | \"navigate\" | \"page-hidden\" }>"
 							},
 							"description": "Bubbles from an item scope when the item player reports a response change; the player's own `session-changed` stops at the scope."
+						},
+						{
+							"name": "item-player-event",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; type: \"load-complete\" | \"player-error\" | \"correct-responses-populated\" | \"bundle-retry-status\" | \"session-snapshot-available\" | \"backend-load-complete\" | \"backend-model-complete\" | \"backend-session-saved\" | \"backend-score-complete\" | \"backend-error\"; detail: unknown }>"
+							},
+							"description": "Bubbles from an item scope when the item player fires one of these events, carrying its detail; the player's own `load-complete` and `player-error` stop at the scope."
 						}
 					],
 					"slots": [
@@ -1343,15 +1348,6 @@
 						},
 						{
 							"kind": "method",
-							"name": "provideScore",
-							"return": {
-								"type": {
-									"text": "Promise<SectionItemScore[]>"
-								}
-							}
-						},
-						{
-							"kind": "method",
 							"name": "waitForSectionController",
 							"parameters": [
 								{
@@ -1664,6 +1660,13 @@
 								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: \"teardown\" | \"navigate\" | \"page-hidden\" }>"
 							},
 							"description": "Bubbles from an item scope when the item player reports a response change; the player's own `session-changed` stops at the scope."
+						},
+						{
+							"name": "item-player-event",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; type: \"load-complete\" | \"player-error\" | \"correct-responses-populated\" | \"bundle-retry-status\" | \"session-snapshot-available\" | \"backend-load-complete\" | \"backend-model-complete\" | \"backend-session-saved\" | \"backend-score-complete\" | \"backend-error\"; detail: unknown }>"
+							},
+							"description": "Bubbles from an item scope when the item player fires one of these events, carrying its detail; the player's own `load-complete` and `player-error` stop at the scope."
 						}
 					],
 					"cssProperties": [
@@ -2011,15 +2014,6 @@
 						},
 						{
 							"kind": "method",
-							"name": "provideScore",
-							"return": {
-								"type": {
-									"text": "Promise<SectionItemScore[]>"
-								}
-							}
-						},
-						{
-							"kind": "method",
 							"name": "waitForSectionController",
 							"parameters": [
 								{
@@ -2310,6 +2304,13 @@
 								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: \"teardown\" | \"navigate\" | \"page-hidden\" }>"
 							},
 							"description": "Bubbles from an item scope when the item player reports a response change; the player's own `session-changed` stops at the scope."
+						},
+						{
+							"name": "item-player-event",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; type: \"load-complete\" | \"player-error\" | \"correct-responses-populated\" | \"bundle-retry-status\" | \"session-snapshot-available\" | \"backend-load-complete\" | \"backend-model-complete\" | \"backend-session-saved\" | \"backend-score-complete\" | \"backend-error\"; detail: unknown }>"
+							},
+							"description": "Bubbles from an item scope when the item player fires one of these events, carrying its detail; the player's own `load-complete` and `player-error` stop at the scope."
 						}
 					],
 					"cssProperties": [
@@ -2649,15 +2650,6 @@
 						},
 						{
 							"kind": "method",
-							"name": "provideScore",
-							"return": {
-								"type": {
-									"text": "Promise<SectionItemScore[]>"
-								}
-							}
-						},
-						{
-							"kind": "method",
 							"name": "waitForSectionController",
 							"parameters": [
 								{
@@ -2948,6 +2940,13 @@
 								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; session: unknown; sessionCommitReason?: \"teardown\" | \"navigate\" | \"page-hidden\" }>"
 							},
 							"description": "Bubbles from an item scope when the item player reports a response change; the player's own `session-changed` stops at the scope."
+						},
+						{
+							"name": "item-player-event",
+							"type": {
+								"text": "CustomEvent<{ itemId: string; canonicalItemId: string; type: \"load-complete\" | \"player-error\" | \"correct-responses-populated\" | \"bundle-retry-status\" | \"session-snapshot-available\" | \"backend-load-complete\" | \"backend-model-complete\" | \"backend-session-saved\" | \"backend-score-complete\" | \"backend-error\"; detail: unknown }>"
+							},
+							"description": "Bubbles from an item scope when the item player fires one of these events, carrying its detail; the player's own `load-complete` and `player-error` stop at the scope."
 						}
 					],
 					"cssProperties": [
@@ -3327,11 +3326,19 @@
 					"members": [
 						{
 							"kind": "method",
-							"name": "provideScore",
-							"description": "Scores each item through its card, which owns the item player node. An item whose card or player has not mounted reports `false`.",
+							"name": "scoreItem",
+							"description": "Scores one item through its card, which owns the item player node: the section controller's item scorer. An item whose card or player has not mounted reports `false`.",
+							"parameters": [
+								{
+									"name": "canonicalItemId",
+									"type": {
+										"text": "string"
+									}
+								}
+							],
 							"return": {
 								"type": {
-									"text": "Promise<SectionItemScore[]>"
+									"text": "ReturnType<SectionItemScorer>"
 								}
 							}
 						}

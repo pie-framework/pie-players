@@ -5,11 +5,13 @@ Status: Ready, 2026-10-25
 Implementation status: pie-players landed the fields, the interchange types,
 `negotiateContentLanguage` with its conformance fixtures, the item player's
 `requestedLanguages` and `identity`, per-item `env.locale` in the section player
-and the `itemTranslation` tool parameter (#867, #870). Outstanding in
-pie-players: the section player reading the item player's served identity, and
-`keyword-translation` card languages. pie-api-aws landed a read-adapter seam with
-no language derivations; derived fields, variant resolution, the player endpoint
-fields and session recording are outstanding.
+and the `itemTranslation` tool parameter (#867, #870), and the section
+player's recording of the served identity on item sessions (#902). Outstanding in
+pie-players: `keyword-translation` card languages. pie-api-aws derives `language`
+and `isAdaptationOf` from legacy metadata, resolves `requestedLanguages` under a
+`languagePolicy` on player load, model and activity load, and records the served
+identity on the session; `itemVariants` for pinned forms and Docket admission are
+outstanding.
 No authoring tool emits `language` or `isAdaptationOf` yet.
 
 Owner: PIE Players maintainers
@@ -106,9 +108,10 @@ parameter. Absent or empty, the request is today's request.
 **Players.** The item player renders, saves and scores under
 `identity.servedLanguage` when present, else under the entity's `language`, else
 under the host's `env.locale`. The section player narrows `env.locale` per item
-and per passage from the entity's `language` and records
-`content: { baseId, version, servedLanguage }` on the item session. Once it reads
-the item player's served identity, it records `family` and `substitution` too.
+and per passage from the entity's `language`, and records the item player's
+served identity as the item session's `content`. An item no backend served
+records `content: { baseId, version, servedLanguage }` from its declared
+`language`.
 
 ## Compatibility
 
@@ -142,8 +145,8 @@ screen readers switch voice and right-to-left content lays out correctly per
 item. Read-aloud picks its voice from the stamp
 ([TTS language](../architecture/internationalization.md#tts-language)). A
 fallback substitution leaves the item in a language the learner did not
-request; a host should tell the learner, and the identity carries what it needs
-to.
+request, and a variety substitution in another variety of it; a host should
+tell the learner, and the identity carries what it needs to.
 
 ## Standards Or Adapter Impact
 
@@ -154,8 +157,10 @@ family on import.
 ## Test Plan
 
 - Unit: `negotiateContentLanguage` against the conformance fixtures, including
-  script boundaries (`zh-TW` never reaches `zh-Hans`), `matching: "exact"`, the
-  fallback chain and `null` for undeclared content.
+  script boundaries (`zh-TW` never reaches `zh-Hans`), variant subtags
+  (`en-GB` never reaches `en-GB-x-gulf`), sibling order, `"variety"` for
+  another region or variant (`es-MX` served `es-ES`), `matching: "exact"`,
+  the fallback chain and `null` for undeclared content.
 - Item player: a load with `requestedLanguages` refetches on change, and a
   response `identity` sets `env.locale` for render, save and score.
 - Section player: two items in different languages in one section stamp their

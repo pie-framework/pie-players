@@ -182,7 +182,11 @@ item.
   enabled. A hosted player renders server-processed models and runs no element
   controller in the browser; under `iife` it loads the `player.js` bundle.
 - `add-correct-response`: `Boolean`, default `false`. Populate correct
-  responses into the session.
+  responses into the session. While they fill it, the session goes to neither
+  `backend.delivery` nor the session snapshot: autosaves are skipped, and
+  `saveSession()` and `score()` reject. A delivery backend defaults the player
+  to `hosted`, which has no controllers to generate them, so this needs
+  `hosted={false}` alongside a backend.
 - `show-bottom-border`: `Boolean`, default `false`. Add a bottom border in
   evaluate mode.
 - `render-stimulus`: `Boolean`, default `true`. Render the item's passage

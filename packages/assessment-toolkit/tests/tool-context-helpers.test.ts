@@ -184,6 +184,65 @@ describe("tool-context helpers", () => {
 		}
 	});
 
+	// Each Arabic item is a counterpart of an English case above and has to get the
+	// same tools. The shared Arabic fixtures (PIE-1356) do not exist yet; these pairs
+	// stand in for them.
+	describe("Arabic counterparts", () => {
+		const rlm = String.fromCharCode(0x200f);
+		const counterparts = (
+			gate: (context: ToolContext) => boolean,
+			expected: boolean,
+			pairs: [english: string, arabic: string][],
+		) => {
+			for (const [english, arabic] of pairs) {
+				test(`${expected ? "fires" : "stays quiet"}: ${english}`, () => {
+					expect(gate(item({ markup: `<div>${english}</div>` }))).toBe(expected);
+					expect(gate(item({ markup: `<div dir="rtl">${arabic}</div>` }))).toBe(
+						expected,
+					);
+				});
+			}
+		};
+
+		counterparts(hasMathContent, true, [
+			["Solve 3 + 5 = ?", "حل ٣ + ٥ = ؟"],
+			["Solve 3 + 5 = ?", `حل ٣${rlm} + ٥ = ؟`],
+			["What is 15 - 7?", "ما ناتج ١٥ - ٧؟"],
+			["What is 15 - 7?", "ما ناتج ۱۵ - ۷؟"],
+			["What is 1,000 - 250?", "ما ناتج ١٬٠٠٠ - ٢٥٠؟"],
+			["Shade 2/3 of the rectangle.", "ظلّل ٢/٣ من المستطيل."],
+			["What is 20% of 50?", "ما هو ٢٠٪ من ٥٠؟"],
+			[
+				"A $40 jacket is on sale for 25% off. What does it cost?",
+				"سعر سترة ٤٠ ريالًا وعليها خصم ٢٥٪. كم سعرها الآن؟",
+			],
+			["Show that 25% = 0.25.", "بيّن أن ٢٥٪ = ٠٫٢٥."],
+			["Is 45% > 40%?", "هل ٤٥٪ > ٤٠٪؟"],
+		]);
+
+		counterparts(hasMathContent, false, [
+			["Read the passage and answer.", "اقرأ النص ثم أجب."],
+			["The letter is dated 10/10/2026.", "كُتبت الرسالة بتاريخ ١٠/١٠/٢٠٢٦."],
+			["Lincoln (1809 - 1865) led the nation.", "قاد لينكولن (١٨٠٩ - ١٨٦٥) البلاد."],
+			["About 40% of voters stayed home.", "بقي نحو ٤٠٪ من الناخبين في منازلهم."],
+		]);
+
+		counterparts(hasScienceContent, true, [
+			["The periodic table lists every element.", "يضم الجدول الدوري جميع العناصر."],
+			["Water is H₂O and salt is NaCl.", "الماء H₂O والملح NaCl."],
+			["Describe photosynthesis in green plants.", "صف عملية البناء الضوئي في النباتات الخضراء."],
+			["Energy is conserved in a closed system.", "الطاقة محفوظة في النظام المغلق."],
+		]);
+
+		// بطاقة (card) and بقوة (strongly) carry the stems of energy and force.
+		counterparts(hasScienceContent, false, [
+			["Hello, said the man. Nothing happened.", "قال الرجل مرحبًا. لم يحدث شيء."],
+			["Show your ID card at the door.", "أظهر بطاقة الهوية عند الباب."],
+			["The wind blew strongly all night.", "هبّت الرياح بقوة طوال الليل."],
+			["Compare Mercury and Venus in the passage.", "قارن بين عطارد والزهرة في النص."],
+		]);
+	});
+
 	test("detects readable text threshold", () => {
 		const context: ToolContext = {
 			level: "item",

@@ -268,6 +268,30 @@ describe("test runner wiring", () => {
 		expect(checked).toContain("@pie-players/pie-section-player");
 	});
 
+	test("every bun test file sits under a path its package's test script runs", () => {
+		// `bun test <filter>` runs only files whose path contains a filter, so a
+		// test outside every filter never runs and nothing reports it.
+		const missed = [];
+		for (const { name, dir, manifest, testFiles } of packages) {
+			const command = /\bbun test\b([^&;|]*)/.exec(manifest.scripts?.test ?? "");
+			if (!command) continue;
+			const filters = command[1]
+				.trim()
+				.split(/\s+/)
+				.filter((arg) => arg && !arg.startsWith("-"))
+				.map((arg) => arg.replace(/^\.\//, ""));
+			if (filters.length === 0) continue;
+			for (const file of testFiles) {
+				if (!/\.test\.(ts|js|mjs)$/.test(file)) continue;
+				const relative = path.relative(dir, file).replaceAll(path.sep, "/");
+				if (!filters.some((filter) => relative.includes(filter))) {
+					missed.push(`${name}: ${relative}`);
+				}
+			}
+		}
+		expect(missed).toEqual([]);
+	});
+
 	test("a unit test imports its package's build only when the test script builds first", () => {
 		const offenders = [];
 		for (const { name, dir, manifest, testFiles } of packages) {

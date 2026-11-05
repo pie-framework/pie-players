@@ -59,6 +59,7 @@ function setup(options: {
 		getPassageConfig: () => null,
 		getEnv: () => ({ mode: "gather", role: "student" }),
 		getSessionContainer: () => ({ id: "session-1", data: [answer] }),
+		holdsCorrectResponses: () => false,
 		loadPlayerConfig: async () => true,
 		dispatchPlayerEvent: () => {},
 		applyRefreshedConfigs: async () => {},

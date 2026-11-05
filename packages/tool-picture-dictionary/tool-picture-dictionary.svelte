@@ -46,6 +46,7 @@ toolbar shell that mounts it owns `visible` and the floating chrome, and a
 	import {
 		normalizeTerm,
 		termPanelStatusMessage,
+		termResultLanguage,
 		TermLookupSession,
 		type TermPanelState
 	} from '@pie-players/pie-players-shared/tools/term-lookup';
@@ -111,6 +112,10 @@ toolbar shell that mounts it owns `visible` and the floating chrome, and a
 			runtimeContext = value;
 		});
 	});
+
+	// Captions and alt text are stamped with the language they were looked up in, so
+	// neither the panel's interface locale nor the content's reaches them.
+	const pictureLanguage = $derived(termResultLanguage(language));
 
 	const resolver = $derived<PictureLookup | null>(
 		lookup ?? (endpoint ? createEndpointLookup({ endpoint, headers, credentials }) : null)
@@ -206,6 +211,7 @@ toolbar shell that mounts it owns `visible` and the floating chrome, and a
 					type="text"
 					autocomplete="off"
 					spellcheck="false"
+					dir="auto"
 					bind:value={query}
 					disabled={panel.kind === 'unconfigured'}
 				/>
@@ -249,7 +255,11 @@ toolbar shell that mounts it owns `visible` and the floating chrome, and a
 					{panel.reason}
 				</p>
 			{:else}
-				<ul class="pie-tool-picture-dictionary__grid">
+				<ul
+					class="pie-tool-picture-dictionary__grid"
+					lang={pictureLanguage.lang}
+					dir={pictureLanguage.dir}
+				>
 					{#each panel.items as picture (picture.url)}
 						<li class="pie-tool-picture-dictionary__cell">
 							<img

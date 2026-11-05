@@ -2,11 +2,13 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "bun:test";
 import {
 	findBestLanguageMatch,
+	findClosestLanguageMatch,
 	languageTagLookupSequence,
 	languageTagScript,
 	languageTagScriptLookupSequence,
 	languageTagScriptsMatch,
 	languageTagsEqual,
+	languageTagWithoutVariants,
 	negotiateContentLanguage,
 	normalizeLanguageTag,
 	toLanguageTag,
@@ -132,6 +134,44 @@ describe("findBestLanguageMatch", () => {
 	});
 });
 
+describe("findClosestLanguageMatch", () => {
+	it("widens to a sibling in the same language and script", () => {
+		expect(findClosestLanguageMatch("es-MX", ["en-US", "es-ES"])).toBe("es-ES");
+		expect(findClosestLanguageMatch("nl", ["nl-NL"])).toBe("nl-NL");
+		expect(findClosestLanguageMatch("zh", ["zh-TW"])).toBeUndefined();
+	});
+
+	it("widens only to a sibling with the request's variant subtags", () => {
+		expect(findClosestLanguageMatch("en-GB", ["en-GB-x-gulf"])).toBeUndefined();
+		expect(findClosestLanguageMatch("en", ["en-x-gulf"])).toBeUndefined();
+		expect(
+			findClosestLanguageMatch("en-US-x-gulf", ["en-GB", "en-GB-x-gulf"]),
+		).toBe("en-GB-x-gulf");
+		expect(
+			findClosestLanguageMatch("de-AT-1996", ["de-DE", "de-CH-1996"]),
+		).toBe("de-CH-1996");
+	});
+
+	it("truncates the request's own variant subtags before widening", () => {
+		expect(findClosestLanguageMatch("en-GB-x-gulf", ["en-US", "en-GB"])).toBe(
+			"en-GB",
+		);
+	});
+});
+
+describe("languageTagWithoutVariants", () => {
+	it("drops variant, extension and private-use subtags, keeping casing", () => {
+		expect(languageTagWithoutVariants("en-GB-x-gulf")).toBe("en-GB");
+		expect(languageTagWithoutVariants("sr-Latn-RS-u-nu-latn")).toBe(
+			"sr-Latn-RS",
+		);
+		expect(languageTagWithoutVariants("de-CH-1996")).toBe("de-CH");
+		expect(languageTagWithoutVariants("es-419")).toBe("es-419");
+		expect(languageTagWithoutVariants("es_ES")).toBe("es-ES");
+		expect(languageTagWithoutVariants("en-x-gulf")).toBe("en");
+	});
+});
+
 describe("languageTagScript", () => {
 	it("reads an explicit script, then the CLDR likely script", () => {
 		expect(languageTagScript("sr-Latn")).toBe("latn");
@@ -175,7 +215,10 @@ describe("content-language negotiation conformance", () => {
 			fallback?: "default" | "none";
 			matching?: "closest" | "exact";
 			source?: string | null;
-			expected: { language: string | null; substitution?: "fallback" } | null;
+			expected: {
+				language: string | null;
+				substitution?: "fallback" | "variety";
+			} | null;
 		}[];
 	}
 	const fixtures: Fixtures = JSON.parse(

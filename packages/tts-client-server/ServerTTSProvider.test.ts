@@ -835,6 +835,31 @@ describe("ServerTTSProvider", () => {
 		expect(JSON.parse(String(options?.body)).language).toBe("es-MX");
 	});
 
+	test("sends a content language without its variant subtags", async () => {
+		const fetchMock = vi.fn(async () =>
+			createJSONResponse({
+				audio: btoa("audio-bytes"),
+				contentType: "audio/mpeg",
+				speechMarks: [],
+			}),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		const provider = new ServerTTSProvider();
+		const impl = await provider.initialize({
+			apiEndpoint: "/api/tts",
+			provider: "polly",
+			language: "en-US",
+		} as any);
+		(impl as any).updateSettings({
+			providerOptions: { contentLanguage: "en-GB-x-gulf" },
+		});
+		await impl.speak("colour");
+
+		const options = fetchMock.mock.calls[0]?.[1] as RequestInit | undefined;
+		expect(JSON.parse(String(options?.body)).language).toBe("en-GB");
+	});
+
 	describe("custom transport asset auth", () => {
 		const credentialsSeen: Record<string, RequestCredentials | undefined> = {};
 		const speakAndCaptureHeaders = async (

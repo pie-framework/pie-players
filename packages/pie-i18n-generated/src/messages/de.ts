@@ -449,6 +449,18 @@ const de = {
 			highlightPinkA11y: "Rosa hervorheben",
 			highlightBlueA11y: "Blau hervorheben",
 			highlightGreenA11y: "Grün hervorheben",
+			selectionAvailableA11y:
+				"Die Werkzeugleiste für Textanmerkungen ist für „{text}“ verfügbar. Drücken Sie Shift+F10 für die Anmerkungswerkzeuge.",
+			highlightedYellowA11y: "„{text}“ wurde gelb hervorgehoben",
+			highlightedPinkA11y: "„{text}“ wurde rosa hervorgehoben",
+			highlightedBlueA11y: "„{text}“ wurde blau hervorgehoben",
+			highlightedGreenA11y: "„{text}“ wurde grün hervorgehoben",
+			underlinedA11y: "„{text}“ wurde unterstrichen",
+			removedA11y: "Anmerkung von „{text}“ wurde entfernt",
+			clearedA11y: {
+				one: "{count} Anmerkung wurde gelöscht",
+				other: "{count} Anmerkungen wurden gelöscht",
+			},
 		},
 		theme: {
 			name: "Design",

@@ -124,6 +124,11 @@ test.describe("FontAwesome assets on a host that links none", () => {
 			.poll(() => shadowStylesheets(toolbar))
 			.toEqual([expect.stringContaining("/@fortawesome/fontawesome-free@")]);
 		expect(await glyphWeights(toolbar)).toEqual(["fa-solid"]);
+		// The scroll hint's chevron is drawn by the same FA Free stylesheet.
+		const scrollHint = page.locator(".pie-section-player-scroll-hint").first();
+		await expect(scrollHint.locator("nds-icon-button i")).toHaveClass(
+			/\bfa-solid\b/,
+		);
 		expect(count(requests, "fa-free")).toBe(1);
 		expect(
 			requests.filter((request) => request.startsWith("/_fa-pro/")),
@@ -196,6 +201,9 @@ test.describe("FontAwesome assets on a host that links FA Pro and Roboto", () =>
 		await expect(calculatorButton).toBeVisible();
 
 		expect(await glyphWeights(toolbar)).toEqual(["fa-light"]);
+		await expect(
+			page.locator(".pie-section-player-scroll-hint nds-icon-button i").first(),
+		).toHaveClass(/\bfa-light\b/);
 		await calculatorButton.click();
 		const shell = page.locator('[data-pie-tool-shell="calculator"]').first();
 		await expect(shell).toBeVisible();

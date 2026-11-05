@@ -459,6 +459,19 @@ const it = {
 			highlightPinkA11y: "Evidenziazione rosa",
 			highlightBlueA11y: "Evidenziazione blu",
 			highlightGreenA11y: "Evidenziazione verde",
+			selectionAvailableA11y:
+				"La barra degli strumenti per l'annotazione del testo è disponibile per «{text}». Premere Shift+F10 per gli strumenti di annotazione.",
+			highlightedYellowA11y: "Testo «{text}» evidenziato in giallo",
+			highlightedPinkA11y: "Testo «{text}» evidenziato in rosa",
+			highlightedBlueA11y: "Testo «{text}» evidenziato in blu",
+			highlightedGreenA11y: "Testo «{text}» evidenziato in verde",
+			underlinedA11y: "Testo «{text}» sottolineato",
+			removedA11y: "Annotazione rimossa da «{text}»",
+			clearedA11y: {
+				one: "{count} annotazione cancellata",
+				many: "{count} annotazioni cancellate",
+				other: "{count} annotazioni cancellate",
+			},
 		},
 		theme: {
 			name: "Tema",

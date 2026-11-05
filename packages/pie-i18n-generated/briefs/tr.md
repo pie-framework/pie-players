@@ -131,6 +131,30 @@ string's fidelity: the learner must see one word for one concept everywhere.
 | host (dev strings) | host | keep Latin `host` in developer panels; `konak`/`ana makine` read as machines |
 | read-only | salt okunur | the established file-system term |
 
+## Selection announcements (annotation live region)
+
+The annotation strip announces what a learner just did, for screen readers.
+The strings carry a `{text}` placeholder holding the learner's selection and
+follow the register rules above, with these pinned shapes:
+
+- The availability announcement is an **event**, not the stative adjective:
+  `“{text}” için metin açıklaması araç çubuğu kullanılabilir hâle geldi.` —
+  the `kullanılabilir hâle geldi` pattern `theme` already uses; bare
+  `kullanılabilir.` is the state-fragment defect the register rule exists
+  for. The follow-up command is the polite imperative:
+  `Açıklama araçları için Shift+F10 tuşlarına basın.` (`Shift+F10` stays
+  Latin).
+- Colour, underline and removal announcements are passive events naming the
+  selection as an `ifade`, no trailing periods (the English they mirror have
+  none): `“{text}” sarıyla vurgulandı` (colour carries the instrumental
+  `-yla/-yle` on the colour word — a real word, never a suffix on the
+  placeholder), `“{text}” ifadesinin altı çizildi`,
+  `“{text}” ifadesindeki açıklama kaldırıldı` (`kaldır`, matching
+  `remove`).
+- `clearedA11y` carries the shared form `{count} açıklama temizlendi` in
+  both plural categories (`temizle`, matching `clearAll`); the noun stays
+  singular after the numeral, per the plural rule below.
+
 ## Untranslated product names
 
 PIE, PNP, TTS, SSML, WaveNet, Studio, Desmos, Polly, AWS, Google Cloud TTS,

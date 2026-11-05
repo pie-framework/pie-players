@@ -401,6 +401,17 @@ const zh = {
 			highlightPinkA11y: "粉色高亮",
 			highlightBlueA11y: "蓝色高亮",
 			highlightGreenA11y: "绿色高亮",
+			selectionAvailableA11y:
+				"“{text}”可使用批注工具栏。按 Shift+F10 打开批注工具。",
+			highlightedYellowA11y: "已将“{text}”标为黄色高亮",
+			highlightedPinkA11y: "已将“{text}”标为粉色高亮",
+			highlightedBlueA11y: "已将“{text}”标为蓝色高亮",
+			highlightedGreenA11y: "已将“{text}”标为绿色高亮",
+			underlinedA11y: "已为“{text}”添加下划线",
+			removedA11y: "已移除“{text}”的批注",
+			clearedA11y: {
+				other: "已清除 {count} 条批注",
+			},
 		},
 		theme: {
 			name: "主题",

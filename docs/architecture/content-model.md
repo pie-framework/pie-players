@@ -89,15 +89,22 @@ resolves variants:
   `"default"`;
 - `matching`: `"closest"`, the default, serves the nearest variant in the
   requested language, so `es-MX` is served `es` or `es-ES` when the family has
-  no `es-MX`; `"exact"` serves only the requested tag and leaves the rest to
-  `fallback`;
+  no `es-MX`. A variant in another variety, one naming a different region or
+  different variant subtags (`es-ES`, not `es`), records
+  `substitution: "variety"`. `"exact"` serves only the requested tag and leaves
+  the rest to `fallback`, so a host that accepts some varieties and not others
+  lists them in order (`en-GB`, `en-US`);
 - `staleness`: `"serve"` serves a variant whose source has a newer release,
   recording `substitution: "stale"`; `"require-current"` treats it as missing.
 
 **Language matching** is BCP 47 lookup that never crosses scripts:
 `negotiateContentLanguage` in `@pie-players/pie-players-shared/i18n/language-tags`
 walks `zh-TW → zh-Hant`, skips a bare `zh` held in another script, and then
-widens to a sibling in the same language and script, `es-MX → es-ES`. Its
+widens to a sibling in the same language and script, `es-MX → es-ES`. A sibling
+carries the request's variant and private-use subtags, so a variety such as
+`en-GB-x-gulf` is served only to a request that names it; that request itself
+truncates to `en-GB`. Siblings rank the family source first, then by tag, so
+the order a backend lists members in never decides. Its
 `matching` option applies the policy's `matching`; a `null` entry in its
 `available` list stands for content that declares no language, and `source`
 names the family source the fallback chain ends at. A backend that negotiates

@@ -425,6 +425,20 @@ const uk = {
 			highlightPinkA11y: "Рожеве виділення",
 			highlightBlueA11y: "Синє виділення",
 			highlightGreenA11y: "Зелене виділення",
+			selectionAvailableA11y:
+				"Для «{text}» доступна панель анотування тексту. Натисніть Shift+F10, щоб відкрити інструменти анотування.",
+			highlightedYellowA11y: "«{text}» виділено жовтим",
+			highlightedPinkA11y: "«{text}» виділено рожевим",
+			highlightedBlueA11y: "«{text}» виділено синім",
+			highlightedGreenA11y: "«{text}» виділено зеленим",
+			underlinedA11y: "«{text}» підкреслено",
+			removedA11y: "Анотацію з «{text}» вилучено",
+			clearedA11y: {
+				one: "Очищено {count} анотацію",
+				few: "Очищено {count} анотації",
+				many: "Очищено {count} анотацій",
+				other: "Очищено {count} анотації",
+			},
 		},
 		theme: {
 			name: "Тема",

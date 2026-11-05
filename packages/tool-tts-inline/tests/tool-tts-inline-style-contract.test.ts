@@ -79,10 +79,9 @@ describe("tool-tts-inline trigger styling contract", () => {
 	});
 
 	test("trigger glyphs are forced to the Solid FA weight (not thin outline)", () => {
-		// NDS hardcodes `fa-light`; the mount action swaps it to `fa-solid` so
-		// play/pause render as filled media-control icons and work under FA Free.
-		expect(source).toContain("icon.classList.remove('fa-light')");
-		expect(source).toContain("icon.classList.add('fa-solid')");
+		// NDS hardcodes `fa-light`; the mount action swaps it to `fa-solid`, with
+		// or without FA Pro, so play/pause render as filled media-control icons.
+		expect(source).toContain("applyNdsGlyphVariant(node, 'fa-solid')");
 	});
 
 	test("trigger size variants set the NDS outer button size", () => {

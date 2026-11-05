@@ -49,6 +49,8 @@ export type SectionPlayerLayoutContext = {
 	preloadedRenderables: ItemEntity[];
 	preloadedRenderablesSignature: string;
 	preloadEnabled: boolean;
+	/** `policies.formativeControl.enabled`: whether item cards render the formative button. */
+	formativeControlEnabled: boolean;
 	resolvedPlayerEnv: Record<string, unknown>;
 	resolvedPlayerAttributes: Record<string, string>;
 	resolvedPlayerProps: Record<string, unknown>;

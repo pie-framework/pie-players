@@ -3123,6 +3123,16 @@
 						},
 						{
 							"kind": "field",
+							"name": "formativeControlEnabled",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "true",
+							"description": "`policies.formativeControl.enabled`; off leaves the status line without its button.",
+							"attribute": "formative-control-enabled"
+						},
+						{
+							"kind": "field",
 							"name": "timedMediaView",
 							"type": {
 								"text": "TimedMediaItemView | null"
@@ -3253,6 +3263,15 @@
 							"default": "null",
 							"description": "Resolved formative delivery state for this item, or null when the section does not deliver formatively. The pane derives it; this card renders it and reports learner actions.",
 							"fieldName": "formativeView"
+						},
+						{
+							"name": "formative-control-enabled",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "true",
+							"description": "`policies.formativeControl.enabled`; off leaves the status line without its button.",
+							"fieldName": "formativeControlEnabled"
 						},
 						{
 							"name": "timed-media-view",

@@ -369,4 +369,23 @@ describe("SectionController formative delivery", () => {
 		if (projection?.states.q1) projection.states.q1.tryCount = 99;
 		expect(controller.getFormativeProjection()?.states.q1?.tryCount).toBe(1);
 	});
+
+	test("checkFormativeItem records a Try from the registered scorer", async () => {
+		const { controller, events } = await bootstrap(
+			makeSection({ formative: { enabled: true }, items: [{ identifier: "q1" }] }),
+		);
+		await expect(controller.checkFormativeItem({ itemId: "q1" })).rejects.toThrow();
+		expect(events.filter((event) => event.type === "formative-try-recorded")).toHaveLength(0);
+
+		const scoredIds: string[] = [];
+		controller.registerItemScorer(async (canonicalItemId) => {
+			scoredIds.push(canonicalItemId);
+			return scored(1);
+		});
+		await controller.checkFormativeItem({ itemId: "q1-item" });
+		expect(scoredIds).toEqual(["q1"]);
+		expect(controller.getFormativeProjection()?.states.q1?.lastOutcome?.correctness).toBe(
+			"correct",
+		);
+	});
 });

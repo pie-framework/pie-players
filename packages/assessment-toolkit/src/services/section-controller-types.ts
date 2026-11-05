@@ -570,6 +570,14 @@ export interface SectionControllerHandle {
 	 */
 	recordFormativeTry?(args: { itemId: string; outcomes?: unknown[] }): void;
 	/**
+	 * Score a rendered item through the registered item scorer and record the
+	 * Try from its outcomes: Check answer, for a host that hides the built-in
+	 * control (`policies.formativeControl.enabled: false`). Rejects, spending no
+	 * Try, when no layout has registered a scorer or scoring throws. An item
+	 * whose player has not mounted scores `false` and records `unknown`.
+	 */
+	checkFormativeItem?(args: { itemId: string }): Promise<void>;
+	/**
 	 * Dismiss a revealed item's feedback and reopen it for editing. Withdrawing
 	 * the reveal is what withdraws the `mode: "evaluate"` projection.
 	 *

@@ -276,6 +276,7 @@
 	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
 	const effectivePolicies = $derived(resolveSectionPlayerPolicies(policies));
 	const preloadEnabled = $derived(effectivePolicies.preload.enabled);
+	const formativeControlEnabled = $derived(effectivePolicies.formativeControl.enabled);
 	const layoutContextValue = $derived.by(
 		(): SectionPlayerLayoutContext => ({
 			componentTag: sourceCe,
@@ -285,6 +286,7 @@
 			preloadedRenderables,
 			preloadedRenderablesSignature,
 			preloadEnabled,
+			formativeControlEnabled,
 			resolvedPlayerEnv,
 			resolvedPlayerAttributes,
 			resolvedPlayerProps: effectiveResolvedPlayerProps,

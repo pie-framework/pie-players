@@ -635,6 +635,25 @@ export class SectionController implements SectionControllerHandle {
 		this.notifyTimedMediaDeliveryChanged();
 	}
 
+	/**
+	 * Score one rendered item through the registered item scorer and record the
+	 * Try, as Check answer does. Rejects, spending no Try, when no layout has
+	 * registered a scorer or scoring throws.
+	 */
+	public async checkFormativeItem(args: { itemId: string }): Promise<void> {
+		const canonicalItemId = this.getCanonicalItemId(args.itemId);
+		if (!this.formativePolicies[canonicalItemId]?.enabled) return;
+		const scorer = this.itemScorer;
+		if (!scorer) {
+			throw new Error(`No item scorer is registered to check item ${args.itemId}.`);
+		}
+		const outcomes = await scorer(canonicalItemId);
+		this.recordFormativeTry({
+			itemId: args.itemId,
+			outcomes: Array.isArray(outcomes) ? outcomes : [],
+		});
+	}
+
 	/** Dismiss a reveal and reopen the item, withdrawing its env projection. */
 	public retryFormativeItem(args: { itemId: string }): void {
 		const canonicalItemId = this.getCanonicalItemId(args.itemId);

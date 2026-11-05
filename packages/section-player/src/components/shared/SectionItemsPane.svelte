@@ -105,6 +105,7 @@ Items pane of a section player: renders the item cards of the current compositio
 		layout?.componentTag ?? "pie-section-player-items-pane",
 	);
 	const preloadEnabled = $derived(layout?.preloadEnabled ?? true);
+	const formativeControlEnabled = $derived(layout?.formativeControlEnabled ?? true);
 	const reportWarmup = $derived(layout?.reportWarmup ?? null);
 
 	const logger = $derived(getPreloadLogger(componentTag));
@@ -760,6 +761,7 @@ Items pane of a section player: renders the item cards of the current compositio
 					contentLanguage: chromeRuntimeContext?.contentLanguageDefault,
 				})}
 				{formativeView}
+				{formativeControlEnabled}
 				{timedMediaView}
 				itemToolbarTools={itemToolbarTools}
 				{toolRegistry}

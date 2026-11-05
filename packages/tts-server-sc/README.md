@@ -79,6 +79,21 @@ domain.
 To force strict single-origin behavior without listing any extras, pass
 `assetOrigins: [baseUrl]`.
 
+### Private-host guard
+
+By default the provider rejects an asset URL whose host is `localhost`
+(or `*.localhost`) or an IP literal outside public unicast space,
+classified against the IANA special-purpose address registries: loopback,
+RFC 1918, link-local, unique-local, carrier-grade NAT, multicast,
+documentation and reserved ranges, and the NAT64, 6to4 and Teredo forms.
+IPv4-mapped and IPv4-compatible IPv6 are judged by the IPv4 address they
+carry.
+
+The guard reads the URL's literal host and never the address its name
+resolves to. A name the allow-list admits (under the default policy,
+any host on `baseUrl`'s registrable domain) whose DNS points at a private
+address is fetched.
+
 ### Private-network deployments (internal CDN / K8s / VPC / air-gapped)
 
 The private-host guard is intentionally opt-out-able for deployments where
@@ -118,10 +133,12 @@ when `blockPrivateAssetHosts` is `false`.
   `metadata.oci.oraclecloud.com`. There is no legitimate TTS-asset use
   case for these hosts and they return IAM credentials / provisioning
   secrets.
-- SSRF-resistant hostname normalization: IPv4-mapped IPv6
-  (`::ffff:…`), trailing-dot hostnames (`host.`), bare decimal / hex /
-  octal IPv4 encodings are all rewritten before matching so they cannot
-  be used to bypass the blocklists.
+- Hostnames are normalized before either check: trailing dots, bare
+  decimal / hex / octal IPv4 encodings and IPv4-mapped IPv6 cannot be
+  used to bypass them.
+- The metadata and private-host classification comes from
+  `@pie-players/pie-players-shared/security/private-hosts`, which the
+  assessment toolkit's SSML sanitizer also checks `<audio src>` against.
 - Manual redirect handling with a bounded hop count; each redirect target
   is re-validated against the same policy.
 - Authorization / cookie headers are scrubbed for cross-origin asset fetches.

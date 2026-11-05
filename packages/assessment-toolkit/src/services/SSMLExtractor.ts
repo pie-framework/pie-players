@@ -15,6 +15,10 @@
  * requiring authors to maintain separate catalog files.
  */
 
+import {
+	isCloudMetadataHostname,
+	isPrivateHostname,
+} from "@pie-players/pie-players-shared/security/private-hosts";
 import type {
 	AccessibilityCatalog,
 	ConfigEntity,
@@ -135,28 +139,11 @@ function expandSelfClosingVoidTags(input: string): string {
 }
 
 /**
- * Hosts that must never appear inside an SSML `<audio src>` because they
- * would cause the server-side TTS provider to fetch a private / metadata
- * endpoint on behalf of the request. Mirrors the SchoolCity provider's
- * defense-in-depth check; the SSML-side block is cheap and belt-and-braces.
+ * Whether an SSML `<audio src>` may stay. The server-side TTS provider fetches
+ * it on the request's behalf, so it must be http(s) and must not reach a cloud
+ * metadata or private host. The provider checks its own asset URLs against the
+ * same lists; this SSML-side block is cheap and belt-and-braces.
  */
-const SSML_PRIVATE_AUDIO_HOSTS: RegExp[] = [
-	/^localhost$/i,
-	/^127(?:\.\d{1,3}){3}$/,
-	/^0(?:\.\d{1,3}){3}$/,
-	/^10(?:\.\d{1,3}){3}$/,
-	/^192\.168(?:\.\d{1,3}){2}$/,
-	/^172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}$/,
-	/^169\.254(?:\.\d{1,3}){2}$/,
-	/^::1$/,
-	/^fe80:/i,
-	/^fc00:/i,
-	/^fd[0-9a-f]{2}:/i,
-	/^metadata\.google\.internal$/i,
-	/^metadata\.azure\.internal$/i,
-	/^metadata\.packet\.net$/i,
-];
-
 function isSafeSsmlAudioSrc(raw: string): boolean {
 	if (typeof raw !== "string" || raw.length === 0) return false;
 	let parsed: URL;
@@ -168,8 +155,10 @@ function isSafeSsmlAudioSrc(raw: string): boolean {
 	if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
 		return false;
 	}
-	const hostname = parsed.hostname.replace(/^\[|\]$/g, "").replace(/\.$/, "");
-	return !SSML_PRIVATE_AUDIO_HOSTS.some((pattern) => pattern.test(hostname));
+	return (
+		!isCloudMetadataHostname(parsed.hostname) &&
+		!isPrivateHostname(parsed.hostname)
+	);
 }
 
 /**
@@ -202,7 +191,7 @@ function sanitizeSsmlElement(element: Element): void {
 		}
 	}
 	// `src` survives the attribute allow-list, and a server-side provider
-	// fetches it: keep it only for an http(s) URL off SSML_PRIVATE_AUDIO_HOSTS.
+	// fetches it: keep it only when isSafeSsmlAudioSrc allows it.
 	if (element.tagName.toLowerCase() === "audio") {
 		const src = element.getAttribute("src");
 		if (src !== null && !isSafeSsmlAudioSrc(src)) {

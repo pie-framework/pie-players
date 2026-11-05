@@ -473,6 +473,7 @@
         "@pie-element/shared-utils": "0.1.6",
         "@pie-lib/math-rendering-module": "6.0.0",
         "dompurify": "^3.4.17",
+        "ipaddr.js": "^2.5.0",
         "semver": "^7.8.5",
       },
       "devDependencies": {
@@ -992,6 +993,7 @@
       "name": "@pie-players/tts-server-sc",
       "version": "1.0.0-beta.7",
       "dependencies": {
+        "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/tts-server-core": "workspace:*",
         "jose": "^6.2.14",
         "tldts": "^7.4.19",
@@ -2424,6 +2426,8 @@
     "internmap": ["internmap@2.0.3", "", {}, "sha512-5Hh7Y1wQbvY5ooGgPbDaL5iYLAPzMTUrjMulskHLH6wnv/A+1q5rgEaiuqEjB+oxGXIVZs1FF+R/KPN3ZSQYYg=="],
 
     "invariant": ["invariant@2.2.4", "", { "dependencies": { "loose-envify": "^1.0.0" } }, "sha512-phJfQVBuaJM5raOpJjSfkiD6BpbCE4Ns//LaXl6wGYtUBY83nWS6Rf9tXm2e8VaK60JEjYldbPif/A2B1C2gNA=="],
+
+    "ipaddr.js": ["ipaddr.js@2.5.0", "", {}, "sha512-aq+t5NAc+cS6rZQQVWC2x98CPqGtKKTMDd4Gaodv0wShnItdKg/51djkGJ1hqH+Oy0ivDftCbSLCQob8zso01w=="],
 
     "is-arguments": ["is-arguments@1.2.0", "", { "dependencies": { "call-bound": "^1.0.2", "has-tostringtag": "^1.0.2" } }, "sha512-7bVbi0huj/wrIAOzb8U1aszg9kdi3KN/CyU19CTI7tAoZYEZoL9yCDXpbXN+uPsuWnP02cyug1gleqq+TU+YCA=="],
 

@@ -673,6 +673,10 @@
   wrapOverwideTables
   wrapOverwideTablesInElement
 
+./security/private-hosts
+  isCloudMetadataHostname
+  isPrivateHostname
+
 ./timed-media
   type MediaElementTimeSourceOptions
   type MediaTimeRanges

@@ -20,6 +20,7 @@ The subpaths below are the package's `exports`; nothing else is importable.
 | `@pie-players/pie-players-shared` | The root: the loader, PIE, security and object helpers, loader config, instrumentation providers, the item-player strategy helpers, the default bundle host URL (`BUILDER_BUNDLE_URL`), a subset of the shared types, and the UI helpers (attribute coercion, content styles, pointer gestures, overlay placement, focus trap, safe storage, scoped CSS) |
 | `/loader-config` | `LoaderConfig` and its defaults: instrumentation (`trackPageActions`, `instrumentationProvider`), resource retry, and IIFE bundle retry |
 | `/security` | The item-markup sanitizer (`sanitizeItemMarkup`, `createDefaultItemMarkupSanitizer`, `buildAuthoringAllowList`), external-stylesheet URL validation, the SVG icon and `style` attribute sanitizers, and the wrappers that put overwide images and tables in a scrollable region |
+| `/security/private-hosts` | `isPrivateHostname` and `isCloudMetadataHostname`, the host classification for a URL a server fetches on someone else's behalf. Node-safe: it loads none of the markup sanitizers |
 | `/object` | `mergeObjectsIgnoringNullUndefined`, `cloneDeep`, `isPlainRecord` |
 | `/types` | The shared types: item, passage, section and session entities, PIE models and controllers, accessibility catalogs, and the [media vocabulary](#media-validation) |
 | `/formative` | [Formative delivery](#formative-delivery) |

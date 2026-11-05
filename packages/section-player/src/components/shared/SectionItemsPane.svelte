@@ -17,6 +17,7 @@ Items pane of a section player: renders the item cards of the current compositio
 	import { onMount, untrack } from "svelte";
 	import type {
 		AssessmentToolkitRuntimeContext,
+		SectionItemScorer,
 		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
@@ -26,6 +27,11 @@ Items pane of a section player: renders the item cards of the current compositio
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import "../section-player-item-card-element.js";
 	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
+	import {
+		applyNdsGlyphVariant,
+		ensureFontAwesome,
+		installFontAwesomeInShadow,
+	} from "@pie-players/pie-players-shared/ui/fontawesome";
 	import { usePromise } from "@pie-players/pie-players-shared/ui/use-promise";
 	import { EMPTY_COMPOSITION } from "./composition.js";
 	import {
@@ -47,7 +53,6 @@ Items pane of a section player: renders the item cards of the current compositio
 		getItemSettings,
 		getTimedMediaItemView,
 	} from "./section-player-view-state.js";
-	import type { SectionItemScore } from "../../contracts/runtime-host-contract.js";
 	import {
 		connectSectionPlayerLayoutContext,
 		type SectionPlayerLayoutContext,
@@ -381,24 +386,27 @@ Items pane of a section player: renders the item cards of the current compositio
 	const gateHolding = $derived(gate?.holding === true);
 
 	type ScorableItemCard = HTMLElement & {
-		provideScore?: () => Promise<false | SectionItemScore["outcomes"]>;
+		provideScore?: () => ReturnType<SectionItemScorer>;
 	};
 
 	// By render index. A shorter composition leaves stale slots past its end, which
-	// `provideScore` never reads.
+	// `scoreItem` never reads.
 	const itemCards = $state<Array<ScorableItemCard | null>>([]);
 
 	/**
-	 * Scores each item through its card, which owns the item player node. An item
-	 * whose card or player has not mounted reports `false`.
+	 * Scores one item through its card, which owns the item player node: the
+	 * section controller's item scorer. An item whose card or player has not
+	 * mounted reports `false`.
 	 */
-	export async function provideScore(): Promise<SectionItemScore[]> {
-		return Promise.all(
-			items.map(async (item: ItemEntity, itemIndex: number) => ({
-				canonicalItemId: getCanonicalItemId({ compositionModel, item }),
-				outcomes: (await itemCards[itemIndex]?.provideScore?.()) ?? false,
-			})),
+	export async function scoreItem(
+		canonicalItemId: string,
+	): ReturnType<SectionItemScorer> {
+		const itemIndex = items.findIndex(
+			(item: ItemEntity) =>
+				getCanonicalItemId({ compositionModel, item }) === canonicalItemId,
 		);
+		if (itemIndex < 0) return false;
+		return (await itemCards[itemIndex]?.provideScore?.()) ?? false;
 	}
 
 	/** 1-based position of an item in the pane, for the announcements. */
@@ -538,6 +546,14 @@ Items pane of a section player: renders the item cards of the current compositio
 			},
 		);
 	});
+
+	// The NDS glyph needs FontAwesome, in <head> and in whatever shadow root the
+	// pane renders in: see players-shared `ui/fontawesome`.
+	const ndsIconButtonAction = (node: HTMLElement) => {
+		ensureFontAwesome(chromeRuntimeContext?.itemPlayer?.loaderOptions);
+		installFontAwesomeInShadow(node);
+		return { destroy: applyNdsGlyphVariant(node, "fa-light") };
+	};
 
 	const SCROLL_STEP_PX = 150;
 	const scrollDown = () =>
@@ -765,6 +781,7 @@ Items pane of a section player: renders the item cards of the current compositio
 				icon-name="chevron-down"
 				button-aria-label={interfaceI18n.t("player.scrollDownA11y")}
 				onclick={scrollDown}
+				use:ndsIconButtonAction
 			></nds-icon-button>
 		{:else}
 			<!-- Non-NDS fallback: plain <button> with a self-contained inline SVG

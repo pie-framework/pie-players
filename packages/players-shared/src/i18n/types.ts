@@ -18,10 +18,13 @@ import type enUS from "./messages/en-US.js";
  * syntax — the Learnosity transform emits POSIX `nl_NL`, QTI catalog cards carry
  * `xml:lang` — and the resolver normalizes both onto these, so this list is the
  * set of catalogs, not the set of accepted inputs.
+ *
+ * `en-US` is the only bundled catalog: the statically resident source of truth
+ * every other locale falls back through. Every other locale this repository
+ * ships lives in the optional generated tier
+ * (`@pie-players/pie-i18n-generated`), which a host composes into its loader.
  */
-export type BundledLocaleCode =
-	| "en-US" // English (United States)
-	| "nl-NL"; // Dutch (Netherlands)
+export type BundledLocaleCode = "en-US"; // English (United States)
 
 /**
  * Any locale tag. A host may supply a locale we ship no catalog for and provide

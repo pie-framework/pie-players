@@ -55,14 +55,22 @@ different flavour overrides per key through `customMessages`.
 | annotate | Annotera | |
 | strike through | Genomstryk | the answer-eliminator action |
 | theme | Tema | |
-| text to speech | Uppläsning / text-till-tal | tool name is Uppläsning |
+| text to speech | Uppläsning / text-till-tal | tool name is Uppläsning; the TTS settings panel is `Uppläsningsinställningar` — learner register in panel titles, the acronym only where genuinely technical |
 | playback speed | Uppspelningshastighet | |
+| rewind | Spola bakåt | media-register verb; playback verbs take `upp`: `spela upp`, `spelas upp` |
 | sign language | Teckenspråk | |
 | audio transcript | Ljudtranskript | |
 | pixels | pixlar | |
 | degrees | grader | keep the `°` glyph |
 | voice (TTS) | röst | |
 | speech marks | talmarkeringar | |
+| browser speech synthesis | talsyntes | `Webbläsarens talsyntes`, not the TTS acronym, in learner-visible status lines |
+
+## Vocabulary pins
+
+- `(uteslutet)` agrees neuter with the choice noun `alternativ`.
+- `Kan inte starta uppläsningen` — init failures in the read-aloud panel
+  speak the tool's own word (`uppläsning`), not the technology term.
 
 ## Typography
 

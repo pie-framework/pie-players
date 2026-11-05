@@ -33,6 +33,7 @@ function setup() {
 		getPassageConfig: () => null,
 		getEnv: () => ({ mode: "gather", role: "student" }),
 		getSessionContainer: () => ({ id: "session-1", data: [] }),
+		holdsCorrectResponses: () => false,
 		loadPlayerConfig: async () => true,
 		dispatchPlayerEvent: (event) => {
 			if (event.type === "backend-load-complete") {

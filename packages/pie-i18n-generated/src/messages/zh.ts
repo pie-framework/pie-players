@@ -1,16 +1,20 @@
 /**
- * Chinese (Simplified) message catalog — machine-generated, not reviewed.
+ * Chinese, Simplified message catalog — reviewed (agent pass in lieu of a
+ * native reader, 2026-11-03; see `reviewedBy` in `catalog-manifest.json`).
  *
- * Registered under the bare `zh` tag, so `zh`, `zh-CN` and `zh-SG` all widen
- * to it. Content flavour is Simplified Chinese per `briefs/zh.md` — the
- * standard Chinese edtech vocabulary (元素周期表, 量角器, 直尺, 批注) with
- * full-width punctuation in Chinese contexts. A Traditional-Chinese host
- * supplies its own messages through `customMessages`. Chinese has a single
- * CLDR plural category, so every plural group carries `other` only.
+ * Serves every Simplified-Chinese host: registered under the bare `zh` tag,
+ * so `zh`, `zh-CN` and `zh-SG` all widen to it. Content flavour is Simplified
+ * Chinese per `briefs/zh.md` — the standard Chinese edtech vocabulary
+ * (元素周期表, 量角器, 直尺, 批注, 测评工具) with full-width punctuation in
+ * Chinese contexts. A Traditional-Chinese host supplies its own messages
+ * through `customMessages`. Chinese has a single CLDR plural category, so
+ * every plural group carries `other` only.
  *
- * Provenance — the source hash, model and generation date — is recorded in
- * `catalog-manifest.json`; `scripts/check-catalogs.ts` fails this file
- * against the English source when either drifts.
+ * Regeneration is surgical, never wholesale: `scripts/check-catalogs.ts`
+ * diffs the English snapshot (`zh.english-snapshot.json`) against the live
+ * `en-US` source and lists exactly the keys whose English moved; translate
+ * only those, keep every reviewed string, then refresh the snapshot per the
+ * package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/zh
  */
@@ -99,7 +103,7 @@ const zh = {
 
 		assessment: {
 			sectionPosition: "第 {position} 部分，共 {total} 部分",
-			noSections: "没有部分",
+			noSections: "暂无部分",
 			loadFailed: "无法加载测试。请重试。",
 			restoreFailed:
 				"无法恢复您在本部分中已保存的答案。请重试。",
@@ -129,7 +133,7 @@ const zh = {
 	},
 
 	toolkit: {
-		toolsA11y: "测试工具",
+		toolsA11y: "测评工具",
 		toolbarInitError: "无法初始化工具集。",
 		settingsTitle: "设置",
 		closeSettingsA11y: "关闭设置",
@@ -200,7 +204,7 @@ const zh = {
 			pointA11y: "图形上的点 {id}",
 			modeSelector: "选择",
 			modeSelectorHint:
-				"选择：点击并拖动点，即可移动该点或相关的线。",
+				"选择：点击并拖动点，即可移动该点或与之相连的线。",
 			modePoint: "点",
 			modePointHint: "点：在网格上点击即可添加点。",
 			modeLine: "直线",
@@ -220,7 +224,7 @@ const zh = {
 			atomicMass: "原子量",
 			atomicNumber: "原子序数",
 			electronConfig: "电子排布",
-			phase: "状态",
+			phase: "物态",
 			filterByA11y: "按{category}筛选",
 			elementA11y:
 				"{name}，符号：{symbol}，原子序数：{number}，原子量：{mass}，类别：{category}",
@@ -353,7 +357,7 @@ const zh = {
 			zoomIn: "放大",
 			zoomOut: "缩小",
 			zoomLevel: "{zoom}×",
-			zoomAnnounce: "放大 {zoom} 倍",
+			zoomAnnounce: "已放大至 {zoom} 倍",
 			close: "关闭放大镜",
 			resizeA11y: "拖动以调整放大镜大小",
 			resizeFullA11y:
@@ -369,7 +373,7 @@ const zh = {
 			description: "划掉答案选项",
 			buttonA11y: "划掉，排除答案选项",
 			tooltip: "划掉",
-			toggleA11y: "切换划除{choice}",
+			toggleA11y: "切换{choice}的划除状态",
 			eliminatedA11y: "（已划除）",
 			unlabeledChoice: "无标签选项",
 		},
@@ -397,6 +401,17 @@ const zh = {
 			highlightPinkA11y: "粉色高亮",
 			highlightBlueA11y: "蓝色高亮",
 			highlightGreenA11y: "绿色高亮",
+			selectionAvailableA11y:
+				"“{text}”可使用批注工具栏。按 Shift+F10 打开批注工具。",
+			highlightedYellowA11y: "已将“{text}”标为黄色高亮",
+			highlightedPinkA11y: "已将“{text}”标为粉色高亮",
+			highlightedBlueA11y: "已将“{text}”标为蓝色高亮",
+			highlightedGreenA11y: "已将“{text}”标为绿色高亮",
+			underlinedA11y: "已为“{text}”添加下划线",
+			removedA11y: "已移除“{text}”的批注",
+			clearedA11y: {
+				other: "已清除 {count} 条批注",
+			},
 		},
 		theme: {
 			name: "主题",
@@ -445,7 +460,7 @@ const zh = {
 		},
 		signLanguage: {
 			name: "手语",
-			description: "内容的无障碍手语替代",
+			description: "内容的无障碍手语替代版本",
 			generic: "手语",
 			unknown: "手语（{code}）",
 			ase: "美国手语",
@@ -543,20 +558,20 @@ const zh = {
 			toolsEditor: "工具编辑器",
 			enforcement: "PNP 强制执行",
 			allAvailableTools: "所有可用工具",
-			clearPlacement: "清除摆放位置",
+			clearPlacement: "清除放置位置",
 			tool: "工具",
-			placement: "摆放位置",
+			placement: "放置位置",
 			provider: "提供方",
 			simulation: "PNP 模拟",
 			resolvedTools: "已解析工具（工具集）",
-			provenanceSummary: "工具策略来源摘要",
+			provenanceSummary: "工具策略溯源摘要",
 			perToolDecisions: "逐工具决策",
 			policyDiagnostics: "策略诊断",
 			profileReadOnly: "PNP 档案（只读）",
 			on: "开",
 			effective: "生效值：",
 			needs: "需要",
-			hostSurfaceNotPlaced: "宿主表面（未摆放）",
+			hostSurfaceNotPlaced: "宿主界面（未放置）",
 			support: "允许",
 			prohibit: "禁止",
 		},

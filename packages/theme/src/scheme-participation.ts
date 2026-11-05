@@ -47,6 +47,7 @@ export const PIE_THEME_SCHEME_PARTICIPATION = {
 	"--pie-fixed-hue-collapse": "required",
 	"--pie-focus-checked": "required",
 	"--pie-focus-checked-border": "required",
+	"--pie-focus-keyboard-outline": "required",
 	"--pie-focus-outline": "excluded",
 	"--pie-focus-ring-color": "excluded",
 	"--pie-focus-unchecked": "required",

@@ -1,5 +1,6 @@
 /**
- * Welsh message catalog — machine-generated, not reviewed.
+ * Welsh message catalog — reviewed (agent pass in lieu of a native reader,
+ * 2026-11-03; see `reviewedBy` in `catalog-manifest.json`).
  *
  * Serves every Welsh host: registered under the bare `cy` tag, so `cy` and
  * `cy-GB` both widen to it. Content flavour is standard formal Welsh per
@@ -9,11 +10,13 @@
  * numerals-and-noun phrasing follows the Welsh convention: singular after
  * 1–6, `{count} o + plural` otherwise. All six CLDR plural categories
  * (`zero`, `one`, `two`, `few`, `many`, `other`) are authored on every
- * plural group.
+ * plural group, with the `dau` soft mutations on `two`.
  *
- * Provenance — the source hash, model and generation date — is recorded in
- * `catalog-manifest.json`; `scripts/check-catalogs.ts` fails this file
- * against the English source when either drifts.
+ * Regeneration is surgical, never wholesale: `scripts/check-catalogs.ts`
+ * diffs the English snapshot (`cy.english-snapshot.json`) against the live
+ * `en-US` source and lists exactly the keys whose English moved; translate
+ * only those, keep every reviewed string, then refresh the snapshot per the
+ * package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/cy
  */
@@ -85,7 +88,7 @@ const cy = {
 		loadingPassage: "Yn llwytho cynnwys y testun…",
 		configurationError: "Gwall Ffurfweddu",
 		playerError: "Gwall y Chwaraewr",
-		authoringBackendError: "Gwall Ffurfweddu Backend yr Awduro",
+		authoringBackendError: "Gwall Ffurfweddu'r Backend Awduro",
 		itemLoadError: "Methwyd â llwytho'r cwestiwn.",
 		sectionTabsA11y: "Tabiau cynnwys yr adran",
 		passagesRegionA11y: "Testunau",
@@ -133,8 +136,8 @@ const cy = {
 				"Bydd cwestiynau yn ymddangos wrth i'r cyfryngau chwarae.",
 			questionAvailable: "Mae cwestiwn {position} ar gael nawr.",
 			playbackPaused:
-				"Chwarae wedi'i oedi. Atebwch gwestiwn {position} i barhau.",
-			playbackAdvisory: "Atebwch gwestiwn {position} cyn parhau â'r cyfryngau.",
+				"Chwarae wedi'i oedi. Atebwch cwestiwn {position} i barhau.",
+			playbackAdvisory: "Atebwch cwestiwn {position} cyn parhau â'r cyfryngau.",
 			playbackReleased: "Derbynwyd yr ateb. Parhewch i chwarae'r cyfryngau.",
 		},
 	},
@@ -160,13 +163,13 @@ const cy = {
 			narrowerA11y: "Gwneud ffenestr yr offer yn gulach",
 			widerA11y: "Gwneud ffenestr yr offer yn lletach",
 			shorterA11y: "Gwneud ffenestr yr offer yn fyrrach",
-			tallerA11y: "Gwneud ffenestr yr offer yn dalach",
+			tallerA11y: "Gwneud ffenestr yr offer yn hirach",
 			centerA11y: "Canoli ffenestr yr offer",
 			closeA11y: "Cau'r offer",
 		},
 
 		placement: {
-			controlsA11y: "Symud a throi",
+			controlsA11y: "Symud a droi",
 			moveAndResizeA11y: "Symud a newid maint",
 			rotateClockwiseA11y: "Troi {degrees}° clocwedd",
 			rotateCounterclockwiseA11y: "Troi {degrees}° gwrthglocwedd",
@@ -238,7 +241,7 @@ const cy = {
 			phase: "Cyflwr",
 			filterByA11y: "Hidlo yn ôl {category}",
 			elementA11y:
-				"{name}, Symbol: {symbol}, Rhif atomig: {number}, Màs atomig: {mass}, Categori: {category}",
+				"{name}, symbol: {symbol}, Rhif atomig: {number}, Màs atomig: {mass}, Categori: {category}",
 			outsideFilterA11y: ", tu allan i'r hidlydd presennol",
 			category: {
 				unknown: "Anhysbys",
@@ -358,9 +361,9 @@ const cy = {
 			frameHeightAnnounce: "Uchder y ffrâm: {pixels} picsel",
 			widthAnnounce: "Lled: {pixels} picsel",
 			shorterWindowA11y: "Gwneud y ffenestr ddarllen yn fyrrach",
-			tallerWindowA11y: "Gwneud y ffenestr ddarllen yn dalach",
+			tallerWindowA11y: "Gwneud y ffenestr ddarllen yn hirach",
 			shorterFrameA11y: "Gwneud y ffrâm yn fyrrach",
-			tallerFrameA11y: "Gwneud y ffrâm yn dalach",
+			tallerFrameA11y: "Gwneud y ffrâm yn hirach",
 			narrowerA11y: "Gwneud y canllaw darllen yn gulach",
 			widerA11y: "Gwneud y canllaw darllen yn lletach",
 			applicationA11y:
@@ -377,7 +380,7 @@ const cy = {
 			tooltip: "Chwyddwydr",
 			roleA11y: "Lens chwyddo y gellir ei luso a'i newid maint",
 			applicationA11y:
-				"Chwyddwydr ar {zoom} gwaith. Defnyddiwch y saeth i symud y lens, + a - i newid y chwyddo, ac Escape i gau.",
+				"Chwyddwydr {zoom} gwaith. Defnyddiwch y saeth i symud y lens, + a - i newid y chwyddo, ac Escape i gau.",
 			zoomIn: "Chwyddo i mewn",
 			zoomOut: "Chwyddo allan",
 			zoomLevel: "{zoom}×",
@@ -390,7 +393,7 @@ const cy = {
 			narrowerA11y: "Gwneud y chwyddwydr yn gulach",
 			widerA11y: "Gwneud y chwyddwydr yn lletach",
 			shorterA11y: "Gwneud y chwyddwydr yn fyrrach",
-			tallerA11y: "Gwneud y chwyddwydr yn dalach",
+			tallerA11y: "Gwneud y chwyddwydr yn hirach",
 		},
 		answerEliminator: {
 			name: "Taro Trwodd",
@@ -425,6 +428,22 @@ const cy = {
 			highlightPinkA11y: "Amlygu pinc",
 			highlightBlueA11y: "Amlygu glas",
 			highlightGreenA11y: "Amlygu gwyrdd",
+			selectionAvailableA11y:
+				"Mae'r bar offer anodi ar gael ar gyfer “{text}”. Pwyswch Shift+F10 i gael yr offer anodi.",
+			highlightedYellowA11y: "Amlygwyd “{text}” mewn melyn",
+			highlightedPinkA11y: "Amlygwyd “{text}” mewn pinc",
+			highlightedBlueA11y: "Amlygwyd “{text}” mewn glas",
+			highlightedGreenA11y: "Amlygwyd “{text}” mewn gwyrdd",
+			underlinedA11y: "Tanlinellwyd “{text}”",
+			removedA11y: "Tynnwyd yr anodiad oddi ar “{text}”",
+			clearedA11y: {
+				zero: "Cliriwyd {count} o anodiadau",
+				one: "Cliriwyd {count} anodiad",
+				two: "Cliriwyd {count} anodiad",
+				few: "Cliriwyd {count} anodiad",
+				many: "Cliriwyd {count} anodiad",
+				other: "Cliriwyd {count} o anodiadau",
+			},
 		},
 		theme: {
 			name: "Themâ",
@@ -571,7 +590,7 @@ const cy = {
 			title: "Proffil PNP",
 			noAssessmentBound: "Dim asesiad wedi'i gysylltu",
 			noAssessmentBoundBody:
-				"Mae gan y proffil a'r polisïau ardal a gweinyddu'r prawf ddim byd i'w ddarllen, felly dim ond requiredTools eitem all roi eithriadau. Pasierwch yr asesiad i briodwedd assessment y toolkit, neu galwch updateAssessment(...) ar gydlynydd y toolkit.",
+				"Mae gan y proffil a'r polisïau ardal a gweinyddu'r prawf ddim byd i'w ddarllen, felly dim ond requiredTools eitem all roi addasiad. Pasierwch yr asesiad i briodwedd assessment y toolkit, neu galwch updateAssessment(...) ar gydlynydd y toolkit.",
 			determinationReadOnly: "Penderfyniad (darllen yn unig)",
 			toolsEditor: "Golygydd Offer",
 			enforcement: "Gorfodi PNP",
@@ -583,7 +602,7 @@ const cy = {
 			simulation: "Efelychiad PNP",
 			resolvedTools: "Offer wedi'u Penderfynu (toolkit)",
 			provenanceSummary: "Crynodeb Tarddiad Polisi Offer",
-			perToolDecisions: "Penderfyniadau fes Offer",
+			perToolDecisions: "Penderfyniadau pob offer",
 			policyDiagnostics: "Diagnostics Polisi",
 			profileReadOnly: "Proffil PNP (darllen yn unig)",
 			on: "Ymlaen",
@@ -705,7 +724,7 @@ const cy = {
 			},
 			headerRowReservation: "Neilltuedd rhes bennawd yr eitem: {state}",
 			speedOptionsHelp:
-				"Gwahanwch luosyddion gyda choma neu hanner-atalnodi. Cynnwys 1 ar gyfer Normal; gadewch yn wag i guddio'r rheolyddion cyflymder.",
+				"Gwahanwch luosyddion gyda choma neu atalnod hanner. Cynnwys 1 ar gyfer y cyflymder arferol; gadewch yn wag i guddio'r rheolyddion cyflymder.",
 			usingSelectedVoice: "Defnyddio'r llais dethol: {voice}",
 			autoVoice: "Y llais gorau sydd ar gael (awto): {voice}",
 			autoVoiceWaiting:

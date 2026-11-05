@@ -185,7 +185,7 @@ clamping, so a section with passages is never narrower than one without.
 | --- | --- | --- |
 | `assessmentId` | — | The assessment the section belongs to; part of every session key |
 | `playerType` | `"iife"` | The item player strategy: `"iife"`, `"esm"` or `"preloaded"` ([Preloaded elements](#preloaded-elements)) |
-| `player` | — | Item player settings: `hosted`, `loaderOptions`, `loaderConfig`, `backend` and `resolveBackend` ([Backend delivery](#backend-delivery-for-embedded-items)). Every other field is passed to each embedded item player as a property |
+| `player` | — | Item player settings: `hosted`, `loaderOptions`, `loaderConfig`, `backend` and `resolveBackend` ([Backend delivery](#backend-delivery-for-embedded-items)), `resolveItemProps` ([Per-item player properties](#per-item-player-properties)), and the `<pie-item-player>` properties `SectionPlayerItemPlayerProps` types. Every other field is passed to each embedded item player as a property |
 | `env` | `{ mode: "gather", role: "student" }` | The section env every item renders in |
 | `contentLanguage` | `en-US` | BCP-47 language of content whose markup names none; read-aloud speaks in it and catalog cards are picked by it. A `lang` between the content and its card wins |
 | `i18n` | — | The interface-locale provider — the bundled catalogs, the generated tier, host messages, or a provider of the host's own — the toolkit publishes for every tool, card and item player below. The `locale` attribute still names the locale, and a supplied provider is driven only by it ([Interface i18n](../players-shared/src/i18n/README.md#for-a-host)) |
@@ -306,12 +306,10 @@ The layouts and the kernel host implement `SectionPlayerRuntimeHostContract`:
 | `navigateNext()`, `navigatePrevious()` | `boolean` | Moves one item; `false` when it cannot |
 | `getSectionController()` | `SectionControllerHandle \| null` | The current section's controller |
 | `waitForSectionController(timeoutMs = 5000)` | `Promise<SectionControllerHandle \| null>` | Resolves at once when the controller is resolvable, else at the next `toolkit-ready`, else at the timeout with the current lookup, which may be `null` |
-| `provideScore()` | `Promise<SectionItemScore[]>` | Scores every item in section order, each `{ canonicalItemId, outcomes }` with `outcomes` what the item's `<pie-item-player>` `provideScore()` returns, or `false` for an item whose player has not mounted |
 
 The methods exist from the moment the element is created. Until it mounts,
 `waitForSectionController` waits, `getSectionController()` returns `null`, the
-navigation methods return `false`, `provideScore()` resolves `[]`, and
-`getSnapshot()` returns `null` on the
+navigation methods return `false`, and `getSnapshot()` returns `null` on the
 stock layouts and the bootstrap snapshot (zero counts, no navigation) on the
 kernel host.
 
@@ -352,6 +350,8 @@ contract.
 | `updateItemSession(itemId, detail)` | Writes one item's session synchronously and emits `item-session-data-changed` or `item-session-meta-changed` |
 | `hydrate()` | Loads the session from the persistence strategy and applies it in replace mode; a no-op without a strategy or a stored session |
 | `persist()` | Saves the session through the strategy, at the host's cadence; a no-op without one |
+| `commitPendingSessions()` | Commits every element's pending response, so the next `getSession()` holds it; for a host about to read or submit the session |
+| `score()` | Scores the section in the browser: `{ items }`, each `{ canonicalItemId, outcomes }` in section order, with `outcomes` what the item's `<pie-item-player>` `provideScore()` returns, or `null` for an item not rendered or with no scorable model |
 | `configureSessionPersistence({ context, strategy })` | Sets the persistence strategy |
 | `subscribe(listener)` | Delivers every controller event to `listener` until the returned function is called or the controller is disposed |
 | `getRuntimeState()` | Introspection only; persist `getSession()` |
@@ -460,7 +460,8 @@ on the navigation event, or a `persist()` that follows it, would otherwise
 snapshot a session the learner had already changed.
 
 The section controller is DOM-free, so the player supplies the commit through
-the handle's `setPendingSessionCommit()`. The player registers it on the
+the handle's `setPendingSessionCommit()`, and the layout supplies `score()`'s
+item scoring through `registerItemScorer()`. The player registers it on the
 controllers it creates and on one the toolkit has already built. A host-built
 controller that leaves the method unimplemented gets no commit, and a pending
 response is lost at those boundaries.
@@ -471,9 +472,11 @@ delay, and `0` commits on blur only
 ([Idle commit](../../docs/item-player/overview.md#idle-commit)).
 
 `runtime.player.addCorrectResponse: true` fills every embedded item player's
-session with the item's correct response, outside `evaluate` mode. Each one
-reaches the section session as a `session-changed`, so a host that persists
-sessions sets it only where nothing is saved, such as an authoring preview.
+session with the item's correct response, outside `evaluate` mode, or per item
+through `resolveItemProps`. The responses render in the item player and never
+enter the section session: no `item-session-changed` or `session-changed`
+announces them, and `persist()` keeps the learner's. The host hears of each
+fill as `item-player-event` with `type: "correct-responses-populated"`.
 
 ### Custom section controllers
 
@@ -492,8 +495,13 @@ the layout element receives each one. The layout element dispatches
 `pie-stage-change`, `pie-loading-complete` and the `element-preload-*` events.
 The toolkit dispatches the runtime, readiness, composition, `session-changed`
 and `framework-error` events on the inner `pie-section-player-base`, and they
-bubble out through the layout element. `item-session-changed` starts at the
-item's `<pie-item-scope>`.
+bubble out through the layout element. `item-session-changed` and
+`item-player-event` start at the item's `<pie-item-scope>`.
+
+`item-player-event` names the item behind an item player's load, error, backend
+and snapshot events. The original events still behave as before: `load-complete`
+and `player-error` stop at the item scope, the rest bubble without the item's
+identity.
 
 | Event | Detail | When |
 | --- | --- | --- |
@@ -504,6 +512,7 @@ item's `<pie-item-scope>`.
 | `composition-changed` | `composition`, `version` | The composition changed; `composition.formative` carries the formative projection |
 | `session-changed` | The normalized item session, plus `itemId`, `canonicalItemId` and `sourceRuntimeId` | An item's session changed |
 | `item-session-changed` | The normalized item session | Re-dispatched by `<pie-item-scope>` from an element's `session-changed` |
+| `item-player-event` | `itemId`, `canonicalItemId`, `type`, `detail` | An item player fired `type`, one of `RELAYED_ITEM_PLAYER_EVENTS`, with its own `detail` |
 | `pie-stage-change` | `stage`, `status`, `runtimeId`, `sectionId`, `attemptId`, `timestamp`, `sourceCe` | A lifecycle stage was entered: `composed`, `engine-ready`, `interactive`, `disposed` |
 | `pie-loading-complete` | `runtimeId`, `sectionId`, `attemptId`, `itemCount`, `timestamp`, `sourceCe` | Once per cohort, after `section-ready` and the element pre-warm, before the items load |
 | `framework-error` | A `FrameworkErrorModel` | Any failure crossing the framework boundary, once per error |
@@ -782,6 +791,24 @@ returned config merges over the derived backend, and a nullish return keeps it.
 The resolver receives cloned backend objects, so a per-item change neither
 mutates the shared runtime nor leaks across items, and the key is removed before
 the properties reach `<pie-item-player>`.
+
+### Per-item player properties
+
+`runtime.player.resolveItemProps(context)` returns properties for one item's
+player, over the section-wide ones; `context` is `resolveBackend`'s without
+`baseBackend`. A returned `backend` is that item's base backend, which
+`resolveBackend` still refines, and `null` gives the item none. It cannot set
+`config`, `env` or `session`, which the section derives, and passages do not
+receive it.
+
+```ts
+player.runtime = {
+	player: {
+		resolveItemProps: ({ canonicalItemId }) =>
+			previewOnly.has(canonicalItemId) ? { addCorrectResponse: true } : null,
+	},
+};
+```
 
 The section player derives `backend` and calls nothing on the item players. An
 embedded `<pie-item-player>` loads on its own when its derived

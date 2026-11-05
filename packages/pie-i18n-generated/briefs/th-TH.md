@@ -40,7 +40,9 @@ string's fidelity: the learner must see one word for one concept everywhere.
 | loading… | กำลังโหลด… | |
 | calculator | เครื่องคิดเลข | |
 | graph | กราฟ | |
+| coordinate plane | ระนาบพิกัด | the pinned math word everywhere the plane is named — not ตารางพิกัด, which reads "coordinate table" |
 | grid | เส้นกริด | |
+| connected lines | เส้นที่เชื่อมต่อ | the graph's "associated lines"; matches the delete hint |
 | periodic table | ตารางธาตุ | |
 | ruler | ไม้บรรทัด | |
 | protractor | ไม้วัดมุม | the measuring instrument, not a loanword |
@@ -56,7 +58,8 @@ string's fidelity: the learner must see one word for one concept everywhere.
 | underline | ขีดเส้นใต้ | |
 | annotate | ใส่หมายเหตุ | |
 | theme | ธีม | loanword, standard |
-| text to speech | อ่านออกเสียงข้อความ | read-aloud phrasing, not a transliteration |
+| contrast | คอนทราสต์ | the loanword Thai UI uses (คอนทราสต์สูง register); ความเปรียบต่าง alone reads as generic "difference" |
+| text to speech | อ่านออกเสียงข้อความ | read-aloud phrasing, not a transliteration; the settings-panel title is การตั้งค่าการอ่านออกเสียง and browser voice statuses use การอ่านออกเสียงข้อความของเบราว์เซอร์ — the TTS acronym stays out of learner-facing titles |
 | sign language | ภาษามือ | |
 | audio transcript | ถอดเสียง | |
 | pixels | พิกเซล | |

@@ -1,6 +1,7 @@
-import type {
-	EliminationChrome,
-	EliminationStrategy,
+import {
+	defaultEliminationChrome,
+	type EliminationChrome,
+	type EliminationStrategy,
 } from "./elimination-strategy.js";
 
 /**
@@ -80,10 +81,7 @@ export class StrikethroughStrategy implements EliminationStrategy {
 	private fallbackContainers = new Map<string, HTMLElement>();
 	private imageWrappers = new Map<string, HTMLElement[]>();
 	private mathTargets = new Map<string, HTMLElement[]>();
-	private chrome: EliminationChrome = {
-		eliminatedText: "(eliminated)",
-		stamp: () => {},
-	};
+	private chrome: EliminationChrome = defaultEliminationChrome();
 
 	initialize(): void {
 		if (!this.isSupported()) {

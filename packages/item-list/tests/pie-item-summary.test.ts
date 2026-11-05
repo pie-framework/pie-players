@@ -7,7 +7,7 @@
 import "./support/dom.js";
 import { afterEach, describe, expect, test } from "bun:test";
 import type { ElementSummary } from "@pie-element/shared-types";
-import { createPieI18n } from "@pie-players/pie-players-shared/i18n";
+import { createPieI18n, loadBundledCatalog } from "@pie-players/pie-players-shared/i18n";
 import type { PieContent } from "@pie-players/pie-players-shared/types";
 import type { ItemSummary, PieItemSummaryElement } from "../src/pie-item-list.js";
 
@@ -195,18 +195,40 @@ describe("<pie-item-summary>", () => {
 		).toEqual([["Cat", "Dog"], ["Trout"]]);
 	});
 
+	// The bundled set is `en-US` only: the audited Dutch catalog lives in the
+	// optional generated tier, which this package's tests cannot reach across
+	// to. A test that wants Dutch composes a provider over a synthesized Dutch
+	// slice — what a real host wiring the generated tier would effectively do.
+	const dutchCatalog = {
+		common: { close: "Sluiten" },
+		player: { summary: { answer: "Antwoord" } },
+	};
+	function dutchProvider() {
+		return createPieI18n({
+			availableLocales: ["en-US", "nl-NL"],
+			loadCatalog: async (locale) =>
+				locale === "nl-NL"
+					? (dutchCatalog as never)
+					: loadBundledCatalog(locale),
+		});
+	}
+
 	test("labels its text through a supplied provider, keeping its owner's locale", async () => {
-		const i18n = createPieI18n();
+		const i18n = dutchProvider();
 		await i18n.setLocale("nl-NL");
 		const { element } = await mount({ summary: precomputed, i18n });
 		expect(i18n.getLocale()).toBe("nl-NL");
 		expect(element.querySelector(".pie-item-summary__answer-label")?.textContent).toBe("Antwoord");
 	});
 
-	test("labels its own text in the requested locale", async () => {
+	test("a requested locale alone renders English: Dutch needs a composed host", async () => {
+		// The element's own default provider bundles `en-US` alone. A requested
+		// locale is honoured as the active tag, and a key nothing ships resolves
+		// through the English fallback — Dutch through a bare `locale` is exactly
+		// what a host wiring the generated tier buys.
 		const { element } = await mount({ summary: precomputed, locale: "nl-NL" });
 		expect(element.querySelector(".pie-item-summary__answer-label")?.textContent).toBe(
-			"Antwoord",
+			"Answer",
 		);
 	});
 

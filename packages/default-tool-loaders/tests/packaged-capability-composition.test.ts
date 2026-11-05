@@ -1,5 +1,6 @@
 import { describe, expect, spyOn, test } from "bun:test";
 import { ToolRegistry } from "@pie-players/pie-assessment-toolkit";
+import { resolveFallbackToolIcon } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	createPackagedToolRegistry,
 	createUniversalPersonalNeedsProfile,
@@ -33,6 +34,22 @@ describe("packaged capability composition", () => {
 		for (const toolId of projectedIds) {
 			expect(registeredIds.has(toolId)).toBe(true);
 		}
+	});
+
+	test("names a built-in icon for every packaged toolbar button", () => {
+		// An icon-only toolbar button whose name has no built-in markup renders as a
+		// blank square. A region-activated capability renders no button.
+		const buttons = PACKAGED_TOOL_REGISTRATIONS.filter(
+			(registration) => registration.renderToolbar,
+		);
+		const missing = buttons
+			.filter(
+				({ icon }) =>
+					typeof icon !== "string" || resolveFallbackToolIcon(icon) === null,
+			)
+			.map(({ toolId, icon }) => `${toolId}: ${String(icon)}`);
+		expect(buttons.length).toBeGreaterThan(10);
+		expect(missing).toEqual([]);
 	});
 
 	test("gives every loaded capability an element tag", () => {

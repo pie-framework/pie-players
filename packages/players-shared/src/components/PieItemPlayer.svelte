@@ -580,12 +580,15 @@
       // One announcement per populated element, in the shape an element's own
       // takes: the session is the whole array, so the first replaces the
       // host's copy and the rest announce each element's `complete`.
+      // `sessionSource` tells a host the responses are the item's, not a
+      // learner's.
       for (const sessionEntry of newSession) {
         dispatch("session-changed", {
           component: sessionEntry.element,
           complete: true,
           elementId: sessionEntry.id,
           session: { id: "", data: session },
+          sessionSource: "correct-response",
         });
       }
 
@@ -860,11 +863,15 @@
     // PIE elements often emit metadata-only details, while the actual response
     // array is mutated in-place on the `session` prop. `elementId` names the
     // announcing element, since `component` is shared by two elements of one
-    // type.
+    // type. While correct responses fill the session, every announcement,
+    // commits included, carries the item's responses rather than a learner's.
     dispatch("session-changed", {
       ...(customEvent.detail || {}),
       ...(modelId ? { elementId: modelId } : {}),
       session: { id: "", data: session },
+      ...(correctResponsesAdded
+        ? { sessionSource: "correct-response" as const }
+        : {}),
     });
   }
 

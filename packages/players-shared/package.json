@@ -97,6 +97,10 @@
 			"types": "./dist/ui/content-styles.d.ts",
 			"import": "./dist/ui/content-styles.js"
 		},
+		"./ui/fontawesome": {
+			"types": "./dist/ui/fontawesome.d.ts",
+			"import": "./dist/ui/fontawesome.js"
+		},
 		"./tools/term-lookup": {
 			"types": "./dist/tools/term-lookup.d.ts",
 			"import": "./dist/tools/term-lookup.js"
@@ -122,7 +126,7 @@
 		"scan-hardcoded": "bun run src/i18n/scripts/scan-hardcoded.ts"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.2",
+		"@biomejs/biome": "^2.6.4",
 		"@happy-dom/global-registrator": "^21.0.4",
 		"@pie-element/shared-math-rendering-mathjax": "0.1.8",
 		"@playwright/test": "^1.64.1",
@@ -130,7 +134,7 @@
 		"es-module-shims": "^2.8.4",
 		"esbuild": "^0.28.2",
 		"glob": "^13.0.0",
-		"svelte": "^5.57.2",
+		"svelte": "^5.57.3",
 		"svelte-check": "^4.7.6",
 		"typescript": "^5.9.3"
 	},

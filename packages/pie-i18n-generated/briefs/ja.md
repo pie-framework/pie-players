@@ -25,11 +25,13 @@ Japanese edtech UI conventions.
 | tries left | 残り試行 | `あと{count}回挑戦できます。` |
 | settings | 設定 | |
 | tools / toolbar | ツール / ツールバー | |
+| assessment tools (toolbar) | テスト支援ツール | the toolbar's accessible name; `テストツール` alone reads as software-testing tooling |
 | calculator | 電卓 | 基本, 関数 (scientific), グラフ (graphing) |
 | graph | グラフ | |
 | coordinate plane | 座標平面 | Japanese math register |
 | grid | グリッド | |
 | line (mode) | 線 | |
+| connected lines | 接続された線 | the graph's "associated lines"; matches the delete hint |
 | periodic table | 周期表 | |
 | atomic number | 原子番号 | spelled out for screen readers |
 | ruler | 定規 | the school instrument |
@@ -46,14 +48,14 @@ Japanese edtech UI conventions.
 | underline | 下線 | |
 | annotate | 注釈 | |
 | theme | テーマ | |
-| text to speech | 読み上げ | read-aloud phrasing |
+| text to speech | 読み上げ | read-aloud phrasing; also the settings-panel title (読み上げの設定), no TTS acronym |
 | playback speed | 読み上げ速度 | |
 | sign language | 手話 | |
-| audio transcript | 文字起こし | |
-| strike through | 取り消し線 | the answer-eliminator action |
+| audio transcript | 文字起こし | one word everywhere — name and description, no テキスト起こし variant |
+| answer eliminator (tool name) | 解答の取り消し線 | 消し込み is bookkeeping register (entry reconciliation); the strike-through word is 取り消し線 |
 | pixels | ピクセル | |
 | degrees | 度 | keep the `°` glyph |
-| voice (TTS) | 音声 | |
+| voice (TTS) | 音声 | gender rows 男性/女性/ニュートラル — 中性 reads as pH-neutral |
 
 ## Plurals, punctuation, digits
 
@@ -61,6 +63,11 @@ Japanese edtech UI conventions.
   `other` only.
 - Full-width punctuation in Japanese contexts (，＋（）); keep `…`, the `°`
   glyph and Latin product names as-is.
+- Parentheses are full-width `（）` everywhere a locale-authored string adds
+  them, including fragments appended for assistive technology
+  (`（除外済み）`, `ホスト画面（未配置）`).
+- Interpolated `{term}` quotes take Japanese brackets `「」` in the dictionary
+  panels.
 
 ## Untranslated product names
 

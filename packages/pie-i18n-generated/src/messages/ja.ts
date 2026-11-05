@@ -1,5 +1,6 @@
 /**
- * Japanese message catalog — machine-generated, not reviewed.
+ * Japanese message catalog — reviewed (agent pass in lieu of a native
+ * reader, 2026-11-03; see `reviewedBy` in `catalog-manifest.json`).
  *
  * Serves every Japanese host under the bare `ja` tag. Content flavour follows
  * `briefs/ja.md` — verb-stem controls (`閉じる`, `提出`), です・ます sentences,
@@ -8,9 +9,11 @@
  * calculator). Japanese has a single CLDR plural category, so every plural
  * group carries `other` only.
  *
- * Provenance — the source hash, model and generation date — is recorded in
- * `catalog-manifest.json`; `scripts/check-catalogs.ts` fails this file
- * against the English source when either drifts.
+ * Regeneration is surgical, never wholesale: `scripts/check-catalogs.ts`
+ * diffs the English snapshot (`ja.english-snapshot.json`) against the live
+ * `en-US` source and lists exactly the keys whose English moved; translate
+ * only those, keep every reviewed string, then refresh the snapshot per the
+ * package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/ja
  */
@@ -132,7 +135,7 @@ const ja = {
 	},
 
 	toolkit: {
-		toolsA11y: "テストツール",
+		toolsA11y: "テスト支援ツール",
 		toolbarInitError: "ツールバーを初期化できません。",
 		settingsTitle: "設定",
 		closeSettingsA11y: "設定を閉じる",
@@ -204,7 +207,7 @@ const ja = {
 			pointA11y: "グラフの点 {id}",
 			modeSelector: "選択",
 			modeSelectorHint:
-				"選択：点をクリックしてドラッグすると、点や関連する線を移動できます。",
+				"選択：点をクリックしてドラッグすると、点やそれに接続された線を移動できます。",
 			modePoint: "点",
 			modePointHint: "点：グリッドをクリックして点を追加します。",
 			modeLine: "線",
@@ -373,12 +376,12 @@ const ja = {
 			tallerA11y: "拡大鏡の高さを高くする",
 		},
 		answerEliminator: {
-			name: "解答の消し込み",
+			name: "解答の取り消し線",
 			description: "選択肢に取り消し線を引く",
 			buttonA11y: "取り消し線、選択肢を除外",
 			tooltip: "取り消し線",
 			toggleA11y: "{choice} の取り消し線を切り替え",
-			eliminatedA11y: "(除外済み)",
+			eliminatedA11y: "（除外済み）",
 			unlabeledChoice: "ラベルのない選択肢",
 		},
 		highlighter: {
@@ -405,6 +408,17 @@ const ja = {
 			highlightPinkA11y: "ピンクの強調",
 			highlightBlueA11y: "青の強調",
 			highlightGreenA11y: "緑の強調",
+			selectionAvailableA11y:
+				"「{text}」の注釈ツールバーを使用できます。Shift+F10キーで注釈ツールを開きます。",
+			highlightedYellowA11y: "「{text}」を黄色で強調しました",
+			highlightedPinkA11y: "「{text}」をピンクで強調しました",
+			highlightedBlueA11y: "「{text}」を青で強調しました",
+			highlightedGreenA11y: "「{text}」を緑で強調しました",
+			underlinedA11y: "「{text}」に下線を引きました",
+			removedA11y: "「{text}」の注釈を削除しました",
+			clearedA11y: {
+				other: "{count}件の注釈を消去しました",
+			},
 		},
 		theme: {
 			name: "テーマ",
@@ -466,7 +480,7 @@ const ja = {
 		},
 		audioTranscript: {
 			name: "文字起こし",
-			description: "音声コンテンツのテキスト起こし",
+			description: "音声コンテンツの文字起こし",
 			regionA11y: "文字起こし",
 		},
 	},
@@ -568,7 +582,7 @@ const ja = {
 			on: "オン",
 			effective: "適用値:",
 			needs: "必要",
-			hostSurfaceNotPlaced: "ホスト面（未配置）",
+			hostSurfaceNotPlaced: "ホスト画面（未配置）",
 			support: "許可",
 			prohibit: "禁止",
 		},
@@ -594,7 +608,7 @@ const ja = {
 			any: "指定なし",
 			male: "男性",
 			female: "女性",
-			neutral: "中性",
+			neutral: "ニュートラル",
 			engine: "エンジン",
 			neural: "ニューラル",
 			standard: "スタンダード",

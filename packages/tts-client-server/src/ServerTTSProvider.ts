@@ -23,14 +23,15 @@ import type {
 	TTSProviderOptions,
 } from "@pie-players/pie-tts";
 import {
-	createPieLogger,
-	isTtsDebugEnabled,
-} from "@pie-players/pie-players-shared/pie";
-import {
 	anchorSpeechMarks,
 	normalizeSpeechMarks,
 	resolveSpeedRateBucket,
-} from "@pie-players/tts-server-core";
+} from "@pie-players/pie-tts";
+import { languageTagWithoutVariants } from "@pie-players/pie-players-shared/i18n/language-tags";
+import {
+	createPieLogger,
+	isTtsDebugEnabled,
+} from "@pie-players/pie-players-shared/pie";
 
 // Debug lines need PIE_TTS_DEBUG=1 or globalThis.__PIE_TTS_DEBUG__ = true.
 const logger = createPieLogger("server-tts-provider", isTtsDebugEnabled);
@@ -451,13 +452,17 @@ const resolveSpeedRate = (config: ServerTTSProviderConfig): SpeedRateBucket => {
 	return resolveSpeedRateBucket(config.rate);
 };
 
-/** The language a speak named for its content, if any. */
+/**
+ * The language a speak named for its content, if any, without variant or
+ * private-use subtags: voices are keyed by language and region, so
+ * `en-GB-x-gulf` is read by an `en-GB` voice.
+ */
 const contentLanguageOf = (
 	config: ServerTTSProviderConfig,
 ): string | undefined => {
 	const language = config.providerOptions?.contentLanguage;
 	return typeof language === "string" && language.trim()
-		? language.trim()
+		? languageTagWithoutVariants(language)
 		: undefined;
 };
 

@@ -105,6 +105,8 @@ when one literal tag is defined in two files.
   `toolbar`, `body` and `active` stay out of custom-element markup and styles.
 - In a light-DOM custom element (`shadow: "none"`), classes are public API, and the
   element depends on no host or global utility class names.
+  `bun run check:light-dom-classes` fails on a class outside the `pie-` namespace in
+  the markup such an element or any component it renders names.
 - Package `exports` runtime targets point at built `dist` artifacts unless there is
   an explicit documented exception.
 - If a CE registration entry imports `*.svelte?customElement`, ensure the referenced

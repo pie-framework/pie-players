@@ -54,19 +54,43 @@ loaded catalog.
 
 | Tag | Status | Brief | Generated |
 | --- | --- | --- | --- |
-| `th-TH` | generated, unreviewed | [`briefs/th-TH.md`](./briefs/th-TH.md) | 2026-10-19 |
-| `en-GB` | generated, unreviewed | [`briefs/en-GB.md`](./briefs/en-GB.md) | 2026-10-19 |
-| `en-AU` | generated, unreviewed | [`briefs/en-AU.md`](./briefs/en-AU.md) | 2026-10-19 |
-| `es` | generated, unreviewed (Latin-American neutral; serves `es*`) | [`briefs/es.md`](./briefs/es.md) | 2026-10-19 |
-| `fr` | generated, unreviewed (France flavour; serves `fr*`) | [`briefs/fr.md`](./briefs/fr.md) | 2026-10-19 |
-| `ar` | generated, unreviewed (MSA; serves `ar*`; RTL — first RTL locale, layout not yet audited) | [`briefs/ar.md`](./briefs/ar.md) | 2026-10-19 |
-| `pt` | generated, unreviewed (Brazilian; serves `pt*`) | [`briefs/pt.md`](./briefs/pt.md) | 2026-10-19 |
-| `ko` | generated, unreviewed | [`briefs/ko.md`](./briefs/ko.md) | 2026-10-19 |
-| `ja` | generated, unreviewed | [`briefs/ja.md`](./briefs/ja.md) | 2026-10-19 |
-| `zh` | generated, unreviewed (Simplified; serves `zh`, `zh-CN`, `zh-SG`; Traditional hosts supply `customMessages`) | [`briefs/zh.md`](./briefs/zh.md) | 2026-10-19 |
-| `cy` | generated, unreviewed (serves `cy`, `cy-GB`; six CLDR plural categories) | [`briefs/cy.md`](./briefs/cy.md) | 2026-10-19 |
-| `sv` | generated, unreviewed (serves `sv`, `sv-SE`, `sv-FI`) | [`briefs/sv.md`](./briefs/sv.md) | 2026-10-19 |
-| `ro` | generated, unreviewed (serves `ro`, `ro-RO`, `ro-MD`; three CLDR plural categories, `other` takes `de`) | [`briefs/ro.md`](./briefs/ro.md) | 2026-10-19 |
+| `th-TH` | reviewed (agent pass in lieu of a native reader, 2026-11-03) | [`briefs/th-TH.md`](./briefs/th-TH.md) | 2026-10-19 |
+| `en-GB` | reviewed (agent verification pass, 2026-11-03; delta locale) | [`briefs/en-GB.md`](./briefs/en-GB.md) | 2026-10-19 |
+| `en-AU` | reviewed (agent verification pass, 2026-11-03; delta locale) | [`briefs/en-AU.md`](./briefs/en-AU.md) | 2026-10-19 |
+| `es` | reviewed (agent pass in lieu of a native reader, 2026-11-03; Latin-American neutral; serves `es*`) | [`briefs/es.md`](./briefs/es.md) | 2026-10-19 |
+| `fr` | reviewed (agent pass in lieu of a native reader, 2026-11-03; France flavour; serves `fr*`) | [`briefs/fr.md`](./briefs/fr.md) | 2026-10-19 |
+| `ar` | reviewed (agent pass in lieu of a native reader, 2026-11-04, after the RTL layout audit below landed; MSA; serves `ar*`; RTL) | [`briefs/ar.md`](./briefs/ar.md) | 2026-10-19 |
+| `pt` | reviewed (agent pass in lieu of a native reader, 2026-11-03; Brazilian; serves `pt*`) | [`briefs/pt.md`](./briefs/pt.md) | 2026-10-19 |
+| `ko` | reviewed (agent pass in lieu of a native reader, 2026-11-03) | [`briefs/ko.md`](./briefs/ko.md) | 2026-10-19 |
+| `ja` | reviewed (agent pass in lieu of a native reader, 2026-11-03) | [`briefs/ja.md`](./briefs/ja.md) | 2026-10-19 |
+| `zh` | reviewed (agent pass in lieu of a native reader, 2026-11-03; Simplified; serves `zh`, `zh-CN`, `zh-SG`; Traditional hosts supply `customMessages`) | [`briefs/zh.md`](./briefs/zh.md) | 2026-10-19 |
+| `cy` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `cy`, `cy-GB`; six CLDR plural categories) | [`briefs/cy.md`](./briefs/cy.md) | 2026-10-19 |
+| `sv` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `sv`, `sv-SE`, `sv-FI`) | [`briefs/sv.md`](./briefs/sv.md) | 2026-10-19 |
+| `ro` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `ro`, `ro-RO`, `ro-MD`; three CLDR plural categories, `other` takes `de`) | [`briefs/ro.md`](./briefs/ro.md) | 2026-10-19 |
+| `vi` | reviewed (agent pass in lieu of a native reader, 2026-11-03; serves `vi`, `vi-VN`; one CLDR plural category) | [`briefs/vi.md`](./briefs/vi.md) | 2026-11-03 |
+| `nl-NL` | reviewed (**native-speaker audit** — the framework's audit language; carried over from `players-shared`'s bundled set on 2026-11-04, verbatim) | [`briefs/nl-NL.md`](./briefs/nl-NL.md) | 2026-10-18 |
+| `de` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `de`, `de-AT`, `de-CH`) | [`briefs/de.md`](./briefs/de.md) | 2026-11-04 |
+| `it` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `it`) | [`briefs/it.md`](./briefs/it.md) | 2026-11-04 |
+| `pl` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `pl`; four CLDR plural categories) | [`briefs/pl.md`](./briefs/pl.md) | 2026-11-04 |
+| `tr` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `tr`, `tr-CY`) | [`briefs/tr.md`](./briefs/tr.md) | 2026-11-04 |
+| `uk` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `uk`; four CLDR plural categories) | [`briefs/uk.md`](./briefs/uk.md) | 2026-11-04 |
+| `el` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; international deployment set; serves `el`, `el-CY`) | [`briefs/el.md`](./briefs/el.md) | 2026-11-04 |
+| `ru` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; big-US wave; four CLDR plural categories) | [`briefs/ru.md`](./briefs/ru.md) | 2026-11-04 |
+| `fil` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; big-US wave; the `tl` tag aliases this catalog) | [`briefs/fil.md`](./briefs/fil.md) | 2026-11-04 |
+| `tl` | alias of `fil` (US systems label the language Tagalog) | [`briefs/fil.md`](./briefs/fil.md) | 2026-11-04 |
+| `ht` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; big-US wave) | [`briefs/ht.md`](./briefs/ht.md) | 2026-11-04 |
+| `ur` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; second RTL wave — inherits the audited RTL layout contract) | [`briefs/ur.md`](./briefs/ur.md) | 2026-11-04 |
+| `fa` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; second RTL wave) | [`briefs/fa.md`](./briefs/fa.md) | 2026-11-04 |
+| `he` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; second RTL wave; CLDR `two` category) | [`briefs/he.md`](./briefs/he.md) | 2026-11-04 |
+| `zh-Hant` | reviewed (agent generation-and-review pass in lieu of a native reader, 2026-11-04; Taiwan-register Traditional — regional tag, bare `zh` stays Simplified) | [`briefs/zh-Hant.md`](./briefs/zh-Hant.md) | 2026-11-04 |
+| `so` | reviewed (agent pass, 2026-11-04; state/regional wave — terminology partially standardized, **native review strongly advised**) | [`briefs/so.md`](./briefs/so.md) | 2026-11-04 |
+| `hmn` | reviewed (agent pass, 2026-11-04; state/regional wave — White Hmong RPA, CLDR-undersourced, **native review strongly advised**) | [`briefs/hmn.md`](./briefs/hmn.md) | 2026-11-04 |
+| `km` | reviewed (agent pass, 2026-11-04; state/regional wave — Khmer script, **native review strongly advised**) | [`briefs/km.md`](./briefs/km.md) | 2026-11-04 |
+| `lo` | reviewed (agent pass, 2026-11-04; state/regional wave — Lao script, **native review strongly advised**) | [`briefs/lo.md`](./briefs/lo.md) | 2026-11-04 |
+| `bn` | reviewed (agent pass, 2026-11-04; state/regional wave — Bengali script, **native review strongly advised**) | [`briefs/bn.md`](./briefs/bn.md) | 2026-11-04 |
+| `pa` | reviewed (agent pass, 2026-11-04; state/regional wave — Gurmukhi script, **native review strongly advised**) | [`briefs/pa.md`](./briefs/pa.md) | 2026-11-04 |
+| `ne` | reviewed (agent pass, 2026-11-04; state/regional wave — Devanagari script, **native review strongly advised**) | [`briefs/ne.md`](./briefs/ne.md) | 2026-11-04 |
+| `am` | reviewed (agent pass, 2026-11-04; state/regional wave — Ethiopic script, **native review strongly advised**) | [`briefs/am.md`](./briefs/am.md) | 2026-11-04 |
 
 Locale tags are chosen for variant reach: bare tags (`es`, `fr`, `ar`) let
 `es-MX`, `fr-CA` and `ar-SA` widen onto them through RFC 4647 lookup, while
@@ -109,6 +133,14 @@ fails the gate until the affected catalogs are regenerated — wholesale for
 
 ## The review lifecycle
 
+**Agent passes in lieu of native readers.** On 2026-11-03 `es`, `en-GB` and
+`en-AU` were promoted on agent passes: no native readers were available, the
+maintainer accepted agent review for them, and each manifest entry's
+`reviewedBy` records exactly that. `reviewed` still means *a pass happened and
+its work is anchored* — the pass's nature lives in the manifest, the native
+pass remains open work, and because regeneration is surgical from here, a
+later native pass corrects in place instead of starting over.
+
 A locale moves through two statuses, recorded in `catalog-manifest.json`, and
 what regeneration may touch follows from the status:
 
@@ -150,6 +182,65 @@ lists keys whose English moved:
 
 Wholesale regeneration of a `reviewed` locale discards review work; do it
 only deliberately, by flipping the status back to `generated` first.
+
+## The RTL layout audit (`ar`)
+
+Status: **landed 2026-11-04**, and `ar`'s promotion followed it. This section
+is the audit's record; the checks it added run in the suite.
+
+`ar` is the framework's first right-to-left interface locale, and the audit
+that gated its review pass was a layout audit, not a translation one: a native
+reviewer certifying strings that render mirrored would certify the wrong
+product. `direction` derives from `Intl.Locale.prototype.textInfo` and the
+shell stamps `lang`/`dir` on its own host
+([adoption record](../../docs/architecture/i18n-interface-locale-adoption.md)).
+
+`packages/section-player/tests/section-player-rtl-layout.spec.ts` holds seven
+rendered cases against the `ar` demo
+(`/interface-locale?locale=ar`), run outside the sandbox per the repository's
+Playwright rules:
+
+1. **Card header** (pre-existing): the item toolbar hugs the trailing edge,
+   under a forced `dir` and under the real `ar` stamps.
+2. **Card footer**: the formative check-answer button mirrors under the same
+   `margin-inline-start` trailing-edge rule (`/formative-delivery`, forced
+   `dir` — the rule reads inherited direction, and case 1 proves the stamping
+   path end to end).
+3. **Split-pane layout**: pane *order* flips — passages pane leads in LTR,
+   trails in RTL; containment stays with the scroll contract.
+4. **Toolbar pane**: the shell's toolbar pane hugs the trailing viewport edge
+   and follows the direction (right under LTR, left under `ar`); the vertical
+   tool column's reading order is direction-independent by design and is
+   pinned as stable.
+5. **Tool windows at `document.body`**: the graph shell's contents mirror
+   (title leads from the right under `ar`) while its screen position and size
+   stay put — the adoption record's free-window rule.
+6. **Metrics**: no chrome control clips (`scrollWidth` past the box) and no
+   horizontal page overflow appears under `ar`; the sweep covers the chrome
+   subtrees through the custom elements' open shadow roots and excludes the
+   item players' content roots, which are the content-language channel.
+7. **Text-level rendered inspection** (recorded, not asserted): a full-page
+   screenshot of the `ar` demo was inspected — Arabic labels sit at the
+   trailing edges with Western digits per the brief, English content keeps
+   its own LTR inside the content root's `dir="auto"`, and no punctuation
+   strands on the wrong side of an embedded Latin run in the rendered chrome.
+
+**Defect found and repaired by the audit**: the toolbar pane's divider was a
+physical `border-left`/`border-right`
+(`SectionPlayerShell.svelte`), so under RTL the divider rendered on the
+pane's outer screen edge instead of the content side. It now uses
+`border-inline-start`/`border-inline-end`, and case 4's pane-flip assertion
+pins the geometry.
+
+**Recorded without assertions** — the surfaces the section demo cannot
+exercise: the toolbar scrolls rather than collapsing into an overflow menu
+when it overflows, and its tooltips are the browser's `title` rendering, so
+neither has an assertion to carry; Back/Next navigation chrome belongs to the
+assessment player (the reference assembly), not this building block; the
+standalone item player (`<pie-item-player>` on its own) has no locale-driven
+demo route, so its chrome mirror is covered only at the stamp level (the
+interface-locale spec asserts its content-root stamps) — a follow-up demo
+route would close that.
 
 ## Adding a locale
 

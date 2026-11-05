@@ -1,5 +1,6 @@
 /**
- * Korean message catalog — machine-generated, not reviewed.
+ * Korean message catalog — reviewed (agent pass in lieu of a native reader,
+ * 2026-11-03; see `reviewedBy` in `catalog-manifest.json`).
  *
  * Serves every Korean host under the bare `ko` tag. Content flavour follows
  * `briefs/ko.md` — noun-form controls (`닫기`, `제출`), the formal polite
@@ -8,9 +9,11 @@
  * protractor). Korean has a single CLDR plural category, so every plural
  * group carries `other` only.
  *
- * Provenance — the source hash, model and generation date — is recorded in
- * `catalog-manifest.json`; `scripts/check-catalogs.ts` fails this file
- * against the English source when either drifts.
+ * Regeneration is surgical, never wholesale: `scripts/check-catalogs.ts`
+ * diffs the English snapshot (`ko.english-snapshot.json`) against the live
+ * `en-US` source and lists exactly the keys whose English moved; translate
+ * only those, keep every reviewed string, then refresh the snapshot per the
+ * package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/ko
  */
@@ -122,7 +125,7 @@ const ko = {
 
 		timedMedia: {
 			waitingForMedia: "미디어가 재생되는 동안 문항이 나타납니다.",
-			questionAvailable: "문항 {position}이(가) 표시되었습니다.",
+			questionAvailable: "문항 {position}번이 표시되었습니다.",
 			playbackPaused:
 				"재생이 일시 중지되었습니다. 계속하려면 문항 {position}에 답해 주세요.",
 			playbackAdvisory:
@@ -222,13 +225,13 @@ const ko = {
 			showAllA11y: "모든 원소 표시",
 			allElements: "전체 원소",
 			atomicMass: "원자량",
-			atomicNumber: "원자 번호",
+			atomicNumber: "원자번호",
 			electronConfig: "전자 배치",
 			phase: "상태",
 			filterByA11y: "{category}별 필터",
 			elementA11y:
-				"{name}, 기호: {symbol}, 원자 번호: {number}, 원자량: {mass}, 분류: {category}",
-			outsideFilterA11y: ", 현재 필터 외부",
+				"{name}, 기호: {symbol}, 원자번호: {number}, 원자량: {mass}, 분류: {category}",
+			outsideFilterA11y: ", 현재 필터에 포함되지 않음",
 			category: {
 				unknown: "알 수 없음",
 				alkaliMetal: "알칼리 금속",
@@ -286,7 +289,7 @@ const ko = {
 			notConfigured: "이 평가에 구성된 사전 서비스가 없습니다.",
 			idleHint: "단어를 입력하면 뜻을 찾아줍니다.",
 			lookingUp: "“{term}” 검색 중…",
-			noEntryFor: "“{term}”에 대한 결과가 없습니다.",
+			noEntryFor: "“{term}”에 대한 항목이 없습니다.",
 			entriesCount: {
 				other: "항목 {count}개",
 			},
@@ -357,7 +360,7 @@ const ko = {
 			zoomIn: "확대",
 			zoomOut: "축소",
 			zoomLevel: "{zoom}×",
-			zoomAnnounce: "{zoom}배 확대",
+			zoomAnnounce: "배율이 {zoom}배로 변경되었습니다",
 			close: "돋보기 닫기",
 			resizeA11y: "드래그하여 돋보기 크기 조절",
 			resizeFullA11y:
@@ -386,7 +389,7 @@ const ko = {
 		annotationToolbar: {
 			name: "주석",
 			description: "텍스트 형광펜 표시 및 주석",
-			buttonA11y: "주석, 텍스트 형광펜 표시 및 마킹",
+			buttonA11y: "주석, 텍스트에 형광펜 표시 및 주석 달기",
 			tooltip: "주석",
 			toolbarA11y: "텍스트 주석 도구 모음",
 			underline: "밑줄",
@@ -401,6 +404,17 @@ const ko = {
 			highlightPinkA11y: "분홍색 형광펜",
 			highlightBlueA11y: "파란색 형광펜",
 			highlightGreenA11y: "초록색 형광펜",
+			selectionAvailableA11y:
+				"“{text}”에 주석 도구 모음을 사용할 수 있습니다. 주석 도구를 사용하려면 Shift+F10을 누르세요.",
+			highlightedYellowA11y: "“{text}”을(를) 노란색으로 강조했습니다",
+			highlightedPinkA11y: "“{text}”을(를) 분홍색으로 강조했습니다",
+			highlightedBlueA11y: "“{text}”을(를) 파란색으로 강조했습니다",
+			highlightedGreenA11y: "“{text}”을(를) 초록색으로 강조했습니다",
+			underlinedA11y: "“{text}”에 밑줄을 그었습니다",
+			removedA11y: "“{text}”에서 주석을 제거했습니다",
+			clearedA11y: {
+				other: "주석 {count}개를 지웠습니다",
+			},
 		},
 		theme: {
 			name: "테마",
@@ -462,7 +476,7 @@ const ko = {
 		},
 		audioTranscript: {
 			name: "녹취록",
-			description: "오디오 콘텐츠의 텍스트 녹취록",
+			description: "오디오 콘텐츠의 녹취록",
 			regionA11y: "녹취록",
 		},
 	},
@@ -544,7 +558,7 @@ const ko = {
 			title: "PNP 프로필",
 			noAssessmentBound: "연결된 평가 없음",
 			noAssessmentBoundBody:
-				"프로필, 지역 및 시행 정책에서 읽을 내용이 없으므로 문항의 requiredTools만이 지원 도구를 허용할 수 있습니다. 평가를 toolkit의 assessment 속성에 전달하거나 toolkit 코디네이터에서 updateAssessment(...)를 호출하세요.",
+				"프로필, 지역 및 시행 정책에서 읽을 내용이 없으므로 문항의 requiredTools만이 편의 제공을 허용할 수 있습니다. 평가를 toolkit의 assessment 속성에 전달하거나 toolkit 코디네이터에서 updateAssessment(...)를 호출하세요.",
 			determinationReadOnly: "판정(읽기 전용)",
 			toolsEditor: "도구 편집기",
 			enforcement: "PNP 적용",
@@ -562,16 +576,16 @@ const ko = {
 			on: "켬",
 			effective: "적용값:",
 			needs: "필요",
-			hostSurfaceNotPlaced: "호스트 표면(미배치)",
+			hostSurfaceNotPlaced: "호스트 화면(미배치)",
 			support: "허용",
 			prohibit: "금지",
 		},
 
 		tts: {
-			title: "TTS 설정",
-			closeA11y: "TTS 설정 닫기",
+			title: "소리 내어 읽기 설정",
+			closeA11y: "소리 내어 읽기 설정 닫기",
 			toolbarLayoutMode: "도구 모음 레이아웃 모드",
-			reservedRow: "고정 행",
+			reservedRow: "예약 행",
 			expandingRow: "확장 행",
 			floatingOverlay: "플로팅 오버레이",
 			leftAlignedControls: "왼쪽 정렬 컨트롤",
@@ -630,7 +644,7 @@ const ko = {
 			mathHighlightBlock:
 				"수식을 부분으로 나누지 않고 하나의 블록으로 강조합니다.",
 			previewFailed: "미리보기 오디오를 재생하지 못했습니다.",
-			previewNoAudio: "미리보기 응답에 오디오 콘텐츠가 없었습니다.",
+			previewNoAudio: "미리보기 응답에 오디오 콘텐츠가 포함되지 않았습니다.",
 			previewEnterText: "재생을 시작하기 전에 미리보기 텍스트를 입력하세요.",
 			previewUnavailable:
 				"이 서비스를 사용할 수 없는 동안에는 미리볼 수 없습니다.",
@@ -642,9 +656,9 @@ const ko = {
 				"이 서비스를 사용할 수 없는 동안에는 설정을 적용할 수 없습니다.",
 			coordinatorUnavailable:
 				"toolkit 코디네이터를 사용할 수 없어 음성 읽기를 업데이트할 수 없습니다.",
-			customProviderNotRegistered: "사용자 지정 제공자 '{id}'가 등록되지 않았습니다.",
+			customProviderNotRegistered: "사용자 지정 제공자 “{id}”가 등록되지 않았습니다.",
 			customProviderNoConfig:
-				"사용자 지정 제공자 '{id}'가 적용 구성을 반환하지 않았습니다.",
+				"사용자 지정 제공자 “{id}”가 적용 구성을 반환하지 않았습니다.",
 			httpError: "HTTP {status}: {message}",
 			unknownError: "알 수 없는 오류",
 			previewRequestFailed: "미리보기 요청이 실패했습니다({status}).",
@@ -653,7 +667,7 @@ const ko = {
 			voiceRemote: "원격",
 			voiceBrowserDefault: "브라우저 기본값",
 			browserAvailable: {
-				other: "브라우저 TTS 사용 가능(감지된 음성 {count}개).",
+				other: "브라우저 음성 읽기 사용 가능(감지된 음성 {count}개).",
 			},
 			pollyAvailable: {
 				other: "AWS Polly 사용 가능(일치하는 음성 {count}개, {engine} 엔진).",

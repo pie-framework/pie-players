@@ -1,17 +1,21 @@
 /**
- * Swedish message catalog — machine-generated, not reviewed.
+ * Swedish message catalog — reviewed (agent pass in lieu of a native reader,
+ * 2026-11-03; see `reviewedBy` in `catalog-manifest.json`).
  *
  * Serves every Swedish host: registered under the bare `sv` tag, so `sv`,
  * `sv-SE` and `sv-FI` all widen to it. Content flavour is standard Sweden
  * Swedish per `briefs/sv.md` — the `du` form on sentences, imperative verbs
- * on controls, school terminology (`Fråga`, `Avsnitt`, `Gradskiva`,
- * `Miniräknare`), Swedish typographic quotes (`”{term}”`) and Swedish
- * compound spelling. A Finland-Swedish host can override any key through
- * `customMessages`.
+ * on controls, school terminology (`Fråga`, `Uppgifter`, `Avsnitt`,
+ * `Gradskiva`, `Miniräknare`), learner-register panel titles
+ * (`Uppläsningsinställningar`), Swedish typographic quotes (`”{term}”`) and
+ * Swedish compound spelling. A Finland-Swedish host can override any key
+ * through `customMessages`.
  *
- * Provenance — the source hash, model and generation date — is recorded in
- * `catalog-manifest.json`; `scripts/check-catalogs.ts` fails this file
- * against the English source when either drifts.
+ * Regeneration is surgical, never wholesale: `scripts/check-catalogs.ts`
+ * diffs the English snapshot (`sv.english-snapshot.json`) against the live
+ * `en-US` source and lists exactly the keys whose English moved; translate
+ * only those, keep every reviewed string, then refresh the snapshot per the
+ * package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/sv
  */
@@ -125,13 +129,13 @@ const sv = {
 		},
 
 		timedMedia: {
-			waitingForMedia: "Frågorna visas medan mediet spelas.",
+			waitingForMedia: "Frågorna visas medan mediet spelas upp.",
 			questionAvailable: "Fråga {position} är nu tillgänglig.",
 			playbackPaused:
 				"Uppspelningen är pausad. Svara på fråga {position} för att fortsätta.",
 			playbackAdvisory:
 				"Svara på fråga {position} innan du fortsätter med mediet.",
-			playbackReleased: "Svaret har godtagits. Fortsätt spela mediet.",
+			playbackReleased: "Svaret har godtagits. Fortsätt spela upp mediet.",
 		},
 	},
 
@@ -386,7 +390,7 @@ const sv = {
 			buttonA11y: "Genomstryk, uteslut svarsalternativ",
 			tooltip: "Genomstryk",
 			toggleA11y: "Växla genomstrykning för {choice}",
-			eliminatedA11y: "(utesluten)",
+			eliminatedA11y: "(uteslutet)",
 			unlabeledChoice: "Alternativ utan etikett",
 		},
 		highlighter: {
@@ -413,6 +417,18 @@ const sv = {
 			highlightPinkA11y: "Rosa markering",
 			highlightBlueA11y: "Blå markering",
 			highlightGreenA11y: "Grön markering",
+			selectionAvailableA11y:
+				"Verktygsfält för annotering tillgängligt för ”{text}”. Tryck på Skift+F10 för annoteringsverktyg.",
+			highlightedYellowA11y: "”{text}” markerad med gult",
+			highlightedPinkA11y: "”{text}” markerad med rosa",
+			highlightedBlueA11y: "”{text}” markerad med blått",
+			highlightedGreenA11y: "”{text}” markerad med grönt",
+			underlinedA11y: "”{text}” understruken",
+			removedA11y: "Annoteringen togs bort från ”{text}”",
+			clearedA11y: {
+				one: "{count} annotering rensad",
+				other: "{count} annoteringar rensade",
+			},
 		},
 		theme: {
 			name: "Tema",
@@ -433,7 +449,7 @@ const sv = {
 		textToSpeech: {
 			name: "Uppläsning",
 			description: "Läs innehållet högt",
-			initFailed: "Kan inte initiera text-till-tal. Försök igen.",
+			initFailed: "Kan inte starta uppläsningen. Försök igen.",
 			inline: {
 				controlsA11y: "Uppläsningskontroller",
 				playbackSpeedA11y: "Uppspelningshastighet",
@@ -454,7 +470,7 @@ const sv = {
 				skipBackwardFailed: "Kan inte spola bakåt",
 				speedChangeFailed: "Kan inte ändra uppspelningshastigheten",
 				speedAnnounce: "Uppspelningshastighet {label}",
-				playA11y: "Spela uppläsning",
+				playA11y: "Spela upp",
 				pauseA11y: "Pausa uppläsningen",
 				resumeA11y: "Återuppta uppläsningen",
 			},
@@ -583,8 +599,8 @@ const sv = {
 		},
 
 		tts: {
-			title: "TTS-inställningar",
-			closeA11y: "Stäng TTS-inställningarna",
+			title: "Uppläsningsinställningar",
+			closeA11y: "Stäng uppläsningsinställningarna",
 			toolbarLayoutMode: "Verktygsfältets layoutläge",
 			reservedRow: "Reserverad rad",
 			expandingRow: "Expanderande rad",
@@ -672,8 +688,8 @@ const sv = {
 			voiceRemote: "fjärr",
 			voiceBrowserDefault: "webbläsarens standard",
 			browserAvailable: {
-				one: "Webbläsarens TTS är tillgänglig ({count} röst hittades).",
-				other: "Webbläsarens TTS är tillgänglig ({count} röster hittades).",
+				one: "Webbläsarens talsyntes är tillgänglig ({count} röst hittades).",
+				other: "Webbläsarens talsyntes är tillgänglig ({count} röster hittades).",
 			},
 			pollyAvailable: {
 				one: "AWS Polly är tillgängligt ({count} matchande röst, motorn {engine}).",

@@ -243,7 +243,7 @@ test.describe("section player interface locale", () => {
 			page.getByRole("heading", { name: "บทอ่าน", level: 2 }),
 		).toBeVisible();
 		await expect(
-			page.getByRole("button", { name: "ธีม เปลี่ยนสีและความเปรียบต่าง" }),
+			page.getByRole("button", { name: "ธีม เปลี่ยนสีและคอนทราสต์" }),
 		).toBeVisible();
 		await expect(
 			page.getByRole("heading", { name: "Passage", level: 2 }),

@@ -1,14 +1,16 @@
 /**
- * Australian English message catalog — machine-generated, not
- * reviewed.
+ * Australian English message catalog — reviewed (agent verification pass in
+ * lieu of a native reader, 2026-11-03; see `reviewedBy` in
+ * `catalog-manifest.json`).
  *
  * A delta locale per `briefs/en-AU.md`: Australian English follows the British
  * spellings recorded in `briefs/en-GB.md` (colour, centre, -ise, maths,
  * anticlockwise, centimetres, Questions for delivered items). Most values
- * equal `en-US` unchanged. Provenance — the source hash, model and generation date —
- * is recorded in `catalog-manifest.json`; `scripts/check-catalogs.ts` fails
- * this file against the English source when either drifts. Regenerate per the
- * package README when the check reports the catalog stale.
+ * equal `en-US` unchanged. Regeneration is surgical, never wholesale:
+ * `scripts/check-catalogs.ts` diffs the English snapshot
+ * (`en-AU.english-snapshot.json`) against the live `en-US` source and lists
+ * exactly the keys whose English moved; translate only those, keep every
+ * reviewed string, then refresh the snapshot per the package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/en-AU
  */
@@ -404,6 +406,18 @@ const enAU = {
 			highlightPinkA11y: "Pink highlight",
 			highlightBlueA11y: "Blue highlight",
 			highlightGreenA11y: "Green highlight",
+			selectionAvailableA11y:
+				"Annotation toolbar available for “{text}”. Press Shift+F10 for annotation tools.",
+			highlightedYellowA11y: "“{text}” highlighted in yellow",
+			highlightedPinkA11y: "“{text}” highlighted in pink",
+			highlightedBlueA11y: "“{text}” highlighted in blue",
+			highlightedGreenA11y: "“{text}” highlighted in green",
+			underlinedA11y: "“{text}” underlined",
+			removedA11y: "Removed annotation from “{text}”",
+			clearedA11y: {
+				one: "{count} annotation cleared",
+				other: "{count} annotations cleared",
+			},
 		},
 		theme: {
 			name: "Theme",

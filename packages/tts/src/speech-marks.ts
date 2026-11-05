@@ -1,9 +1,35 @@
 /**
  * Speech marks utilities
- * @module @pie-players/tts-server-core
+ * @module @pie-players/pie-tts
+ *
+ * The word-timing wire format and its correction, shared by every provider and
+ * transport that speaks it — the browser client parsing a server response and
+ * the server providers producing one. They live in the contract package so the
+ * correction is applied once rather than reimplemented per side, and so the
+ * browser client does not have to import a package named "server-core" for
+ * three pure text functions.
  */
 
-import type { SpeechMark } from "./types.js";
+/**
+ * Speech mark representing a timing event in synthesized speech
+ * Unified format across all TTS providers
+ */
+export interface SpeechMark {
+	/** Milliseconds from start of audio */
+	time: number;
+
+	/** Type of speech mark */
+	type: "word" | "sentence" | "ssml";
+
+	/** UTF-16 index into the request text (inclusive) */
+	start: number;
+
+	/** UTF-16 index into the request text (exclusive) */
+	end: number;
+
+	/** The actual word or text */
+	value: string;
+}
 
 // A mark as a wire format carries it, before `type` is narrowed.
 type WireSpeechMark = Omit<SpeechMark, "type"> & { type: string };

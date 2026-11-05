@@ -33,10 +33,8 @@ import {
 	ToolPolicyEngine,
 } from "@pie-players/pie-assessment-toolkit/policy/engine";
 import { AccessibilityCatalogResolver } from "@pie-players/pie-assessment-toolkit/services/AccessibilityCatalogResolver";
-import {
-	CONTENT_ALTERNATE_REGISTRATIONS,
-	CONTENT_LEAD_SURFACE,
-} from "@pie-players/pie-default-tool-loaders";
+import { CONTENT_LEAD_SURFACE } from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { CONTENT_ALTERNATE_REGISTRATIONS } from "@pie-players/pie-default-tool-loaders";
 import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 import type {
 	AccessibilityCatalog,

@@ -10,7 +10,20 @@ Portuguese**, the register of Brazilian edtech and international schools.
   `Fechar`, `Buscar`, `Verificar resposta`.
 - Sentences prefer impersonal phrasing (`Não foi possível…`); possessives
   use `sua` where unavoidable (`Suas respostas salvas…`).
+- State-change announcements (a calculator opening, a tool moving or
+  rotating) take the impersonal event form — `A calculadora básica foi
+  aberta`, `Deslocamento para cima até {position}`, `Rotação para {degrees}
+  graus` — never a bare gendered participle (`Calculadora básica aberta`,
+  `Movido…`), which reads as a state and genders the tool.
 - Whole sentences authored whole; no fragment assembly.
+
+## Gender
+
+- Genderless enums take the unmarked masculine: `all` = Todos, `none` =
+  Nenhum. Never presume the referent's gender.
+- Where a form agrees with a fixed grammatical subject, it follows that
+  subject: `(riscada)` agrees with `alternativa`, `foi fechada` agrees with
+  `a calculadora`.
 
 ## Terminology
 
@@ -19,6 +32,8 @@ Portuguese**, the register of Brazilian edtech and international schools.
 | question | pergunta | questions = perguntas; learner regions show perguntas |
 | passage | texto | a reading passage |
 | section | seção | |
+| assessment | avaliação | `loadFailed`, dictionary `notConfigured`, `showAssessmentRequest` |
+| toolkit (the package, in prose) | conjunto de ferramentas | never the loanword `toolkit`; code identifiers (`assessment`, `updateAssessment(...)`, `requiredTools`) stay verbatim |
 | submit | Entregar | assessment register |
 | finish | Finalizar | |
 | check answer | Verificar resposta | |
@@ -30,15 +45,15 @@ Portuguese**, the register of Brazilian edtech and international schools.
 | coordinate plane | plano cartesiano | Brazilian math register |
 | grid | grade | |
 | line (mode) | Reta | the math object |
-| periodic table | Tabela Periódica | |
+| periodic table | Tabela periódica | sentence case, like every pt-BR label |
 | metalloid | Semimetal | the Brazilian chemistry term |
-| atomic number | Número Atômico | spelled out for screen readers |
+| atomic number | Número atômico | spelled out for screen readers; sentence-internal field labels lowercase (`número atômico:`) |
 | ruler | Régua | |
 | inches / centimeters | Polegadas / Centímetros | |
 | protractor | Transferidor | the school instrument |
 | dictionary | Dicionário | |
 | picture dictionary | Dicionário de imagens | |
-| entry (dictionary) | entrada | `{count} entradas` |
+| entry (dictionary) | entrada | `{count} entradas`; a miss is singular: `Nenhuma entrada para…` |
 | Spanish (language name) | espanhol | `Dicionário em espanhol` |
 | line reader | Leitor de linhas | |
 | magnifier | Lupa | |
@@ -49,12 +64,22 @@ Portuguese**, the register of Brazilian edtech and international schools.
 | theme | Tema | |
 | text to speech | Ler em voz alta | read-aloud phrasing |
 | playback speed | Velocidade de leitura | |
+| rewind | Retroceder | the media-control verb; `Voltar` reads as navigation |
 | sign language | Língua de sinais | |
 | audio transcript | Transcrição de áudio | |
 | strike through | Riscar | the answer-eliminator action |
 | pixels | pixels | |
 | degrees | graus | keep the `°` glyph |
 | voice (TTS) | voz | |
+
+## Vocabulary pins
+
+- The gas phase value is the noun `Gas`, like Sólido and Líquido, not the
+  adjective `Gasoso`.
+- Toggle states read `Ativado`/`Desativado`; `Desligado` is a powered-off
+  device, not a UI state.
+- Eye strain in the theme hint is `fadiga visual`, the standard pt-BR term,
+  not `cansaço visual`.
 
 ## Untranslated product names
 

@@ -5,12 +5,15 @@ import type {
 } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 import { isPlainRecord } from "@pie-players/pie-players-shared/object";
+import type { SessionSnapshotConfig } from "@pie-players/pie-players-shared/pie";
+import type { ItemMarkupSanitizer } from "@pie-players/pie-players-shared/security";
 
 type DeliveryConfig = NonNullable<BackendConfig["delivery"]>;
 type AuthoringConfig = NonNullable<BackendConfig["authoring"]>;
 type EndpointMap = NonNullable<DeliveryConfig["endpoints"]>;
 
-export type SectionPlayerBackendResolverContext = {
+/** The item a per-item `runtime.player` callback is called for. */
+export type SectionPlayerItemContext = {
 	itemId: string;
 	canonicalItemId: string;
 	item: ItemEntity;
@@ -18,6 +21,9 @@ export type SectionPlayerBackendResolverContext = {
 	itemSession?: Record<string, unknown>;
 	sectionId?: string;
 	env: Record<string, unknown>;
+};
+
+export type SectionPlayerBackendResolverContext = SectionPlayerItemContext & {
 	baseBackend: BackendConfig;
 };
 
@@ -26,16 +32,45 @@ export type SectionPlayerBackendResolver = (
 	baseBackend: BackendConfig,
 ) => BackendConfig | null | undefined;
 
-export type SectionPlayerRuntimePlayerConfig = Omit<
+/**
+ * The `<pie-item-player>` properties a host sets on a section's item players,
+ * each with the item player's meaning. `baseHeadingLevel` and
+ * `includeSrHeading` override the card's heading context.
+ */
+export type SectionPlayerItemPlayerProps = Omit<
 	PlayerOverrides,
-	"backend" | "resolveBackend"
+	"backend"
 > & {
 	backend?: BackendConfig | null;
-	resolveBackend?: SectionPlayerBackendResolver;
-	/** Each item player's `idleSaveDelayMs`. */
-	idleSaveDelayMs?: number;
-	/** Each item player's `addCorrectResponse`. */
 	addCorrectResponse?: boolean;
+	idleSaveDelayMs?: number;
+	sessionSnapshot?: SessionSnapshotConfig | null;
+	showBottomBorder?: boolean;
+	debug?: string | boolean;
+	customClassName?: string;
+	containerClass?: string;
+	externalStyleUrls?: string;
+	allowedStyleOrigins?: string;
+	allowedResize?: boolean;
+	autoplayAudioEnabled?: boolean;
+	trustMarkup?: boolean;
+	sanitizeMarkup?: ItemMarkupSanitizer | null;
+	baseHeadingLevel?: 1 | 2 | 3 | 4 | 5 | 6;
+	includeSrHeading?: boolean;
+};
+
+/**
+ * Props for one item's player, over the section-wide ones. A `backend` here is
+ * that item's base backend, which `resolveBackend` still refines; `null` gives
+ * the item none.
+ */
+export type SectionPlayerItemPropsResolver = (
+	context: SectionPlayerItemContext,
+) => SectionPlayerItemPlayerProps | null | undefined;
+
+export type SectionPlayerRuntimePlayerConfig = SectionPlayerItemPlayerProps & {
+	resolveBackend?: SectionPlayerBackendResolver;
+	resolveItemProps?: SectionPlayerItemPropsResolver;
 };
 
 export type SectionPlayerRuntimeConfig = Omit<RuntimeConfig, "player"> & {
@@ -255,16 +290,33 @@ export function resolveItemPlayerPropsWithBackend(
 	args: ResolveItemPlayerBackendPropsArgs,
 ): Record<string, unknown> {
 	const {
-		backend: rawBackend,
+		backend: sectionBackend,
 		resolveBackend,
-		...forwardedProps
+		resolveItemProps,
+		...sectionProps
 	} = args.resolvedPlayerProps as SectionPlayerRuntimePlayerConfig;
+
+	const itemId = String(args.item?.id || "");
+	const itemContext: SectionPlayerItemContext = {
+		itemId,
+		canonicalItemId: args.canonicalItemId,
+		item: args.item,
+		itemIndex: args.itemIndex ?? 0,
+		itemSession: args.itemSession,
+		sectionId: args.sectionId,
+		env: args.env,
+	};
+	const {
+		backend: itemBackend,
+		...itemProps
+	} = readItemProps(resolveItemProps, itemContext);
+	const forwardedProps = { ...sectionProps, ...itemProps };
+	const rawBackend = itemBackend === undefined ? sectionBackend : itemBackend;
 
 	if (!rawBackend || !isPlainRecord(rawBackend)) {
 		return forwardedProps;
 	}
 
-	const itemId = String(args.item?.id || "");
 	const baseBackend = withDefaultDeliveryIdentity({
 		backend: rawBackend,
 		itemId,
@@ -276,16 +328,7 @@ export function resolveItemPlayerPropsWithBackend(
 	if (typeof resolveBackend === "function") {
 		const resolverBase = cloneBackendConfig(baseBackend);
 		const resolved = resolveBackend(
-			{
-				itemId,
-				canonicalItemId: args.canonicalItemId,
-				item: args.item,
-				itemIndex: args.itemIndex ?? 0,
-				itemSession: args.itemSession,
-				sectionId: args.sectionId,
-				env: args.env,
-				baseBackend: resolverBase,
-			},
+			{ ...itemContext, baseBackend: resolverBase },
 			resolverBase,
 		);
 		if (resolved && isPlainRecord(resolved)) {
@@ -299,12 +342,35 @@ export function resolveItemPlayerPropsWithBackend(
 	};
 }
 
+/**
+ * A `resolveItemProps` result without the keys it cannot set: the callbacks,
+ * which are section-wide, and the inputs the section derives.
+ */
+function readItemProps(
+	resolveItemProps: SectionPlayerItemPropsResolver | undefined,
+	context: SectionPlayerItemContext,
+): Record<string, unknown> {
+	if (typeof resolveItemProps !== "function") return {};
+	const resolved = resolveItemProps(context);
+	if (!resolved || !isPlainRecord(resolved)) return {};
+	const {
+		resolveBackend: _resolveBackend,
+		resolveItemProps: _resolveItemProps,
+		config: _config,
+		env: _env,
+		session: _session,
+		...props
+	} = resolved as Record<string, unknown>;
+	return props;
+}
+
 export function stripItemDeliveryBackendProps(
 	resolvedPlayerProps: Record<string, unknown>,
 ): Record<string, unknown> {
 	const {
 		backend: rawBackend,
 		resolveBackend: _resolveBackend,
+		resolveItemProps: _resolveItemProps,
 		...forwardedProps
 	} = resolvedPlayerProps as SectionPlayerRuntimePlayerConfig;
 	if (!rawBackend || !isPlainRecord(rawBackend)) {

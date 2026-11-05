@@ -47,6 +47,38 @@ test.describe("PNP tools debugger", () => {
 		await expect(calculatorButton).toBeVisible();
 	});
 
+	test("toggles report their state and style themselves, from the keyboard too", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		// A host rule for the generic names the panel used to carry.
+		await page.addStyleTag({
+			content: ".active, .danger { outline: 7px solid rgb(255, 0, 0) !important; }",
+		});
+		const panel = await openPnpToolsEditor(page);
+		const toggle = panel.getByTestId("pnp-tool-toggle-graph-section");
+
+		await expect(toggle).toHaveAttribute("aria-pressed", "true");
+		const pressedWeight = await toggle.evaluate(
+			(el) => getComputedStyle(el).fontWeight,
+		);
+		expect(pressedWeight).toBe("600");
+		expect(await toggle.evaluate((el) => getComputedStyle(el).outlineWidth)).not.toBe(
+			"7px",
+		);
+
+		await toggle.focus();
+		await page.keyboard.press("Space");
+		await expect(toggle).toHaveAttribute("aria-pressed", "false");
+		await expect(graphButton(page)).toHaveCount(0);
+		expect(await toggle.evaluate((el) => getComputedStyle(el).fontWeight)).not.toBe(
+			pressedWeight,
+		);
+		await page.keyboard.press("Enter");
+		await expect(toggle).toHaveAttribute("aria-pressed", "true");
+		await expect(graphButton(page)).toBeVisible();
+	});
+
 	test("applies PNP prohibitions only when enforcement is active", async ({
 		page,
 	}) => {

@@ -1,5 +1,7 @@
 /**
- * Arabic message catalog — machine-generated, not reviewed.
+ * Arabic message catalog — reviewed (agent string pass 2026-11-03; promotion
+ * waited on the RTL layout audit, which landed 2026-11-04; see `reviewedBy`
+ * in `catalog-manifest.json`).
  *
  * Serves every Arabic host: registered under the bare `ar` tag, so `ar`,
  * `ar-SA`, `ar-AE` and `ar-EG` all widen to it. Content flavour is Modern
@@ -10,9 +12,11 @@
  * interpolation contract stays identical across locales.
  *
  * Arabic is RTL; `dir` comes from the provider (`localeDirection`), never
- * from this data. Provenance — the source hash, model and generation date —
- * is recorded in `catalog-manifest.json`; `scripts/check-catalogs.ts` fails
- * this file against the English source when either drifts.
+ * from this data. Regeneration is surgical, never wholesale:
+ * `scripts/check-catalogs.ts` diffs the English snapshot
+ * (`ar.english-snapshot.json`) against the live `en-US` source and lists
+ * exactly the keys whose English moved; translate only those, keep every
+ * reviewed string, then refresh the snapshot per the package README.
  *
  * @module @pie-players/pie-i18n-generated/messages/ar
  */
@@ -37,7 +41,7 @@ const ar = {
 		off: "إيقاف",
 		auto: "تلقائي",
 		all: "الكل",
-		none: "بلا",
+		none: "لا شيء",
 		loading: "جارٍ التحميل…",
 		error: "خطأ",
 		settings: "الإعدادات",
@@ -66,7 +70,7 @@ const ar = {
 		summary: {
 			correctA11y: "الإجابة الصحيحة",
 			answer: "الإجابة",
-			manualScoring: "تم تصحيحه من قبل معلم",
+			manualScoring: "تم تصحيحه بواسطة معلم",
 			audio: "صوت",
 			video: "فيديو",
 		},
@@ -122,19 +126,19 @@ const ar = {
 				one: "تبقت محاولة واحدة ({count}).",
 				two: "تبقت محاولتان ({count}).",
 				few: "تبقت {count} محاولات.",
-				many: "تبقّى {count} محاولة.",
-				other: "تبقّى {count} محاولة.",
+				many: "تبقّت {count} محاولة.",
+				other: "تبقّت {count} محاولة.",
 			},
 		},
 
 		timedMedia: {
-			waitingForMedia: "ستظهر الأسئلة أثناء تشغيل الوسيط.",
+			waitingForMedia: "ستظهر الأسئلة أثناء تشغيل الوسائط.",
 			questionAvailable: "السؤال {position} متاح الآن.",
 			playbackPaused:
 				"توقف التشغيل مؤقتًا. أجب عن السؤال {position} للمتابعة.",
 			playbackAdvisory:
-				"أجب عن السؤال {position} قبل متابعة تشغيل الوسيط.",
-			playbackReleased: "قُبلت الإجابة. تابع تشغيل الوسيط.",
+				"أجب عن السؤال {position} قبل متابعة تشغيل الوسائط.",
+			playbackReleased: "قُبلت الإجابة. تابع تشغيل الوسائط.",
 		},
 	},
 
@@ -295,7 +299,7 @@ const ar = {
 			notConfigured: "لا توجد خدمة قاموس مهيأة لهذا الاختبار.",
 			idleHint: "اكتب كلمة للبحث عن تعريفها.",
 			lookingUp: "جارٍ البحث عن «{term}»…",
-			noEntryFor: "لا مدخلات لـ«{term}».",
+			noEntryFor: "لا مُدخل لـ«{term}».",
 			entriesCount: {
 				zero: "{count} مُدخلات",
 				one: "مُدخل واحد ({count})",
@@ -304,7 +308,7 @@ const ar = {
 				many: "{count} مُدخلًا",
 				other: "{count} مُدخل",
 			},
-			noEntryStatusFor: "لا مدخلات قاموس لـ{term}.",
+			noEntryStatusFor: "لا مُدخل قاموس لـ{term}.",
 		},
 		pictureDictionary: {
 			name: "القاموس المصور",
@@ -315,7 +319,7 @@ const ar = {
 			notConfigured: "لا توجد خدمة قاموس مصور مهيأة لهذا الاختبار.",
 			idleHint: "اكتب كلمة لرؤية صورة لها.",
 			lookingUp: "جارٍ البحث عن «{term}»…",
-			noEntryFor: "لا صور لـ«{term}».",
+			noEntryFor: "لا صورة لـ«{term}».",
 			entriesCount: {
 				zero: "{count} صور",
 				one: "صورة واحدة ({count})",
@@ -324,7 +328,7 @@ const ar = {
 				many: "{count} صورة",
 				other: "{count} صورة",
 			},
-			noEntryStatusFor: "لا صور لـ{term}.",
+			noEntryStatusFor: "لا صورة لـ{term}.",
 		},
 		dictionarySpanish: {
 			name: "القاموس الإسباني",
@@ -420,6 +424,22 @@ const ar = {
 			highlightPinkA11y: "تظليل وردي",
 			highlightBlueA11y: "تظليل أزرق",
 			highlightGreenA11y: "تظليل أخضر",
+			selectionAvailableA11y:
+				"شريط أدوات التعليق متاح لـ«{text}». اضغط Shift+F10 لأدوات التعليق.",
+			highlightedYellowA11y: "تم تظليل «{text}» باللون الأصفر",
+			highlightedPinkA11y: "تم تظليل «{text}» باللون الوردي",
+			highlightedBlueA11y: "تم تظليل «{text}» باللون الأزرق",
+			highlightedGreenA11y: "تم تظليل «{text}» باللون الأخضر",
+			underlinedA11y: "تم وضع خط تحت «{text}»",
+			removedA11y: "تمت إزالة التعليق من «{text}»",
+			clearedA11y: {
+				zero: "لم يُمسح أي تعليق ({count})",
+				one: "تم مسح تعليق واحد ({count})",
+				two: "تم مسح تعليقين ({count})",
+				few: "تم مسح {count} تعليقات",
+				many: "تم مسح {count} تعليقًا",
+				other: "تم مسح {count} تعليق",
+			},
 		},
 		theme: {
 			name: "المظهر",

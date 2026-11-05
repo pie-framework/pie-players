@@ -173,7 +173,7 @@ const tabButton = (panel: Element, label: string) =>
 		(button) => button.textContent?.trim() === label,
 	);
 const errorAlerts = (panel: Element) =>
-	Array.from(panel.querySelectorAll(".alert-error")).map((alert) =>
+	Array.from(panel.querySelectorAll(".pie-tts-alert-error")).map((alert) =>
 		alert.textContent?.trim(),
 	);
 const storedSettings = () =>

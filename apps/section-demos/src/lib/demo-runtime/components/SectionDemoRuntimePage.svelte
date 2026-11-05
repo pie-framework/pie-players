@@ -91,23 +91,26 @@
 	const playerLocale = $derived(
 		localeSwitcher ? (demoLocale() || 'en-US') : ''
 	);
-	// The provider behind the switcher, handed to the player through
-	// `runtime.i18n`: bundled catalogs first, the generated tier behind them, and
-	// the pseudo-locales as host messages. Built once, asynchronously, because
-	// the pseudo-localized catalog derives from the bundled English one. Until it
-	// is resident the player builds its own, which renders the same English.
+	// The provider handed to the player through `runtime.i18n`: bundled catalogs
+	// first, the generated tier behind them, and the pseudo-locales as host
+	// messages. Built once for every demo, asynchronously, because the
+	// pseudo-localized catalog derives from the bundled English one. Until it is
+	// resident the player builds its own, which renders the same English.
+	//
+	// Every demo supplies it since the bundled set narrowed to `en-US`: a demo
+	// that passes no locale resolves `en-US` exactly as before (the provider
+	// idles at its default), while a locale named on a layout — the way a host
+	// opts in — reaches Dutch and the rest of the tier through this provider.
 	let demoInterfaceI18n = $state<I18nServiceApi | null>(null);
 	$effect(() => {
-		if (!localeSwitcher || demoInterfaceI18n) return;
+		if (demoInterfaceI18n) return;
 		void createDemoInterfaceI18n()
 			.then((provider) => {
 				demoInterfaceI18n = provider;
 			})
 			.catch(() => {});
 	});
-	const runtimeI18n = $derived(
-		localeSwitcher ? (demoInterfaceI18n ?? undefined) : undefined
-	);
+	const runtimeI18n = $derived(demoInterfaceI18n ?? undefined);
 	const demoRuntimeId = untrack(() => data.demo?.id ?? 'section-demo');
 	const itemDataCalculatorEnabled = untrack(
 		() =>

@@ -1,5 +1,12 @@
 /**
- * Dutch (Netherlands) message catalog.
+ * Dutch (Netherlands) message catalog — reviewed (native-speaker audit; see
+ * `reviewedBy` in `catalog-manifest.json`).
+ *
+ * This is the framework's audit language: the only catalog a native speaker
+ * with assessment-domain context has read line by line, and the ground truth
+ * the generation pipeline's calibration report measures against. It moved here
+ * from `players-shared`'s bundled set on 2026-11-04, when only `en-US` stayed
+ * bundled — content is the audited catalog verbatim, carried over unchanged.
  *
  * Complete against `en-US`. Register terminology follows what Dutch assessment
  * software actually shows a learner, not a literal rendering of the English:
@@ -11,7 +18,13 @@
  * Product names stay untranslated: Polly, Google Cloud TTS, WaveNet, Desmos,
  * PIE, SSML, PNP.
  *
- * @module @pie-players/pie-players-shared/i18n/messages/nl-NL
+ * Regeneration is surgical, never wholesale: `scripts/check-catalogs.ts`
+ * diffs the English snapshot (`nl-NL.english-snapshot.json`) against the live
+ * `en-US` source and lists exactly the keys whose English moved; translate
+ * only those, keep every reviewed string, then refresh the snapshot per the
+ * package README.
+ *
+ * @module @pie-players/pie-i18n-generated/messages/nl-NL
  */
 
 const nlNL = {
@@ -412,6 +425,18 @@ const nlNL = {
 			highlightPinkA11y: "Roze markeren",
 			highlightBlueA11y: "Blauw markeren",
 			highlightGreenA11y: "Groen markeren",
+			selectionAvailableA11y:
+				"Werkbalk voor aantekeningen beschikbaar voor “{text}”. Druk op Shift+F10 voor de aantekeninghulpmiddelen.",
+			highlightedYellowA11y: "“{text}” geel gemarkeerd",
+			highlightedPinkA11y: "“{text}” roze gemarkeerd",
+			highlightedBlueA11y: "“{text}” blauw gemarkeerd",
+			highlightedGreenA11y: "“{text}” groen gemarkeerd",
+			underlinedA11y: "“{text}” onderstreept",
+			removedA11y: "Aantekening verwijderd van “{text}”",
+			clearedA11y: {
+				one: "{count} aantekening gewist",
+				other: "{count} aantekeningen gewist",
+			},
 		},
 		theme: {
 			name: "Thema",

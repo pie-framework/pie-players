@@ -327,6 +327,51 @@ export class WidgetElement extends HTMLElement {
 		expect(module.exports.map((entry) => entry.kind)).toEqual(["custom-element-definition", "js"]);
 	});
 
+	test("records the classes a light-DOM class element writes from script", () => {
+		const root = fixture({
+			"packages/sheet/package.json": packageJson("@pie-players/sheet", {
+				".": "./dist/index.js",
+			}),
+			"packages/sheet/src/index.ts": `import { SheetElement } from "./sheet-element.js";
+customElements.define("pie-sheet", SheetElement);
+`,
+			"packages/sheet/src/sheet-element.ts": `/**
+ * A sheet.
+ */
+export class SheetElement extends HTMLElement {
+	#render(status: string): void {
+		const body = document.createElement("div");
+		body.className = "pie-sheet pie-sheet__body";
+		body.classList.add("pie-sheet--" + status, "plain");
+		const note = document.createElement("p");
+		note.className = \`\${status === "bad" ? "pie-sheet--warning" : "pie-sheet--ok"} pie-note\`;
+		note.classList.toggle("pie-sheet--hidden", status === "bad");
+		body.append(note);
+		this.append(body);
+	}
+
+	connectedCallback() {
+		this.#render("ok");
+	}
+}
+`,
+		});
+		const { manifests, problems } = buildManifests(root);
+		expect(problems).toEqual([]);
+		const [element] = declarationsOf(manifests.get("@pie-players/sheet").manifest);
+		expect(element["x-pie"]).toEqual({
+			shadow: "none",
+			classes: [
+				"pie-note",
+				"pie-sheet",
+				"pie-sheet--hidden",
+				"pie-sheet--ok",
+				"pie-sheet--warning",
+				"pie-sheet__body",
+			],
+		});
+	});
+
 	test("finds events dispatched from the template and through a class's own methods", () => {
 		const root = fixture({
 			"packages/dialog/package.json": packageJson("@pie-players/dialog", {

@@ -14,11 +14,19 @@
  * should not have had it.
  *
  * Scope is a named list of files, not the whole package. The toolkit legitimately
- * still contains TTS-specific code (`TTSService`, `services/tts/**`) and the TTS
- * provider, and moving those is separate, larger work.
- * The files below are the ones whose whole job is to be capability-agnostic:
- * policy decisions, the registry, catalog resolution, tools-config validation and
- * the registry/tag factories.
+ * still contains TTS-specific code (`TTSService`, `services/tts/**`, which owns
+ * the whole TTS lifecycle the coordinator once inlined, `support-conflicts.ts`
+ * and `tool-provider-defaults.ts`, whose job is to name what they name) and the
+ * TTS provider. The files below are the ones whose whole job is to be
+ * capability-agnostic: policy decisions, the registry, catalog resolution,
+ * tools-config validation and normalization, the built-in icon names, the
+ * registry/tag factories — and the coordinator,
+ * whose TTS-specific internals moved to `services/tts/tts-lifecycle.ts` so it
+ * could be held to that; its public read-aloud-typed config accessors take
+ * their literal from `TTS_TOOL_ID`, so no quoted id remains to allow-list.
+ * That import channel is type-position only (`typeof TTS_TOOL_ID`); importing
+ * the constant for a runtime comparison would name the capability just as a
+ * quoted string would, and belongs in `services/tts/`.
  *
  * Comments are exempt. A comment naming a capability is usually explaining why
  * the code no longer does, and gating prose would push authors toward vaguer
@@ -137,6 +145,9 @@ const SCOPED_TARGETS = [
 	{ file: path.join(TOOLKIT_SRC, "services", "tool-config-validation.ts") },
 	{ file: path.join(TOOLKIT_SRC, "services", "tool-config-defaults.ts") },
 	{ file: path.join(TOOLKIT_SRC, "services", "tool-context.ts") },
+	{ file: path.join(TOOLKIT_SRC, "services", "tool-icons.ts") },
+	{ file: path.join(TOOLKIT_SRC, "services", "tools-config-normalizer.ts") },
+	{ file: path.join(TOOLKIT_SRC, "services", "ToolkitCoordinator.ts") },
 	{ file: path.join(TOOLKIT_SRC, "tools", "tool-tag-map.ts") },
 	{ file: path.join(TOOLKIT_SRC, "components", "ItemToolBar.svelte") },
 	{ file: path.join(TOOLKIT_SRC, "components", "SectionToolBar.svelte") },

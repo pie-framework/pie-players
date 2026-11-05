@@ -42,6 +42,8 @@ import {
 } from "@pie-players/pie-players-shared/timed-media";
 import type {
 	SectionControllerHandle,
+	SectionItemScorer,
+	SectionScore,
 	SectionSessionPersistenceConfig,
 } from "./toolkit-section-contracts.js";
 import type { ItemEntity } from "@pie-players/pie-players-shared";
@@ -159,8 +161,10 @@ export class SectionController implements SectionControllerHandle {
 	private sessionPersistence: SectionSessionPersistenceConfig | null = null;
 	// Set by whatever owns the DOM. The controller stays DOM-free; this is how a
 	// boundary it decides — item navigation, a section swap, a persist — gets a
-	// pending element session committed before the state moves under it.
+	// pending element session committed before the state moves under it, and
+	// `score()` reaches the rendered item players.
 	private pendingSessionCommit: (() => void) | null = null;
+	private itemScorer: SectionItemScorer | null = null;
 	private saveQueue: Promise<void> = Promise.resolve();
 	private state: SectionControllerState = {
 		input: null,
@@ -257,6 +261,10 @@ export class SectionController implements SectionControllerHandle {
 		this.pendingSessionCommit = commit;
 	}
 
+	public commitPendingSessions(): void {
+		this.commitPendingItemSessions();
+	}
+
 	private commitPendingItemSessions(): void {
 		if (!this.pendingSessionCommit) return;
 		try {
@@ -264,6 +272,31 @@ export class SectionController implements SectionControllerHandle {
 		} catch (error) {
 			logger.warn("pending session commit failed", error);
 		}
+	}
+
+	public registerItemScorer(scorer: SectionItemScorer): () => void {
+		this.itemScorer = scorer;
+		return () => {
+			if (this.itemScorer === scorer) this.itemScorer = null;
+		};
+	}
+
+	public async score(): Promise<SectionScore> {
+		const scorer = this.itemScorer;
+		const items = await Promise.all(
+			this.state.viewModel.items.map(async (item) => {
+				const canonicalItemId = this.getCanonicalItemId(item.id || "");
+				if (!scorer) return { canonicalItemId, outcomes: null };
+				try {
+					const outcomes = await scorer(canonicalItemId);
+					return { canonicalItemId, outcomes: outcomes || null };
+				} catch (error) {
+					logger.warn("item scoring failed", canonicalItemId, error);
+					return { canonicalItemId, outcomes: null };
+				}
+			}),
+		);
+		return { items };
 	}
 
 	public async initialize(input?: unknown): Promise<void> {
@@ -376,6 +409,7 @@ export class SectionController implements SectionControllerHandle {
 
 	public dispose(): void {
 		this.pendingSessionCommit = null;
+		this.itemScorer = null;
 		this.clearMediaAttachWatch();
 		this.detachMediaTimeSource();
 		this.listeners.clear();

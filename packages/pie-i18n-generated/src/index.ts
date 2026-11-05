@@ -75,6 +75,50 @@ const GENERATED_CATALOG_LOADERS: Record<string, CatalogLoader> = {
 	cy: () => import("./messages/cy.js"),
 	sv: () => import("./messages/sv.js"),
 	ro: () => import("./messages/ro.js"),
+	// Bare tag: `vi-VN` widens to `vi`.
+	vi: () => import("./messages/vi.js"),
+	// Regional on purpose, like en-GB/en-AU: the framework's audit language,
+	// native-speaker-reviewed, carried over from players-shared's bundled set
+	// on 2026-11-04. A bare `nl` widens onto it through the host's composed
+	// availableLocales, and its absence from the bundled set means a host that
+	// never wires this package never fetches it.
+	"nl-NL": () => import("./messages/nl-NL.js"),
+	// Bare tags: `de-AT`/`de-CH` widen to `de`, `tr` covers `tr-TR`, `el` covers
+	// Greece and Cyprus, `uk` covers Ukrainian everywhere.
+	de: () => import("./messages/de.js"),
+	it: () => import("./messages/it.js"),
+	pl: () => import("./messages/pl.js"),
+	tr: () => import("./messages/tr.js"),
+	uk: () => import("./messages/uk.js"),
+	el: () => import("./messages/el.js"),
+	// The big-US wave: `ru` carries the Slavic four-category set; `ht` is
+	// Haitian Creole; `fil` is Filipino — one catalog. A host labeling delivery
+	// Tagalog names `fil` (the modern stack name) or aliases `tl` in its own
+	// composition; this package ships the single authored catalog.
+	ru: () => import("./messages/ru.js"),
+	fil: () => import("./messages/fil.js"),
+	ht: () => import("./messages/ht.js"),
+	// The second RTL wave: the framework's RTL layout contract is audited and
+	// pinned by section-player's geometry spec (see the ar locale), so these
+	// inherit a verified mirroring path. `he` carries a CLDR `two` category.
+	ur: () => import("./messages/ur.js"),
+	fa: () => import("./messages/fa.js"),
+	he: () => import("./messages/he.js"),
+	// Regional on purpose, like nl-NL: Taiwan-register Traditional Chinese.
+	// Bare `zh` stays Simplified; `zh-TW`/`zh-HK` widen onto this.
+	"zh-Hant": () => import("./messages/zh-Hant.js"),
+	// The state/regional US wave: mostly one/other or other-only plurals, and
+	// several non-Latin scripts (Khmer, Lao, Bengali, Gurmukhi, Ethiopic,
+	// Devanagari; White Hmong in RPA Latin). Briefs flag where assessment
+	// terminology is not standardized — native review strongly advised.
+	so: () => import("./messages/so.js"),
+	hmn: () => import("./messages/hmn.js"),
+	km: () => import("./messages/km.js"),
+	lo: () => import("./messages/lo.js"),
+	bn: () => import("./messages/bn.js"),
+	pa: () => import("./messages/pa.js"),
+	ne: () => import("./messages/ne.js"),
+	am: () => import("./messages/am.js"),
 };
 
 /**
@@ -97,6 +141,29 @@ export const GENERATED_LOCALES: readonly string[] = [
 	"cy",
 	"sv",
 	"ro",
+	"vi",
+	"nl-NL",
+	"de",
+	"it",
+	"pl",
+	"tr",
+	"uk",
+	"el",
+	"ru",
+	"fil",
+	"ht",
+	"ur",
+	"fa",
+	"he",
+	"zh-Hant",
+	"so",
+	"hmn",
+	"km",
+	"lo",
+	"bn",
+	"pa",
+	"ne",
+	"am",
 ];
 
 /**

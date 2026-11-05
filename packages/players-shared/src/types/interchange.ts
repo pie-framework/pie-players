@@ -45,8 +45,13 @@ export interface LanguagePolicy {
 	staleness: "serve" | "require-current";
 }
 
-/** Why the served content differs from what was requested. */
-export type ContentSubstitution = "fallback" | "stale";
+/**
+ * Why the served content differs from what was requested: `"fallback"`, not
+ * in a requested language; `"variety"`, in another variety of a requested
+ * language, such as `es-ES` for `es-MX`; `"stale"`, a translation of an older
+ * source release.
+ */
+export type ContentSubstitution = "fallback" | "stale" | "variety";
 
 /** The content version a backend served, and the language it served it in. */
 export interface ServedContentIdentity {

@@ -1,9 +1,9 @@
 /**
  * Speed-rate bucketing utility
- * @module @pie-players/tts-server-core
+ * @module @pie-players/pie-tts
  */
 
-export type SpeedRateBucket = "slow" | "medium" | "fast";
+import type { SpeedRateBucket } from "./provider-interface.js";
 
 /**
  * Bucket a numeric rate multiplier into the three-value vocabulary some

@@ -37,6 +37,7 @@
 	--pie-fixed-hue-collapse: 0%;
 	--pie-focus-checked: #bbdefb;
 	--pie-focus-checked-border: #1565c0;
+	--pie-focus-keyboard-outline: #0952c8;
 	--pie-focus-unchecked: #e0e0e0;
 	--pie-focus-unchecked-border: #757575;
 	--pie-font-scale: 1;
@@ -96,6 +97,7 @@
 	--pie-fixed-hue-collapse: 0%;
 	--pie-focus-checked: #ffff00;
 	--pie-focus-checked-border: #ffff00;
+	--pie-focus-keyboard-outline: #93c5fd;
 	--pie-focus-unchecked: #666666;
 	--pie-focus-unchecked-border: #ffffff;
 	--pie-font-scale: 1;

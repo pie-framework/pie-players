@@ -67,6 +67,15 @@ export type {
 } from "./content-capability-resolution.js";
 export { resolveContentCapabilities } from "./content-capability-resolution.js";
 
+// The surface ids a registration declares in `surfaces` and a renderer opens in
+// its own layout, one definition for both sides: a capability package cannot
+// import a player, and a renderer with no coordinator — print — cannot import
+// the composition layer for the packaged registrations'.
+export {
+	CONTENT_LEAD_SURFACE,
+	CONTENT_MEDIA_SURFACE,
+} from "./content-surfaces.js";
+
 // The mount/reconcile half of the same rule, for a renderer that opens a surface.
 // Section-player drives its overlay, card and media surfaces through this, so
 // discovery, lazy loading, DOM reconciliation and registry observation have one

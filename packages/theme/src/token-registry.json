@@ -651,6 +651,21 @@
 		"fallbackPolicy": "Canonical focus border token for checked controls."
 	},
 	{
+		"name": "--pie-focus-keyboard-outline",
+		"owner": "@pie-players/pie-theme",
+		"scope": "canonical-semantic",
+		"category": "focus",
+		"status": "active",
+		"schemeParticipation": "required",
+		"definedIn": [
+			"packages/theme/src/theme-definitions.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
+		"fallbackPolicy": "Keyboard focus ring for a control drawn on its own fill rather than the page, such as a keypad key; it holds 3:1 against the page and that fill. Implementations must fall back through --pie-focus-outline and --pie-button-focus-outline. A provider, custom scheme or explicit variable set that sets --pie-button-focus-outline alone gets the same value here, so existing palettes keep their focus colour."
+	},
+	{
 		"name": "--pie-focus-outline",
 		"owner": "@pie-players/pie-theme",
 		"scope": "canonical-semantic",

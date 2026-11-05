@@ -490,13 +490,34 @@ export function observePieColorSchemes(
 }
 
 /** Resolves Base Theme → Theme Provider → Scheme → Explicit Theme Override. */
+/**
+ * `--pie-focus-keyboard-outline` is read ahead of `--pie-button-focus-outline`
+ * by the controls that need a ring legible on their own fill, and every Base
+ * Theme sets it. A palette layered over a Base Theme that sets the button focus
+ * outline alone predates it, so the keyboard ring takes that value rather than
+ * staying on the Base Theme's.
+ */
+function followButtonFocusOutline<T extends Readonly<Record<string, string>>>(
+	layer: T,
+): T {
+	const button = layer["--pie-button-focus-outline"];
+	if (!button || layer["--pie-focus-keyboard-outline"]) {
+		return layer;
+	}
+	return { ...layer, "--pie-focus-keyboard-outline": button };
+}
+
 export function resolvePieTheme(
 	input: ResolvePieThemeInput = {},
 ): ThemeResolution {
 	const baseTheme = input.baseTheme === "dark" ? "dark" : "light";
 	const requestedScheme = normalizeRequestedScheme(input.requestedScheme);
-	const providerVariables = normalizePieThemeVariables(input.providerVariables);
-	const explicitVariables = normalizeExplicitVariables(input.variables);
+	const providerVariables = followButtonFocusOutline(
+		normalizePieThemeVariables(input.providerVariables),
+	);
+	const explicitVariables = followButtonFocusOutline(
+		normalizeExplicitVariables(input.variables),
+	);
 	const variables: ThemeVariables = {
 		...getBaseThemeVariables(baseTheme),
 		...providerVariables,
@@ -527,8 +548,9 @@ export function resolvePieTheme(
 			// overlay is applied after, so a scheme that wants a hue encoding kept
 			// declares `--pie-fixed-hue-collapse: 0%` itself.
 			variables["--pie-fixed-hue-collapse"] = "100%";
-			Object.assign(variables, custom.variables);
-			for (const token of Object.keys(custom.variables)) {
+			const customVariables = followButtonFocusOutline(custom.variables);
+			Object.assign(variables, customVariables);
+			for (const token of Object.keys(customVariables)) {
 				contrastRelevantTokens.add(token);
 			}
 			resolvedScheme = createCustomDescriptor(custom);
@@ -604,14 +626,18 @@ export function registerPieColorSchemes(
 			if (!validated.record) continue;
 			customSchemes.set(validated.record.id, validated.record);
 			installed.set(validated.record.id, validated.record.key);
+			// Validated as resolvePieTheme applies it.
+			const schemeVariables = followButtonFocusOutline(
+				validated.record.variables,
+			);
 			const resolved = {
 				...getBaseThemeVariables("light"),
-				...validated.record.variables,
+				...schemeVariables,
 			};
 			for (const item of diagnoseThemeContrast(
 				resolved,
 				validated.record.id,
-				new Set(Object.keys(validated.record.variables)),
+				new Set(Object.keys(schemeVariables)),
 			)) {
 				diagnostic({ ...item, index }, diagnostics);
 			}

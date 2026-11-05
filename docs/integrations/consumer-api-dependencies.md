@@ -1018,12 +1018,17 @@ Packages consumed:
 Host V pins an exact patch (`0.3.53` at last read), so it upgrades
 deliberately. Host P pins an exact preloaded build (`0.3.73-34b9257.1` at last
 read, a devDependency) and serves the copy committed under that version's name,
-so it also upgrades deliberately. Host A and Host R both use caret ranges on the
-`0.3.x` line (`^0.3.70` for Host A, locked at `0.3.70`, and `^0.3.71` for Host
-R, uniform across all 29 of its packages, at last read), so **every published
-patch reaches them on their next install** — a
-lockstep patch that changes behavior lands in live delivery without a code change
-on their side.
+so it also upgrades deliberately. Host A's main line uses a caret range on the
+`0.3.x` line (`^0.3.70`, locked at `0.3.70`, at last read), so **every published
+`0.3.x` patch reaches it on its next install** — a lockstep patch that changes
+behavior lands in live delivery without a code change on its side. A branch of
+that checkout moves it to the `1.0.0-beta` line: it pins all twelve of its
+packages exactly (`1.0.0-beta.7` on 2026-11-05) and declares
+`pie-tool-tts-inline` in place of the deprecated `pie-tool-text-to-speech`, so
+once that lands it upgrades deliberately, as Host S does. Host A's rows still
+come from its main line. Host R uses a caret range uniform across its packages
+(`^1.0.0-beta.8` on 2026-11-05), so every published prerelease reaches it on its
+next install.
 
 Host M pins a prerelease build exactly (`0.3.74-dev.1` at last read) of
 `pie-item-player`, `pie-theme` and `pie-players-shared`, installed from tarballs,

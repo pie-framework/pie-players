@@ -30,6 +30,22 @@ describe("check-deps import collection", () => {
 			"@pie-players/pie-calculator-desmos",
 		]);
 	});
+
+	test("collects a Svelte import that follows a line comment naming a /* glob", () => {
+		const source = `<script lang="ts">
+	// The CE build externalizes @pie-players/*, so this resolves as a bare import.
+	import { first } from "first-package";
+	import "@pie-players/pie-players-shared/nds-icon-button";
+	/* a later block comment */
+	import { last } from "last-package";
+</script>`;
+
+		expect(collectSpecifiers(source, "Toolbar.svelte").sort()).toEqual([
+			"@pie-players/pie-players-shared/nds-icon-button",
+			"first-package",
+			"last-package",
+		]);
+	});
 });
 
 describe("check-deps build-graph edges", () => {

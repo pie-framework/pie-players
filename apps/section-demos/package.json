@@ -11,7 +11,7 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"test": "bun test src",
+		"test": "bun test src tests",
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {

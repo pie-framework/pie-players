@@ -2,8 +2,10 @@
  * The Playwright suites the local PR gate runs, and how `scripts/run-local-e2e.mjs`
  * splits each one into its build and its run.
  *
- * Each suite is the root script `test:e2e:<suite>`, which CI's matrix also runs, and
- * must have the shape `bun run build:e2e:<x> && bun run test:e2e:<suite>:prebuilt`.
+ * Each suite is the root script `test:e2e:<suite>` and must have the shape
+ * `bun run build:e2e:<x> && bun run test:e2e:<suite>:prebuilt`. Every suite in CI's
+ * e2e matrix is one of them; CI also runs the sharded item-player and section-player
+ * jobs, of which `section-player:critical` here is a subset.
  * The local gate runs every build first, one at a time, then every `:prebuilt` run
  * concurrently. Builds go first because concurrent turbo runs race on restoring the
  * same `dist`, and section-demos reloads the page when a workspace `dist` changes
@@ -17,6 +19,7 @@ export const LOCAL_GATE_E2E_SUITES = [
 	"section-player:critical",
 	"print-player",
 	"players-shared",
+	"item-list",
 	"backend-demo",
 ];
 

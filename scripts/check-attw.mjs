@@ -12,10 +12,13 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { getWorkspaceDirs, mapConcurrent } from "./lib/pack-inspection.mjs";
+import {
+	getWorkspaceDirs,
+	mapConcurrent,
+	readPublishPolicy,
+} from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
-const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
 const ATTW_PARSE_RETRIES = 1;
 const DIAGNOSTIC_TAIL_LENGTH = 4000;
 const ATTW_ARGS = [
@@ -30,7 +33,7 @@ const ATTW_ARGS = [
 ];
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
-const policy = existsSync(POLICY_PATH) ? readJson(POLICY_PATH) : {};
+const policy = readPublishPolicy(ROOT);
 const WORKSPACE_ROOTS = Array.isArray(policy.workspaceRoots)
 	? policy.workspaceRoots
 	: ["packages"];

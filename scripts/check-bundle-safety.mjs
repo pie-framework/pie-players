@@ -8,6 +8,7 @@ import {
 	MATHJAX_3_SETUP_TEXT,
 } from "../packages/players-shared/math-rendering-module-deferral.mjs";
 import { SOURCE_MAP_COMMENT_TEXT } from "../packages/players-shared/source-map-comment-text.mjs";
+import { readPublishPolicy } from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
 const EVAL_REQUIRE_PATTERN = /eval\((["'])require\1\)/;
@@ -550,9 +551,7 @@ export function findUnresolvableBrowserSpecifiers(content, allowed = []) {
 }
 
 function readAllowedUndeclaredRuntimeImports(packageName) {
-	const policyPath = path.join(ROOT, "scripts", "publish-policy.json");
-	if (!existsSync(policyPath)) return [];
-	const policy = JSON.parse(readFileSync(policyPath, "utf8"));
+	const policy = readPublishPolicy(ROOT);
 	return policy.allowedUndeclaredRuntimeImports?.[packageName] ?? [];
 }
 

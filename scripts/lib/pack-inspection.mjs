@@ -15,9 +15,16 @@ export const toPosix = (value) =>
 export const readJson = (filePath) =>
 	JSON.parse(readFileSync(filePath, "utf8"));
 
+/**
+ * `scripts/publish-policy.json`. A missing file throws rather than reading as `{}`,
+ * because every check would then run against an empty policy and pass.
+ */
 export const readPublishPolicy = (root = process.cwd()) => {
 	const policyPath = path.join(root, "scripts", "publish-policy.json");
-	return existsSync(policyPath) ? readJson(policyPath) : {};
+	if (!existsSync(policyPath)) {
+		throw new Error(`publish policy is missing: ${policyPath}`);
+	}
+	return readJson(policyPath);
 };
 
 const requireStringArray = (policy, pathSegments) => {

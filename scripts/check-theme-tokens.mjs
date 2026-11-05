@@ -3,6 +3,8 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
+import { stripComments } from "./lib/strip-comments.mjs";
+
 const DEFAULT_ROOT = process.cwd();
 const THEME_DEFINITIONS_PATH = "packages/theme/src/theme-definitions.ts";
 const TOKENS_CSS_PATH = "packages/theme/src/tokens.css";
@@ -455,14 +457,6 @@ const NDS_MOUNT_PATTERNS = [
 	/createElement\(\s*["']nds-icon-button["']/,
 ];
 
-/** Comment text mentions the tag far more often than markup mounts it. */
-function stripComments(source) {
-	return source
-		.replace(/\/\*[\s\S]*?\*\//g, " ")
-		.replace(/<!--[\s\S]*?-->/g, " ")
-		.replace(/(^|[^:])\/\/[^\n]*/g, "$1 ");
-}
-
 function checkNdsPaletteBridge(root, failures) {
 	for (const usageRoot of SOURCE_USAGE_ROOTS) {
 		walkFiles(root, usageRoot, (absPath) => {
@@ -470,6 +464,7 @@ function checkNdsPaletteBridge(root, failures) {
 			const relPath = rel(root, absPath);
 			const source = readFileSync(absPath, "utf8");
 			if (!source.includes("nds-icon-button")) return;
+			// Comment text mentions the tag far more often than markup mounts it.
 			const code = stripComments(source);
 			if (!NDS_MOUNT_PATTERNS.some((pattern) => pattern.test(code))) return;
 

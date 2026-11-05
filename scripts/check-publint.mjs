@@ -5,10 +5,9 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { builtinModules } from "node:module";
 import path from "node:path";
 
-import { getWorkspaceDirs } from "./lib/pack-inspection.mjs";
+import { getWorkspaceDirs, readPublishPolicy } from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
-const POLICY_PATH = path.join(ROOT, "scripts", "publish-policy.json");
 const BUNDLED_IMPORT_PROTOCOLS = ["node:", "bun:", "virtual:", "vite/"];
 const BUILTIN_SPECIFIERS = new Set(
 	builtinModules
@@ -19,9 +18,7 @@ const BUILTIN_SPECIFIERS = new Set(
 		])
 		.filter(Boolean),
 );
-const policy = existsSync(POLICY_PATH)
-	? JSON.parse(readFileSync(POLICY_PATH, "utf8"))
-	: {};
+const policy = readPublishPolicy(ROOT);
 const allowedUndeclaredRuntimeImportsByPackage = new Map(
 	Object.entries(policy.allowedUndeclaredRuntimeImports || {}).map(
 		([packageName, imports]) => [

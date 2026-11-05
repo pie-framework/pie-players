@@ -47,6 +47,8 @@ const requiredCiLintTypecheckCommands = [
 	"check:ce-define-safety",
 	"check:speech-composition-purity",
 	"check:api-report",
+	"check:theme-tokens",
+	"check:css-import-delivery",
 	"check:scripts",
 	"build",
 	// Reads build output, so it must follow the build: ahead of it, it reads a
@@ -190,6 +192,33 @@ export function collectGateFailures({
 	}
 	failures.push(...planLocalE2e(scripts, localE2eSuites).failures);
 
+	// Every suite in CI's e2e matrix also runs before push, so a failure there is
+	// never the first anyone hears of it. A required suite is reported above.
+	// The value may be quoted or followed by a comment, as YAML allows.
+	const ciMatrixSuites = Array.from(
+		ciWorkflow.matchAll(
+			/^\s*(?:-\s+)?command:\s*(["']?)test:e2e:([\w:-]+)\1\s*(?:#.*)?$/gm,
+		),
+		(match) => match[2],
+	);
+	// Reading no suite at all means the matrix changed shape, not that it is empty;
+	// passing then would compare the local gate with nothing.
+	if (ciMatrixSuites.length === 0) {
+		failures.push(
+			"Found no `command: test:e2e:<suite>` entry in CI's e2e matrix to compare the local gate with.",
+		);
+	}
+	for (const suite of ciMatrixSuites) {
+		if (
+			!localE2eSuites.includes(suite) &&
+			!requiredLocalE2eSuites.includes(suite)
+		) {
+			failures.push(
+				`test:e2e:local-gate does not run "test:e2e:${suite}", which CI's e2e matrix runs.`,
+			);
+		}
+	}
+
 	// The pre-push hook reaches verify:pre-push through scripts/pre-push-gate.mjs, which
 	// skips the gate for pushes that carry no new commits. That indirection is only safe
 	// while every link holds, so assert each one: the hook runs the wrapper as a script
@@ -299,6 +328,4 @@ function main() {
 	);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
-	main();
-}
+if (import.meta.main) main();

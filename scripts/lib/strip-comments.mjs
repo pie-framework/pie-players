@@ -11,6 +11,12 @@
  * comments first has the mirror-image flaw, so neither order is correct.
  *
  * Newlines are preserved so reported positions still line up with the source.
+ *
+ * Regular-expression literals are not recognised. A quote inside one (`/"/`) reads
+ * as the start of a string, and once a later string holds `/*`
+ * (`"@pie-players/*"`), everything up to the next close is blanked as a comment. A
+ * checker that cannot afford that parses the source instead, as `check-deps` does
+ * for TypeScript.
  */
 export function stripComments(source) {
 	let out = "";

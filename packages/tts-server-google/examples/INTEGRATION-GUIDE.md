@@ -85,7 +85,7 @@ export async function getGoogleProvider(): Promise<GoogleCloudTTSProvider> {
 ```
 
 The routes also call the guards in `src/lib/server/tts-guards.ts`. Create that
-module as the Polly guide's [shared guards](../../tts-server-polly/examples/INTEGRATION-GUIDE.md#shared-guards-required)
+module as the Polly guide's [shared guards](../../tts-server-polly/examples/INTEGRATION-GUIDE.md#guards-required)
 section shows; it is provider-neutral. Every route reaches Google on every
 request, so without the guards it is an open, unmetered proxy to your Google
 Cloud project.

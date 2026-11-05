@@ -118,11 +118,17 @@ when `blockPrivateAssetHosts` is `false`.
   `metadata.oci.oraclecloud.com`. There is no legitimate TTS-asset use
   case for these hosts and they return IAM credentials / provisioning
   secrets.
-- SSRF-resistant hostname normalization: IPv4-mapped IPv6
-  (`::ffff:…`), trailing-dot hostnames (`host.`), bare decimal / hex /
-  octal IPv4 encodings are all rewritten before matching so they cannot
-  be used to bypass the blocklists.
-- The metadata and private-host lists and their normalization come from
+- A private host is `localhost` (and `*.localhost`) or any IP literal
+  outside public unicast space, classified against the IANA
+  special-purpose address registries: loopback, RFC 1918, link-local,
+  unique-local, carrier-grade NAT, multicast, documentation, reserved,
+  and the IPv6 forms that embed an IPv4 address (mapped, compatible,
+  NAT64, 6to4, Teredo). Trailing dots and bare decimal / hex / octal
+  IPv4 encodings are read first, so they cannot bypass the check.
+- The guard checks the URL's literal host. A public hostname whose DNS
+  resolves to a private address is stopped by the origin allow-list,
+  not by the private-host guard.
+- The classification comes from
   `@pie-players/pie-players-shared/security/private-hosts`, which the
   assessment toolkit's SSML sanitizer also checks `<audio src>` against.
 - Manual redirect handling with a bounded hop count; each redirect target

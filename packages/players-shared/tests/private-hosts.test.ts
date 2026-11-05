@@ -17,6 +17,7 @@ describe("isCloudMetadataHostname", () => {
 		"2852039166",
 		"0xa9fea9fe",
 		"025177524776",
+		"[::a9fe:a9fe]",
 	])("recognises %s", (hostname) => {
 		expect(isCloudMetadataHostname(hostname)).toBe(true);
 	});
@@ -51,6 +52,24 @@ describe("isPrivateHostname", () => {
 		"2130706433",
 		"0x7f000001",
 		"017700000001",
+		"0177.0.0.1",
+		"127.1",
+		"api.localhost",
+		"100.64.0.1",
+		"198.18.0.1",
+		"192.0.2.1",
+		"224.0.0.1",
+		"240.0.0.1",
+		"255.255.255.255",
+		"[fe90::1]",
+		"[fc12::1]",
+		"[fec0::1]",
+		"[ff02::1]",
+		"[2001:db8::1]",
+		"[::7f00:1]",
+		"[64:ff9b::7f00:1]",
+		"[2002:7f00:1::]",
+		"[2001::1]",
 	])("recognises %s", (hostname) => {
 		expect(isPrivateHostname(hostname)).toBe(true);
 	});
@@ -59,6 +78,7 @@ describe("isPrivateHostname", () => {
 		"8.8.8.8",
 		"172.32.0.1",
 		"cdn.example.com",
+		"localhost.example.com",
 		"[::ffff:808:808]",
 		"[2001:4860:4860::8888]",
 		"134744072",
@@ -67,10 +87,12 @@ describe("isPrivateHostname", () => {
 	});
 
 	test("classifies what the URL parser hands over", () => {
-		expect(isPrivateHostname(new URL("http://[0:0:0:0:0:0:0:0]/").hostname)).toBe(
+		expect(
+			isPrivateHostname(new URL("http://[0:0:0:0:0:0:0:0]/").hostname),
+		).toBe(true);
+		expect(isPrivateHostname(new URL("http://0177.0.0.1/").hostname)).toBe(
 			true,
 		);
-		expect(isPrivateHostname(new URL("http://0177.0.0.1/").hostname)).toBe(true);
 		expect(
 			isCloudMetadataHostname(
 				new URL("http://[0:0:0:0:0:ffff:a9fe:a9fe]/").hostname,

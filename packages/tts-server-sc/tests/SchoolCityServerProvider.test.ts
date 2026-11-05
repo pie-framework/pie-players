@@ -276,6 +276,9 @@ describe("SchoolCity asset URL guard", () => {
 		"http://[::ffff:a01:203]/a.mp3",
 		"http://[fe80::1]/a.mp3",
 		"http://[fd12:3456::1]/a.mp3",
+		"http://100.64.0.1/a.mp3",
+		"http://[fc12::1]/a.mp3",
+		"http://[64:ff9b::7f00:1]/a.mp3",
 	])("blocks the private host %s by default", async (url) => {
 		const { error } = await audioRejection(url, {
 			assetOrigins: [BASE_URL, new URL(url).origin],
@@ -378,7 +381,7 @@ describe("SchoolCity asset URL guard", () => {
 		});
 
 		it("allows only the base URL's own origin when it has no registrable domain", async () => {
-			const ipBase = "https://203.0.113.10";
+			const ipBase = "https://8.8.8.8";
 			const ipMarks = `${ipBase}/a.jsonl`;
 			const synthesizeFrom = async (audioContent: string) => {
 				const { fetchImpl } = fakeSchoolCity(
@@ -395,10 +398,10 @@ describe("SchoolCity asset URL guard", () => {
 			};
 			expect([...(await synthesizeFrom(`${ipBase}/a.mp3`)).audio]).toEqual([5]);
 			const neighbour = await rejection(
-				synthesizeFrom("https://203.0.113.11/a.mp3"),
+				synthesizeFrom("https://8.8.4.4/a.mp3"),
 			);
 			expect(neighbour.message).toBe(
-				"SchoolCity asset URL origin is not allow-listed: https://203.0.113.11",
+				"SchoolCity asset URL origin is not allow-listed: https://8.8.4.4",
 			);
 		});
 	});

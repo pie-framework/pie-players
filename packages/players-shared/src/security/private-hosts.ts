@@ -1,109 +1,98 @@
 /**
  * Hostname classification for a URL a server fetches on someone else's behalf,
  * such as an SSML `<audio src>` a TTS provider will request or an asset URL an
- * upstream service returns. Every such check reads these two lists, so no two
- * copies of them can drift apart.
+ * upstream service returns. Every such check reads this module, so no two
+ * copies of it can drift apart.
  *
- * Pass `URL.hostname`. The WHATWG URL parser has already rewritten numeric IPv4
- * (`2130706433`, `0x7f000001`) to dotted form and compressed IPv6; the
- * normalisation here keeps the answer right for a hostname that did not come
- * from it.
+ * IP literals are classified by `ipaddr.js`, whose ranges follow the IANA IPv4
+ * and IPv6 Special-Purpose Address Registries (RFC 6890). A host is private
+ * unless it is a public unicast address or a name: loopback, private, link-local,
+ * unique-local, carrier-grade NAT, multicast, broadcast, documentation and
+ * reserved ranges, and the IPv6 forms that embed an IPv4 address (NAT64, 6to4,
+ * Teredo), all count. `ipaddr.js` also reads the numeric IPv4 forms (`2130706433`,
+ * `0x7f000001`, `0177.0.0.1`) and unmaps IPv4-mapped IPv6.
+ *
+ * Only the literal is checked. A public name that resolves to a private address
+ * passes; guarding that takes a check of the resolved address at connect time.
  *
  * @module
  */
 
-/** Cloud instance-metadata endpoints. They hand out credentials. */
-const CLOUD_METADATA_HOSTNAMES: readonly RegExp[] = [
-	/^169\.254\.169\.254$/,
-	/^fd00:ec2::254$/,
-	/^metadata\.google\.internal$/,
-	/^metadata\.azure\.internal$/,
-	/^metadata\.packet\.net$/,
-	/^metadata\.oci\.oraclecloud\.com$/,
-];
-
-/** Loopback, unspecified, private-network, link-local and unique-local hosts. */
-const PRIVATE_HOSTNAMES: readonly RegExp[] = [
-	/^localhost$/,
-	/^127(?:\.\d{1,3}){3}$/,
-	/^0(?:\.\d{1,3}){3}$/,
-	/^10(?:\.\d{1,3}){3}$/,
-	/^192\.168(?:\.\d{1,3}){2}$/,
-	/^172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}$/,
-	/^169\.254(?:\.\d{1,3}){2}$/,
-	// The unspecified address reaches the local host, as `0.0.0.0` does.
-	/^::$/,
-	/^0:0:0:0:0:0:0:0$/,
-	/^::1$/,
-	/^0:0:0:0:0:0:0:1$/,
-	/^fe80:/,
-	/^fc00:/,
-	/^fd[0-9a-f]{2}:/,
-];
+import ipaddr from "ipaddr.js";
 
 /**
- * A host written as one bare decimal, hex or octal number (`2130706433`,
- * `0x7f000001`, `017700000001` for `127.0.0.1`) in dotted form, or `null`.
- * Numeric hosts are a classic way past a host list.
+ * Cloud instance-metadata hostnames. They hand out credentials. No registry
+ * lists them; each is the provider's documented name.
  */
-function ipv4BareToDotted(hostname: string): string | null {
-	let asInt: number;
-	if (/^0x[0-9a-f]+$/.test(hostname)) {
-		asInt = Number.parseInt(hostname.slice(2), 16);
-	} else if (/^0[0-7]+$/.test(hostname)) {
-		asInt = Number.parseInt(hostname, 8);
-	} else if (/^\d+$/.test(hostname)) {
-		asInt = Number.parseInt(hostname, 10);
-	} else {
-		return null;
-	}
-	if (!Number.isFinite(asInt) || asInt > 0xff_ff_ff_ff) return null;
-	return [
-		(asInt >>> 24) & 0xff,
-		(asInt >>> 16) & 0xff,
-		(asInt >>> 8) & 0xff,
-		asInt & 0xff,
-	].join(".");
-}
+const CLOUD_METADATA_HOSTNAMES: ReadonlySet<string> = new Set([
+	"metadata.google.internal",
+	"metadata.azure.internal",
+	"metadata.packet.net",
+	"metadata.oci.oraclecloud.com",
+]);
 
-/** Lower-cased, without brackets or a trailing dot, IPv4-mapped IPv6 unmapped. */
+/** Cloud instance-metadata addresses: the link-local one most clouds use, and AWS's IPv6 one. */
+const CLOUD_METADATA_ADDRESSES = ["169.254.169.254", "fd00:ec2::254"].map(
+	(address) => ipaddr.parse(address),
+);
+
+type IpAddress = ReturnType<typeof ipaddr.parse>;
+
+/** Lower-cased, without brackets or a trailing dot. */
 function normalizeHostname(hostname: string): string {
-	const host = hostname
+	return hostname
 		.replace(/^\[|\]$/g, "")
 		.replace(/\.$/, "")
 		.toLowerCase();
-	// The URL parser serialises `::ffff:127.0.0.1` as `::ffff:7f00:1`, which no
-	// IPv4 pattern would otherwise match.
-	const mapped =
-		/^::ffff:(?:(\d+\.\d+\.\d+\.\d+)|([0-9a-f]{1,4}):([0-9a-f]{1,4}))$/.exec(
-			host,
-		);
-	if (!mapped) return host;
-	const [, dotted, high, low] = mapped;
-	if (dotted) return dotted;
-	return [Number.parseInt(high, 16), Number.parseInt(low, 16)]
-		.flatMap((word) => [(word >>> 8) & 0xff, word & 0xff])
-		.join(".");
 }
 
-function matchesAny(hostname: string, patterns: readonly RegExp[]): boolean {
-	const normalized = normalizeHostname(hostname);
-	const dotted = ipv4BareToDotted(normalized);
-	return patterns.some(
-		(pattern) =>
-			pattern.test(normalized) || (dotted !== null && pattern.test(dotted)),
-	);
+/**
+ * The address `host` is a literal for, IPv4-mapped (`::ffff:a.b.c.d`) and
+ * IPv4-compatible (`::a.b.c.d`) IPv6 reduced to IPv4, or `null` for a name.
+ */
+function parseAddress(host: string): IpAddress | null {
+	if (!ipaddr.isValid(host)) return null;
+	const address = ipaddr.process(host);
+	if (address.kind() !== "ipv6") return address;
+	// `ipaddr.js` classifies deprecated IPv4-compatible addresses as unicast;
+	// read the IPv4 address in their low 32 bits instead.
+	const { parts } = address as ipaddr.IPv6;
+	const isIpv4Compatible =
+		parts.slice(0, 6).every((part) => part === 0) &&
+		(parts[6] !== 0 || parts[7] > 1);
+	return isIpv4Compatible
+		? new ipaddr.IPv4([
+				parts[6] >> 8,
+				parts[6] & 0xff,
+				parts[7] >> 8,
+				parts[7] & 0xff,
+			])
+		: address;
 }
 
 /** Whether `hostname` is a cloud instance-metadata endpoint. */
 export function isCloudMetadataHostname(hostname: string): boolean {
-	return matchesAny(hostname, CLOUD_METADATA_HOSTNAMES);
+	const host = normalizeHostname(hostname);
+	if (CLOUD_METADATA_HOSTNAMES.has(host)) return true;
+	const address = parseAddress(host);
+	return (
+		address !== null &&
+		CLOUD_METADATA_ADDRESSES.some(
+			(metadata) =>
+				metadata.kind() === address.kind() &&
+				metadata.toNormalizedString() === address.toNormalizedString(),
+		)
+	);
 }
 
 /**
- * Whether `hostname` is a loopback, unspecified, private-network, link-local or
- * unique-local host.
+ * Whether `hostname` is anything other than a public unicast address or a
+ * public name: `localhost` and its subdomains (RFC 6761), or an IP literal in
+ * any special-purpose range.
  */
 export function isPrivateHostname(hostname: string): boolean {
-	return matchesAny(hostname, PRIVATE_HOSTNAMES);
+	const host = normalizeHostname(hostname);
+	if (host === "localhost" || host.endsWith(".localhost")) return true;
+	const address = parseAddress(host);
+	return address !== null && address.range() !== "unicast";
 }

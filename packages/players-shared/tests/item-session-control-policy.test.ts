@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
 	ITEM_SESSION_CONTROL_DEFAULTS,
-	isItemSessionControlEnabled,
+	isItemSessionControlEnabledInSection,
 	resolveItemSessionControls,
 	resolveItemSessionControl,
 } from "../src/item-session-control/index.js";
@@ -93,7 +93,7 @@ describe("resolveItemSessionControls", () => {
 
 	test("the section is enabled when any single item is", () => {
 		expect(
-			isItemSessionControlEnabled(
+			isItemSessionControlEnabledInSection(
 				resolveItemSessionControls({
 					sectionPolicy: null,
 					items: [{ identifier: "q1" }, { identifier: "q2", policy: { enabled: true } }],
@@ -101,7 +101,7 @@ describe("resolveItemSessionControls", () => {
 			),
 		).toBe(true);
 		expect(
-			isItemSessionControlEnabled(
+			isItemSessionControlEnabledInSection(
 				resolveItemSessionControls({
 					sectionPolicy: null,
 					items: [{ identifier: "q1" }],

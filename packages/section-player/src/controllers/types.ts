@@ -135,7 +135,7 @@ export interface SectionCompositionModel {
 	/**
 	 * Item session control projection, keyed by canonical item id. Absent reads
 	 * exactly as `null`: no item in the section enables item session control, which is
-	 * every section authored without a `itemSessionControl` policy. Optional so anything
+	 * every section authored without an `itemSessionControl` policy. Optional so anything
 	 * else assembling this model — a host layout, a test double — omits the
 	 * field instead of declaring a feature it does not use.
 	 *

@@ -31,7 +31,7 @@ Related architecture:
 - [Score components and section outcomes](./shared-contracts/score-components-and-section-outcomes.md)
 - [Accessibility runtime patterns](./shared-contracts/accessibility-runtime-patterns.md)
 - [Item session control contract](./item-session-control-contract.md) — supplies the state a gate condition names
-- [Item session control before timed media](../adr/0001-formative-delivery-before-timed-media.md) — the sequencing record
+- [Formative delivery before timed media](../adr/0001-formative-delivery-before-timed-media.md) — the sequencing record
 - [Sign language (ASL) support](./sign-language-asl-support.md) — sibling media contract, out of scope here
 
 Integrator guide: [Timed media](../../packages/section-player/README.md#timed-media)

@@ -58,7 +58,7 @@ import {
 ```
 
 The authored half, `ItemSessionControlPolicy` on `AssessmentSection` and
-`ItemSessionControlPolicy` on `AssessmentItemRef`, is re-exported from the package
+`AssessmentItemRef`, is re-exported from the package
 root and from `/types`, beside the section types it annotates.
 
 The contract is [`docs/prds/item-session-control-contract.md`](../../docs/prds/item-session-control-contract.md),

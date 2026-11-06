@@ -4,7 +4,7 @@ import type {
 	ItemTryState,
 	ItemTryView,
 	TryOutcome,
-	ResolvedItemSessionControl,
+	ResolvedItemSessionControlPolicy,
 } from "./types.js";
 
 export const ITEM_TRY_STATE_VERSION = 1 as const;
@@ -21,7 +21,7 @@ export function createItemTryState(
 }
 
 function triesRemaining(
-	policy: ResolvedItemSessionControl,
+	policy: ResolvedItemSessionControlPolicy,
 	tryCount: number,
 ): number | "unlimited" {
 	if (policy.maxTries === "unlimited") return "unlimited";
@@ -33,7 +33,7 @@ function hasTriesLeft(remaining: number | "unlimited"): boolean {
 }
 
 function shouldReveal(
-	policy: ResolvedItemSessionControl,
+	policy: ResolvedItemSessionControlPolicy,
 	tryCount: number,
 ): boolean {
 	if (policy.feedback === "none") return false;
@@ -55,7 +55,7 @@ function shouldReveal(
 export function recordTry(args: {
 	state?: ItemTryState;
 	itemIdentifier: string;
-	policy: ResolvedItemSessionControl;
+	policy: ResolvedItemSessionControlPolicy;
 	outcome: TryOutcome;
 }): ItemTryState {
 	const current = args.state ?? createItemTryState(args.itemIdentifier);
@@ -91,7 +91,7 @@ export function recordTry(args: {
  */
 export function retryItem(args: {
 	state?: ItemTryState;
-	policy: ResolvedItemSessionControl;
+	policy: ResolvedItemSessionControlPolicy;
 }): ItemTryState | undefined {
 	const current = args.state;
 	if (!current || !args.policy.enabled) return current;
@@ -117,7 +117,7 @@ export function retryItem(args: {
 export function revealItemFeedback(args: {
 	state?: ItemTryState;
 	itemIdentifier: string;
-	policy: ResolvedItemSessionControl;
+	policy: ResolvedItemSessionControlPolicy;
 	feedback: Exclude<FeedbackReveal, "none">;
 }): ItemTryState {
 	const current = args.state ?? createItemTryState(args.itemIdentifier);
@@ -135,7 +135,7 @@ export function revealItemFeedback(args: {
  */
 export function hideItemFeedback(args: {
 	state?: ItemTryState;
-	policy: ResolvedItemSessionControl;
+	policy: ResolvedItemSessionControlPolicy;
 }): ItemTryState | undefined {
 	const current = args.state;
 	if (!current || !args.policy.enabled) return current;
@@ -144,7 +144,7 @@ export function hideItemFeedback(args: {
 }
 
 function envOverrideFor(
-	policy: ResolvedItemSessionControl,
+	policy: ResolvedItemSessionControlPolicy,
 	revealed: boolean,
 	revealOverride: FeedbackReveal | undefined,
 ): FeedbackEnvOverride | undefined {
@@ -158,7 +158,7 @@ function envOverrideFor(
 
 /** Derive everything a rendering component needs from policy plus state. */
 export function resolveItemTryView(args: {
-	policy: ResolvedItemSessionControl;
+	policy: ResolvedItemSessionControlPolicy;
 	state?: ItemTryState;
 }): ItemTryView {
 	const { policy } = args;

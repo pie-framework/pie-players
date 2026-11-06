@@ -58,11 +58,11 @@ export const demoItemSessionControlSection: AssessmentSection = {
 
 	assessmentItemRefs: [
 		{
-			identifier: "fd-q1",
+			identifier: "isc-q1",
 			required: true,
 			item: choiceItem({
-				itemId: "fd-item-1",
-				modelId: "fd-m1",
+				itemId: "isc-item-1",
+				modelId: "isc-m1",
 				prompt:
 					"Three tries with correctness feedback. Which planet has the shortest year?",
 				choices: [
@@ -74,12 +74,12 @@ export const demoItemSessionControlSection: AssessmentSection = {
 			}),
 		},
 		{
-			identifier: "fd-q2",
+			identifier: "isc-q2",
 			required: true,
 			itemSessionControl: { maxTries: 1, feedback: "solution" },
 			item: choiceItem({
-				itemId: "fd-item-2",
-				modelId: "fd-m2",
+				itemId: "isc-item-2",
+				modelId: "isc-m2",
 				prompt:
 					"One try, then the answer is shown. Which gas makes up most of Earth's atmosphere?",
 				choices: [
@@ -91,12 +91,12 @@ export const demoItemSessionControlSection: AssessmentSection = {
 			}),
 		},
 		{
-			identifier: "fd-q3",
+			identifier: "isc-q3",
 			required: true,
 			itemSessionControl: { maxTries: 3, revealOn: "on-final-try" },
 			item: choiceItem({
-				itemId: "fd-item-3",
-				modelId: "fd-m3",
+				itemId: "isc-item-3",
+				modelId: "isc-m3",
 				prompt:
 					"Three tries, but nothing is revealed until the last one. What is the largest ocean?",
 				choices: [
@@ -108,12 +108,12 @@ export const demoItemSessionControlSection: AssessmentSection = {
 			}),
 		},
 		{
-			identifier: "fd-q4",
+			identifier: "isc-q4",
 			required: true,
 			itemSessionControl: { enabled: false },
 			item: choiceItem({
-				itemId: "fd-item-4",
-				modelId: "fd-m4",
+				itemId: "isc-item-4",
+				modelId: "isc-m4",
 				prompt:
 					"Opted out: this item has no check control and no feedback. Which metal is liquid at room temperature?",
 				choices: [

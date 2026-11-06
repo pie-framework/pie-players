@@ -485,7 +485,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 						<button
 							type="button"
 							class="pie-section-player-check__button"
-							data-pie-try-action={tryView?.canRetry ? "retry" : "check"}
+							data-pie-check-action={tryView?.canRetry ? "retry" : "check"}
 							aria-busy={checkPending ? "true" : undefined}
 							onclick={handleCheckClick}
 						>{checkButtonLabel}</button>

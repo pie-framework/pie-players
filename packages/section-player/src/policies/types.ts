@@ -13,8 +13,7 @@ export type SectionPlayerTelemetryPolicy = {
 /**
  * Whether item cards under item session control render the Check answer /
  * Try again button. A host with its own submit flow turns it off and calls the
- * controller's
- * `checkItem` and `retryItem`; the status line stays.
+ * controller's `checkItem` and `retryItem`; the status line stays.
  */
 export type SectionPlayerCheckControlPolicy = {
 	enabled: boolean;

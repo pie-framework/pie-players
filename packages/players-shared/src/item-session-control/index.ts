@@ -23,12 +23,12 @@ export type {
 	TrySectionSlice,
 	TryLimit,
 	TryOutcome,
-	ResolvedItemSessionControl,
+	ResolvedItemSessionControlPolicy,
 } from "./types.js";
 
 export {
 	ITEM_SESSION_CONTROL_DEFAULTS,
-	isItemSessionControlEnabled,
+	isItemSessionControlEnabledInSection,
 	resolveItemSessionControls,
 	resolveItemSessionControl,
 } from "./policy.js";

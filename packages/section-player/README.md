@@ -248,7 +248,7 @@ from `@pie-players/pie-section-player/policies`.
 | `readiness.mode` | `"progressive"` | `"progressive"` or `"strict"`. Both hold the `interactive` stage and `pie-loading-complete` until the element pre-warm resolves, and the two currently emit the same sequence |
 | `preload.enabled` | `true` | `false` skips the section's element pre-warm, the step that loads every element the items name before they mount. Items still mount, and each item player registers its own elements. For a host that owns element registration end to end |
 | `telemetry.enabled` | `true` | `false` stops the `pie-section-*` instrumentation stream ([Instrumentation](#instrumentation)) |
-| `checkControl.enabled` | `true` | `false` removes the check Check answer / Try again button and keeps its status line, for a host that drives Tries through the controller ([Item Session Control](../../docs/section-player/item-session-control.md#check-control)) |
+| `checkControl.enabled` | `true` | `false` removes the Check answer / Try again button and keeps its status line, for a host that drives Tries through the controller ([Item Session Control](../../docs/section-player/item-session-control.md#check-control)) |
 
 `resolveSectionPlayerPolicies(policies)` from
 `@pie-players/pie-section-player/policies` returns the filled-in object, for
@@ -357,7 +357,7 @@ contract.
 | `subscribe(listener)` | Delivers every controller event to `listener` until the returned function is called or the controller is disposed |
 | `getRuntimeState()` | Introspection only; persist `getSession()` |
 | `updateInput(input)` | Refreshes the composition for the same cohort, the `(sectionId, attemptId)` pair, and keeps the in-memory session |
-| Try members | `recordTry`, `retryItem`, `revealItemFeedback`, `hideItemFeedback`, `getTryProjection` ([Item session control](#item-session-control)) |
+| Try members | `checkItem`, `recordTry`, `retryItem`, `revealItemFeedback`, `hideItemFeedback`, `getTryProjection` ([Item session control](#item-session-control)) |
 | Timed-media members | `attachMediaTimeSource`, `detachMediaTimeSource`, `pauseMediaForCompetingAudio`, `getTimedMediaProjection` ([Timed media](#timed-media)) |
 
 ### Session lifecycle

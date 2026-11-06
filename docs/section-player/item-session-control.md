@@ -165,7 +165,7 @@ controller?.hideItemFeedback?.({ itemId: "decimals-item" });
 | `hideItemFeedback({ itemId })` | Withdraws any reveal, whatever the Try budget |
 | `getTryProjection()` | The resolved `policies`, the per-item `states` and the `mastery` rollup; `null` for a section with no enabled item |
 
-The four actions do nothing for an item whose policy is not enabled. `itemId` is
+The five actions do nothing for an item whose policy is not enabled. `itemId` is
 the item's `item.id`; the item ref's `identifier` works too. The projection keys
 `policies` and `states` by item ref `identifier`, and every `composition-changed`
 event carries it as `detail.composition.tries`.

@@ -150,19 +150,19 @@ test.describe("section player rtl layout", () => {
 			waitUntil: "networkidle",
 		});
 		const button = page
-			.locator('[data-canonical-item-id="fd-q1"] [data-pie-try-action]')
+			.locator('[data-canonical-item-id="isc-q1"] [data-pie-check-action]')
 			.first();
 		await expect(button).toBeVisible({ timeout: 30_000 });
 
-		const container = '[data-canonical-item-id="fd-q1"]';
-		expectAllHugTrailingEdgeLtr(await edgeGaps(page, container, "[data-pie-try-action]"));
+		const container = '[data-canonical-item-id="isc-q1"]';
+		expectAllHugTrailingEdgeLtr(await edgeGaps(page, container, "[data-pie-check-action]"));
 
 		await page.evaluate(() => {
 			document
 				.querySelector("pie-section-player-shell")
 				?.setAttribute("dir", "rtl");
 		});
-		expectAllHugTrailingEdgeRtl(await edgeGaps(page, container, "[data-pie-try-action]"));
+		expectAllHugTrailingEdgeRtl(await edgeGaps(page, container, "[data-pie-check-action]"));
 	});
 
 	test("split-pane pane order follows the writing direction", async ({

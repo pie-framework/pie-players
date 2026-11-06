@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type {
 	TrySectionProjection,
-	ResolvedItemSessionControl,
+	ResolvedItemSessionControlPolicy,
 } from "@pie-players/pie-players-shared/item-session-control";
 import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 import type { SectionCompositionModel } from "../src/controllers/types";
@@ -14,8 +14,8 @@ const { getItemTryView, getItemPlayerParams, getPassagePlayerParams } =
 	await import("../src/components/shared/section-player-view-state");
 
 const policy = (
-	overrides: Partial<ResolvedItemSessionControl> = {},
-): ResolvedItemSessionControl => ({
+	overrides: Partial<ResolvedItemSessionControlPolicy> = {},
+): ResolvedItemSessionControlPolicy => ({
 	enabled: true,
 	maxTries: 3,
 	feedback: "correctness",
@@ -86,7 +86,7 @@ function paramsFor(projection: TrySectionProjection | null) {
 
 const projectionWith = (
 	state: TrySectionProjection["states"][string] | undefined,
-	policyOverrides: Partial<ResolvedItemSessionControl> = {},
+	policyOverrides: Partial<ResolvedItemSessionControlPolicy> = {},
 ): TrySectionProjection => ({
 	version: 1,
 	enabled: true,

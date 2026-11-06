@@ -46,7 +46,7 @@ export interface ItemSessionControlPolicy {
 }
 
 /** The policy after built-in defaults, section, and item ref are merged. */
-export interface ResolvedItemSessionControl {
+export interface ResolvedItemSessionControlPolicy {
 	enabled: boolean;
 	maxTries: TryLimit;
 	feedback: FeedbackReveal;
@@ -172,7 +172,7 @@ export interface MasteryRollup {
 export interface TrySectionProjection {
 	version: 1;
 	enabled: boolean;
-	policies: Record<string, ResolvedItemSessionControl>;
+	policies: Record<string, ResolvedItemSessionControlPolicy>;
 	states: Record<string, ItemTryState>;
 	mastery: MasteryRollup;
 }

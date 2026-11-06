@@ -7,7 +7,7 @@ import {
 } from "@pie-players/pie-players-shared";
 import {
 	aggregateTryOutcome,
-	isItemSessionControlEnabled,
+	isItemSessionControlEnabledInSection,
 	normalizeTrySectionSlice,
 	recordTry,
 	resolveItemSessionControls,
@@ -21,7 +21,7 @@ import {
 	type MasteryRollup,
 	type ScoredElementOutcome,
 	type TrySectionProjection,
-	type ResolvedItemSessionControl,
+	type ResolvedItemSessionControlPolicy,
 } from "@pie-players/pie-players-shared/item-session-control";
 import {
 	createTimedMediaState,
@@ -219,7 +219,7 @@ export class SectionController implements SectionControllerHandle {
 	// Item session control. Both maps are keyed by canonical item id, the same key
 	// `itemSessions` and `itemCompletionByCanonicalId` use, so one id addresses an
 	// item's responses, its completion and its Try state.
-	private itemSessionControls: Record<string, ResolvedItemSessionControl> = {};
+	private itemSessionControls: Record<string, ResolvedItemSessionControlPolicy> = {};
 	private tryStates: Record<string, ItemTryState> = {};
 	private itemSessionControlEnabled = false;
 	private lastMasterySignature = "";
@@ -569,7 +569,7 @@ export class SectionController implements SectionControllerHandle {
 			sectionPolicy,
 			items,
 		});
-		this.itemSessionControlEnabled = isItemSessionControlEnabled(this.itemSessionControls);
+		this.itemSessionControlEnabled = isItemSessionControlEnabledInSection(this.itemSessionControls);
 	}
 
 	private computeMastery(): MasteryRollup {

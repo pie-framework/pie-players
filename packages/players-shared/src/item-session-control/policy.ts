@@ -3,7 +3,7 @@ import type {
 	FeedbackReveal,
 	FeedbackRevealTiming,
 	TryLimit,
-	ResolvedItemSessionControl,
+	ResolvedItemSessionControlPolicy,
 } from "./types.js";
 
 /**
@@ -14,7 +14,7 @@ import type {
  *
  * `maxTries: 1` matches QTI 3's `qti-item-session-control@max-attempts` default.
  */
-export const ITEM_SESSION_CONTROL_DEFAULTS: ResolvedItemSessionControl = {
+export const ITEM_SESSION_CONTROL_DEFAULTS: ResolvedItemSessionControlPolicy = {
 	enabled: false,
 	maxTries: 1,
 	feedback: "correctness",
@@ -55,7 +55,7 @@ function normalizeRevealTiming(
 export function resolveItemSessionControl(
 	sectionPolicy?: ItemSessionControlPolicy | null,
 	itemPolicy?: ItemSessionControlPolicy | null,
-): ResolvedItemSessionControl {
+): ResolvedItemSessionControlPolicy {
 	const enabled =
 		typeof itemPolicy?.enabled === "boolean"
 			? itemPolicy.enabled
@@ -103,8 +103,8 @@ export function resolveItemSessionControls(args: {
 		identifier: string;
 		policy?: ItemSessionControlPolicy | null;
 	}>;
-}): Record<string, ResolvedItemSessionControl> {
-	const resolved: Record<string, ResolvedItemSessionControl> = {};
+}): Record<string, ResolvedItemSessionControlPolicy> {
+	const resolved: Record<string, ResolvedItemSessionControlPolicy> = {};
 	for (const item of args.items) {
 		if (!item?.identifier) continue;
 		resolved[item.identifier] = resolveItemSessionControl(
@@ -116,8 +116,8 @@ export function resolveItemSessionControls(args: {
 }
 
 /** True when at least one item in the section enables item session control. */
-export function isItemSessionControlEnabled(
-	policies: Record<string, ResolvedItemSessionControl>,
+export function isItemSessionControlEnabledInSection(
+	policies: Record<string, ResolvedItemSessionControlPolicy>,
 ): boolean {
 	return Object.values(policies).some((policy) => policy.enabled);
 }

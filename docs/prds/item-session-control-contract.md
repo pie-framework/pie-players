@@ -8,7 +8,7 @@ Owner: PIE Players maintainers
 
 Related architecture:
 
-- [Item session control before timed media](../adr/0001-formative-delivery-before-timed-media.md) — the sequencing decision this PRD implements
+- [Formative delivery before timed media](../adr/0001-formative-delivery-before-timed-media.md) — the sequencing decision this PRD implements
 - [Item session control language](../../CONTEXT.md#item-session-control-language) — the glossary for Try, Feedback Reveal, Forced Reveal and Mastery
 - [Timed media section](../architecture/timed-media-section.md) — the first downstream consumer of Try state
 - [P0 shared contracts](../architecture/shared-contracts-p0.md)
@@ -125,7 +125,7 @@ export interface ItemSessionControlPolicy {
   revealOn?: FeedbackRevealTiming;
 }
 
-export interface ResolvedItemSessionControl {
+export interface ResolvedItemSessionControlPolicy {
   enabled: boolean;
   maxTries: TryLimit;
   feedback: FeedbackReveal;
@@ -289,10 +289,11 @@ yet says it cannot be scored, so one correct answer does not complete a section.
 
 ### Controller surface
 
-`SectionController` gains five methods, all optional on
+`SectionController` gains six methods, all optional on
 `SectionControllerHandle` in keeping with the rest of that interface:
 
 ```ts
+checkItem?(args: { itemId: string }): Promise<void>;
 recordTry?(args: { itemId: string; outcomes?: unknown[] }): void;
 retryItem?(args: { itemId: string }): void;
 revealItemFeedback?(args: {
@@ -306,7 +307,9 @@ getTryProjection?(): TrySectionProjection | null;
 `revealItemFeedback` / `hideItemFeedback` are host authority — a teacher-driven
 "show the answer". They spend no Try and ignore the Try budget and `revealOn`,
 because none of those bound a decision the host has already taken, and they work
-on an item with no Try yet. `retryItem` is the learner action and stays
+on an item with no Try yet. `checkItem` scores the rendered item and records a Try, as the Check answer
+button does, for a host that turns the button off with `policies.checkControl`.
+`retryItem` is the learner action and stays
 budget-respecting: an item with no Tries left keeps its feedback on screen.
 
 `feedback` is stated rather than defaulted from the policy, because a reveal
@@ -317,14 +320,14 @@ upgrade every later reveal on that item.
 
 No new element surface. `getSectionController()` / `waitForSectionController()`
 on every layout already return this handle, which is where `getSession`,
-`applySession` and `updateItemSession` already live; forwarding five more methods
+`applySession` and `updateItemSession` already live; forwarding six more methods
 through layout → kernel → scaffold → base would be passthrough for nothing.
 
 ```ts
 export interface TrySectionProjection {
   version: 1;
   enabled: boolean;
-  policies: Record<string, ResolvedItemSessionControl>;
+  policies: Record<string, ResolvedItemSessionControlPolicy>;
   states: Record<string, ItemTryState>;
   mastery: MasteryRollup;
 }
@@ -379,9 +382,12 @@ take; nothing new is invented for it.
 
 ## Compatibility
 
-Additive throughout. A section without `itemSessionControl` delivers unchanged: the
-resolved policy is disabled, no projection is produced, no control is rendered,
-and no env projection is applied.
+Additive over content without the policy. A section without `itemSessionControl`
+delivers unchanged: the resolved policy is disabled, no projection is produced, no
+control is rendered, and no env projection is applied. The 2026-11-06 rename
+removed the `formative` names without aliases, so content authored with
+`formative` delivers without the control and a session saved with a `formative`
+slice restores with its Try state cleared, both silently.
 
 This PRD does not change:
 
@@ -401,7 +407,7 @@ No compatibility shim is added. A `tries` slice with an unrecognized
 `version` is rejected rather than normalized.
 
 Every type member this adds is optional, `SectionCompositionModel.tries` and
-the five `SectionControllerHandle` methods included, so anything else assembling a
+the six `SectionControllerHandle` methods included, so anything else assembling a
 composition model or supplying a controller — a host layout, an adapter, a test
 double — omits what it does not use and absent reads as `null`. The one addition
 no default covers is the widened `SectionControllerEvent` union: a host switching
@@ -543,8 +549,9 @@ run outside the sandbox
 
 ## Rollout And Release Notes
 
-Additive and gated behind `itemSessionControl.enabled`, so existing content is
-unaffected and no host migrates. Integrator usage is in the section player's
+Gated behind `itemSessionControl.enabled`, so content without the policy is
+unaffected. Content authored with `formative` and sessions saved with a
+`formative` slice move to `itemSessionControl` and `tries`. Integrator usage is in the section player's
 [Item session control](../section-player/item-session-control.md).
 
 ## Open Questions

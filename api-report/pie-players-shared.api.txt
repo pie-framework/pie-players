@@ -416,7 +416,7 @@
   type ItemTryView
   MASTERY_ROLLUP_VERSION
   type MasteryRollup
-  type ResolvedItemSessionControl
+  type ResolvedItemSessionControlPolicy
   type ScoredElementOutcome
   TRY_SLICE_VERSION
   type TryAction
@@ -428,7 +428,7 @@
   aggregateTryOutcome
   createItemTryState
   hideItemFeedback
-  isItemSessionControlEnabled
+  isItemSessionControlEnabledInSection
   normalizeTrySectionSlice
   recordTry
   resolveItemSessionControl

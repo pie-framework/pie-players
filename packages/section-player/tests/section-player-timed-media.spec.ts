@@ -90,7 +90,7 @@ async function answerCorrectly(
 	await choice.click();
 	await page
 		.locator(
-			`[data-section-item-card][data-canonical-item-id="${itemId}"] [data-pie-try-action]`,
+			`[data-section-item-card][data-canonical-item-id="${itemId}"] [data-pie-check-action]`,
 		)
 		.first()
 		.click();
@@ -186,7 +186,7 @@ test.describe("timed media", () => {
 		// Retry, then the correct answer releases it.
 		await page
 			.locator(
-				'[data-section-item-card][data-canonical-item-id="tm-q2"] [data-pie-try-action]',
+				'[data-section-item-card][data-canonical-item-id="tm-q2"] [data-pie-check-action]',
 			)
 			.first()
 			.click();

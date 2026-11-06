@@ -145,7 +145,7 @@ _Avoid_: Completion, progress, score
 
 ## Item Session Control Relationships
 
-- A **Item Session Control** is resolved per item; the section supplies the default and the item ref overrides it field by field.
+- An **Item Session Control** is resolved per item; the section supplies the default and the item ref overrides it field by field.
 - A **Try** is item-scoped even when the item holds several interactions; there is no per-element **Try**.
 - A **Try** produces exactly one **Try Outcome**, whose **Correctness** the section derives and never authors.
 - A **Feedback Reveal** is withdrawn when a learner retries, returning the item to the section's own mode. A learner retry also clears a **Forced Reveal**, so the next earned reveal is back at the **Item Session Control**'s level.

@@ -1,5 +1,27 @@
 # @pie-players/pie-assessment-toolkit
 
+## 1.0.0-beta.9
+
+### Patch Changes
+
+- 5eb7c60: `policies.checkControl.enabled: false` removes the Check answer / Try again button from section player item cards and keeps the status line. The section controller gains `checkItem({ itemId })`, which scores a rendered item and records the Try as the button does.
+- 5eb7c60: Formative delivery is renamed for its mechanism, with no aliases left behind:
+  
+  - The authored policy is `itemSessionControl` on sections and item refs, typed `ItemSessionControlPolicy`, and the module is `@pie-players/pie-players-shared/item-session-control`.
+  - The controller methods are `recordTry`, `retryItem`, `revealItemFeedback`, `hideItemFeedback` and `getTryProjection`, and the events are `item-try-recorded` and `item-feedback-reveal-changed`.
+  - The persisted session slice and the composition key are `tries`.
+  - The toolkit's internal event is `pie-try-action`.
+  - The card's classes are `pie-section-player-check*`, and its data hooks are `data-pie-check-status` and `data-pie-check-action`.
+  - The interface messages are `player.check.*`.
+  - The timed-media Try budget value `"not-formative"` is `"none"`.
+  
+  Nothing flags old names. Content authored with `formative` delivers without the check control, and a session saved with a `formative` slice restores with its Try state cleared.
+- Updated dependencies [5eb7c60]
+  - @pie-players/pie-players-shared@1.0.0-beta.9
+  - @pie-players/pie-calculator@1.0.0-beta.9
+  - @pie-players/pie-context@1.0.0-beta.9
+  - @pie-players/pie-tts@1.0.0-beta.9
+
 ## 1.0.0-beta.8
 
 ### Patch Changes

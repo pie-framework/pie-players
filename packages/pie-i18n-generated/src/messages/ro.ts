@@ -99,8 +99,8 @@ const ro = {
 				"Răspunsurile tale salvate pentru această secțiune nu au putut fi restaurate. Încearcă din nou.",
 		},
 
-		formative: {
-			checkAnswer: "Verifică răspunsul",
+		check: {
+			answer: "Verifică răspunsul",
 			tryAgain: "Încearcă din nou",
 			answerRecorded: "Răspuns înregistrat.",
 			correct: "Corect.",
@@ -108,7 +108,7 @@ const ro = {
 			notCorrect: "Incorect.",
 			notAutoScored:
 				"Răspuns înregistrat. Această întrebare nu este notată automat.",
-			checkFailed:
+			failed:
 				"Această întrebare nu a putut fi verificată. Încearcă din nou.",
 			triesLeft: {
 				one: "{count} încercare rămasă.",

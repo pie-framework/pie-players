@@ -204,7 +204,7 @@ programmatically against sampled counts:
 Filipino nouns do not inflect after numerals, so each group carries
 `one`/`other` with `{count}` and identical text:
 
-- `player.formative.triesLeft`: `May {count} pagsubok na natitira.` (both)
+- `player.check.triesLeft`: `May {count} pagsubok na natitira.` (both)
 - `tools.dictionary.entriesCount`: `{count} tala` (both)
 - `tools.pictureDictionary.entriesCount`: `{count} larawan` (both)
 - `debug.tts.browserAvailable`: `Available ang TTS ng browser (na-detect na

@@ -81,7 +81,9 @@ tokens through normal source order, specificity or `!important`. The base-theme
 adapter wraps its element-name selectors in `:where(...)`, below the specificity
 of a later `[data-color-scheme]` rule, so in a stylesheet-only integration a
 host scheme overrides the generated base theme through the normal cascade
-without `!important`.
+without `!important`. Those selectors match a self-scoped `<pie-theme>` only: a
+document-scoped one writes to the root element and passes the root's tokens,
+scheme included, through to the content it wraps.
 
 ```html
 <pie-theme theme="auto" scope="document">
@@ -339,7 +341,7 @@ The content path scales completely:
 - Every font size in `components.css`, which styles item content, is relative
   (`em`, `%`, `larger`/`smaller`) and follows too.
 - Learner-facing text that declares its own size reads `--pie-font-scale`
-  directly: the item and passage card titles, the formative status line, the
+  directly: the item and passage card titles, the check status line, the
   tabbed layout's labels and the item player's build warning. A card wraps the
   shell that gets scaled, so it cannot inherit the scale.
 

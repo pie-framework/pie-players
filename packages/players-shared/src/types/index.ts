@@ -9,10 +9,9 @@
  * so front-end and server code can both import it.
  */
 import type {
-	FormativeDeliveryPolicy,
-	FormativeItemPolicy,
-	FormativeSectionSlice,
-} from "../formative/types.js";
+	ItemSessionControlPolicy,
+	TrySectionSlice,
+} from "../item-session-control/types.js";
 import type {
 	TimedMediaSectionData,
 	TimedMediaSectionSessionSlice,
@@ -24,7 +23,7 @@ import type {
 	SkillLevel,
 } from "./interchange.js";
 
-export type { FormativeDeliveryPolicy, FormativeItemPolicy };
+export type { ItemSessionControlPolicy };
 export type { TimedMediaSectionData };
 export type {
 	AdaptationLink,
@@ -241,13 +240,13 @@ export interface AssessmentItemRef extends BaseEntity {
 	settings?: ItemSettings;
 
 	/**
-	 * Formative delivery override for this item. Every field overrides the
-	 * section's `formative` policy independently, which is the order QTI 3 uses
+	 * Item session control override for this item. Every field overrides the
+	 * section's `itemSessionControl` policy independently, which is the order QTI 3 uses
 	 * for `qti-item-session-control` on an item ref versus its section.
 	 *
-	 * See `docs/prds/formative-delivery-contract.md`.
+	 * See `docs/prds/item-session-control-contract.md`.
 	 */
-	formative?: FormativeItemPolicy;
+	itemSessionControl?: ItemSessionControlPolicy;
 }
 
 export interface AssessmentSection extends BaseEntity {
@@ -280,15 +279,15 @@ export interface AssessmentSection extends BaseEntity {
 	rubricBlocks?: RubricBlock[];
 
 	/**
-	 * Formative delivery policy for this section: how many Tries a learner gets
+	 * Item session control policy for this section: how many Tries a learner gets
 	 * on each item, when feedback is revealed, and whether the behavior is on at
 	 * all. Absent or `enabled: false` delivers exactly as a section without this
 	 * field — no control, no state, no env override.
 	 *
-	 * Individual items override it through `AssessmentItemRef.formative`. See
-	 * `docs/prds/formative-delivery-contract.md`.
+	 * Individual items override it through `AssessmentItemRef.itemSessionControl`. See
+	 * `docs/prds/item-session-control-contract.md`.
 	 */
-	formative?: FormativeDeliveryPolicy;
+	itemSessionControl?: ItemSessionControlPolicy;
 
 	/**
 	 * The section flavor. Absent for every section authored so far, and the only
@@ -339,19 +338,19 @@ export interface SectionControllerSessionState {
 	visitedItemIdentifiers?: string[];
 	itemSessions: Record<string, unknown>;
 	/**
-	 * Formative delivery state — Try counts and reveal state per item.
+	 * Try state — Try counts and reveal state per item.
 	 *
 	 * Optional, and its absence is indistinguishable from a snapshot saved
-	 * before formative delivery existed, which is what keeps existing persisted
+	 * before item session control existed, which is what keeps existing persisted
 	 * sessions valid. A slice with an unrecognized `version` is rejected whole
-	 * and formative state starts clean; `itemSessions` in the same snapshot is
-	 * unaffected, so a formative version bump never costs a learner responses.
+	 * and Try state starts clean; `itemSessions` in the same snapshot is
+	 * unaffected, so a Try slice version bump never costs a learner responses.
 	 */
-	formative?: FormativeSectionSlice;
+	tries?: TrySectionSlice;
 	/**
 	 * Timed-media delivery state — media progress, cue visits and completions.
 	 *
-	 * Same posture as `formative`: optional, absence indistinguishable from a
+	 * Same posture as `tries`: optional, absence indistinguishable from a
 	 * pre-timed-media snapshot, and an unrecognized `version` rejected whole so
 	 * cue progress restarts while item sessions in the same snapshot are applied
 	 * untouched.

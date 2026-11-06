@@ -4,9 +4,9 @@ import type {
 } from "@pie-players/pie-players-shared/types";
 import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
 import {
-	resolveFormativeItemView,
-	type FormativeItemView,
-} from "@pie-players/pie-players-shared/formative";
+	resolveItemTryView,
+	type ItemTryView,
+} from "@pie-players/pie-players-shared/item-session-control";
 import type { SectionCompositionModel } from "../../controllers/types.js";
 import {
 	getCanonicalItemIdForItem,
@@ -179,23 +179,23 @@ export function getPassagePlayerParams(args: {
 }
 
 /**
- * The formative view for one item, or `null` when the section does not deliver
- * formatively.
+ * The Try view for one item, or `null` when the section does not enable
+ * item session control.
  *
  * Derived here rather than in a component so the card, the env projection, and
  * any future consumer read one predicate. The projection arrives on the
  * composition model, which the runtime republishes on every controller event, so
  * this is recomputed from fresh state on each render pass.
  */
-export function getFormativeItemView(args: {
+export function getItemTryView(args: {
 	compositionModel: SectionCompositionModel;
 	canonicalItemId: string;
-}): FormativeItemView | null {
-	const projection = args.compositionModel?.formative;
+}): ItemTryView | null {
+	const projection = args.compositionModel?.tries;
 	if (!projection?.enabled) return null;
 	const policy = projection.policies?.[args.canonicalItemId];
 	if (!policy?.enabled) return null;
-	return resolveFormativeItemView({
+	return resolveItemTryView({
 		policy,
 		state: projection.states?.[args.canonicalItemId],
 	});
@@ -205,7 +205,7 @@ export function getFormativeItemView(args: {
  * What a card needs to know about the cue timeline, or `null` when the section is
  * not timed media.
  *
- * Derived here rather than in a component for the same reason the formative view
+ * Derived here rather than in a component for the same reason the Try view
  * is: two derivations of one predicate can disagree about whether an item is on
  * screen.
  */
@@ -250,7 +250,7 @@ export function getTimedMediaItemView(args: {
  * - The content's declared `language` becomes `env.locale`, so a Spanish variant
  *   beside an English item scores and stamps as Spanish. Content that declares no
  *   language keeps the section's locale.
- * - A revealed item's formative override.
+ * - A revealed item's feedback override.
  *
  * `applyPlayerParams` diffs env by signature, so either narrowing reaches a
  * mounted player as a property assignment rather than a remount — the item keeps
@@ -260,11 +260,11 @@ function narrowContentEnv(
 	env: Record<string, unknown>,
 	args: {
 		language?: string;
-		formativeView?: FormativeItemView | null;
+		tryView?: ItemTryView | null;
 	},
 ): Record<string, unknown> {
 	const language = args.language?.trim();
-	const override = args.formativeView?.envOverride;
+	const override = args.tryView?.envOverride;
 	if (!language && !override) return env;
 	return {
 		...env,
@@ -296,7 +296,7 @@ export function getItemPlayerParams(args: {
 	playerStrategy: string;
 	itemIndex?: number;
 	baseHeadingLevel?: HeadingLevel;
-	formativeView?: FormativeItemView | null;
+	tryView?: ItemTryView | null;
 	/** The interface-locale provider the toolkit published, for the player's own chrome. */
 	i18n?: I18nProvider | null;
 	/** The toolkit's `contentLanguageDefault`, for content that declares no language. */
@@ -313,7 +313,7 @@ export function getItemPlayerParams(args: {
 	);
 	const env = narrowContentEnv(args.resolvedPlayerEnv, {
 		language: args.item.language,
-		formativeView: args.formativeView,
+		tryView: args.tryView,
 	});
 	return {
 		config: args.item.config || {},
@@ -353,7 +353,7 @@ export function getItemPlayerParams(args: {
 					: undefined,
 			itemIndex: args.itemIndex,
 			sectionId: args.compositionModel.section?.identifier,
-			// The section env, deliberately not the formative override. This value
+			// The section env, deliberately not the feedback override. This value
 			// is context for a host's `resolveBackend` callback, and which delivery
 			// backend serves an item is not a function of whether its feedback is
 			// currently on screen. Passing the override would let a reveal flip a

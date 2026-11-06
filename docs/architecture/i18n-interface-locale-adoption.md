@@ -176,7 +176,7 @@ half of slice 2 of
 
 **Layout follows the writing direction; free windows follow the screen.** The
 cards push end-of-row controls to the trailing edge with logical properties
-(`margin-inline-start: auto`), so the toolbar and the formative button mirror
+(`margin-inline-start: auto`), so the toolbar and the check button mirror
 under `dir="rtl"`; the `section-player-rtl-layout` spec holds that to geometry,
 because an attribute assertion cannot see a physical margin that fails to flip.
 Free-floating windows and panels — the tool shells at `document.body`, the
@@ -242,7 +242,7 @@ Five namespaces, one module per locale:
 
 - `common.*` — verbs and nouns reused everywhere: `close`, `cancel`, `loading`.
 - `player.*` — player chrome: pane labels, tabs, loading states, error banners,
-  formative controls, passage title.
+  check controls, passage title.
 - `toolkit.*` — toolbar and shared tool-shell chrome, settings panel.
 - `tools.<toolId>.*` — per-capability strings, including `name` and
   `description` for the registration keys.
@@ -268,7 +268,7 @@ three reasons, each sufficient alone:
 
 - They were harvested from a design instead of from call sites: over half their
   keys named UI this codebase does not render, while strings on screen, such as
-  formative feedback, `Passage`, `Try again` and the sign-language names, had no
+  check feedback, `Passage`, `Try again` and the sign-language names, had no
   keys.
 - No published version could load them under Node.js, for the import-attribute
   reason under [Decisions](#decisions).

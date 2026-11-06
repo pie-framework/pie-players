@@ -107,8 +107,8 @@ const so = {
 				"Jawaabaha aad kaydisay ee qaybtan lama soo celin karin. Isku day markale.",
 		},
 
-		formative: {
-			checkAnswer: "Hubi jawaabta",
+		check: {
+			answer: "Hubi jawaabta",
 			tryAgain: "Isku day markale",
 			answerRecorded: "Jawaabta waa la diiwaan geliyay.",
 			correct: "Waa sax.",
@@ -116,7 +116,7 @@ const so = {
 			notCorrect: "Ma aha sax.",
 			notAutoScored:
 				"Jawaabta waa la diiwaan geliyay. Su'aashan si otomatig lama qiimeynayo.",
-			checkFailed: "Su'aashan lama hubin karin. Isku day markale.",
+			failed: "Su'aashan lama hubin karin. Isku day markale.",
 			// Somali takes the singular noun after a numeral ("labo isku day"),
 			// so both CLDR categories carry the same wording by grammar.
 			triesLeft: {

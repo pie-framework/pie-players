@@ -2,7 +2,7 @@
 
 :root,
 [data-theme="light"],
-:where(pie-theme[theme="light"]) {
+:where(pie-theme[theme="light"]:not([scope="document"])) {
 	--pie-annotation-underline: #4221d5;
 	--pie-annotation-underline-dark: #9c89ec;
 	--pie-background: #ffffff;
@@ -62,7 +62,7 @@
 }
 
 [data-theme="dark"],
-:where(pie-theme[theme="dark"]) {
+:where(pie-theme[theme="dark"]:not([scope="document"])) {
 	--pie-annotation-underline: #9c89ec;
 	--pie-annotation-underline-dark: #9c89ec;
 	--pie-background: #000000;

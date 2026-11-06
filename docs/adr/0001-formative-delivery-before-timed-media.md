@@ -11,7 +11,7 @@ where cue and playback policy lives.
 
 Formative delivery — Try state, feedback reveal, mastery rollup — is built and
 released before timed media. At decision time, the [formative delivery
-contract](../prds/formative-delivery-contract.md) was `Ready` and the [timed media
+contract](../prds/item-session-control-contract.md) was `Ready` and the [timed media
 section contract](../prds/timed-media-section-contract.md) remained `Draft` until
 Try state shipped. Both contracts are now `Accepted`; the outcome below records
 when the sequencing condition was met.
@@ -93,7 +93,7 @@ holds only for an unhosted player. Since adc3da63 (2026-09-25) a hosted player �
 runs no element controllers, so `provideScore()` returns `undefined` for every
 model, every Try lands on `"unknown"`, and a correctness gate follows its
 `onUnknownCorrectness`. The formative contract's
-[Correctness derivation](../prds/formative-delivery-contract.md#correctness-derivation)
+[Correctness derivation](../prds/item-session-control-contract.md#correctness-derivation)
 and the item player's [Delivery Contract](../item-player/backend-support.md#delivery-contract)
 own the behavior.
 
@@ -102,3 +102,13 @@ Cue and playback policy did not go to `ToolPolicyEngine`. It lives in
 `SectionController`; the timed-media contract's [Package And Export
 Ownership](../prds/timed-media-section-contract.md#package-and-export-ownership)
 gives the reason.
+
+## Update, 2026-11-06
+
+The surface this record calls formative delivery is renamed for the mechanism,
+because the players never distinguish formative from summative use (PIE-1507).
+The authored policy is `itemSessionControl`, after the item session control it
+maps to; the runtime names use the Try vocabulary, so `FormativeCorrectness` is
+`TryCorrectness` and the persisted slice is `tries`. The
+[item session control contract](../prds/item-session-control-contract.md) holds
+the current names. The decision and its reasons above are unchanged.

@@ -173,10 +173,10 @@ describe("interpolation and plurals", () => {
 
 	test("English selects one/other", () => {
 		const i18n = new SimpleI18n();
-		expect(i18n.plural("player.formative.triesLeft", { count: 1 })).toBe(
+		expect(i18n.plural("player.check.triesLeft", { count: 1 })).toBe(
 			"1 try left.",
 		);
-		expect(i18n.plural("player.formative.triesLeft", { count: 3 })).toBe(
+		expect(i18n.plural("player.check.triesLeft", { count: 3 })).toBe(
 			"3 tries left.",
 		);
 	});
@@ -187,14 +187,14 @@ describe("interpolation and plurals", () => {
 		// render, not resolve to nothing.
 		const i18n = createPartialProvider("ar-SA", {
 			player: {
-				formative: {
+				check: {
 					triesLeft: { one: "محاولة واحدة", other: "{count} محاولات" },
 				},
 			},
 		});
 		await i18n.setLocale("ar-SA");
 		expect(
-			i18n.plural("player.formative.triesLeft", { count: 2 }),
+			i18n.plural("player.check.triesLeft", { count: 2 }),
 		).toBe("٢ محاولات");
 	});
 
@@ -205,19 +205,19 @@ describe("interpolation and plurals", () => {
 
 	test("numeric values render through the active locale's CLDR numbering defaults", async () => {
 		const english = new SimpleI18n();
-		expect(english.plural("player.formative.triesLeft", { count: 1000 })).toBe(
+		expect(english.plural("player.check.triesLeft", { count: 1000 })).toBe(
 			"1,000 tries left.",
 		);
 		// `ar-SA` defaults to Arabic-Indic digits; a string value is never touched.
 		const arabic = createPartialProvider("ar-SA", {
 			player: {
-				formative: {
+				check: {
 					triesLeft: { one: "محاولة واحدة", other: "{count} محاولات" },
 				},
 			},
 		});
 		await arabic.setLocale("ar-SA");
-		expect(arabic.plural("player.formative.triesLeft", { count: 3 })).toBe(
+		expect(arabic.plural("player.check.triesLeft", { count: 3 })).toBe(
 			"٣ محاولات",
 		);
 		expect(arabic.t("tools.ruler.switchedTo", { unit: "سنتيمتر" })).toBe(

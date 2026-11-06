@@ -14,7 +14,7 @@ export interface SessionDemoKey {
 
 /**
  * The canonical section snapshot, not a local restatement of its first three
- * fields: the persistence round trip is what proves the `formative` and
+ * fields: the persistence round trip is what proves the `tries` and
  * `timedMedia` slices survive, and a narrower type here would hide their loss.
  */
 export type SectionSessionSnapshot = SectionControllerSessionState;

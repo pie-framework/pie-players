@@ -1,7 +1,7 @@
 /**
  * Persistence for the timed-media slice.
  *
- * Same posture as the formative slice: an unreadable slice is rejected whole and
+ * Same posture as the Try slice: an unreadable slice is rejected whole and
  * delivery starts from clean cue state, while item sessions in the same snapshot
  * are normalized separately and survive. A version bump here must never cost a
  * learner their responses.

@@ -1,6 +1,7 @@
 import type { SectionPlayerPolicies } from "./types.js";
 
 export type {
+	SectionPlayerCheckControlPolicy,
 	SectionPlayerPolicies,
 	SectionPlayerPreloadPolicy,
 	SectionPlayerReadinessPolicy,
@@ -11,6 +12,7 @@ export const DEFAULT_SECTION_PLAYER_POLICIES: SectionPlayerPolicies = {
 	readiness: { mode: "progressive" },
 	preload: { enabled: true },
 	telemetry: { enabled: true },
+	checkControl: { enabled: true },
 };
 
 /**
@@ -31,5 +33,6 @@ export function resolveSectionPlayerPolicies(
 		},
 		preload: { enabled: policies?.preload?.enabled !== false },
 		telemetry: { enabled: policies?.telemetry?.enabled !== false },
+		checkControl: { enabled: policies?.checkControl?.enabled !== false },
 	};
 }

@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Formative delivery, end to end.
+ * Item session control, end to end.
  *
  * The unit suites cover the reducer, the rollup and the env projection in
  * isolation. What only a browser can show is the round trip: the card calls
@@ -12,10 +12,10 @@ import { expect, test } from "@playwright/test";
  * That round trip has one non-obvious failure mode, which is why this spec
  * exists rather than a third unit test: recording a Try changes neither the
  * renderables nor the item sessions, so the toolkit's composition revision key
- * had to learn about formative state or the emit is coalesced away and the
+ * had to learn about Try state or the emit is coalesced away and the
  * controller silently holds correct state the learner never sees.
  */
-const DEMO_PATH = "/formative-delivery?mode=candidate&layout=splitpane";
+const DEMO_PATH = "/item-session-control?mode=candidate&layout=splitpane";
 
 type CardState = {
 	id: string;
@@ -30,7 +30,7 @@ async function cardStates(
 ): Promise<CardState[]> {
 	return page.evaluate(() =>
 		[...document.querySelectorAll("[data-section-item-card]")].map((card) => {
-			const button = card.querySelector("[data-pie-formative-action]");
+			const button = card.querySelector("[data-pie-check-action]");
 			const player = card.querySelector("pie-item-player") as
 				| (Element & { env?: Record<string, unknown> })
 				| null;
@@ -39,7 +39,7 @@ async function cardStates(
 				id: card.getAttribute("data-canonical-item-id") || "",
 				label: button ? (button.textContent || "").trim() : null,
 				status: (
-					card.querySelector("[data-pie-formative-status]")?.textContent || ""
+					card.querySelector("[data-pie-check-status]")?.textContent || ""
 				).trim(),
 				envMode: String(env.mode || ""),
 				envRole: String(env.role || ""),
@@ -78,16 +78,16 @@ async function pickChoice(
 
 function control(page: import("@playwright/test").Page, itemId: string) {
 	return page
-		.locator(`[data-canonical-item-id="${itemId}"] [data-pie-formative-action]`)
+		.locator(`[data-canonical-item-id="${itemId}"] [data-pie-check-action]`)
 		.first();
 }
 
-test.describe("formative delivery", () => {
+test.describe("item session control", () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto(DEMO_PATH);
 		// Every card mounted, elements registered, controls resolved.
-		await expect(control(page, "fd-q1")).toBeVisible({ timeout: 30_000 });
-		await expect(control(page, "fd-q3")).toBeVisible();
+		await expect(control(page, "isc-q1")).toBeVisible({ timeout: 30_000 });
+		await expect(control(page, "isc-q3")).toBeVisible();
 	});
 
 	test("renders a control only where the resolved policy is enabled", async ({
@@ -95,18 +95,18 @@ test.describe("formative delivery", () => {
 	}) => {
 		const cards = await cardStates(page);
 		expect(cards.map((card) => card.id)).toEqual([
-			"fd-q1",
-			"fd-q2",
-			"fd-q3",
-			"fd-q4",
+			"isc-q1",
+			"isc-q2",
+			"isc-q3",
+			"isc-q4",
 		]);
 		expect(cards.slice(0, 3).map((card) => card.label)).toEqual([
 			"Check answer",
 			"Check answer",
 			"Check answer",
 		]);
-		// `fd-q4` sets `enabled: false`, so it is an ordinary item inside a
-		// formative section.
+		// `isc-q4` sets `enabled: false`, so it is an ordinary item inside a
+		// section with item session control.
 		expect(cards[3].label).toBeNull();
 		expect(cards.every((card) => card.envMode === "gather")).toBe(true);
 	});
@@ -114,11 +114,11 @@ test.describe("formative delivery", () => {
 	test("a wrong answer reveals correctness on that item alone and offers a retry", async ({
 		page,
 	}) => {
-		await pickChoice(page, "fd-q1", "Venus");
-		await control(page, "fd-q1").click();
+		await pickChoice(page, "isc-q1", "Venus");
+		await control(page, "isc-q1").click();
 
-		await expect(control(page, "fd-q1")).toHaveText("Try again");
-		const checked = await cardFor(page, "fd-q1");
+		await expect(control(page, "isc-q1")).toHaveText("Try again");
+		const checked = await cardFor(page, "isc-q1");
 		expect(checked.status).toContain("Not correct");
 		// Tries remaining is stated, not only implied by the button.
 		expect(checked.status).toContain("2 tries left");
@@ -128,42 +128,42 @@ test.describe("formative delivery", () => {
 		expect(checked.envRole).toBe("student");
 
 		// The neighbours are untouched: this is the per-item env seam.
-		const others = (await cardStates(page)).filter((card) => card.id !== "fd-q1");
+		const others = (await cardStates(page)).filter((card) => card.id !== "isc-q1");
 		expect(others.every((card) => card.envMode === "gather")).toBe(true);
 		expect(others.every((card) => card.status === "")).toBe(true);
 	});
 
 	test("a retry reopens the item at the section env", async ({ page }) => {
-		await pickChoice(page, "fd-q1", "Venus");
-		await control(page, "fd-q1").click();
-		await expect(control(page, "fd-q1")).toHaveText("Try again");
+		await pickChoice(page, "isc-q1", "Venus");
+		await control(page, "isc-q1").click();
+		await expect(control(page, "isc-q1")).toHaveText("Try again");
 
-		await control(page, "fd-q1").click();
-		await expect(control(page, "fd-q1")).toHaveText("Check answer");
-		const reopened = await cardFor(page, "fd-q1");
+		await control(page, "isc-q1").click();
+		await expect(control(page, "isc-q1")).toHaveText("Check answer");
+		const reopened = await cardFor(page, "isc-q1");
 		expect(reopened.envMode).toBe("gather");
 	});
 
 	test("a correct answer on a second try reports correct", async ({ page }) => {
-		await pickChoice(page, "fd-q1", "Venus");
-		await control(page, "fd-q1").click();
-		await expect(control(page, "fd-q1")).toHaveText("Try again");
-		await control(page, "fd-q1").click();
+		await pickChoice(page, "isc-q1", "Venus");
+		await control(page, "isc-q1").click();
+		await expect(control(page, "isc-q1")).toHaveText("Try again");
+		await control(page, "isc-q1").click();
 
-		await pickChoice(page, "fd-q1", "Mercury");
-		await control(page, "fd-q1").click();
-		await expect(control(page, "fd-q1")).toHaveText("Try again");
-		expect((await cardFor(page, "fd-q1")).status).toContain("Correct.");
+		await pickChoice(page, "isc-q1", "Mercury");
+		await control(page, "isc-q1").click();
+		await expect(control(page, "isc-q1")).toHaveText("Try again");
+		expect((await cardFor(page, "isc-q1")).status).toContain("Correct.");
 	});
 
 	test("a single-try item spends its try and removes the control", async ({
 		page,
 	}) => {
-		await pickChoice(page, "fd-q2", "Oxygen");
-		await control(page, "fd-q2").click();
+		await pickChoice(page, "isc-q2", "Oxygen");
+		await control(page, "isc-q2").click();
 
-		await expect(control(page, "fd-q2")).toHaveCount(0);
-		const spent = await cardFor(page, "fd-q2");
+		await expect(control(page, "isc-q2")).toHaveCount(0);
+		const spent = await cardFor(page, "isc-q2");
 		expect(spent.status).toContain("Not correct");
 		// `feedback: "solution"` projects the instructor role, which is the element
 		// convention for also revealing the authored correct response.
@@ -174,48 +174,48 @@ test.describe("formative delivery", () => {
 	test("on-final-try records a try and reveals nothing until the last one", async ({
 		page,
 	}) => {
-		await pickChoice(page, "fd-q3", "Atlantic");
-		await control(page, "fd-q3").click();
+		await pickChoice(page, "isc-q3", "Atlantic");
+		await control(page, "isc-q3").click();
 		await expect
-			.poll(async () => (await cardFor(page, "fd-q3")).status)
+			.poll(async () => (await cardFor(page, "isc-q3")).status)
 			.toContain("Answer recorded");
 
-		const firstTry = await cardFor(page, "fd-q3");
+		const firstTry = await cardFor(page, "isc-q3");
 		// Still checkable, because nothing was revealed to dismiss.
 		expect(firstTry.label).toBe("Check answer");
 		expect(firstTry.envMode).toBe("gather");
 		expect(firstTry.status).not.toContain("Not correct");
 
-		await control(page, "fd-q3").click();
-		await control(page, "fd-q3").click();
+		await control(page, "isc-q3").click();
+		await control(page, "isc-q3").click();
 
 		await expect
-			.poll(async () => (await cardFor(page, "fd-q3")).status)
+			.poll(async () => (await cardFor(page, "isc-q3")).status)
 			.toContain("Not correct");
-		expect((await cardFor(page, "fd-q3")).envMode).toBe("evaluate");
+		expect((await cardFor(page, "isc-q3")).envMode).toBe("evaluate");
 	});
 
 	test("the status message lives in a polite live region that exists before it has content", async ({
 		page,
 	}) => {
 		const status = page
-			.locator('[data-canonical-item-id="fd-q1"] [data-pie-formative-status]')
+			.locator('[data-canonical-item-id="isc-q1"] [data-pie-check-status]')
 			.first();
 		// Present and empty before any Try, so the first announcement is not lost
 		// to a region that did not yet exist (WCAG 4.1.3).
 		await expect(status).toHaveAttribute("aria-live", "polite");
 		await expect(status).toHaveText("");
 
-		await pickChoice(page, "fd-q1", "Venus");
-		await control(page, "fd-q1").click();
+		await pickChoice(page, "isc-q1", "Venus");
+		await control(page, "isc-q1").click();
 		await expect(status).not.toHaveText("");
 	});
 
 	test("the control is reachable and operable from the keyboard", async ({
 		page,
 	}) => {
-		await pickChoice(page, "fd-q1", "Venus");
-		const button = control(page, "fd-q1");
+		await pickChoice(page, "isc-q1", "Venus");
+		const button = control(page, "isc-q1");
 		await button.focus();
 		await expect(button).toBeFocused();
 		await page.keyboard.press("Enter");
@@ -224,23 +224,60 @@ test.describe("formative delivery", () => {
 		await expect(button).toBeFocused();
 	});
 
+	test("a host that hides the control checks and retries through the controller", async ({
+		page,
+	}) => {
+		const act = (method: "checkItem" | "retryItem") =>
+			page.evaluate(async (name) => {
+				const host = document.querySelector("pie-section-player-splitpane") as
+					| (HTMLElement & {
+							waitForSectionController?: (
+								timeoutMs: number,
+							) => Promise<Record<string, (args: { itemId: string }) => unknown> | null>;
+					  })
+					| null;
+				const controller = await host?.waitForSectionController?.(5000);
+				await controller?.[name]?.({ itemId: "isc-q1" });
+			}, method);
+
+		await page.evaluate(() => {
+			const host = document.querySelector("pie-section-player-splitpane") as
+				| (HTMLElement & { policies?: unknown })
+				| null;
+			if (host) host.policies = { checkControl: { enabled: false } };
+		});
+		await expect(page.locator("[data-pie-check-action]")).toHaveCount(0);
+
+		await pickChoice(page, "isc-q1", "Venus");
+		await act("checkItem");
+		await expect
+			.poll(async () => (await cardFor(page, "isc-q1")).status)
+			.toContain("Not correct");
+		// The status line keeps announcing without the button.
+		expect((await cardFor(page, "isc-q1")).envMode).toBe("evaluate");
+		await expect(page.locator("[data-pie-check-action]")).toHaveCount(0);
+
+		await act("retryItem");
+		await expect.poll(async () => (await cardFor(page, "isc-q1")).envMode).toBe("gather");
+	});
+
 	test("mastery rolls up over tries and excludes nothing in this section", async ({
 		page,
 	}) => {
-		await pickChoice(page, "fd-q1", "Mercury");
-		await control(page, "fd-q1").click();
-		await expect(control(page, "fd-q1")).toHaveText("Try again");
+		await pickChoice(page, "isc-q1", "Mercury");
+		await control(page, "isc-q1").click();
+		await expect(control(page, "isc-q1")).toHaveText("Try again");
 
 		const mastery = await page.evaluate(async () => {
 			const host = document.querySelector("pie-section-player-splitpane") as
 				| (HTMLElement & {
 						waitForSectionController?: (
 							timeoutMs: number,
-						) => Promise<{ getFormativeProjection?: () => unknown } | null>;
+						) => Promise<{ getTryProjection?: () => unknown } | null>;
 				  })
 				| null;
 			const controller = await host?.waitForSectionController?.(5000);
-			const projection = controller?.getFormativeProjection?.() as
+			const projection = controller?.getTryProjection?.() as
 				| { mastery?: Record<string, unknown> }
 				| null
 				| undefined;
@@ -249,7 +286,7 @@ test.describe("formative delivery", () => {
 
 		expect(mastery).toMatchObject({
 			version: 1,
-			// `fd-q4` opted out, so it carries no formative state — but it is still
+			// `isc-q4` opted out, so it carries no Try state — but it is still
 			// one of the section's items.
 			totalItems: 4,
 			masteredItems: 1,

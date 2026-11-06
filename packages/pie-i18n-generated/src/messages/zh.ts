@@ -109,15 +109,15 @@ const zh = {
 				"无法恢复您在本部分中已保存的答案。请重试。",
 		},
 
-		formative: {
-			checkAnswer: "检查答案",
+		check: {
+			answer: "检查答案",
 			tryAgain: "重试",
 			answerRecorded: "答案已记录。",
 			correct: "正确。",
 			partlyCorrect: "部分正确。",
 			notCorrect: "不正确。",
 			notAutoScored: "答案已记录。本题不计入自动评分。",
-			checkFailed: "无法检查本题。请重试。",
+			failed: "无法检查本题。请重试。",
 			triesLeft: {
 				other: "还剩 {count} 次尝试机会。",
 			},

@@ -1,25 +1,27 @@
-# Formative Delivery Contract
+# Item Session Control Contract
 
-Status: Accepted, 2026-08-15
+Status: Accepted, 2026-08-15. Renamed 2026-11-06 (PIE-1507): this contract
+shipped as the formative delivery contract, and its names now follow the
+mechanism rather than one purpose it serves.
 
 Owner: PIE Players maintainers
 
 Related architecture:
 
 - [Formative delivery before timed media](../adr/0001-formative-delivery-before-timed-media.md) — the sequencing decision this PRD implements
-- [Formative delivery language](../../CONTEXT.md#formative-delivery-language) — the glossary for Try, Feedback Reveal, Forced Reveal and Mastery
+- [Item session control language](../../CONTEXT.md#item-session-control-language) — the glossary for Try, Feedback Reveal, Forced Reveal and Mastery
 - [Timed media section](../architecture/timed-media-section.md) — the first downstream consumer of Try state
 - [P0 shared contracts](../architecture/shared-contracts-p0.md)
 - [Score components and section outcomes](./shared-contracts/score-components-and-section-outcomes.md) — the wider projection this PRD partially satisfies
 - [Timed media section contract](./timed-media-section-contract.md) — cue gate conditions compose with the state defined here
 
-Integrator guide: [Formative delivery](../section-player/formative-delivery.md)
+Integrator guide: [Item session control](../section-player/item-session-control.md)
 in the section player README.
 
 ## Problem
 
 Before this contract, PIE could score an item in the browser and could not
-deliver one formatively. `scorePieItem(...)` in
+let a learner check an answer and try again. `scorePieItem(...)` in
 `packages/players-shared/src/pie/scoring.ts` calls each element controller's
 `outcome(model, session, env)` under `mode: "evaluate"`, and
 `pie-item-player.provideScore()` exposes that imperatively. The delivery state
@@ -41,7 +43,7 @@ feedback gating and rollup against internal session shapes.
 
 - Define **Try** as PIE's unit of one submitted-for-checking pass over an item,
   distinct from the assessment-level attempt PIE already names.
-- Define authored formative policy on the section and per item ref, with
+- Define authored item session control policy on the section and per item ref, with
   item-over-section resolution.
 - Define **Feedback Reveal** as a projection onto the item's `env`, so element
   feedback rendering stays element-owned.
@@ -77,15 +79,15 @@ feedback gating and rollup against internal session shapes.
 ## Package And Export Ownership
 
 - Owning package: `@pie-players/pie-players-shared` (source at
-  `packages/players-shared/src/formative`).
-- Public export path: `@pie-players/pie-players-shared/formative` for policy
+  `packages/players-shared/src/item-session-control`).
+- Public export path: `@pie-players/pie-players-shared/item-session-control` for policy
   resolution, outcome aggregation, the Try-state reducer, the item view, and the
   mastery rollup. Authored policy fields reach `AssessmentSection` and
   `AssessmentItemRef` through `@pie-players/pie-players-shared/types`, which is
   where those interfaces already live.
 - Runtime home: `SectionController` in `@pie-players/pie-section-player` owns the
   live state, because it already owns the equivalent aggregate — per-item
-  completion keyed by canonical id, rolled up and emitted on change. Formative
+  completion keyed by canonical id, rolled up and emitted on change. Try
   state is the same shape with a different predicate, and splitting it from
   completion would put two rollups over one item set in two packages.
   `@pie-players/pie-assessment-toolkit` owns only the contract interface and the
@@ -94,7 +96,7 @@ feedback gating and rollup against internal session shapes.
   gates; `assessment-toolkit`; `apps/section-demos`. A
   [pie-qti](https://github.com/pie-framework/pie-qti) adapter is the intended
   standards consumer.
-- Runtime environment: the `formative` module is pure and Node-safe — no DOM, no
+- Runtime environment: the `item-session-control` module is pure and Node-safe — no DOM, no
   timers, no element registry. Everything that touches the DOM stays in
   `section-player`.
 
@@ -103,38 +105,36 @@ QTI adapter can import without pulling in a player.
 
 ## Contract Shape
 
-Terms follow the [formative delivery glossary](../../CONTEXT.md#formative-delivery-language).
+Terms follow the [item session control glossary](../../CONTEXT.md#item-session-control-language).
 
 ### Authored policy
 
 ```ts
-export type FormativeTryLimit = number | "unlimited";
-export type FormativeFeedbackReveal = "none" | "correctness" | "solution";
-export type FormativeRevealTiming = "on-try" | "on-final-try";
+export type TryLimit = number | "unlimited";
+export type FeedbackReveal = "none" | "correctness" | "solution";
+export type FeedbackRevealTiming = "on-try" | "on-final-try";
 
-export interface FormativeDeliveryPolicy {
+export interface ItemSessionControlPolicy {
   /** Absent or `false`: no control, no projection, no state. */
   enabled?: boolean;
   /** Default 1. `"unlimited"` for practice. */
-  maxTries?: FormativeTryLimit;
+  maxTries?: TryLimit;
   /** Default `"correctness"`. */
-  feedback?: FormativeFeedbackReveal;
+  feedback?: FeedbackReveal;
   /** Default `"on-try"`. */
-  revealOn?: FormativeRevealTiming;
+  revealOn?: FeedbackRevealTiming;
 }
 
-export type FormativeItemPolicy = FormativeDeliveryPolicy;
-
-export interface ResolvedFormativePolicy {
+export interface ResolvedItemSessionControlPolicy {
   enabled: boolean;
-  maxTries: FormativeTryLimit;
-  feedback: FormativeFeedbackReveal;
-  revealOn: FormativeRevealTiming;
+  maxTries: TryLimit;
+  feedback: FeedbackReveal;
+  revealOn: FeedbackRevealTiming;
 }
 ```
 
-`AssessmentSection.formative` sets the section default;
-`AssessmentItemRef.formative` overrides it field by field. Resolution order is
+`AssessmentSection.itemSessionControl` sets the section default;
+`AssessmentItemRef.itemSessionControl` overrides it field by field. Resolution order is
 built-in default → section → item ref, which is the order QTI 3 uses for
 `qti-item-session-control` on `qti-assessment-section` and
 `qti-assessment-item-ref`.
@@ -146,33 +146,33 @@ to `"on-try"` there.
 ### Try state
 
 ```ts
-export type FormativeCorrectness = "correct" | "partial" | "incorrect" | "unknown";
+export type TryCorrectness = "correct" | "partial" | "incorrect" | "unknown";
 
-export interface FormativeTryOutcome {
-  correctness: FormativeCorrectness;
+export interface TryOutcome {
+  correctness: TryCorrectness;
   points?: number;
   max?: number;
   scoredElementCount: number;
   totalElementCount: number;
   /** The per-element outcomes the aggregate came from. */
-  elementOutcomes?: FormativeScoredOutcome[];
+  elementOutcomes?: ScoredElementOutcome[];
 }
 
-export interface FormativeItemState {
+export interface ItemTryState {
   version: 1;
   itemIdentifier: string;
   tryCount: number;
   revealed: boolean;
-  lastOutcome?: FormativeTryOutcome;
+  lastOutcome?: TryOutcome;
   /** The 1-based Try on which the item first scored full credit. */
   firstCorrectTry?: number;
   /** Reveal level a host forced, overriding the policy's for the env projection. */
-  revealOverride?: FormativeFeedbackReveal;
+  revealOverride?: FeedbackReveal;
 }
 
-export interface FormativeSectionSlice {
+export interface TrySectionSlice {
   version: 1;
-  items: Record<string, FormativeItemState>;
+  items: Record<string, ItemTryState>;
 }
 ```
 
@@ -183,8 +183,8 @@ left.
 
 ### Correctness derivation
 
-`aggregateFormativeOutcome(outcomes)` reduces the array `provideScore()` returns
-to one `FormativeTryOutcome`, following the aggregation the persisted API path
+`aggregateTryOutcome(outcomes)` reduces the array `provideScore()` returns
+to one `TryOutcome`, following the aggregation the persisted API path
 already documents in [`../item-player/scoring-and-rubrics.md`](../item-player/scoring-and-rubrics.md):
 
 - one scored outcome: `points = score`, `max = max ?? 1`;
@@ -215,7 +215,7 @@ make this contract decide what an element's outcome may contain.
 ### Feedback Reveal as an env projection
 
 ```ts
-export interface FormativeEnvOverride {
+export interface FeedbackEnvOverride {
   mode: "evaluate";
   role: "student" | "instructor";
 }
@@ -231,7 +231,7 @@ that item alone:
 | `"solution"` | `mode: "evaluate"`, `role: "instructor"` | the element additionally renders the authored correct response |
 
 The section env stays section-wide and the projection is per item, derived from
-formative state at the one point item params are built. A per-item env in the
+Try state at the one point item params are built. A per-item env in the
 runtime config would make every layout carry an env-resolution order.
 
 PIE guarantees the mode and role it projects, not what a given element draws in
@@ -245,19 +245,19 @@ the item is editable again at the section's own mode.
 
 ### Item view
 
-`resolveFormativeItemView(policy, state)` derives what a card needs, so no
+`resolveItemTryView(policy, state)` derives what a card needs, so no
 component reimplements the predicate:
 
 ```ts
-export interface FormativeItemView {
+export interface ItemTryView {
   enabled: boolean;
   tryCount: number;
   triesRemaining: number | "unlimited";
   canCheck: boolean;
   canRetry: boolean;
   revealed: boolean;
-  envOverride?: FormativeEnvOverride;
-  lastOutcome?: FormativeTryOutcome;
+  envOverride?: FeedbackEnvOverride;
+  lastOutcome?: TryOutcome;
 }
 ```
 
@@ -267,7 +267,7 @@ package, alongside the other card strings.
 ### Mastery rollup
 
 ```ts
-export interface FormativeMasteryRollup {
+export interface MasteryRollup {
   version: 1;
   totalItems: number;
   /** Total minus items whose last outcome was `"unknown"`; an untried item counts. */
@@ -289,44 +289,47 @@ yet says it cannot be scored, so one correct answer does not complete a section.
 
 ### Controller surface
 
-`SectionController` gains five methods, all optional on
+`SectionController` gains six methods, all optional on
 `SectionControllerHandle` in keeping with the rest of that interface:
 
 ```ts
-recordFormativeTry?(args: { itemId: string; outcomes?: unknown[] }): void;
-retryFormativeItem?(args: { itemId: string }): void;
-revealFormativeItem?(args: {
+checkItem?(args: { itemId: string }): Promise<void>;
+recordTry?(args: { itemId: string; outcomes?: unknown[] }): void;
+retryItem?(args: { itemId: string }): void;
+revealItemFeedback?(args: {
   itemId: string;
   feedback: "correctness" | "solution";
 }): void;
-hideFormativeItem?(args: { itemId: string }): void;
-getFormativeProjection?(): FormativeSectionProjection | null;
+hideItemFeedback?(args: { itemId: string }): void;
+getTryProjection?(): TrySectionProjection | null;
 ```
 
-`revealFormativeItem` / `hideFormativeItem` are host authority — a teacher-driven
+`revealItemFeedback` / `hideItemFeedback` are host authority — a teacher-driven
 "show the answer". They spend no Try and ignore the Try budget and `revealOn`,
 because none of those bound a decision the host has already taken, and they work
-on an item with no Try yet. `retryFormativeItem` is the learner action and stays
+on an item with no Try yet. `checkItem` scores the rendered item and records a Try, as the Check answer
+button does, for a host that turns the button off with `policies.checkControl`.
+`retryItem` is the learner action and stays
 budget-respecting: an item with no Tries left keeps its feedback on screen.
 
 `feedback` is stated rather than defaulted from the policy, because a reveal
 under `feedback: "none"` would project nothing. It is recorded as
-`FormativeItemState.revealOverride` and governs the env projection until it is
+`ItemTryState.revealOverride` and governs the env projection until it is
 withdrawn — including by a learner retry, so a forced solution does not silently
 upgrade every later reveal on that item.
 
 No new element surface. `getSectionController()` / `waitForSectionController()`
 on every layout already return this handle, which is where `getSession`,
-`applySession` and `updateItemSession` already live; forwarding five more methods
+`applySession` and `updateItemSession` already live; forwarding six more methods
 through layout → kernel → scaffold → base would be passthrough for nothing.
 
 ```ts
-export interface FormativeSectionProjection {
+export interface TrySectionProjection {
   version: 1;
   enabled: boolean;
-  policies: Record<string, ResolvedFormativePolicy>;
-  states: Record<string, FormativeItemState>;
-  mastery: FormativeMasteryRollup;
+  policies: Record<string, ResolvedItemSessionControlPolicy>;
+  states: Record<string, ItemTryState>;
+  mastery: MasteryRollup;
 }
 ```
 
@@ -336,21 +339,21 @@ controller event. No new host-facing event channel is added.
 
 The toolkit coalesces composition emits behind a revision key over section id,
 current item, renderables and item sessions. Recording a Try changes none of
-those, so formative state is part of the key. Without it the controller holds
+those, so Try state is part of the key. Without it the controller holds
 correct state and the card never learns its feedback was revealed, a failure no
 unit test observes; the browser coverage in the Test Plan pins it.
 
 Three controller events join the existing union:
 
 ```ts
-{ type: "formative-try-recorded", itemId, canonicalItemId, tryCount, outcome, revealed, currentItemIndex, timestamp }
-{ type: "formative-reveal-changed", itemId, canonicalItemId, revealed, feedback?, tryCount, source: "learner" | "host", currentItemIndex, timestamp }
+{ type: "item-try-recorded", itemId, canonicalItemId, tryCount, outcome, revealed, currentItemIndex, timestamp }
+{ type: "item-feedback-reveal-changed", itemId, canonicalItemId, revealed, feedback?, tryCount, source: "learner" | "host", currentItemIndex, timestamp }
 { type: "section-mastery-changed", mastery, currentItemIndex, timestamp }
 ```
 
-`formative-reveal-changed` covers every reveal transition a Try did not cause — a
+`item-feedback-reveal-changed` covers every reveal transition a Try did not cause — a
 learner retry, a host reveal, a host withdrawal — with `source` naming which. A
-Try that reveals reports through `formative-try-recorded`, which carries its own
+Try that reveals reports through `item-try-recorded`, which carries its own
 `revealed`.
 
 `section-mastery-changed` emits on rollup change, matching how
@@ -360,16 +363,16 @@ emits it: showing an answer is not answering.
 ### Learner action route
 
 The control lives in the item card. A toolkit capability cannot reach
-`provideScore()` on the item player without a new bridge, and formative delivery
+`provideScore()` on the item player without a new bridge, and item session control
 is delivery semantics rather than an accommodation or tool. The card owns the
 control and the item player node, so it is the only place that can call
 `provideScore()`. It reports the result rather than interpreting it:
 
 ```
-card → pie-formative-action (cross-boundary DOM event)
+card → pie-try-action (cross-boundary DOM event)
      → PieAssessmentToolkit listener
      → SectionControllerBinding
-     → SectionController.recordFormativeTry / retryFormativeItem
+     → SectionController.recordTry / retryItem
      → controller change event → composition republish → card re-renders
 ```
 
@@ -379,9 +382,12 @@ take; nothing new is invented for it.
 
 ## Compatibility
 
-Additive throughout. A section without `formative` delivers unchanged: the
-resolved policy is disabled, no projection is produced, no control is rendered,
-and no env projection is applied.
+Additive over content without the policy. A section without `itemSessionControl`
+delivers unchanged: the resolved policy is disabled, no projection is produced, no
+control is rendered, and no env projection is applied. The 2026-11-06 rename
+removed the `formative` names without aliases, so content authored with
+`formative` delivers without the control and a session saved with a `formative`
+slice restores with its Try state cleared, both silently.
 
 This PRD does not change:
 
@@ -394,14 +400,14 @@ This PRD does not change:
 - `assessment-player` routing, submission, or rollup.
 
 Existing persisted `SectionControllerSessionState` snapshots stay valid: the
-`formative` slice is optional and its absence is indistinguishable from a
-pre-formative save.
+`tries` slice is optional and its absence is indistinguishable from a
+save made before Try state existed.
 
-No compatibility shim is added. A `formative` slice with an unrecognized
+No compatibility shim is added. A `tries` slice with an unrecognized
 `version` is rejected rather than normalized.
 
-Every type member this adds is optional, `SectionCompositionModel.formative` and
-the five `SectionControllerHandle` methods included, so anything else assembling a
+Every type member this adds is optional, `SectionCompositionModel.tries` and
+the six `SectionControllerHandle` methods included, so anything else assembling a
 composition model or supplying a controller — a host layout, an adapter, a test
 double — omits what it does not use and absent reads as `null`. The one addition
 no default covers is the widened `SectionControllerEvent` union: a host switching
@@ -420,7 +426,7 @@ PIE owns:
 
 Hosts own:
 
-- whether formative delivery is enabled, and the policy values;
+- whether item session control is enabled, and the policy values;
 - durable persistence of the session snapshot;
 - authorization — including whether a learner is permitted solutions;
 - reporting, gradebooks, and any mapping of mastery into product records;
@@ -428,18 +434,18 @@ Hosts own:
 
 ## Serialization And Versioning
 
-`FormativeItemState` and `FormativeSectionSlice` are persisted through
-`SectionControllerSessionState.formative`.
+`ItemTryState` and `TrySectionSlice` are persisted through
+`SectionControllerSessionState.tries`.
 
 - Version field: `version: 1` on both the slice and each item state.
-- Validation owner: the `formative` module in `players-shared`;
+- Validation owner: the `item-session-control` module in `players-shared`;
   `SectionController` calls it and never hand-parses.
 - Unknown fields: dropped.
 - Unknown item identifiers: dropped, matching how `normalizeApplySession`
   filters `itemSessions` against the section's canonical ids.
 - Unknown version: the slice is rejected whole and delivery starts from a clean
-  formative state. Item sessions in the same snapshot are unaffected — a
-  formative version bump must not cost a learner their responses.
+  Try state. Item sessions in the same snapshot are unaffected — a
+  Try slice version bump must not cost a learner their responses.
 - Migration: none needed at version 1.
 
 Round-trip fixtures cover: zero tries; one try with each of the four
@@ -479,13 +485,15 @@ reinterpreting it:
 
 | PIE | QTI 3 |
 | --- | --- |
-| `formative.maxTries` | `qti-item-session-control@max-attempts` (`"unlimited"` ↔ `0`) |
-| `formative.feedback !== "none"` | `qti-item-session-control@show-feedback` |
-| `formative.feedback === "solution"` | `qti-item-session-control@show-solution` |
-| `FormativeItemState.tryCount` | item session `numAttempts` |
-| `FormativeTryOutcome.correctness` | derived from `SCORE` / `MAX_SCORE`, not a QTI variable |
+| `itemSessionControl.maxTries` | `qti-item-session-control@max-attempts` (`"unlimited"` ↔ `0`) |
+| `itemSessionControl.feedback !== "none"` | `qti-item-session-control@show-feedback` |
+| `itemSessionControl.feedback === "solution"` | `qti-item-session-control@show-solution` |
+| `ItemTryState.tryCount` | item session `numAttempts` |
+| `TryOutcome.correctness` | derived from `SCORE` / `MAX_SCORE`, not a QTI variable |
 
-PIE keeps its own names because `attempt` is already taken at two levels in this
+The authored policy takes QTI's name, `itemSessionControl`, because it carries
+the same fields at the same two levels with the same resolution order. The
+runtime keeps its own names because `attempt` is already taken at two levels in this
 codebase — `TestAttemptSession` for the administration and
 `TestAttemptItemSession.attemptCount` for session realization — and a third
 `attempt` at the item level would be read as one of those. **Try** is
@@ -528,10 +536,11 @@ adapter and its validation suite do not exist.
   control is operable by keyboard and keeps focus across a check; the mastery
   rollup reflects the Tries taken.
 
-The pure module is covered by `packages/players-shared/tests/formative-*.test.ts`,
-the controller and view state by `section-controller-formative.test.ts` and
-`section-player-formative-env.test.ts` in `packages/section-player/tests/`, and
-the browser cases by `section-player-formative-delivery.spec.ts` beside them.
+The pure module is covered by `packages/players-shared/tests/try-*.test.ts` and
+`item-session-control-policy.test.ts`,
+the controller and view state by `section-controller-tries.test.ts` and
+`section-player-feedback-env.test.ts` in `packages/section-player/tests/`, and
+the browser cases by `section-player-item-session-control.spec.ts` beside them.
 Run `bun run typecheck`, `bun run test` and the
 [packaging](../../AGENTS.md#custom-element-import-and-packaging-boundaries) and
 [toolkit boundary](../../AGENTS.md#monorepo-map) checks; Playwright-backed tests
@@ -540,9 +549,10 @@ run outside the sandbox
 
 ## Rollout And Release Notes
 
-Additive and gated behind `formative.enabled`, so existing content is
-unaffected and no host migrates. Integrator usage is in the section player's
-[Formative delivery](../section-player/formative-delivery.md).
+Gated behind `itemSessionControl.enabled`, so content without the policy is
+unaffected. Content authored with `formative` and sessions saved with a
+`formative` slice move to `itemSessionControl` and `tries`. Integrator usage is in the section player's
+[Item session control](../section-player/item-session-control.md).
 
 ## Open Questions
 

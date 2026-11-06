@@ -58,8 +58,6 @@
   type EventListeners
   type EventListenersMap
   FOCUSABLE_SELECTOR
-  type FormativeDeliveryPolicy
-  type FormativeItemPolicy
   INSTRUMENTATION_DEBUG_EVENT_NAME
   ITEM_INSTRUMENTATION_EVENT_MAP
   type IifeBackend
@@ -80,6 +78,7 @@
   type ItemPlayerView
   type ItemSession
   type ItemSessionContainer
+  type ItemSessionControlPolicy
   type ItemSessionStorageStrategy
   type ItemSessionUpdateIntent
   type LoadPieElementsOptions
@@ -308,41 +307,6 @@
   wrapOverwideTables
   wrapOverwideTablesInElement
 
-./formative
-  FORMATIVE_ITEM_STATE_VERSION
-  FORMATIVE_MASTERY_VERSION
-  FORMATIVE_POLICY_DEFAULTS
-  FORMATIVE_SLICE_VERSION
-  type FormativeAction
-  type FormativeCorrectness
-  type FormativeDeliveryPolicy
-  type FormativeEnvOverride
-  type FormativeFeedbackReveal
-  type FormativeItemPolicy
-  type FormativeItemState
-  type FormativeItemView
-  type FormativeMasteryRollup
-  type FormativeRevealTiming
-  type FormativeScoredOutcome
-  type FormativeSectionProjection
-  type FormativeSectionSlice
-  type FormativeTryLimit
-  type FormativeTryOutcome
-  type ResolvedFormativePolicy
-  aggregateFormativeOutcome
-  createFormativeItemState
-  hideFormativeItem
-  isFormativeSectionEnabled
-  normalizeFormativeSectionSlice
-  recordFormativeTry
-  resolveFormativeItemView
-  resolveFormativePolicies
-  resolveFormativePolicy
-  retryFormativeItem
-  revealFormativeItem
-  rollupFormativeMastery
-  toFormativeSectionSlice
-
 ./i18n
   BUNDLED_LOCALES
   type BundledLocaleCode
@@ -440,6 +404,40 @@
   type PluralTranslation
   type TextDirection
   type TranslationBundle
+
+./item-session-control
+  type FeedbackEnvOverride
+  type FeedbackReveal
+  type FeedbackRevealTiming
+  ITEM_SESSION_CONTROL_DEFAULTS
+  ITEM_TRY_STATE_VERSION
+  type ItemSessionControlPolicy
+  type ItemTryState
+  type ItemTryView
+  MASTERY_ROLLUP_VERSION
+  type MasteryRollup
+  type ResolvedItemSessionControlPolicy
+  type ScoredElementOutcome
+  TRY_SLICE_VERSION
+  type TryAction
+  type TryCorrectness
+  type TryLimit
+  type TryOutcome
+  type TrySectionProjection
+  type TrySectionSlice
+  aggregateTryOutcome
+  createItemTryState
+  hideItemFeedback
+  isItemSessionControlEnabledInSection
+  normalizeTrySectionSlice
+  recordTry
+  resolveItemSessionControl
+  resolveItemSessionControls
+  resolveItemTryView
+  retryItem
+  revealItemFeedback
+  rollupMastery
+  toTrySectionSlice
 
 ./loader-config
   DEFAULT_IIFE_BUNDLE_RETRY_CONFIG
@@ -765,14 +763,13 @@
   type DeleteSoundDetail
   DeleteSoundEvent
   type Env
-  type FormativeDeliveryPolicy
-  type FormativeItemPolicy
   type ImageHandler
   InsertImageEvent
   InsertSoundEvent
   type ItemConfig
   type ItemEntity
   type ItemSession
+  type ItemSessionControlPolicy
   type ItemSettings
   type LanguagePolicy
   type MediaAssetRef

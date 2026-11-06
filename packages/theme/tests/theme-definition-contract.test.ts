@@ -190,8 +190,12 @@ describe("generated CSS adapters", () => {
 		const css = renderPieThemeCss().tokensCss;
 		expect(css).toContain(":root,");
 		expect(css).toContain('[data-theme="light"],');
-		expect(css).toContain(':where(pie-theme[theme="light"])');
-		expect(css).toContain(':where(pie-theme[theme="dark"])');
+		expect(css).toContain(
+			':where(pie-theme[theme="light"]:not([scope="document"]))',
+		);
+		expect(css).toContain(
+			':where(pie-theme[theme="dark"]:not([scope="document"]))',
+		);
 		expect(css).not.toContain("@layer");
 		expect(css).not.toContain("!important");
 		expect(css).not.toContain("forced-color-adjust: none");

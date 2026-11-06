@@ -1,8 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type {
 	AssessmentSection,
-	FormativeDeliveryPolicy,
-	FormativeItemPolicy,
+	ItemSessionControlPolicy,
 	ItemEntity,
 } from "@pie-players/pie-players-shared";
 import { SectionController } from "../src/controllers/SectionController";
@@ -17,16 +16,16 @@ function makeItem(id: string): ItemEntity {
 }
 
 function makeSection(args: {
-	formative?: FormativeDeliveryPolicy;
-	items: Array<{ identifier: string; formative?: FormativeItemPolicy }>;
+	itemSessionControl?: ItemSessionControlPolicy;
+	items: Array<{ identifier: string; itemSessionControl?: ItemSessionControlPolicy }>;
 }): AssessmentSection {
 	return {
-		identifier: "formative-section",
-		formative: args.formative,
+		identifier: "tries-section",
+		itemSessionControl: args.itemSessionControl,
 		assessmentItemRefs: args.items.map((entry) => ({
 			identifier: entry.identifier,
 			item: makeItem(`${entry.identifier}-item`),
-			formative: entry.formative,
+			itemSessionControl: entry.itemSessionControl,
 		})),
 		rubricBlocks: [],
 	} as unknown as AssessmentSection;
@@ -39,7 +38,7 @@ async function bootstrap(section: AssessmentSection): Promise<{
 	const controller = new SectionController();
 	await controller.initialize({
 		section,
-		sectionId: "formative-section",
+		sectionId: "tries-section",
 		assessmentId: "assessment-1",
 		view: ["candidate"],
 	});
@@ -51,33 +50,33 @@ async function bootstrap(section: AssessmentSection): Promise<{
 /** Shaped like what `provideScore()` returns: one entry per model. */
 const scored = (score: number, max = 1) => [{ score, max }];
 
-describe("SectionController formative delivery", () => {
-	test("a section without a formative policy produces no projection", async () => {
+describe("SectionController item session control", () => {
+	test("a section without an item session control policy produces no projection", async () => {
 		const { controller } = await bootstrap(
 			makeSection({ items: [{ identifier: "q1" }] }),
 		);
-		expect(controller.getFormativeProjection()).toBeNull();
-		expect(controller.getCompositionModel().formative).toBeNull();
-		// And the persistence snapshot stays byte-identical to a pre-formative save.
-		expect(controller.getSession()).not.toHaveProperty("formative");
+		expect(controller.getTryProjection()).toBeNull();
+		expect(controller.getCompositionModel().tries).toBeNull();
+		// And the persistence snapshot stays byte-identical to a save from before item session control.
+		expect(controller.getSession()).not.toHaveProperty("tries");
 	});
 
-	test("recording a try on a non-formative section is a no-op", async () => {
+	test("recording a try on a section without item session control is a no-op", async () => {
 		const { controller, events } = await bootstrap(
 			makeSection({ items: [{ identifier: "q1" }] }),
 		);
-		controller.recordFormativeTry({ itemId: "q1", outcomes: scored(1) });
+		controller.recordTry({ itemId: "q1", outcomes: scored(1) });
 		expect(events).toHaveLength(0);
 	});
 
 	test("the projection carries resolved policies and reaches the composition model", async () => {
 		const { controller } = await bootstrap(
 			makeSection({
-				formative: { enabled: true, maxTries: 2 },
-				items: [{ identifier: "q1" }, { identifier: "q2", formative: { maxTries: 5 } }],
+				itemSessionControl: { enabled: true, maxTries: 2 },
+				items: [{ identifier: "q1" }, { identifier: "q2", itemSessionControl: { maxTries: 5 } }],
 			}),
 		);
-		const projection = controller.getCompositionModel().formative;
+		const projection = controller.getCompositionModel().tries;
 		expect(projection).toMatchObject({ version: 1, enabled: true });
 		expect(projection?.policies.q1?.maxTries).toBe(2);
 		expect(projection?.policies.q2?.maxTries).toBe(5);
@@ -92,13 +91,13 @@ describe("SectionController formative delivery", () => {
 	test("a try derives correctness, reveals feedback, and emits both events", async () => {
 		const { controller, events } = await bootstrap(
 			makeSection({
-				formative: { enabled: true, maxTries: 2 },
+				itemSessionControl: { enabled: true, maxTries: 2 },
 				items: [{ identifier: "q1" }],
 			}),
 		);
-		controller.recordFormativeTry({ itemId: "q1", outcomes: scored(1) });
+		controller.recordTry({ itemId: "q1", outcomes: scored(1) });
 
-		const tryEvent = events.find((event) => event.type === "formative-try-recorded");
+		const tryEvent = events.find((event) => event.type === "item-try-recorded");
 		expect(tryEvent).toMatchObject({
 			itemId: "q1",
 			canonicalItemId: "q1",
@@ -120,15 +119,15 @@ describe("SectionController formative delivery", () => {
 	test("a rubric-shaped item records a try as unknown and leaves the denominator", async () => {
 		const { controller } = await bootstrap(
 			makeSection({
-				formative: { enabled: true },
+				itemSessionControl: { enabled: true },
 				items: [{ identifier: "q1" }, { identifier: "rubric" }],
 			}),
 		);
-		controller.recordFormativeTry({ itemId: "q1", outcomes: scored(1) });
+		controller.recordTry({ itemId: "q1", outcomes: scored(1) });
 		// `provideScore()` leaves an undefined slot where no controller was found.
-		controller.recordFormativeTry({ itemId: "rubric", outcomes: [undefined] });
+		controller.recordTry({ itemId: "rubric", outcomes: [undefined] });
 
-		const projection = controller.getFormativeProjection();
+		const projection = controller.getTryProjection();
 		expect(projection?.states.rubric?.lastOutcome?.correctness).toBe("unknown");
 		expect(projection?.mastery).toMatchObject({
 			totalItems: 2,
@@ -141,30 +140,30 @@ describe("SectionController formative delivery", () => {
 	test("a second try before a retry is dropped rather than spending a try", async () => {
 		const { controller, events } = await bootstrap(
 			makeSection({
-				formative: { enabled: true, maxTries: 3 },
+				itemSessionControl: { enabled: true, maxTries: 3 },
 				items: [{ identifier: "q1" }],
 			}),
 		);
-		controller.recordFormativeTry({ itemId: "q1", outcomes: scored(0) });
-		controller.recordFormativeTry({ itemId: "q1", outcomes: scored(1) });
+		controller.recordTry({ itemId: "q1", outcomes: scored(0) });
+		controller.recordTry({ itemId: "q1", outcomes: scored(1) });
 		expect(
-			events.filter((event) => event.type === "formative-try-recorded"),
+			events.filter((event) => event.type === "item-try-recorded"),
 		).toHaveLength(1);
-		expect(controller.getFormativeProjection()?.states.q1?.tryCount).toBe(1);
+		expect(controller.getTryProjection()?.states.q1?.tryCount).toBe(1);
 	});
 
 	test("a retry reopens the item and emits without changing the try count", async () => {
 		const { controller, events } = await bootstrap(
 			makeSection({
-				formative: { enabled: true, maxTries: 3 },
+				itemSessionControl: { enabled: true, maxTries: 3 },
 				items: [{ identifier: "q1" }],
 			}),
 		);
-		controller.recordFormativeTry({ itemId: "q1", outcomes: scored(0) });
-		controller.retryFormativeItem({ itemId: "q1" });
+		controller.recordTry({ itemId: "q1", outcomes: scored(0) });
+		controller.retryItem({ itemId: "q1" });
 
 		expect(
-			events.find((event) => event.type === "formative-reveal-changed"),
+			events.find((event) => event.type === "item-feedback-reveal-changed"),
 		).toMatchObject({
 			itemId: "q1",
 			canonicalItemId: "q1",
@@ -172,7 +171,7 @@ describe("SectionController formative delivery", () => {
 			revealed: false,
 			source: "learner",
 		});
-		expect(controller.getFormativeProjection()?.states.q1).toMatchObject({
+		expect(controller.getTryProjection()?.states.q1).toMatchObject({
 			tryCount: 1,
 			revealed: false,
 		});
@@ -181,16 +180,16 @@ describe("SectionController formative delivery", () => {
 	test("mastery emits only when the rollup changes", async () => {
 		const { controller, events } = await bootstrap(
 			makeSection({
-				formative: { enabled: true, maxTries: 3 },
+				itemSessionControl: { enabled: true, maxTries: 3 },
 				items: [{ identifier: "q1" }, { identifier: "q2" }],
 			}),
 		);
-		controller.recordFormativeTry({ itemId: "q1", outcomes: scored(0) });
+		controller.recordTry({ itemId: "q1", outcomes: scored(0) });
 		const afterFirst = events.filter(
 			(event) => event.type === "section-mastery-changed",
 		).length;
-		controller.retryFormativeItem({ itemId: "q1" });
-		controller.recordFormativeTry({ itemId: "q1", outcomes: scored(0) });
+		controller.retryItem({ itemId: "q1" });
+		controller.recordTry({ itemId: "q1", outcomes: scored(0) });
 		// Two wrong tries running: `triedItems` did not move and neither did mastery.
 		expect(
 			events.filter((event) => event.type === "section-mastery-changed"),
@@ -199,14 +198,14 @@ describe("SectionController formative delivery", () => {
 
 	test("the slice persists and hydrates", async () => {
 		const section = makeSection({
-			formative: { enabled: true, maxTries: 3 },
+			itemSessionControl: { enabled: true, maxTries: 3 },
 			items: [{ identifier: "q1" }],
 		});
 		const { controller } = await bootstrap(section);
-		controller.recordFormativeTry({ itemId: "q1", outcomes: scored(1) });
+		controller.recordTry({ itemId: "q1", outcomes: scored(1) });
 		const saved = controller.getSession();
-		expect(saved?.formative).toMatchObject({ version: 1 });
-		expect(saved?.formative?.items.q1).toMatchObject({
+		expect(saved?.tries).toMatchObject({ version: 1 });
+		expect(saved?.tries?.items.q1).toMatchObject({
 			tryCount: 1,
 			revealed: true,
 			firstCorrectTry: 1,
@@ -214,7 +213,7 @@ describe("SectionController formative delivery", () => {
 
 		const { controller: restored } = await bootstrap(section);
 		await restored.applySession(saved, { mode: "replace" });
-		expect(restored.getFormativeProjection()?.states.q1).toMatchObject({
+		expect(restored.getTryProjection()?.states.q1).toMatchObject({
 			tryCount: 1,
 			revealed: true,
 			firstCorrectTry: 1,
@@ -223,39 +222,39 @@ describe("SectionController formative delivery", () => {
 
 	test("a rejected slice restarts tries and leaves item sessions applied", async () => {
 		const section = makeSection({
-			formative: { enabled: true, maxTries: 3 },
+			itemSessionControl: { enabled: true, maxTries: 3 },
 			items: [{ identifier: "q1" }],
 		});
 		const { controller } = await bootstrap(section);
 		await controller.applySession(
 			{
 				itemSessions: { q1: { id: "session-1", data: [{ id: "1" }] } },
-				formative: { version: 99, items: {} } as never,
+				tries: { version: 99, items: {} } as never,
 			},
 			{ mode: "replace" },
 		);
-		expect(controller.getFormativeProjection()?.states).toEqual({});
+		expect(controller.getTryProjection()?.states).toEqual({});
 		expect(controller.getResolvedItemSessions().q1).toBeDefined();
 	});
 
 	test("a same-cohort input refresh rebuilds policy and keeps try state", async () => {
 		const { controller } = await bootstrap(
 			makeSection({
-				formative: { enabled: true, maxTries: 2 },
+				itemSessionControl: { enabled: true, maxTries: 2 },
 				items: [{ identifier: "q1" }],
 			}),
 		);
-		controller.recordFormativeTry({ itemId: "q1", outcomes: scored(0) });
+		controller.recordTry({ itemId: "q1", outcomes: scored(0) });
 		await controller.updateInput({
 			section: makeSection({
-				formative: { enabled: true, maxTries: 5 },
+				itemSessionControl: { enabled: true, maxTries: 5 },
 				items: [{ identifier: "q1" }],
 			}),
-			sectionId: "formative-section",
+			sectionId: "tries-section",
 			assessmentId: "assessment-1",
 			view: ["candidate"],
 		});
-		const projection = controller.getFormativeProjection();
+		const projection = controller.getTryProjection();
 		expect(projection?.policies.q1?.maxTries).toBe(5);
 		expect(projection?.states.q1?.tryCount).toBe(1);
 	});
@@ -263,19 +262,19 @@ describe("SectionController formative delivery", () => {
 	test("a host can force a reveal on an untried item without spending a try", async () => {
 		const { controller, events } = await bootstrap(
 			makeSection({
-				formative: { enabled: true, maxTries: 3, feedback: "correctness" },
+				itemSessionControl: { enabled: true, maxTries: 3, feedback: "correctness" },
 				items: [{ identifier: "q1" }],
 			}),
 		);
-		controller.revealFormativeItem({ itemId: "q1", feedback: "solution" });
+		controller.revealItemFeedback({ itemId: "q1", feedback: "solution" });
 
-		expect(controller.getFormativeProjection()?.states.q1).toMatchObject({
+		expect(controller.getTryProjection()?.states.q1).toMatchObject({
 			tryCount: 0,
 			revealed: true,
 			revealOverride: "solution",
 		});
 		expect(
-			events.find((event) => event.type === "formative-reveal-changed"),
+			events.find((event) => event.type === "item-feedback-reveal-changed"),
 		).toMatchObject({
 			itemId: "q1",
 			revealed: true,
@@ -292,47 +291,47 @@ describe("SectionController formative delivery", () => {
 	test("a host can withdraw a reveal an exhausted learner could not", async () => {
 		const { controller } = await bootstrap(
 			makeSection({
-				formative: { enabled: true, maxTries: 1 },
+				itemSessionControl: { enabled: true, maxTries: 1 },
 				items: [{ identifier: "q1" }],
 			}),
 		);
-		controller.recordFormativeTry({ itemId: "q1", outcomes: scored(0) });
-		controller.retryFormativeItem({ itemId: "q1" });
+		controller.recordTry({ itemId: "q1", outcomes: scored(0) });
+		controller.retryItem({ itemId: "q1" });
 		// Out of tries: the learner's retry is refused.
-		expect(controller.getFormativeProjection()?.states.q1?.revealed).toBe(true);
+		expect(controller.getTryProjection()?.states.q1?.revealed).toBe(true);
 
-		controller.hideFormativeItem({ itemId: "q1" });
-		expect(controller.getFormativeProjection()?.states.q1).toMatchObject({
+		controller.hideItemFeedback({ itemId: "q1" });
+		expect(controller.getTryProjection()?.states.q1).toMatchObject({
 			tryCount: 1,
 			revealed: false,
 			revealOverride: undefined,
 		});
 	});
 
-	test("a forced reveal on a non-formative item is refused", async () => {
+	test("a forced reveal on an item without item session control is refused", async () => {
 		const { controller, events } = await bootstrap(
 			makeSection({
-				formative: { enabled: true },
-				items: [{ identifier: "q1" }, { identifier: "q2", formative: { enabled: false } }],
+				itemSessionControl: { enabled: true },
+				items: [{ identifier: "q1" }, { identifier: "q2", itemSessionControl: { enabled: false } }],
 			}),
 		);
-		controller.revealFormativeItem({ itemId: "q2", feedback: "solution" });
-		expect(controller.getFormativeProjection()?.states.q2).toBeUndefined();
+		controller.revealItemFeedback({ itemId: "q2", feedback: "solution" });
+		expect(controller.getTryProjection()?.states.q2).toBeUndefined();
 		expect(events).toHaveLength(0);
 	});
 
 	test("a host reveal survives persistence", async () => {
 		const section = makeSection({
-			formative: { enabled: true, maxTries: 3 },
+			itemSessionControl: { enabled: true, maxTries: 3 },
 			items: [{ identifier: "q1" }],
 		});
 		const { controller } = await bootstrap(section);
-		controller.revealFormativeItem({ itemId: "q1", feedback: "solution" });
+		controller.revealItemFeedback({ itemId: "q1", feedback: "solution" });
 		const saved = controller.getSession();
 
 		const { controller: restored } = await bootstrap(section);
 		await restored.applySession(saved, { mode: "replace" });
-		expect(restored.getFormativeProjection()?.states.q1).toMatchObject({
+		expect(restored.getTryProjection()?.states.q1).toMatchObject({
 			revealed: true,
 			revealOverride: "solution",
 		});
@@ -341,16 +340,16 @@ describe("SectionController formative delivery", () => {
 	test("the recorded outcome carries the raw element outcomes", async () => {
 		const { controller } = await bootstrap(
 			makeSection({
-				formative: { enabled: true },
+				itemSessionControl: { enabled: true },
 				items: [{ identifier: "q1" }],
 			}),
 		);
-		controller.recordFormativeTry({
+		controller.recordTry({
 			itemId: "q1",
 			outcomes: [{ id: "m1", element: "multiple-choice", score: 0 }, undefined],
 		});
 		const outcome =
-			controller.getFormativeProjection()?.states.q1?.lastOutcome;
+			controller.getTryProjection()?.states.q1?.lastOutcome;
 		expect(outcome?.totalElementCount).toBe(2);
 		expect(outcome?.elementOutcomes).toEqual([
 			{ id: "m1", element: "multiple-choice", score: 0 },
@@ -360,13 +359,56 @@ describe("SectionController formative delivery", () => {
 	test("the projection is a copy, so a caller cannot mutate controller state", async () => {
 		const { controller } = await bootstrap(
 			makeSection({
-				formative: { enabled: true, maxTries: 3 },
+				itemSessionControl: { enabled: true, maxTries: 3 },
 				items: [{ identifier: "q1" }],
 			}),
 		);
-		controller.recordFormativeTry({ itemId: "q1", outcomes: scored(0) });
-		const projection = controller.getFormativeProjection();
+		controller.recordTry({ itemId: "q1", outcomes: scored(0) });
+		const projection = controller.getTryProjection();
 		if (projection?.states.q1) projection.states.q1.tryCount = 99;
-		expect(controller.getFormativeProjection()?.states.q1?.tryCount).toBe(1);
+		expect(controller.getTryProjection()?.states.q1?.tryCount).toBe(1);
+	});
+
+	test("checkItem records a Try from the registered scorer", async () => {
+		const { controller, events } = await bootstrap(
+			makeSection({ itemSessionControl: { enabled: true }, items: [{ identifier: "q1" }] }),
+		);
+		await expect(controller.checkItem({ itemId: "q1" })).rejects.toThrow();
+		expect(events.filter((event) => event.type === "item-try-recorded")).toHaveLength(0);
+
+		const scoredIds: string[] = [];
+		controller.registerItemScorer(async (canonicalItemId) => {
+			scoredIds.push(canonicalItemId);
+			return scored(1);
+		});
+		await controller.checkItem({ itemId: "q1-item" });
+		expect(scoredIds).toEqual(["q1"]);
+		expect(controller.getTryProjection()?.states.q1?.lastOutcome?.correctness).toBe(
+			"correct",
+		);
+	});
+
+	test("checkItem spends no Try on an unmounted item and drops a pending duplicate", async () => {
+		const { controller, events } = await bootstrap(
+			makeSection({ itemSessionControl: { enabled: true }, items: [{ identifier: "q1" }] }),
+		);
+		controller.registerItemScorer(async () => null);
+		await expect(controller.checkItem({ itemId: "q1" })).rejects.toThrow();
+		expect(events.filter((event) => event.type === "item-try-recorded")).toHaveLength(0);
+
+		let release: (value: ReturnType<typeof scored>) => void = () => {};
+		let calls = 0;
+		controller.registerItemScorer(() => {
+			calls += 1;
+			return new Promise((resolve) => {
+				release = resolve;
+			});
+		});
+		const first = controller.checkItem({ itemId: "q1" });
+		await controller.checkItem({ itemId: "q1" });
+		release(scored(1));
+		await first;
+		expect(calls).toBe(1);
+		expect(controller.getTryProjection()?.states.q1?.tryCount).toBe(1);
 	});
 });

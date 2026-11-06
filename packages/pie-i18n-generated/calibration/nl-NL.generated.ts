@@ -81,8 +81,8 @@ const nlNL = {
 				"De opgeslagen antwoorden voor deze sectie konden niet worden hersteld. Probeer het opnieuw.",
 		},
 
-		formative: {
-			checkAnswer: "Antwoord controleren",
+		check: {
+			answer: "Antwoord controleren",
 			tryAgain: "Opnieuw proberen",
 			answerRecorded: "Antwoord opgeslagen.",
 			correct: "Goed.",
@@ -90,7 +90,7 @@ const nlNL = {
 			notCorrect: "Fout.",
 			notAutoScored:
 				"Antwoord opgeslagen. Deze vraag wordt niet automatisch gescoord.",
-			checkFailed: "Deze vraag kon niet worden gecontroleerd. Probeer het opnieuw.",
+			failed: "Deze vraag kon niet worden gecontroleerd. Probeer het opnieuw.",
 			triesLeft: {
 				one: "{count} poging over.",
 				other: "{count} pogingen over.",

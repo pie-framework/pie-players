@@ -49,7 +49,7 @@ product-completing, which leaves every backend to invent its own model.
 - Resolving identifiers, framework hierarchy, crosswalks, successors or framework
   DOK. Content stores direct links; a framework provider resolves structure on read.
 - A standards catalog or framework distribution.
-- Roll-ups, mastery by standard or reporting. `FormativeMasteryRollup` stays flat.
+- Roll-ups, mastery by standard or reporting. `MasteryRollup` stays flat.
 - Part-grain alignment (per interaction). The extension path is recorded under
   Contract Shape; it ships when a writer aligns parts.
 - Assessment-level alignment. A roll-up is computed downstream, and an authored
@@ -122,7 +122,7 @@ Tiers:
 | `skillLevels`, `SkillLevel` and every member | interchange |
 | Provider-id registry on the content-model page | interchange |
 | `resourcePartId` (deferred) | interchange |
-| `FormativeMasteryRollup` | runtime, unchanged |
+| `MasteryRollup` | runtime, unchanged |
 | Storage, indexing, filters, catalogs, legacy-key mapping | backend |
 | Resolution, roll-ups, mastery, reporting | host product |
 

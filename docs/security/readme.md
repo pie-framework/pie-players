@@ -221,18 +221,18 @@ A proctored or high-stakes delivery therefore needs all three of:
    reaches the browser. The players pass models through to elements verbatim;
    nothing in this repo redacts them.
 3. Outcomes the host computes, handed to the controller.
-   `SectionController.recordFormativeTry`
-   ([host controls](../section-player/formative-delivery.md#host-controls))
+   `SectionController.recordTry`
+   ([host controls](../section-player/item-session-control.md#host-controls))
    accepts outcomes computed anywhere, including on the host's server
    ([seam obligations](../architecture/framework-completing-work.md#seam-obligations)).
-   The shipped [Check answer control](../section-player/formative-delivery.md#check-control)
+   The shipped [Check answer control](../section-player/item-session-control.md#check-control)
    scores in the browser through the item player's `provideScore()`, so
    server-scored Tries need a host-rendered control that calls
-   `recordFormativeTry`.
+   `recordTry`.
 
-The formative flow reveals solutions in the browser by design, under an
+The check-and-retry flow reveals solutions in the browser by design, under an
 authored policy: `envOverrideFor`
-([`formative/state.ts`](../../packages/players-shared/src/formative/state.ts))
+([`item-session-control/state.ts`](../../packages/players-shared/src/item-session-control/state.ts))
 projects `role: "instructor"` onto a revealed item when the resolved feedback
 level is `solution`. That is an intended reveal to a learner who has spent a
 Try, and it is independent of the delivery case above: a host that cannot

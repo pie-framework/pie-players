@@ -106,8 +106,8 @@ Important current limits:
 - `pie-item-player.provideScore()` and `scorePieItem(...)` return per-element
   outcomes, not an accepted rolled-up item score ([scoring design
   notes](./scoring-design-notes.md)). One consumer rolls them up for a bounded
-  purpose: the [formative delivery
-  contract](../prds/formative-delivery-contract.md) derives a four-valued
+  purpose: the [item session control
+  contract](../prds/item-session-control-contract.md) derives a four-valued
   correctness per Try, always browser-derived and carrying no provenance or
   authority. A general score projection must stay able to express it, including
   its "excluded because not auto-scorable" state.
@@ -207,8 +207,8 @@ interface SectionControllerSessionState {
 ```
 
 Section profiles add named, typed slices only when their PRDs ratify them. Two
-have shipped this way: `formative`, from the [formative delivery
-contract](../prds/formative-delivery-contract.md), and `timedMedia`, from the
+have shipped this way: `tries`, from the [item session control
+contract](../prds/item-session-control-contract.md), and `timedMedia`, from the
 [timed-media section contract](../prds/timed-media-section-contract.md). Each is
 optional and versioned, and a slice with an unrecognized `version` is rejected
 whole while `itemSessions` in the same snapshot still applies. Slices this note

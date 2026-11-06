@@ -16,7 +16,7 @@ educational register of Pakistani assessment software.
   (raw), منقطع (disconnected), فراہم کنندہ (provider), میزبان (host) —
   never Hindi registers (`प्रश्न`-type calques have no place here).
 - Distinct keys never collapse to one label: `common.retry` takes the
-  nominal `دوبارہ کوشش` (the ar verbal-noun pattern) while the formative
+  nominal `دوبارہ کوشش` (the ar verbal-noun pattern) while the check
   button keeps the imperative `دوبارہ کوشش کریں`. Inside A11y
   instruction sentences, key names end mid-sentence with an Urdu clause
   where possible (`…PageUp یا PageDown کا استعمال کریں۔`), so no
@@ -38,7 +38,7 @@ educational register of Pakistani assessment software.
 | assessment | جانچ | the education-sector word, not تشخیص (diagnosis) |
 | submit | جمع کریں | exam register |
 | check answer | جواب جانچیں | جانچنا = to check/verify |
-| try (formative) | کوشش | plural کوششیاں |
+| try (check and retry) | کوشش | plural کوششیاں |
 | settings | ترتیبات | matches configure = ترتیب دینا |
 | tools | آلات | toolkit = آلات کا مجموعہ |
 | calculator | حسابی مشین | بنیادی، سائنسی، گرافیکی |
@@ -143,7 +143,7 @@ verbatim.
 ## Plurals — two CLDR categories
 
 `Intl.PluralRules("ur")` yields `one` (n = 1) and `other`. All six count
-groups (`player.formative.triesLeft`, `tools.dictionary.entriesCount`,
+groups (`player.check.triesLeft`, `tools.dictionary.entriesCount`,
 `tools.pictureDictionary.entriesCount`, `debug.tts.browserAvailable`,
 `debug.tts.pollyAvailable`, `debug.tts.googleAvailable`) carry exactly
 `one`/`other`, each category holding `{count}` (and `{engine}` on

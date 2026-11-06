@@ -168,7 +168,7 @@ A11y keys keep the Latin key names Italian keyboards print: `Shift`,
   defines for million-scale numbers (`un milione`). It carries the same
   text as `other`; it exists so the catalog matches what
   `Intl.PluralRules` can return for the locale. All six plural groups
-  (`player.formative.triesLeft`, `tools.dictionary.entriesCount`,
+  (`player.check.triesLeft`, `tools.dictionary.entriesCount`,
   `tools.pictureDictionary.entriesCount`, `debug.tts.browserAvailable`,
   `debug.tts.pollyAvailable`, `debug.tts.googleAvailable`) carry all three
   categories with the `{count}` placeholder.

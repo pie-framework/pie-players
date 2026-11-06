@@ -9,7 +9,7 @@ import { expect, test } from "@playwright/test";
  * clock drives cue state through the controller, and the republished composition
  * changes which cards are on screen.
  *
- * That round trip has the same non-obvious failure mode formative delivery had,
+ * That round trip has the same non-obvious failure mode item session control had,
  * and it bit during implementation: a cue firing changes neither the renderables
  * nor the item sessions, so the toolkit's composition revision key had to learn
  * about cue state or the emit is coalesced away — the controller then holds correct
@@ -81,7 +81,7 @@ async function answerCorrectly(
 ): Promise<void> {
 	// Click the label, not the input: the choice element's radio is visually
 	// hidden and React-driven, so `check()` reports no state change. Same reason
-	// the formative spec clicks label text.
+	// the item session control spec clicks label text.
 	const choice = page
 		.locator(`[data-section-item-card][data-canonical-item-id="${itemId}"]`)
 		.getByText(label, { exact: true })
@@ -90,7 +90,7 @@ async function answerCorrectly(
 	await choice.click();
 	await page
 		.locator(
-			`[data-section-item-card][data-canonical-item-id="${itemId}"] [data-pie-formative-action]`,
+			`[data-section-item-card][data-canonical-item-id="${itemId}"] [data-pie-check-action]`,
 		)
 		.first()
 		.click();
@@ -186,7 +186,7 @@ test.describe("timed media", () => {
 		// Retry, then the correct answer releases it.
 		await page
 			.locator(
-				'[data-section-item-card][data-canonical-item-id="tm-q2"] [data-pie-formative-action]',
+				'[data-section-item-card][data-canonical-item-id="tm-q2"] [data-pie-check-action]',
 			)
 			.first()
 			.click();

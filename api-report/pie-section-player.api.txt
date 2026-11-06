@@ -102,6 +102,7 @@
 
 ./policies
   DEFAULT_SECTION_PLAYER_POLICIES
+  type SectionPlayerCheckControlPolicy
   type SectionPlayerPolicies
   type SectionPlayerPreloadPolicy
   type SectionPlayerReadinessPolicy

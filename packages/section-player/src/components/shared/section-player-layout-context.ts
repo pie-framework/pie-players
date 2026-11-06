@@ -49,6 +49,8 @@ export type SectionPlayerLayoutContext = {
 	preloadedRenderables: ItemEntity[];
 	preloadedRenderablesSignature: string;
 	preloadEnabled: boolean;
+	/** `policies.checkControl.enabled`: whether item cards render the check button. */
+	checkControlEnabled: boolean;
 	resolvedPlayerEnv: Record<string, unknown>;
 	resolvedPlayerAttributes: Record<string, string>;
 	resolvedPlayerProps: Record<string, unknown>;

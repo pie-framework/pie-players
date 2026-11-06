@@ -11,11 +11,12 @@ test.describe("section player policy invariants", () => {
 			DEFAULT_SECTION_PLAYER_POLICIES as Record<string, unknown>,
 		);
 		expect(policyKeys.sort()).toEqual(
-			["preload", "readiness", "telemetry"].sort(),
+			["checkControl", "preload", "readiness", "telemetry"].sort(),
 		);
 		expect(DEFAULT_SECTION_PLAYER_POLICIES.readiness.mode).toBe("progressive");
 		expect(DEFAULT_SECTION_PLAYER_POLICIES.preload.enabled).toBe(true);
 		expect(DEFAULT_SECTION_PLAYER_POLICIES.telemetry.enabled).toBe(true);
+		expect(DEFAULT_SECTION_PLAYER_POLICIES.checkControl.enabled).toBe(true);
 	});
 
 	test("policy typing allows partial runtime overrides", async () => {
@@ -27,18 +28,24 @@ test.describe("section player policy invariants", () => {
 		expect(override.preload?.enabled).toBe(false);
 	});
 
-	test("preload and telemetry default on and honor an explicit opt-out", async () => {
+	test("preload, telemetry and the check control default on and honor an explicit opt-out", async () => {
 		const partial = (value: unknown) => value as SectionPlayerPolicies;
 		for (const input of [undefined, null, partial({})]) {
 			const resolved = resolveSectionPlayerPolicies(input);
 			expect(resolved.preload.enabled).toBe(true);
 			expect(resolved.telemetry.enabled).toBe(true);
+			expect(resolved.checkControl.enabled).toBe(true);
 		}
 		const optedOut = resolveSectionPlayerPolicies(
-			partial({ preload: { enabled: false }, telemetry: { enabled: false } }),
+			partial({
+				preload: { enabled: false },
+				telemetry: { enabled: false },
+				checkControl: { enabled: false },
+			}),
 		);
 		expect(optedOut.preload.enabled).toBe(false);
 		expect(optedOut.telemetry.enabled).toBe(false);
+		expect(optedOut.checkControl.enabled).toBe(false);
 	});
 
 	test("resolveSectionPlayerPolicies fills every unset field from the defaults", async () => {

@@ -10,7 +10,7 @@
  * `docs/architecture/timed-media-section.md` for the layer-ownership record.
  */
 
-import type { FormativeCorrectness } from "../formative/types.js";
+import type { TryCorrectness } from "../item-session-control/types.js";
 import type { MediaFragmentRange } from "../types/index.js";
 
 /**
@@ -26,11 +26,11 @@ export type TimedMediaCueActivation = "reveal" | "gate" | "metadata";
 /**
  * The condition over delivery state that releases a gate.
  *
- * Named from the shipped formative vocabulary rather than defined here, which is
- * the whole reason formative delivery sequenced first — see
+ * Named from the shipped Try vocabulary rather than defined here, which is
+ * the whole reason item session control sequenced first — see
  * `docs/adr/0001-formative-delivery-before-timed-media.md`. `"responded"` is the
  * response-only case, and it reads item completion rather than Try state so a
- * gate works in a section that does not deliver formatively at all.
+ * gate works in a section that does not enable item session control at all.
  */
 export type TimedMediaGateCondition =
 	| "responded"
@@ -38,7 +38,7 @@ export type TimedMediaGateCondition =
 	| "partial-or-better";
 
 /**
- * What a gate does when the item cannot be auto-scored — `FormativeCorrectness`
+ * What a gate does when the item cannot be auto-scored — `TryCorrectness`
  * of `"unknown"`, which is the honest state of an item holding a rubric element
  * rather than a defect to design around.
  *
@@ -146,13 +146,13 @@ export interface ResolvedTimedMediaSectionData {
 }
 
 /**
- * What a gated item's resolved formative policy leaves the learner.
+ * What a gated item's resolved item session control policy leaves the learner.
  *
  * Read by validation, not by the reduction: a gate on correctness over an item
  * with a finite Try budget is a dead end, and so is one over an item that does not
- * deliver formatively at all — no Try means no correctness, ever.
+ * enable item session control at all — no Try means no correctness, ever.
  */
-export type TimedMediaItemTryBudget = "unlimited" | "finite" | "not-formative";
+export type TimedMediaItemTryBudget = "unlimited" | "finite" | "none";
 
 export interface TimedMediaValidationError {
 	/** Machine-readable, so a host can branch without parsing prose. */
@@ -255,7 +255,7 @@ export interface MediaTimeSource {
 /**
  * The persisted slice, carried on `SectionControllerSessionState.timedMedia`.
  *
- * One shape live and persisted, unlike formative's split between a per-item
+ * One shape live and persisted, unlike the Try state's split between a per-item
  * reducer state and a slice: timed-media state is section-scoped, so there is
  * nothing to key.
  */
@@ -282,14 +282,14 @@ export interface TimedMediaSectionSessionSlice {
 
 /**
  * Delivery state a gate condition reads, supplied by the caller so this module
- * stays pure and depends on neither the controller nor the formative module's
+ * stays pure and depends on neither the controller nor the item session control module's
  * live state.
  */
 export interface TimedMediaDeliveryState {
 	/** Item completion by canonical id: the `"responded"` condition's signal. */
 	respondedByItemId: Record<string, boolean>;
 	/** Last Try correctness by canonical id; absent means no Try yet. */
-	correctnessByItemId: Record<string, FormativeCorrectness | undefined>;
+	correctnessByItemId: Record<string, TryCorrectness | undefined>;
 	/** Whether every item in the section reports completion. */
 	itemsComplete: boolean;
 }

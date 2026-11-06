@@ -276,6 +276,7 @@
 	const normalizedShowToolbar = $derived(coerceBooleanLike(showToolbar, false));
 	const effectivePolicies = $derived(resolveSectionPlayerPolicies(policies));
 	const preloadEnabled = $derived(effectivePolicies.preload.enabled);
+	const checkControlEnabled = $derived(effectivePolicies.checkControl.enabled);
 	const layoutContextValue = $derived.by(
 		(): SectionPlayerLayoutContext => ({
 			componentTag: sourceCe,
@@ -285,6 +286,7 @@
 			preloadedRenderables,
 			preloadedRenderablesSignature,
 			preloadEnabled,
+			checkControlEnabled,
 			resolvedPlayerEnv,
 			resolvedPlayerAttributes,
 			resolvedPlayerProps: effectiveResolvedPlayerProps,
@@ -501,7 +503,7 @@
 		const pane = activePanes.items as
 			| (Element & { scoreItem?: SectionItemScorer })
 			| null;
-		return (await pane?.scoreItem?.(canonicalItemId)) ?? false;
+		return (await pane?.scoreItem?.(canonicalItemId)) ?? null;
 	};
 
 	// A layout with no items pane leaves the items unrendered and readiness short

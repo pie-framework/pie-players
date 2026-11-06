@@ -105,6 +105,40 @@ test.describe("section theme and color scheme integration", () => {
 		});
 	});
 
+	test("a document-scoped host passes its scheme through to the content it wraps", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		// Load the published stylesheets alongside the runtime, as a host that also
+		// imports them does: a rule there must not turn the host into a boundary.
+		await page.addStyleTag({ content: `${TOKENS_CSS}\n${COLOR_SCHEMES_CSS}` });
+		await setHostScheme(page, "white-on-black");
+
+		// A probe inside the host reads what PIE content there inherits, with no
+		// component declaring tokens of its own in between.
+		const probe = await page
+			.locator('pie-theme[scope="document"]')
+			.evaluate((host) => {
+				const element = document.createElement("div");
+				host.append(element);
+				const style = getComputedStyle(element);
+				const read = (token: string) => style.getPropertyValue(token).trim();
+				const tokens = {
+					background: read("--pie-background"),
+					text: read("--pie-text"),
+					fixedHueCollapse: read("--pie-fixed-hue-collapse"),
+				};
+				element.remove();
+				return tokens;
+			});
+
+		expect(probe).toEqual({
+			background: "#000000",
+			text: "#ffffff",
+			fixedHueCollapse: "100%",
+		});
+	});
+
 	test("requires important for CSS-only rules competing with mounted runtime tokens", async ({
 		page,
 	}) => {

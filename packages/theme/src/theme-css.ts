@@ -22,12 +22,21 @@ function renderRule(
 	return `${selectors.join(",\n")} {\n${renderDeclarations(variables)}\n}`;
 }
 
+/*
+ * A self-scoped `<pie-theme>` carries its Base Theme from the stylesheet before it
+ * upgrades. A document-scoped one writes to `documentElement` and is not a theme
+ * boundary: matching it would redeclare the Base Theme over the subtree and shadow
+ * the color scheme it resolved on the root.
+ */
+const selfScopedThemeElement = (theme: "light" | "dark") =>
+	`:where(pie-theme[theme="${theme}"]:not([scope="document"]))`;
+
 function renderTokensCss(): string {
 	return `${GENERATED_HEADER}\n\n${renderRule(
-		[":root", '[data-theme="light"]', ':where(pie-theme[theme="light"])'],
+		[":root", '[data-theme="light"]', selfScopedThemeElement("light")],
 		getBaseThemeVariables("light"),
 	)}\n\n${renderRule(
-		['[data-theme="dark"]', ':where(pie-theme[theme="dark"])'],
+		['[data-theme="dark"]', selfScopedThemeElement("dark")],
 		getBaseThemeVariables("dark"),
 	)}\n`;
 }

@@ -4,6 +4,7 @@ import {
 	assertPublishablePackagesChecked,
 	collectExportTargetViolations,
 } from "../check-pack-integrity.mjs";
+import { collectDeclaredTargets } from "../lib/pack-inspection.mjs";
 import {
 	collectManifestSurfaceViolations,
 	collectPackedFileSurfaceViolations,
@@ -78,6 +79,26 @@ describe("check-pack-integrity rule functions", () => {
 		expect(violations).toContain(
 			"unstable export target (hashed suffix filename): dist/chunk-a1b2c3d4.js",
 		);
+	});
+
+	test("flags a customElements manifest the tarball leaves out", () => {
+		const pkg = {
+			exports: { ".": "./dist/index.js" },
+			customElements: "custom-elements.json",
+		};
+
+		expect(
+			collectExportTargetViolations(
+				collectDeclaredTargets(pkg),
+				new Set(["dist/index.js"]),
+			),
+		).toEqual(["missing: custom-elements.json"]);
+		expect(
+			collectExportTargetViolations(
+				collectDeclaredTargets(pkg),
+				new Set(["dist/index.js", "custom-elements.json"]),
+			),
+		).toEqual([]);
 	});
 
 	test("fails closed when no publishable packages were checked", () => {

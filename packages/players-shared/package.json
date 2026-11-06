@@ -122,16 +122,12 @@
 	},
 	"scripts": {
 		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && node scripts/bundle-vendored-modules.mjs && mkdir -p dist/components && cp -R src/components/vendor dist/components/vendor",
-		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
-		"lint": "biome lint .",
 		"check": "svelte-check --tsconfig ./tsconfig.svelte-check.json",
 		"test": "bun test",
-		"check-i18n": "bun run src/i18n/scripts/check-coverage.ts",
 		"scan-hardcoded": "bun run src/i18n/scripts/scan-hardcoded.ts"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.4",
 		"@happy-dom/global-registrator": "^21.0.4",
 		"@pie-element/shared-math-rendering-mathjax": "0.1.8",
 		"@playwright/test": "^1.64.1",

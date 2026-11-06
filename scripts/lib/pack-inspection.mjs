@@ -113,6 +113,11 @@ export const collectDeclaredTargets = (
 		collectTargets(pkg?.[field], targets);
 	}
 	collectTargets(pkg?.exports, targets);
+	// The custom elements manifest convention writes this path without `./`
+	// (`"custom-elements.json"`), which `normalizeDeclaredPath` reads as no target.
+	if (typeof pkg?.customElements === "string" && pkg.customElements) {
+		targets.add(pkg.customElements.replace(/^\.\//, ""));
+	}
 	return targets;
 };
 

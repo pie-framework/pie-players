@@ -60,6 +60,18 @@ describe("pack inspection helpers", () => {
 		]);
 	});
 
+	test("collects the customElements manifest with or without a leading ./", () => {
+		// The manifest convention writes the path bare, which no entry field
+		// accepts, so the manifest used to name no target at all.
+		expect([
+			...collectDeclaredTargets({ customElements: "custom-elements.json" }),
+		]).toEqual(["custom-elements.json"]);
+		expect([
+			...collectDeclaredTargets({ customElements: "./custom-elements.json" }),
+		]).toEqual(["custom-elements.json"]);
+		expect([...collectDeclaredTargets({ customElements: "" })]).toEqual([]);
+	});
+
 	test("parses npm pack json even when npm writes surrounding text", () => {
 		const parsed = parsePackJson(
 			'notice before\n[{"filename":"pkg.tgz","files":[{"path":"dist/index.js"}]}]\nnotice after',

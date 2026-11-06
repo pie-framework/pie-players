@@ -26,13 +26,10 @@
 	],
 	"scripts": {
 		"build": "tsc -p tsconfig.json",
-		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
-		"lint": "biome lint .",
 		"test": "bun test"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.4",
 		"@happy-dom/global-registrator": "^21.0.4",
 		"typescript": "^5.9.3"
 	},

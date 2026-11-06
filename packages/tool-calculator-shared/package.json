@@ -36,8 +36,7 @@
 		"build": "vite build",
 		"test": "bun run build && bun test tests",
 		"typecheck": "tsc --noEmit",
-		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
-		"lint": "biome lint ."
+		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore"
 	},
 	"license": "MIT",
 	"unpkg": "./dist/calculator-element.js",
@@ -48,7 +47,6 @@
 		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.4",
 		"@happy-dom/global-registrator": "^21.0.4",
 		"@pie-players/pie-context": "workspace:*",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",

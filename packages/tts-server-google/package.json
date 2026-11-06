@@ -16,7 +16,6 @@
 	],
 	"scripts": {
 		"build": "tsc",
-		"dev": "tsc --watch",
 		"test": "vitest run"
 	},
 	"keywords": [

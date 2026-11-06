@@ -163,7 +163,7 @@ describe("check-player-tool-boundaries", () => {
 		const root = createFixtureRoot();
 		write(
 			root,
-			"packages/section-player/dist/browser/chunks/pie-tool-calculator-cortex-abcd.js",
+			"packages/section-player/dist/browser/chunks/tool-tts-inline-abcd.js",
 			"export {};\n",
 		);
 
@@ -171,13 +171,13 @@ describe("check-player-tool-boundaries", () => {
 
 		write(
 			root,
-			"packages/section-player/dist/chunks/pie-tool-calculator-cortex-abcd.js",
+			"packages/section-player/dist/chunks/tool-tts-inline-abcd.js",
 			"export {};\n",
 		);
 
 		expect(checkPlayerToolBoundaries(root)).toEqual([
 			expect.stringContaining(
-				"concrete tool chunk: packages/section-player/dist/chunks/pie-tool-calculator-cortex-abcd.js",
+				"concrete tool chunk: packages/section-player/dist/chunks/tool-tts-inline-abcd.js",
 			),
 		]);
 	});

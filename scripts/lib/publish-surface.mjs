@@ -1,6 +1,6 @@
 /**
  * The dist-only publish-surface rules, shared by the pre-commit check
- * (`check-publish-surface.mjs`) and the CI pack check (`check-pack-integrity.mjs`)
+ * (`check-source-exports.mjs`) and the CI pack check (`check-pack-integrity.mjs`)
  * so a package cannot pass one and fail the other.
  */
 

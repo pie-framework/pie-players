@@ -121,8 +121,10 @@ a chunk.
 Packages publish generated `dist` files as their public API. `exports`, `main`,
 `module`, `types`, `unpkg` and `jsdelivr` point inside `dist/`, never at `src`,
 a non-declaration `.ts` or `.tsx` file, or a `.svelte` or `.svelte.ts` file, and
-no export carries a `development` or `svelte` condition. `check:publish-surface`
-checks each manifest and its `npm pack` file list for:
+no export carries a `development` or `svelte` condition. `check:source-exports`
+(before each commit) and `check:pack-integrity` (in CI, and as
+`check:pack-integrity:real` in the release gate) check each manifest and its
+`npm pack` file list for:
 
 - no `development` or `svelte` export condition;
 - no export that `forbiddenPublicExports` in `scripts/publish-policy.json`
@@ -134,8 +136,8 @@ checks each manifest and its `npm pack` file list for:
   README, LICENSE and CHANGELOG, an oclif manifest, and static assets.
 
 Debugging needs no importable source. No package ships sourcemaps today, and
-`check:sourcemaps` rejects a packed map that references a source file missing
-from the tarball unless the map embeds that source's content.
+`check:pack-integrity` rejects a packed map that references a source file
+missing from the tarball unless the map embeds that source's content.
 
 Hosts install no Svelte. A package that uses Svelte lists it as a dev
 dependency and bundles it into each browser entry point: `check:svelte-runtime-deps` rejects `svelte` in `dependencies` or
@@ -181,9 +183,9 @@ owning package exports.
 
 | Rule | Gate |
 | --- | --- |
-| Every export target exists in the packed tarball and has a stable file name | `check:pack-integrity:real` |
+| Every export target and the `customElements` manifest exist in the packed tarball, and export targets have stable file names | `check:pack-integrity:real` |
 | Node-safe entry points import in Node.js from installed tarballs; the browser-only roots fail on a browser global | `check:node-consumer-imports` |
-| Dist-only surface | `check:publish-surface`, `check:sourcemaps` |
+| Dist-only surface | `check:pack-integrity:real` |
 | No Svelte for hosts | `check:svelte-runtime-deps`, `check:ce-consumer-contract`, `check:svelte-type-imports` |
 | One `speech-rule-engine` version | `check:package-metadata` |
 | Race-safe registration | `check:ce-define-safety` |

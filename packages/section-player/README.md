@@ -1162,7 +1162,10 @@ trust model.
 ## Development
 
 ```bash
-bun run --cwd packages/section-player dev
+bun run build:watch:section-tools
 bun run --cwd packages/section-player check
 bun run --cwd packages/section-player build
 ```
+
+`build:watch:section-tools` rebuilds the section player, the toolkit, every
+tool package and the section-player debug tools as their sources change.

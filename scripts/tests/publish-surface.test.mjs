@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const SCRIPTS = path.join(import.meta.dir, "..");
-const CALLERS = ["check-publish-surface.mjs", "check-pack-integrity.mjs"];
+const CALLERS = ["check-source-exports.mjs", "check-pack-integrity.mjs"];
 
 describe("publish-surface rules", () => {
 	// The pre-commit check and the CI pack check once carried copies of these

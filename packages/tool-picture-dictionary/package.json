@@ -43,13 +43,10 @@
 	"scripts": {
 		"build": "vite build",
 		"check": "svelte-check --tsconfig ./tsconfig.json",
-		"dev": "vite build --watch",
-		"lint": "biome lint .",
 		"test": "bun test",
 		"typecheck": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.4",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"svelte": "^5.57.3",
 		"svelte-check": "^4.7.6",

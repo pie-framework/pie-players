@@ -148,9 +148,9 @@ before opening or merging a release.
 | Toolkit core | `check:engine-core-purity`, `check:speech-composition-purity`, `check:capability-neutrality` |
 | Scripts | `check:scripts` (unit tests for `scripts/`) |
 
-`check:publish-surface` and `check:sourcemaps` run on their own. The dist-only
-rules they enforce are in
-[Library packaging strategy](./library-packaging-strategy.md#dist-only-publish-surface).
+`check:pack-integrity:real` enforces the dist-only rules in
+[Library packaging strategy](./library-packaging-strategy.md#dist-only-publish-surface)
+against the real tarballs.
 
 ## Release intent in CI
 

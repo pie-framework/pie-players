@@ -13,9 +13,9 @@
  * whether a locale is missing a key it should have, carries one English no longer
  * defines, or left a value byte-identical to English.
  *
- * Usage:
- *   bun run check-i18n
- *   bun run check-i18n -- --locale nl-NL
+ * Usage, from the repository root:
+ *   bun run check:i18n-coverage
+ *   bun run check:i18n-coverage -- --locale <tag>   (one bundled locale)
  *
  * Exit codes:
  *   0 — every complete locale is at 100%

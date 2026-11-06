@@ -38,17 +38,14 @@
 	"types": "./dist/index.d.ts",
 	"scripts": {
 		"build": "vite build",
-		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
-		"test": "bun test tests",
-		"lint": "biome lint ."
+		"test": "bun test tests"
 	},
 	"dependencies": {
 		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.4",
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-section-player-tools-shared": "workspace:*",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",

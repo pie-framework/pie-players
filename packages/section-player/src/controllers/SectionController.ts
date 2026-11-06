@@ -165,6 +165,7 @@ export class SectionController implements SectionControllerHandle {
 	// `score()` reaches the rendered item players.
 	private pendingSessionCommit: (() => void) | null = null;
 	private itemScorer: SectionItemScorer | null = null;
+	private readonly pendingFormativeChecks = new Set<string>();
 	private saveQueue: Promise<void> = Promise.resolve();
 	private state: SectionControllerState = {
 		input: null,
@@ -633,6 +634,36 @@ export class SectionController implements SectionControllerHandle {
 		// A Try is one of the two things a cue gate reads, so a recorded Try is a
 		// gate-release candidate.
 		this.notifyTimedMediaDeliveryChanged();
+	}
+
+	/**
+	 * Score one rendered item through the registered item scorer and record the
+	 * Try, as Check answer does. Rejects, spending no Try, when no layout has
+	 * registered a scorer, the item's player has not mounted, or scoring throws;
+	 * drops a call while a check of the same item is pending.
+	 */
+	public async checkFormativeItem(args: { itemId: string }): Promise<void> {
+		const canonicalItemId = this.getCanonicalItemId(args.itemId);
+		if (!this.formativePolicies[canonicalItemId]?.enabled) return;
+		if (this.pendingFormativeChecks.has(canonicalItemId)) return;
+		const scorer = this.itemScorer;
+		if (!scorer) {
+			throw new Error(`No item scorer is registered to check item ${args.itemId}.`);
+		}
+		this.pendingFormativeChecks.add(canonicalItemId);
+		try {
+			const outcomes = await scorer(canonicalItemId);
+			if (outcomes === null) {
+				throw new Error(`Item ${args.itemId} has not mounted, so it cannot be checked.`);
+			}
+			// `false` is an item with no scorable model: a real Try with `unknown` correctness.
+			this.recordFormativeTry({
+				itemId: args.itemId,
+				outcomes: Array.isArray(outcomes) ? outcomes : [],
+			});
+		} finally {
+			this.pendingFormativeChecks.delete(canonicalItemId);
+		}
 	}
 
 	/** Dismiss a reveal and reopen the item, withdrawing its env projection. */

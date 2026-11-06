@@ -224,6 +224,43 @@ test.describe("formative delivery", () => {
 		await expect(button).toBeFocused();
 	});
 
+	test("a host that hides the control checks and retries through the controller", async ({
+		page,
+	}) => {
+		const act = (method: "checkFormativeItem" | "retryFormativeItem") =>
+			page.evaluate(async (name) => {
+				const host = document.querySelector("pie-section-player-splitpane") as
+					| (HTMLElement & {
+							waitForSectionController?: (
+								timeoutMs: number,
+							) => Promise<Record<string, (args: { itemId: string }) => unknown> | null>;
+					  })
+					| null;
+				const controller = await host?.waitForSectionController?.(5000);
+				await controller?.[name]?.({ itemId: "fd-q1" });
+			}, method);
+
+		await page.evaluate(() => {
+			const host = document.querySelector("pie-section-player-splitpane") as
+				| (HTMLElement & { policies?: unknown })
+				| null;
+			if (host) host.policies = { formativeControl: { enabled: false } };
+		});
+		await expect(page.locator("[data-pie-formative-action]")).toHaveCount(0);
+
+		await pickChoice(page, "fd-q1", "Venus");
+		await act("checkFormativeItem");
+		await expect
+			.poll(async () => (await cardFor(page, "fd-q1")).status)
+			.toContain("Not correct");
+		// The status line keeps announcing without the button.
+		expect((await cardFor(page, "fd-q1")).envMode).toBe("evaluate");
+		await expect(page.locator("[data-pie-formative-action]")).toHaveCount(0);
+
+		await act("retryFormativeItem");
+		await expect.poll(async () => (await cardFor(page, "fd-q1")).envMode).toBe("gather");
+	});
+
 	test("mastery rolls up over tries and excludes nothing in this section", async ({
 		page,
 	}) => {

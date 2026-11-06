@@ -369,12 +369,12 @@ export type SectionScore = {
 };
 
 /**
- * Scores one rendered item in the browser: its element outcomes, or `false` when
- * the item is not rendered or has no scorable model.
+ * Scores one rendered item in the browser: its element outcomes, `false` when
+ * the item has no scorable model, or `null` when its player has not mounted.
  */
 export type SectionItemScorer = (
 	canonicalItemId: string,
-) => Promise<false | Array<Record<string, unknown> | undefined>>;
+) => Promise<false | null | Array<Record<string, unknown> | undefined>>;
 
 /**
  * Host-facing controller for a single section cohort.
@@ -569,6 +569,15 @@ export interface SectionControllerHandle {
 	 * revealed, or when Tries are spent, which makes a double submit safe.
 	 */
 	recordFormativeTry?(args: { itemId: string; outcomes?: unknown[] }): void;
+	/**
+	 * Score a rendered item through the registered item scorer and record the
+	 * Try from its outcomes: Check answer, for a host that hides the built-in
+	 * control (`policies.formativeControl.enabled: false`). Rejects, spending no
+	 * Try, when no layout has registered a scorer, the item's player has not
+	 * mounted, or scoring throws. A call while a check of the same item is
+	 * pending is dropped.
+	 */
+	checkFormativeItem?(args: { itemId: string }): Promise<void>;
 	/**
 	 * Dismiss a revealed item's feedback and reopen it for editing. Withdrawing
 	 * the reveal is what withdraws the `mode: "evaluate"` projection.

@@ -3123,6 +3123,16 @@
 						},
 						{
 							"kind": "field",
+							"name": "formativeControlEnabled",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "true",
+							"description": "`policies.formativeControl.enabled`; off leaves the status line without its button.",
+							"attribute": "formative-control-enabled"
+						},
+						{
+							"kind": "field",
 							"name": "timedMediaView",
 							"type": {
 								"text": "TimedMediaItemView | null"
@@ -3134,10 +3144,10 @@
 						{
 							"kind": "method",
 							"name": "provideScore",
-							"description": "The item player's `provideScore()`, for the pane's host-facing score; `false` until the player has mounted.",
+							"description": "The item player's `provideScore()`, for the pane's host-facing score; `null` until the player has mounted.",
 							"return": {
 								"type": {
-									"text": "Promise<false | unknown[]>"
+									"text": "Promise<false | null | unknown[]>"
 								}
 							}
 						}
@@ -3255,6 +3265,15 @@
 							"fieldName": "formativeView"
 						},
 						{
+							"name": "formative-control-enabled",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "true",
+							"description": "`policies.formativeControl.enabled`; off leaves the status line without its button.",
+							"fieldName": "formativeControlEnabled"
+						},
+						{
 							"name": "timed-media-view",
 							"type": {
 								"text": "TimedMediaItemView | null"
@@ -3327,7 +3346,7 @@
 						{
 							"kind": "method",
 							"name": "scoreItem",
-							"description": "Scores one item through its card, which owns the item player node: the section controller's item scorer. An item whose card or player has not mounted reports `false`.",
+							"description": "Scores one item through its card, which owns the item player node: the section controller's item scorer. An item whose card or player has not mounted reports `null`.",
 							"parameters": [
 								{
 									"name": "canonicalItemId",

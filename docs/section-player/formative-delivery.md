@@ -101,6 +101,11 @@ remaining Tries follow ("2 tries left."). The strings are the
 `player.formative.*` interface messages, localized like the rest of the player's
 interface.
 
+A host with its own submit flow turns the button off with the layout's
+`policies` property, `{ formativeControl: { enabled: false } }`. The status line
+stays, with the same announcements, and the host drives the Tries through
+`checkFormativeItem` and `retryFormativeItem` ([Host controls](#host-controls)).
+
 The Try Outcome derives Correctness from the outcomes `provideScore()` returns,
 one per element model. One scored element gives its `score` over its `max` (1
 when absent); several give the mean of their normalized scores over 1. Full
@@ -151,6 +156,7 @@ controller?.hideFormativeItem?.({ itemId: "decimals-item" });
 
 | Method | Effect |
 | --- | --- |
+| `checkFormativeItem({ itemId })` | Scores the rendered item and records one Try, as Check answer does. Rejects, spending no Try, when scoring throws or the item or its layout has not mounted; ignored while a check of the item is pending |
 | `recordFormativeTry({ itemId, outcomes })` | Records one Try from `provideScore()` outcomes, as Check answer does. Ignored while the item is revealed or out of Tries |
 | `retryFormativeItem({ itemId })` | Withdraws the reveal of an item with Tries left, as Try again does |
 | `revealFormativeItem({ itemId, feedback })` | A **Forced Reveal** at `"correctness"` or `"solution"`: spends no Try, ignores the Try budget and `revealOn`, and works before the first Try |

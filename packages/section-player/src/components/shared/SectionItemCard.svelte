@@ -27,6 +27,8 @@
 			// section does not deliver formatively. The pane derives it; this card
 			// renders it and reports learner actions.
 			formativeView: { attribute: "formative-view", type: "Object", reflect: false },
+			// `policies.formativeControl.enabled`; off leaves the status line without its button.
+			formativeControlEnabled: { attribute: "formative-control-enabled", type: "Boolean" },
 			// Resolved cue state for this item, or null when the section is not timed
 			// media. The pane derives it; this card renders it.
 			timedMediaView: { attribute: "timed-media-view", type: "Object", reflect: false },
@@ -98,6 +100,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		toolRegistry = null as ToolRegistry | null,
 		hostButtons = [] as ToolbarItem[],
 		formativeView = null as FormativeItemView | null,
+		formativeControlEnabled = true,
 		timedMediaView = null as TimedMediaItemView | null,
 	} = $props<{
 		item: ItemEntity;
@@ -114,6 +117,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		toolRegistry?: ToolRegistry | null;
 		hostButtons?: ToolbarItem[];
 		formativeView?: FormativeItemView | null;
+		formativeControlEnabled?: boolean;
 		timedMediaView?: TimedMediaItemView | null;
 	}>();
 
@@ -245,7 +249,9 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 
 	const formativeEnabled = $derived(formativeView?.enabled === true);
 	const showFormativeControl = $derived(
-		formativeEnabled && (formativeView?.canCheck || formativeView?.canRetry),
+		formativeEnabled &&
+			formativeControlEnabled !== false &&
+			(formativeView?.canCheck || formativeView?.canRetry),
 	);
 	const formativeButtonLabel = $derived(
 		interfaceI18n.t(
@@ -329,11 +335,12 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 	}
 
 	/**
-	 * The item player's `provideScore()`, for the pane's host-facing score; `false`
+	 * The item player's `provideScore()`, for the pane's host-facing score; `null`
 	 * until the player has mounted.
 	 */
-	export async function provideScore(): Promise<false | unknown[]> {
-		return (await itemPlayerScorer()?.()) ?? false;
+	export async function provideScore(): Promise<false | null | unknown[]> {
+		const scorer = itemPlayerScorer();
+		return scorer ? scorer() : null;
 	}
 
 	async function handleFormativeClick(): Promise<void> {

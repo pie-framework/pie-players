@@ -105,6 +105,7 @@ Items pane of a section player: renders the item cards of the current compositio
 		layout?.componentTag ?? "pie-section-player-items-pane",
 	);
 	const preloadEnabled = $derived(layout?.preloadEnabled ?? true);
+	const formativeControlEnabled = $derived(layout?.formativeControlEnabled ?? true);
 	const reportWarmup = $derived(layout?.reportWarmup ?? null);
 
 	const logger = $derived(getPreloadLogger(componentTag));
@@ -396,7 +397,7 @@ Items pane of a section player: renders the item cards of the current compositio
 	/**
 	 * Scores one item through its card, which owns the item player node: the
 	 * section controller's item scorer. An item whose card or player has not
-	 * mounted reports `false`.
+	 * mounted reports `null`.
 	 */
 	export async function scoreItem(
 		canonicalItemId: string,
@@ -405,8 +406,8 @@ Items pane of a section player: renders the item cards of the current compositio
 			(item: ItemEntity) =>
 				getCanonicalItemId({ compositionModel, item }) === canonicalItemId,
 		);
-		if (itemIndex < 0) return false;
-		return (await itemCards[itemIndex]?.provideScore?.()) ?? false;
+		if (itemIndex < 0) return null;
+		return (await itemCards[itemIndex]?.provideScore?.()) ?? null;
 	}
 
 	/** 1-based position of an item in the pane, for the announcements. */
@@ -760,6 +761,7 @@ Items pane of a section player: renders the item cards of the current compositio
 					contentLanguage: chromeRuntimeContext?.contentLanguageDefault,
 				})}
 				{formativeView}
+				{formativeControlEnabled}
 				{timedMediaView}
 				itemToolbarTools={itemToolbarTools}
 				{toolRegistry}

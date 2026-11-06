@@ -125,7 +125,7 @@ are clamped to their range.
 | `section` | property | — | The `AssessmentSection` to deliver |
 | `session` | property | — | The section's session, a `SectionControllerSessionState` ([Session lifecycle](#session-lifecycle)) |
 | `assessment` | property | — | The `AssessmentEntity` whose `personalNeedsProfile` and `settings` tool policy reads, forwarded to a coordinator the player builds. A coordinator passed in `runtime` is the host's to bind with `updateAssessment`. A section's own `personalNeedsProfile` is not read, and the player warns once when it finds one |
-| `policies` | property | `DEFAULT_SECTION_PLAYER_POLICIES` | A partial `SectionPlayerPolicies` for readiness, element pre-warm and telemetry ([Policies](#policies)) |
+| `policies` | property | `DEFAULT_SECTION_PLAYER_POLICIES` | A partial `SectionPlayerPolicies` for readiness, element pre-warm, telemetry and the formative control ([Policies](#policies)) |
 | `hooks` | property | — | Host callbacks, a `SectionPlayerHostHooks` ([Card titles](#card-titles)) |
 | `toolRegistry` | property | `createPackagedToolRegistry()` | The registry the toolbars load tools from ([Tools](#tools)) |
 | `sectionHostButtons`, `itemHostButtons`, `passageHostButtons` | property | — | Host buttons appended to the section, item and passage toolbars |
@@ -248,6 +248,7 @@ from `@pie-players/pie-section-player/policies`.
 | `readiness.mode` | `"progressive"` | `"progressive"` or `"strict"`. Both hold the `interactive` stage and `pie-loading-complete` until the element pre-warm resolves, and the two currently emit the same sequence |
 | `preload.enabled` | `true` | `false` skips the section's element pre-warm, the step that loads every element the items name before they mount. Items still mount, and each item player registers its own elements. For a host that owns element registration end to end |
 | `telemetry.enabled` | `true` | `false` stops the `pie-section-*` instrumentation stream ([Instrumentation](#instrumentation)) |
+| `formativeControl.enabled` | `true` | `false` removes the formative Check answer / Try again button and keeps its status line, for a host that drives Tries through the controller ([Formative Delivery](../../docs/section-player/formative-delivery.md#check-control)) |
 
 `resolveSectionPlayerPolicies(policies)` from
 `@pie-players/pie-section-player/policies` returns the filled-in object, for

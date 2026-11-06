@@ -111,7 +111,7 @@ const cy = {
 				"Methwyd ag adfer eich atebion cadwedig ar gyfer yr adran hon. Ceisiwch eto.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Gwirio'r ateb",
 			tryAgain: "Ceisio eto",
 			answerRecorded: "Cofnodwyd yr ateb.",

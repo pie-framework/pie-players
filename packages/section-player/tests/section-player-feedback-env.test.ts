@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import type {
-	FormativeSectionProjection,
-	ResolvedFormativePolicy,
-} from "@pie-players/pie-players-shared/formative";
+	TrySectionProjection,
+	ResolvedItemSessionControl,
+} from "@pie-players/pie-players-shared/item-session-control";
 import type { ItemEntity } from "@pie-players/pie-players-shared/types";
 import type { SectionCompositionModel } from "../src/controllers/types";
 
@@ -10,12 +10,12 @@ import type { SectionCompositionModel } from "../src/controllers/types";
 // the item-player custom-element bundle, which needs a DOM to define itself.
 await import("./support/item-player-load.js");
 
-const { getFormativeItemView, getItemPlayerParams, getPassagePlayerParams } =
+const { getItemTryView, getItemPlayerParams, getPassagePlayerParams } =
 	await import("../src/components/shared/section-player-view-state");
 
 const policy = (
-	overrides: Partial<ResolvedFormativePolicy> = {},
-): ResolvedFormativePolicy => ({
+	overrides: Partial<ResolvedItemSessionControl> = {},
+): ResolvedItemSessionControl => ({
 	enabled: true,
 	maxTries: 3,
 	feedback: "correctness",
@@ -28,7 +28,7 @@ function makeItem(id: string): ItemEntity {
 }
 
 function makeComposition(args: {
-	formative: FormativeSectionProjection | null;
+	tries: TrySectionProjection | null;
 }): SectionCompositionModel {
 	const item = makeItem("q1-item");
 	return {
@@ -54,7 +54,7 @@ function makeComposition(args: {
 				session: { id: "s", data: [] },
 			},
 		],
-		formative: args.formative,
+		tries: args.tries,
 	};
 }
 
@@ -63,15 +63,15 @@ const SECTION_ENV = { mode: "gather", role: "student" } as Record<
 	unknown
 >;
 
-function paramsFor(projection: FormativeSectionProjection | null) {
-	const compositionModel = makeComposition({ formative: projection });
+function paramsFor(projection: TrySectionProjection | null) {
+	const compositionModel = makeComposition({ tries: projection });
 	const item = compositionModel.items[0];
-	const formativeView = getFormativeItemView({
+	const tryView = getItemTryView({
 		compositionModel,
 		canonicalItemId: "q1",
 	});
 	return {
-		formativeView,
+		tryView,
 		params: getItemPlayerParams({
 			item,
 			compositionModel,
@@ -79,15 +79,15 @@ function paramsFor(projection: FormativeSectionProjection | null) {
 			resolvedPlayerAttributes: {},
 			resolvedPlayerProps: {},
 			playerStrategy: "preloaded",
-			formativeView,
+			tryView,
 		}),
 	};
 }
 
 const projectionWith = (
-	state: FormativeSectionProjection["states"][string] | undefined,
-	policyOverrides: Partial<ResolvedFormativePolicy> = {},
-): FormativeSectionProjection => ({
+	state: TrySectionProjection["states"][string] | undefined,
+	policyOverrides: Partial<ResolvedItemSessionControl> = {},
+): TrySectionProjection => ({
 	version: 1,
 	enabled: true,
 	policies: { q1: policy(policyOverrides) },
@@ -102,16 +102,16 @@ const projectionWith = (
 	},
 });
 
-describe("formative env projection", () => {
-	test("a non-formative section leaves the section env untouched", () => {
-		const { formativeView, params } = paramsFor(null);
-		expect(formativeView).toBeNull();
+describe("feedback env projection", () => {
+	test("a section without item session control leaves the section env untouched", () => {
+		const { tryView, params } = paramsFor(null);
+		expect(tryView).toBeNull();
 		expect(params.env).toBe(SECTION_ENV);
 	});
 
-	test("an untried formative item still renders at the section env", () => {
-		const { formativeView, params } = paramsFor(projectionWith(undefined));
-		expect(formativeView).toMatchObject({ enabled: true, canCheck: true });
+	test("an untried item with item session control still renders at the section env", () => {
+		const { tryView, params } = paramsFor(projectionWith(undefined));
+		expect(tryView).toMatchObject({ enabled: true, canCheck: true });
 		expect(params.env).toEqual(SECTION_ENV);
 	});
 
@@ -166,8 +166,8 @@ describe("formative env projection", () => {
 			{ version: 1, itemIdentifier: "q1", tryCount: 1, revealed: true },
 			{ enabled: false },
 		);
-		const { formativeView, params } = paramsFor(projection);
-		expect(formativeView).toBeNull();
+		const { tryView, params } = paramsFor(projection);
+		expect(tryView).toBeNull();
 		expect(params.env).toBe(SECTION_ENV);
 	});
 
@@ -176,7 +176,7 @@ describe("formative env projection", () => {
 		// feedback is on screen; handing the override to the resolver would let a
 		// reveal flip a host's backend selection mid-session.
 		const compositionModel = makeComposition({
-			formative: projectionWith({
+			tries: projectionWith({
 				version: 1,
 				itemIdentifier: "q1",
 				tryCount: 1,
@@ -197,7 +197,7 @@ describe("formative env projection", () => {
 				},
 			},
 			playerStrategy: "preloaded",
-			formativeView: getFormativeItemView({
+			tryView: getItemTryView({
 				compositionModel,
 				canonicalItemId: "q1",
 			}),
@@ -211,9 +211,9 @@ describe("content language narrowing", () => {
 
 	function itemParams(
 		item: ItemEntity,
-		projection: FormativeSectionProjection | null = null,
+		projection: TrySectionProjection | null = null,
 	) {
-		const compositionModel = makeComposition({ formative: projection });
+		const compositionModel = makeComposition({ tries: projection });
 		return getItemPlayerParams({
 			item,
 			compositionModel,
@@ -221,7 +221,7 @@ describe("content language narrowing", () => {
 			resolvedPlayerAttributes: {},
 			resolvedPlayerProps: {},
 			playerStrategy: "preloaded",
-			formativeView: getFormativeItemView({
+			tryView: getItemTryView({
 				compositionModel,
 				canonicalItemId: "q1",
 			}),
@@ -238,7 +238,7 @@ describe("content language narrowing", () => {
 		expect(itemParams(english).env).toBe(SECTION_ENV_EN);
 	});
 
-	test("a formative reveal keeps the item's language", () => {
+	test("a feedback reveal keeps the item's language", () => {
 		const spanish = { ...makeItem("q1-item"), language: "es" } as ItemEntity;
 		const params = itemParams(
 			spanish,

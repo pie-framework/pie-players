@@ -97,7 +97,7 @@ const zhHant = {
 			restoreFailed: "無法還原您在本題組中已儲存的答案。請再試一次。",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "檢查答案",
 			tryAgain: "再試一次",
 			answerRecorded: "答案已記錄。",

@@ -107,7 +107,7 @@ const nlNL = {
 			restoreFailed: "Je opgeslagen antwoorden voor dit onderdeel konden niet worden hersteld. Probeer het opnieuw.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Antwoord controleren",
 			tryAgain: "Opnieuw proberen",
 			answerRecorded: "Antwoord opgeslagen.",

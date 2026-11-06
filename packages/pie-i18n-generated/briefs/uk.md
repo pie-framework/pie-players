@@ -189,7 +189,7 @@ teens 11–14 (0, 5, 10, 11, 12, 20, 100, 1000); **other** = fractions
 these four categories, and every group carries all four, each with
 `{count}`:
 
-- `player.formative.triesLeft`: `Залишилася {count} спроба.` / `Залишилося
+- `player.check.triesLeft`: `Залишилася {count} спроба.` / `Залишилося
   {count} спроби.` / `Залишилося {count} спроб.` / `Залишилося {count}
   спроби.`
 - `tools.dictionary.entriesCount`: `{count} стаття` / `{count} статті` /

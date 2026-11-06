@@ -14,11 +14,10 @@ export type {
 	ConfigEntity,
 	ConfigResource,
 	Env,
-	// The authored half of the formative contract, beside the section types it
+	// The authored half of the item session control contract, beside the section types it
 	// annotates. Policy resolution, Try state and the mastery rollup live behind
-	// `@pie-players/pie-players-shared/formative`.
-	FormativeDeliveryPolicy,
-	FormativeItemPolicy,
+	// `@pie-players/pie-players-shared/item-session-control`.
+	ItemSessionControlPolicy,
 	// The authored half of the timed-media contract, for the same reason. Cue
 	// policy, the reduction and the Media Time Source port live behind
 	// `@pie-players/pie-players-shared/timed-media`.

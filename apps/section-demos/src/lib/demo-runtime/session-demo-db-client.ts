@@ -16,7 +16,7 @@ export interface SessionDemoSeedPayload {
 /**
  * The canonical section snapshot, not a local restatement of its first three
  * fields: a demo that round-trips a narrower shape cannot validate hydration of
- * the `formative` or `timedMedia` slices it exists to demonstrate.
+ * the `tries` or `timedMedia` slices it exists to demonstrate.
  */
 export type SectionSessionSnapshot = SectionControllerSessionState;
 

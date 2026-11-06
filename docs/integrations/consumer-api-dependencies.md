@@ -1617,7 +1617,7 @@ received `session-changed`, `composition-changed`, `runtime-owned` and
 `runtime-inherited` three times and `framework-error` twice, and no recorded host
 listens there for any of the five. The runtime's internal events (`pie-register`,
 `pie-unregister`, `pie-item-session-changed`, `pie-content-loaded`,
-`pie-item-player-error`, `pie-formative-action`, `pie-media-time-source`) stop at
+`pie-item-player-error`, `pie-try-action`, `pie-media-time-source`) stop at
 the toolkit from the same date, where they used to reach `document`; no checkout
 listens for one. An item shell forwards its first response unconditionally, too:
 a page-wide 500 ms window used to drop an identical response from a second shell

@@ -1,7 +1,7 @@
 import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 
 /**
- * Formative delivery: check-answer, retry, and mastery.
+ * Item session control: check-answer, retry, and mastery.
  *
  * Exercises every branch of the resolved policy in one section, because the
  * interesting part is how the four differ side by side:
@@ -14,9 +14,9 @@ import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
  * - `q3` withholds feedback until the tries are spent (`on-final-try`), so the
  *   first two checks record a Try and reveal nothing.
  * - `q4` opts out entirely, proving one item can stay ordinary inside a
- *   formative section.
+ *   section with item session control.
  *
- * See `docs/prds/formative-delivery-contract.md`.
+ * See `docs/prds/item-session-control-contract.md`.
  */
 const choiceItem = (args: {
 	itemId: string;
@@ -43,14 +43,14 @@ const choiceItem = (args: {
 	},
 });
 
-export const demoFormativeDeliverySection: AssessmentSection = {
-	identifier: "formative-delivery",
-	title: "Formative Delivery",
+export const demoItemSessionControlSection: AssessmentSection = {
+	identifier: "item-session-control",
+	title: "Item Session Control",
 	keepTogether: true,
 
 	// The section default. Every item inherits it unless its own ref overrides a
 	// field.
-	formative: {
+	itemSessionControl: {
 		enabled: true,
 		maxTries: 3,
 		feedback: "correctness",
@@ -76,7 +76,7 @@ export const demoFormativeDeliverySection: AssessmentSection = {
 		{
 			identifier: "fd-q2",
 			required: true,
-			formative: { maxTries: 1, feedback: "solution" },
+			itemSessionControl: { maxTries: 1, feedback: "solution" },
 			item: choiceItem({
 				itemId: "fd-item-2",
 				modelId: "fd-m2",
@@ -93,7 +93,7 @@ export const demoFormativeDeliverySection: AssessmentSection = {
 		{
 			identifier: "fd-q3",
 			required: true,
-			formative: { maxTries: 3, revealOn: "on-final-try" },
+			itemSessionControl: { maxTries: 3, revealOn: "on-final-try" },
 			item: choiceItem({
 				itemId: "fd-item-3",
 				modelId: "fd-m3",
@@ -110,7 +110,7 @@ export const demoFormativeDeliverySection: AssessmentSection = {
 		{
 			identifier: "fd-q4",
 			required: true,
-			formative: { enabled: false },
+			itemSessionControl: { enabled: false },
 			item: choiceItem({
 				itemId: "fd-item-4",
 				modelId: "fd-m4",

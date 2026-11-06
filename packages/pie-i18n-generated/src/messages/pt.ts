@@ -111,7 +111,7 @@ const pt = {
 				"Não foi possível restaurar suas respostas salvas desta seção. Tente novamente.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Verificar resposta",
 			tryAgain: "Tentar novamente",
 			answerRecorded: "Resposta registrada.",

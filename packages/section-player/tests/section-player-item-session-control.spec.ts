@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * Formative delivery, end to end.
+ * Item session control, end to end.
  *
  * The unit suites cover the reducer, the rollup and the env projection in
  * isolation. What only a browser can show is the round trip: the card calls
@@ -12,10 +12,10 @@ import { expect, test } from "@playwright/test";
  * That round trip has one non-obvious failure mode, which is why this spec
  * exists rather than a third unit test: recording a Try changes neither the
  * renderables nor the item sessions, so the toolkit's composition revision key
- * had to learn about formative state or the emit is coalesced away and the
+ * had to learn about Try state or the emit is coalesced away and the
  * controller silently holds correct state the learner never sees.
  */
-const DEMO_PATH = "/formative-delivery?mode=candidate&layout=splitpane";
+const DEMO_PATH = "/item-session-control?mode=candidate&layout=splitpane";
 
 type CardState = {
 	id: string;
@@ -30,7 +30,7 @@ async function cardStates(
 ): Promise<CardState[]> {
 	return page.evaluate(() =>
 		[...document.querySelectorAll("[data-section-item-card]")].map((card) => {
-			const button = card.querySelector("[data-pie-formative-action]");
+			const button = card.querySelector("[data-pie-try-action]");
 			const player = card.querySelector("pie-item-player") as
 				| (Element & { env?: Record<string, unknown> })
 				| null;
@@ -39,7 +39,7 @@ async function cardStates(
 				id: card.getAttribute("data-canonical-item-id") || "",
 				label: button ? (button.textContent || "").trim() : null,
 				status: (
-					card.querySelector("[data-pie-formative-status]")?.textContent || ""
+					card.querySelector("[data-pie-check-status]")?.textContent || ""
 				).trim(),
 				envMode: String(env.mode || ""),
 				envRole: String(env.role || ""),
@@ -78,11 +78,11 @@ async function pickChoice(
 
 function control(page: import("@playwright/test").Page, itemId: string) {
 	return page
-		.locator(`[data-canonical-item-id="${itemId}"] [data-pie-formative-action]`)
+		.locator(`[data-canonical-item-id="${itemId}"] [data-pie-try-action]`)
 		.first();
 }
 
-test.describe("formative delivery", () => {
+test.describe("item session control", () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto(DEMO_PATH);
 		// Every card mounted, elements registered, controls resolved.
@@ -106,7 +106,7 @@ test.describe("formative delivery", () => {
 			"Check answer",
 		]);
 		// `fd-q4` sets `enabled: false`, so it is an ordinary item inside a
-		// formative section.
+		// section with item session control.
 		expect(cards[3].label).toBeNull();
 		expect(cards.every((card) => card.envMode === "gather")).toBe(true);
 	});
@@ -199,7 +199,7 @@ test.describe("formative delivery", () => {
 		page,
 	}) => {
 		const status = page
-			.locator('[data-canonical-item-id="fd-q1"] [data-pie-formative-status]')
+			.locator('[data-canonical-item-id="fd-q1"] [data-pie-check-status]')
 			.first();
 		// Present and empty before any Try, so the first announcement is not lost
 		// to a region that did not yet exist (WCAG 4.1.3).
@@ -227,7 +227,7 @@ test.describe("formative delivery", () => {
 	test("a host that hides the control checks and retries through the controller", async ({
 		page,
 	}) => {
-		const act = (method: "checkFormativeItem" | "retryFormativeItem") =>
+		const act = (method: "checkItem" | "retryItem") =>
 			page.evaluate(async (name) => {
 				const host = document.querySelector("pie-section-player-splitpane") as
 					| (HTMLElement & {
@@ -244,20 +244,20 @@ test.describe("formative delivery", () => {
 			const host = document.querySelector("pie-section-player-splitpane") as
 				| (HTMLElement & { policies?: unknown })
 				| null;
-			if (host) host.policies = { formativeControl: { enabled: false } };
+			if (host) host.policies = { checkControl: { enabled: false } };
 		});
-		await expect(page.locator("[data-pie-formative-action]")).toHaveCount(0);
+		await expect(page.locator("[data-pie-try-action]")).toHaveCount(0);
 
 		await pickChoice(page, "fd-q1", "Venus");
-		await act("checkFormativeItem");
+		await act("checkItem");
 		await expect
 			.poll(async () => (await cardFor(page, "fd-q1")).status)
 			.toContain("Not correct");
 		// The status line keeps announcing without the button.
 		expect((await cardFor(page, "fd-q1")).envMode).toBe("evaluate");
-		await expect(page.locator("[data-pie-formative-action]")).toHaveCount(0);
+		await expect(page.locator("[data-pie-try-action]")).toHaveCount(0);
 
-		await act("retryFormativeItem");
+		await act("retryItem");
 		await expect.poll(async () => (await cardFor(page, "fd-q1")).envMode).toBe("gather");
 	});
 
@@ -273,11 +273,11 @@ test.describe("formative delivery", () => {
 				| (HTMLElement & {
 						waitForSectionController?: (
 							timeoutMs: number,
-						) => Promise<{ getFormativeProjection?: () => unknown } | null>;
+						) => Promise<{ getTryProjection?: () => unknown } | null>;
 				  })
 				| null;
 			const controller = await host?.waitForSectionController?.(5000);
-			const projection = controller?.getFormativeProjection?.() as
+			const projection = controller?.getTryProjection?.() as
 				| { mastery?: Record<string, unknown> }
 				| null
 				| undefined;
@@ -286,7 +286,7 @@ test.describe("formative delivery", () => {
 
 		expect(mastery).toMatchObject({
 			version: 1,
-			// `fd-q4` opted out, so it carries no formative state — but it is still
+			// `fd-q4` opted out, so it carries no Try state — but it is still
 			// one of the section's items.
 			totalItems: 4,
 			masteredItems: 1,

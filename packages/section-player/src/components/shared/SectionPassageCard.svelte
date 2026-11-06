@@ -195,7 +195,7 @@ Passage card of a section player: renders a passage's heading, `<pie-item-toolba
 	//
 	// The card owns the node the passage config rendered into, so it is the only
 	// place that can find the media element and adapt it — the same reason the item
-	// card owns the formative control, which needs `provideScore()` on its player.
+	// card owns the check control, which needs `provideScore()` on its player.
 	//
 	// What is registered is a port, not the element: a host that wraps a third-party
 	// player dispatches the same event with its own implementation and needs no PIE

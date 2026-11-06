@@ -113,8 +113,8 @@ const enUS = {
 			restoreFailed: "Your saved answers for this section could not be restored. Try again.",
 		},
 
-		/** Formative delivery: check-answer control and its outcome announcements. */
-		formative: {
+		/** Item session control: check-answer control and its outcome announcements. */
+		check: {
 			checkAnswer: "Check answer",
 			tryAgain: "Try again",
 			answerRecorded: "Answer recorded.",

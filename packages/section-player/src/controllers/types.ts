@@ -15,13 +15,13 @@ import type {
 	ItemSettings,
 } from "@pie-players/pie-players-shared/types";
 import type {
-	FormativeFeedbackReveal,
-	FormativeItemPolicy,
-	FormativeMasteryRollup,
-	FormativeSectionProjection,
-	FormativeSectionSlice,
-	FormativeTryOutcome,
-} from "@pie-players/pie-players-shared/formative";
+	FeedbackReveal,
+	ItemSessionControlPolicy,
+	MasteryRollup,
+	TrySectionProjection,
+	TrySectionSlice,
+	TryOutcome,
+} from "@pie-players/pie-players-shared/item-session-control";
 import type {
 	TimedMediaDegradation,
 	TimedMediaSectionProjection,
@@ -50,12 +50,12 @@ export interface SectionContentModel {
 			identifier?: string;
 		};
 		/**
-		 * The item ref's formative override, carried through because this
+		 * The item ref's item session control override, carried through because this
 		 * projection is where the canonical identifier is decided. Resolving
 		 * policy from the raw `assessmentItemRefs` instead would mean recomputing
 		 * that identifier, and two implementations of one mapping.
 		 */
-		formative?: FormativeItemPolicy;
+		itemSessionControl?: ItemSessionControlPolicy;
 		/** The item ref's policy settings, carried for the same reason. */
 		settings?: ItemSettings;
 	}>;
@@ -93,7 +93,7 @@ export interface SectionSessionState {
 	currentItemIndex?: number;
 	visitedItemIdentifiers?: string[];
 	itemSessions: Record<string, unknown>;
-	formative?: FormativeSectionSlice;
+	tries?: TrySectionSlice;
 	timedMedia?: TimedMediaSectionSessionSlice;
 }
 
@@ -133,9 +133,9 @@ export interface SectionCompositionModel {
 	testAttemptSession: TestAttemptSession | null;
 	itemViewModels: SectionCanonicalItemViewModel[];
 	/**
-	 * Formative delivery projection, keyed by canonical item id. Absent reads
-	 * exactly as `null`: no item in the section delivers formatively, which is
-	 * every section authored without a `formative` policy. Optional so anything
+	 * Item session control projection, keyed by canonical item id. Absent reads
+	 * exactly as `null`: no item in the section enables item session control, which is
+	 * every section authored without a `itemSessionControl` policy. Optional so anything
 	 * else assembling this model — a host layout, a test double — omits the
 	 * field instead of declaring a feature it does not use.
 	 *
@@ -143,7 +143,7 @@ export interface SectionCompositionModel {
 	 * republishes the composition model on every controller event, so a recorded
 	 * Try reaches the cards through the channel that already exists.
 	 */
-	formative?: FormativeSectionProjection | null;
+	tries?: TrySectionProjection | null;
 	/**
 	 * Timed-media projection: cues, enforcement, which items a cue has revealed,
 	 * and the gate holding playback. `null` for every section that is not timed
@@ -245,8 +245,8 @@ interface SectionControllerEventBase {
 		| "section-loading-complete"
 		| "section-items-complete-changed"
 		| "section-error"
-		| "formative-try-recorded"
-		| "formative-reveal-changed"
+		| "try-recorded"
+		| "feedback-reveal-changed"
 		| "section-mastery-changed"
 		| "timed-media-cue-changed"
 		| "timed-media-audio-started"
@@ -369,29 +369,29 @@ export interface SectionErrorEvent extends ItemScopedControllerEventBase {
 	contentKind?: SectionContentKind;
 }
 
-export interface FormativeTryRecordedEvent
+export interface TryRecordedEvent
 	extends ItemScopedControllerEventBase {
-	type: "formative-try-recorded";
+	type: "try-recorded";
 	itemId: string;
 	canonicalItemId: string;
 	tryCount: number;
-	outcome: FormativeTryOutcome;
+	outcome: TryOutcome;
 	revealed: boolean;
 }
 
 /**
  * The reveal state changed without a Try being recorded: a learner dismissed
  * feedback to edit again, or a host forced a reveal or withdrew one. A Try that
- * reveals reports through `formative-try-recorded`.
+ * reveals reports through `try-recorded`.
  */
-export interface FormativeRevealChangedEvent
+export interface FeedbackRevealChangedEvent
 	extends ItemScopedControllerEventBase {
-	type: "formative-reveal-changed";
+	type: "feedback-reveal-changed";
 	itemId: string;
 	canonicalItemId: string;
 	revealed: boolean;
 	/** Reveal level in force, when a host overrode the policy's. */
-	feedback?: FormativeFeedbackReveal;
+	feedback?: FeedbackReveal;
 	/** Tries already spent; none of these transitions consume one. */
 	tryCount: number;
 	source: "learner" | "host";
@@ -400,7 +400,7 @@ export interface FormativeRevealChangedEvent
 export interface SectionMasteryChangedEvent
 	extends ItemScopedControllerEventBase {
 	type: "section-mastery-changed";
-	mastery: FormativeMasteryRollup;
+	mastery: MasteryRollup;
 }
 
 /**
@@ -478,8 +478,8 @@ export type SectionControllerChangeEvent =
 	| SectionLoadingCompleteEvent
 	| SectionItemsCompleteChangedEvent
 	| SectionErrorEvent
-	| FormativeTryRecordedEvent
-	| FormativeRevealChangedEvent
+	| TryRecordedEvent
+	| FeedbackRevealChangedEvent
 	| SectionMasteryChangedEvent
 	| TimedMediaCueChangedEvent
 	| TimedMediaAudioStartedEvent

@@ -6,7 +6,7 @@ import { AssessmentController } from "../src/controller/AssessmentController";
  * The assessment session carries whole section snapshots, delivery slices
  * included. This was previously unprovable from here: `getSectionSession` was
  * typed as a local three-field `SectionSessionSnapshot` and cast to it, so
- * `formative` and `timedMedia` were unreadable through the assessment layer even
+ * `tries` and `timedMedia` were unreadable through the assessment layer even
  * though the runtime passed them through by reference. These tests assert the
  * pass-through so a future narrowing fails here rather than in a host's rollup.
  */
@@ -18,7 +18,7 @@ function makeSnapshot(): SectionControllerSessionState {
 		itemSessions: {
 			"item-1": { id: "item-1", data: [{ id: "mc-1", value: ["a"] }] },
 		},
-		formative: {
+		tries: {
 			version: 1,
 			items: {
 				"item-1": {
@@ -57,16 +57,16 @@ function makeController(): AssessmentController {
 }
 
 describe("assessment session section slices", () => {
-	test("round-trips the formative slice through the assessment session", () => {
+	test("round-trips the Try slice through the assessment session", () => {
 		const controller = makeController();
 		const snapshot = makeSnapshot();
 
 		controller.updateSectionSession("section-1", snapshot);
 		const restored = controller.getSectionSession("section-1");
 
-		expect(restored?.formative).toEqual(snapshot.formative);
-		expect(restored?.formative?.items["item-1"]?.tryCount).toBe(2);
-		expect(restored?.formative?.items["item-1"]?.revealed).toBe(true);
+		expect(restored?.tries).toEqual(snapshot.tries);
+		expect(restored?.tries?.items["item-1"]?.tryCount).toBe(2);
+		expect(restored?.tries?.items["item-1"]?.revealed).toBe(true);
 	});
 
 	test("round-trips the timed-media slice through the assessment session", () => {
@@ -88,7 +88,7 @@ describe("assessment session section slices", () => {
 			JSON.stringify(controller.getSectionSession("section-1")),
 		) as SectionControllerSessionState;
 
-		expect(restored.formative?.items["item-1"]?.lastOutcome?.correctness).toBe(
+		expect(restored.tries?.items["item-1"]?.lastOutcome?.correctness).toBe(
 			"correct",
 		);
 		expect(restored.timedMedia?.visitedCueIdentifiers).toEqual(["cue-1"]);
@@ -101,8 +101,8 @@ describe("assessment session section slices", () => {
 			itemSessions: {},
 		});
 
-		expect(controller.getSectionSession("section-1")?.formative).toBeDefined();
-		expect(controller.getSectionSession("section-2")?.formative).toBeUndefined();
+		expect(controller.getSectionSession("section-1")?.tries).toBeDefined();
+		expect(controller.getSectionSession("section-2")?.tries).toBeUndefined();
 	});
 
 	test("a null section session clears the slices", () => {

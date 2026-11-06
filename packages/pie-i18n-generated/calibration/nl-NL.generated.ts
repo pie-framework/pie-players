@@ -81,7 +81,7 @@ const nlNL = {
 				"De opgeslagen antwoorden voor deze sectie konden niet worden hersteld. Probeer het opnieuw.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Antwoord controleren",
 			tryAgain: "Opnieuw proberen",
 			answerRecorded: "Antwoord opgeslagen.",

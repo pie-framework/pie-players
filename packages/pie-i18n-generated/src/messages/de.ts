@@ -106,7 +106,7 @@ const de = {
 				"Ihre gespeicherten Antworten für diesen Abschnitt konnten nicht wiederhergestellt werden. Versuchen Sie es erneut.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Antwort prüfen",
 			tryAgain: "Erneut versuchen",
 			answerRecorded: "Antwort gespeichert.",

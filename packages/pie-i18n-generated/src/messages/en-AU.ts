@@ -105,7 +105,7 @@ const enAU = {
 				"Your saved answers for this section could not be restored. Try again.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Check answer",
 			tryAgain: "Try again",
 			answerRecorded: "Answer recorded.",

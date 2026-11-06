@@ -1,5 +1,5 @@
 /**
- * Formative delivery vocabulary.
+ * Item session control vocabulary.
  *
  * A **Try** is one submitted-for-checking pass over a single item. It is not
  * `TestAttemptSession` (the assessment administration) and not
@@ -7,12 +7,12 @@
  * an item). Both of those already own the word "attempt" in this codebase, at
  * two different scopes, which is why this contract does not use it.
  *
- * See `docs/prds/formative-delivery-contract.md` for the ratified contract and
+ * See `docs/prds/item-session-control-contract.md` for the ratified contract and
  * its QTI 3 mapping.
  */
 
 /** How many Tries a learner gets on one item. */
-export type FormativeTryLimit = number | "unlimited";
+export type TryLimit = number | "unlimited";
 
 /**
  * What the learner sees after a Try.
@@ -22,38 +22,35 @@ export type FormativeTryLimit = number | "unlimited";
  * `role: "instructor"`, which is the element convention for additionally
  * revealing the authored correct response.
  */
-export type FormativeFeedbackReveal = "none" | "correctness" | "solution";
+export type FeedbackReveal = "none" | "correctness" | "solution";
 
 /** When a reveal happens: after every Try, or only once Tries are spent. */
-export type FormativeRevealTiming = "on-try" | "on-final-try";
+export type FeedbackRevealTiming = "on-try" | "on-final-try";
 
 /**
- * Authored policy. Lives on `AssessmentSection.formative` as the section
- * default and on `AssessmentItemRef.formative` as a per-item override.
+ * Authored policy. Lives on `AssessmentSection.itemSessionControl` as the section
+ * default and on `AssessmentItemRef.itemSessionControl` as a per-item override.
  */
-export interface FormativeDeliveryPolicy {
+export interface ItemSessionControlPolicy {
 	/**
 	 * Absent or `false` leaves delivery exactly as it is without this contract:
 	 * no control, no projection, no state.
 	 */
 	enabled?: boolean;
 	/** Default 1. */
-	maxTries?: FormativeTryLimit;
+	maxTries?: TryLimit;
 	/** Default `"correctness"`. */
-	feedback?: FormativeFeedbackReveal;
+	feedback?: FeedbackReveal;
 	/** Default `"on-try"`. */
-	revealOn?: FormativeRevealTiming;
+	revealOn?: FeedbackRevealTiming;
 }
 
-/** Same shape as the section policy; every field overrides independently. */
-export type FormativeItemPolicy = FormativeDeliveryPolicy;
-
 /** The policy after built-in defaults, section, and item ref are merged. */
-export interface ResolvedFormativePolicy {
+export interface ResolvedItemSessionControl {
 	enabled: boolean;
-	maxTries: FormativeTryLimit;
-	feedback: FormativeFeedbackReveal;
-	revealOn: FormativeRevealTiming;
+	maxTries: TryLimit;
+	feedback: FeedbackReveal;
+	revealOn: FeedbackRevealTiming;
 }
 
 /**
@@ -61,7 +58,7 @@ export interface ResolvedFormativePolicy {
  * one holding a rubric element, or one whose element bundle exposes no
  * `outcome`. It is never collapsed into `"incorrect"`.
  */
-export type FormativeCorrectness =
+export type TryCorrectness =
 	| "correct"
 	| "partial"
 	| "incorrect"
@@ -72,15 +69,15 @@ export type FormativeCorrectness =
  * assignable to this; the structural type keeps this module free of a
  * dependency on the entity types, which import policy types from here.
  */
-export interface FormativeScoredOutcome {
+export interface ScoredElementOutcome {
 	score?: number;
 	max?: number;
 	[key: string]: unknown;
 }
 
 /** The recorded result of one Try. */
-export interface FormativeTryOutcome {
-	correctness: FormativeCorrectness;
+export interface TryOutcome {
+	correctness: TryCorrectness;
 	points?: number;
 	max?: number;
 	scoredElementCount: number;
@@ -97,11 +94,11 @@ export interface FormativeTryOutcome {
 	 * A trade: this persists inside the session slice, so a snapshot grows by
 	 * whatever the elements put in their outcomes — some include a scoring trace.
 	 */
-	elementOutcomes?: FormativeScoredOutcome[];
+	elementOutcomes?: ScoredElementOutcome[];
 }
 
-/** Per-item delivery state. Persisted; see `FormativeSectionSlice`. */
-export interface FormativeItemState {
+/** Per-item delivery state. Persisted; see `TrySectionSlice`. */
+export interface ItemTryState {
 	version: 1;
 	itemIdentifier: string;
 	tryCount: number;
@@ -112,7 +109,7 @@ export interface FormativeItemState {
 	 * reload restores the screen the learner left.
 	 */
 	revealed: boolean;
-	lastOutcome?: FormativeTryOutcome;
+	lastOutcome?: TryOutcome;
 	/** 1-based Try on which the item first scored full credit. Never overwritten. */
 	firstCorrectTry?: number;
 	/**
@@ -120,21 +117,21 @@ export interface FormativeItemState {
 	 * than the learner earning it. Overrides the policy's `feedback` for the env
 	 * projection only — the policy still decides Tries.
 	 *
-	 * Set by `revealFormativeItem`, cleared by `hideFormativeItem` and by a
+	 * Set by `revealItemFeedback`, cleared by `hideItemFeedback` and by a
 	 * learner retry, so a teacher-driven "show the answer" does not silently
 	 * upgrade every later reveal on that item.
 	 */
-	revealOverride?: FormativeFeedbackReveal;
+	revealOverride?: FeedbackReveal;
 }
 
-/** The persisted slice, carried on `SectionControllerSessionState.formative`. */
-export interface FormativeSectionSlice {
+/** The persisted slice, carried on `SectionControllerSessionState.tries`. */
+export interface TrySectionSlice {
 	version: 1;
-	items: Record<string, FormativeItemState>;
+	items: Record<string, ItemTryState>;
 }
 
 /** Projected over the section env for one revealed item. */
-export interface FormativeEnvOverride {
+export interface FeedbackEnvOverride {
 	mode: "evaluate";
 	role: "student" | "instructor";
 }
@@ -143,19 +140,19 @@ export interface FormativeEnvOverride {
  * What a rendering component needs, derived once so no component reimplements
  * the predicate. Carries no copy — wording belongs to the rendering package.
  */
-export interface FormativeItemView {
+export interface ItemTryView {
 	enabled: boolean;
 	tryCount: number;
 	triesRemaining: number | "unlimited";
 	canCheck: boolean;
 	canRetry: boolean;
 	revealed: boolean;
-	envOverride?: FormativeEnvOverride;
-	lastOutcome?: FormativeTryOutcome;
+	envOverride?: FeedbackEnvOverride;
+	lastOutcome?: TryOutcome;
 }
 
 /** Section rollup over Try outcomes. */
-export interface FormativeMasteryRollup {
+export interface MasteryRollup {
 	version: 1;
 	totalItems: number;
 	/**
@@ -172,13 +169,13 @@ export interface FormativeMasteryRollup {
 }
 
 /** The composition-model projection layouts read. */
-export interface FormativeSectionProjection {
+export interface TrySectionProjection {
 	version: 1;
 	enabled: boolean;
-	policies: Record<string, ResolvedFormativePolicy>;
-	states: Record<string, FormativeItemState>;
-	mastery: FormativeMasteryRollup;
+	policies: Record<string, ResolvedItemSessionControl>;
+	states: Record<string, ItemTryState>;
+	mastery: MasteryRollup;
 }
 
 /** The two learner actions a rendering component can request. */
-export type FormativeAction = "check" | "retry";
+export type TryAction = "check" | "retry";

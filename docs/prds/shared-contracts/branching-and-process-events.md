@@ -82,7 +82,7 @@ interface ResumabilityMarker {
 
 Branching and process event payloads should be typed event families consumed by the interaction event projection contract.
 
-Two named section slices have shipped without process state: `formative` ([formative delivery contract](../formative-delivery-contract.md#serialization-and-versioning)) and `timedMedia` ([timed-media section contract](../timed-media-section-contract.md#serialization-and-versioning)), each with its own version and unknown-version rule. A slice that persists process state must define:
+Two named section slices have shipped without process state: `tries` ([item session control contract](../item-session-control-contract.md#serialization-and-versioning)) and `timedMedia` ([timed-media section contract](../timed-media-section-contract.md#serialization-and-versioning)), each with its own version and unknown-version rule. A slice that persists process state must define:
 
 - key name;
 - owning PRD;

@@ -113,7 +113,7 @@ _Avoid_: Provider value, scheme value
 - "custom scheme" previously covered both registered data and host CSS selectors — resolved: distinguish **Registered Custom Scheme** from **CSS-only Scheme**.
 - "complete palette" does not mean every non-color token — completeness is defined by **Scheme Participation**.
 
-## Formative Delivery Language
+## Item Session Control Language
 
 **Try**:
 One submitted-for-checking pass over a single item within a delivery session. `tryCount` counts them, `maxTries` bounds them.
@@ -132,26 +132,26 @@ What a learner sees after a **Try**, expressed as the `env` PIE projects onto th
 _Avoid_: Feedback UI, show answer
 
 **Forced Reveal**:
-A **Feedback Reveal** a runtime host imposed rather than the learner earned — a teacher-driven "show the answer". Spends no **Try**, ignores the **Try** budget, and states its own reveal level, which supersedes the **Formative Policy**'s until withdrawn.
+A **Feedback Reveal** a runtime host imposed rather than the learner earned — a teacher-driven "show the answer". Spends no **Try**, ignores the **Try** budget, and states its own reveal level, which supersedes the **Item Session Control**'s until withdrawn.
 _Avoid_: Override, unlock
 
-**Formative Policy**:
-The resolved per-item rule set — `maxTries`, `feedback`, `revealOn` — after built-in defaults, the section's policy, and the item ref's override are merged in that order.
-_Avoid_: Item session control, settings
+**Item Session Control**:
+The resolved per-item rule set — `enabled`, `maxTries`, `feedback`, `revealOn` — after built-in defaults, the section's `itemSessionControl`, and the item ref's override are merged in that order. Purpose-neutral: practice (formative) delivery is one use, post-test review and a multi-Try test are others.
+_Avoid_: Formative policy, formative delivery, settings
 
 **Mastery**:
 The section-level rollup over **Try Outcomes**: how many items reached full credit and on which **Try**. Items whose **Correctness** is unknown are excluded from the denominator, not scored zero.
 _Avoid_: Completion, progress, score
 
-## Formative Delivery Relationships
+## Item Session Control Relationships
 
-- A **Formative Policy** is resolved per item; the section supplies the default and the item ref overrides it field by field.
+- A **Item Session Control** is resolved per item; the section supplies the default and the item ref overrides it field by field.
 - A **Try** is item-scoped even when the item holds several interactions; there is no per-element **Try**.
 - A **Try** produces exactly one **Try Outcome**, whose **Correctness** the section derives and never authors.
-- A **Feedback Reveal** is withdrawn when a learner retries, returning the item to the section's own mode. A learner retry also clears a **Forced Reveal**, so the next earned reveal is back at the **Formative Policy**'s level.
-- A **Forced Reveal** is bounded only by whether the item delivers formatively at all; the **Try** budget constrains the learner, not the host that set it.
+- A **Feedback Reveal** is withdrawn when a learner retries, returning the item to the section's own mode. A learner retry also clears a **Forced Reveal**, so the next earned reveal is back at the **Item Session Control**'s level.
+- A **Forced Reveal** is bounded only by whether the item's **Item Session Control** is enabled at all; the **Try** budget constrains the learner, not the host that set it.
 - **Mastery** is a rollup over **Try Outcomes** and is independent of item completion — an item can be complete and unmastered, or mastered and still editable.
-- **Correctness** is the vocabulary a timed-media cue gate will be authored against; it is settled by formative delivery rather than by the cue contract.
+- **Correctness** is the vocabulary a timed-media cue gate will be authored against; it is settled by item session control rather than by the cue contract.
 
 ## Timed Media Language
 
@@ -180,7 +180,7 @@ What a **Cue** does when playback reaches it: `reveal` shows its items, `gate` a
 _Avoid_: Trigger, event
 
 **Gate Condition**:
-The condition over delivery state that releases a `gate` **Cue** — `responded`, or one of the **Correctness** values formative delivery settles. `responded` reads item completion rather than **Try** state.
+The condition over delivery state that releases a `gate` **Cue** — `responded`, or one of the **Correctness** values item session control settles. `responded` reads item completion rather than **Try** state.
 _Avoid_: Unlock rule, pass condition
 
 **Enforced Policy**:
@@ -201,7 +201,7 @@ _Avoid_: Section complete, progress
 - A **Cue** names item refs of its own section; a cue timeline is never reusable across sections, while a **Media Stimulus** is, through `passageVId`.
 - An item no **Cue** names is delivered normally. The timeline sequences what it names and nothing else.
 - **Cue** visits and item reveals are monotonic: seeking backwards does not withdraw a question the learner has already seen, and a released **Gate Condition** stays released so a retry cannot re-trap a learner mid-playback.
-- A **Gate Condition** over **Correctness** requires the items it names to deliver formatively with unlimited **Tries**; anything else is a checkpoint a learner could become unable to pass.
+- A **Gate Condition** over **Correctness** requires the items it names to enable item session control with unlimited **Tries**; anything else is a checkpoint a learner could become unable to pass.
 - An **Advisory Policy** is a fact about the attached **Media Time Source**, not about the authoring. The same section is enforced on a native element and advisory behind an embed that only reports time.
 - **Aggregate Completion** is independent of **Mastery**: a section can be complete with every answer wrong.
 

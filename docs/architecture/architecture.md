@@ -134,7 +134,7 @@ The section and assessment layers default to `localStorage`, keyed per attempt a
 
 ![Where the controller runs: by default the authored model, answer key included, reaches the browser and the player runs the controller there; in hosted delivery a controller on the host's server sends only view models](../img/element-controller-flow.excalidraw.svg)
 
-By default the whole item config reaches the browser, answer keys included, and the element controllers run there. That fits practice and formative delivery. Graded delivery needs three things together:
+By default the whole item config reaches the browser, answer keys included, and the element controllers run there. That fits practice and item session control. Graded delivery needs three things together:
 
 - **Hosted mode** (`hosted`, or a delivery backend): the player loads elements without their controllers and renders the view models a server computes.
 - **Stripped models**: the host removes answer keys and rationales from the models on its server, because the players pass models through as they receive them.

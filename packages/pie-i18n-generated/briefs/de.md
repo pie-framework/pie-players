@@ -168,7 +168,7 @@ keys translate (`Pfeiltasten`), since that is what German instructions say.
 ## Plurals, punctuation
 
 - CLDR `one`/`other`, like English. The six plural groups
-  (`player.formative.triesLeft`, `tools.dictionary.entriesCount`,
+  (`player.check.triesLeft`, `tools.dictionary.entriesCount`,
   `tools.pictureDictionary.entriesCount`, `debug.tts.browserAvailable`,
   `debug.tts.pollyAvailable`, `debug.tts.googleAvailable`) carry both
   categories with the `{count}` placeholder.

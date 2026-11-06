@@ -105,7 +105,7 @@ const ht = {
 				"Repons ou te sove pou seksyon sa a pa t ka retabli. Eseye ankò.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Tcheke repons lan",
 			tryAgain: "Eseye ankò",
 			answerRecorded: "Repons lan anrejistre.",

@@ -109,7 +109,7 @@ const zh = {
 				"无法恢复您在本部分中已保存的答案。请重试。",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "检查答案",
 			tryAgain: "重试",
 			answerRecorded: "答案已记录。",

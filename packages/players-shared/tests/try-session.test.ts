@@ -1,45 +1,45 @@
 import { describe, expect, test } from "bun:test";
 import {
-	FORMATIVE_SLICE_VERSION,
-	normalizeFormativeSectionSlice,
-	toFormativeSectionSlice,
-	type FormativeItemState,
-} from "../src/formative/index.js";
+	TRY_SLICE_VERSION,
+	normalizeTrySectionSlice,
+	toTrySectionSlice,
+	type ItemTryState,
+} from "../src/item-session-control/index.js";
 
 const state = (
-	overrides: Partial<FormativeItemState> & { itemIdentifier: string },
-): FormativeItemState => ({
+	overrides: Partial<ItemTryState> & { itemIdentifier: string },
+): ItemTryState => ({
 	version: 1,
 	tryCount: 0,
 	revealed: false,
 	...overrides,
 });
 
-describe("toFormativeSectionSlice", () => {
+describe("toTrySectionSlice", () => {
 	test("stamps the slice version", () => {
-		const slice = toFormativeSectionSlice({
+		const slice = toTrySectionSlice({
 			q1: state({ itemIdentifier: "q1", tryCount: 1, revealed: true }),
 		});
-		expect(slice.version).toBe(FORMATIVE_SLICE_VERSION);
+		expect(slice.version).toBe(TRY_SLICE_VERSION);
 		expect(slice.items.q1?.tryCount).toBe(1);
 	});
 });
 
-describe("normalizeFormativeSectionSlice", () => {
+describe("normalizeTrySectionSlice", () => {
 	const allowedItemIdentifiers = ["q1", "q2"];
 
-	test("an absent slice is null, indistinguishable from a pre-formative save", () => {
+	test("an absent slice is null, indistinguishable from a save from before item session control", () => {
 		expect(
-			normalizeFormativeSectionSlice({ slice: undefined, allowedItemIdentifiers }),
+			normalizeTrySectionSlice({ slice: undefined, allowedItemIdentifiers }),
 		).toBeNull();
 		expect(
-			normalizeFormativeSectionSlice({ slice: null, allowedItemIdentifiers }),
+			normalizeTrySectionSlice({ slice: null, allowedItemIdentifiers }),
 		).toBeNull();
 	});
 
 	test("an unknown slice version is rejected whole", () => {
 		expect(
-			normalizeFormativeSectionSlice({
+			normalizeTrySectionSlice({
 				slice: { version: 2, items: { q1: state({ itemIdentifier: "q1" }) } },
 				allowedItemIdentifiers,
 			}),
@@ -47,7 +47,7 @@ describe("normalizeFormativeSectionSlice", () => {
 	});
 
 	test("round-trips a full state", () => {
-		const original: Record<string, FormativeItemState> = {
+		const original: Record<string, ItemTryState> = {
 			q1: state({
 				itemIdentifier: "q1",
 				tryCount: 2,
@@ -62,8 +62,8 @@ describe("normalizeFormativeSectionSlice", () => {
 				},
 			}),
 		};
-		const restored = normalizeFormativeSectionSlice({
-			slice: toFormativeSectionSlice(original),
+		const restored = normalizeTrySectionSlice({
+			slice: toTrySectionSlice(original),
 			allowedItemIdentifiers,
 		});
 		expect(restored).toEqual(original);
@@ -76,8 +76,8 @@ describe("normalizeFormativeSectionSlice", () => {
 			"incorrect",
 			"unknown",
 		] as const) {
-			const restored = normalizeFormativeSectionSlice({
-				slice: toFormativeSectionSlice({
+			const restored = normalizeTrySectionSlice({
+				slice: toTrySectionSlice({
 					q1: state({
 						itemIdentifier: "q1",
 						tryCount: 1,
@@ -95,9 +95,9 @@ describe("normalizeFormativeSectionSlice", () => {
 	});
 
 	test("state for an item no longer in the section is dropped", () => {
-		const restored = normalizeFormativeSectionSlice({
+		const restored = normalizeTrySectionSlice({
 			slice: {
-				version: FORMATIVE_SLICE_VERSION,
+				version: TRY_SLICE_VERSION,
 				items: {
 					q1: state({ itemIdentifier: "q1", tryCount: 1 }),
 					removed: state({ itemIdentifier: "removed", tryCount: 5 }),
@@ -109,9 +109,9 @@ describe("normalizeFormativeSectionSlice", () => {
 	});
 
 	test("an item state of an unknown version is dropped without failing the slice", () => {
-		const restored = normalizeFormativeSectionSlice({
+		const restored = normalizeTrySectionSlice({
 			slice: {
-				version: FORMATIVE_SLICE_VERSION,
+				version: TRY_SLICE_VERSION,
 				items: {
 					q1: { ...state({ itemIdentifier: "q1", tryCount: 1 }), version: 9 },
 					q2: state({ itemIdentifier: "q2", tryCount: 2 }),
@@ -123,9 +123,9 @@ describe("normalizeFormativeSectionSlice", () => {
 	});
 
 	test("the identifier comes from the key, not from the payload", () => {
-		const restored = normalizeFormativeSectionSlice({
+		const restored = normalizeTrySectionSlice({
 			slice: {
-				version: FORMATIVE_SLICE_VERSION,
+				version: TRY_SLICE_VERSION,
 				items: { q1: state({ itemIdentifier: "spoofed", tryCount: 1 }) },
 			},
 			allowedItemIdentifiers,
@@ -134,9 +134,9 @@ describe("normalizeFormativeSectionSlice", () => {
 	});
 
 	test("garbage fields are dropped rather than trusted", () => {
-		const restored = normalizeFormativeSectionSlice({
+		const restored = normalizeTrySectionSlice({
 			slice: {
-				version: FORMATIVE_SLICE_VERSION,
+				version: TRY_SLICE_VERSION,
 				items: {
 					q1: {
 						version: 1,
@@ -171,11 +171,11 @@ describe("normalizeFormativeSectionSlice", () => {
 	});
 });
 
-describe("normalizeFormativeSectionSlice extras", () => {
+describe("normalizeTrySectionSlice extras", () => {
 	const allowedItemIdentifiers = ["q1"];
 
 	test("round-trips raw element outcomes and a host reveal override", () => {
-		const original: Record<string, FormativeItemState> = {
+		const original: Record<string, ItemTryState> = {
 			q1: state({
 				itemIdentifier: "q1",
 				tryCount: 1,
@@ -192,17 +192,17 @@ describe("normalizeFormativeSectionSlice extras", () => {
 			}),
 		};
 		expect(
-			normalizeFormativeSectionSlice({
-				slice: toFormativeSectionSlice(original),
+			normalizeTrySectionSlice({
+				slice: toTrySectionSlice(original),
 				allowedItemIdentifiers,
 			}),
 		).toEqual(original);
 	});
 
 	test("a bogus reveal override is dropped, leaving the policy in charge", () => {
-		const restored = normalizeFormativeSectionSlice({
+		const restored = normalizeTrySectionSlice({
 			slice: {
-				version: FORMATIVE_SLICE_VERSION,
+				version: TRY_SLICE_VERSION,
 				items: {
 					q1: {
 						version: 1,
@@ -220,9 +220,9 @@ describe("normalizeFormativeSectionSlice extras", () => {
 	});
 
 	test("element outcomes survive as objects and reject non-objects", () => {
-		const restored = normalizeFormativeSectionSlice({
+		const restored = normalizeTrySectionSlice({
 			slice: {
-				version: FORMATIVE_SLICE_VERSION,
+				version: TRY_SLICE_VERSION,
 				items: {
 					q1: {
 						version: 1,
@@ -244,9 +244,9 @@ describe("normalizeFormativeSectionSlice extras", () => {
 	});
 
 	test("a non-array elementOutcomes is dropped rather than coerced", () => {
-		const restored = normalizeFormativeSectionSlice({
+		const restored = normalizeTrySectionSlice({
 			slice: {
-				version: FORMATIVE_SLICE_VERSION,
+				version: TRY_SLICE_VERSION,
 				items: {
 					q1: {
 						version: 1,

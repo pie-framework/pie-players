@@ -98,7 +98,7 @@ const he = {
 				"לא ניתן היה לשחזר את התשובות שלכם שנשמרו למקטע זה. נסו שוב.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "לבדוק את התשובה",
 			tryAgain: "לנסות שוב",
 			answerRecorded: "התשובה נרשמה.",

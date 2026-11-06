@@ -202,8 +202,8 @@ Playwright rules:
 
 1. **Card header** (pre-existing): the item toolbar hugs the trailing edge,
    under a forced `dir` and under the real `ar` stamps.
-2. **Card footer**: the formative check-answer button mirrors under the same
-   `margin-inline-start` trailing-edge rule (`/formative-delivery`, forced
+2. **Card footer**: the check-answer button mirrors under the same
+   `margin-inline-start` trailing-edge rule (`/item-session-control`, forced
    `dir` — the rule reads inherited direction, and case 1 proves the stamping
    path end to end).
 3. **Split-pane layout**: pane *order* flips — passages pane leads in LTR,

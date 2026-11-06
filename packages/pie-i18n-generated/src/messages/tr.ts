@@ -95,7 +95,7 @@ const tr = {
 				"Bu bölümdeki kayıtlı cevaplarınız geri yüklenemedi. Tekrar deneyin.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Cevabı kontrol et",
 			tryAgain: "Tekrar dene",
 			answerRecorded: "Cevap kaydedildi.",

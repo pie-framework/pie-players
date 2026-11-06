@@ -107,7 +107,7 @@ const so = {
 				"Jawaabaha aad kaydisay ee qaybtan lama soo celin karin. Isku day markale.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Hubi jawaabta",
 			tryAgain: "Isku day markale",
 			answerRecorded: "Jawaabta waa la diiwaan geliyay.",

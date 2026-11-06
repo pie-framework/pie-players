@@ -35,7 +35,7 @@ const INTERNAL_EVENTS = [
 	"pie-item-session-changed",
 	"pie-content-loaded",
 	"pie-item-player-error",
-	"pie-formative-action",
+	"pie-try-action",
 	"pie-media-time-source",
 ] as const;
 // Dispatched by the section runtime engine on the layout element.

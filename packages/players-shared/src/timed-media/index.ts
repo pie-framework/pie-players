@@ -5,7 +5,7 @@
  * Pure apart from one adapter factory that is inert until called, so the contract
  * is testable without a browser and an adapter can import it without pulling in a
  * player. Live cue state belongs to `SectionController` in
- * `@pie-players/pie-section-player`, which is where the equivalent formative state
+ * `@pie-players/pie-section-player`, which is where the equivalent Try state
  * lives — one rollup over one item set, in one package.
  *
  * Contract: `docs/prds/timed-media-section-contract.md`.

@@ -1,19 +1,19 @@
 import type {
-	FormativeEnvOverride,
-	FormativeFeedbackReveal,
-	FormativeItemState,
-	FormativeItemView,
-	FormativeTryOutcome,
-	ResolvedFormativePolicy,
+	FeedbackEnvOverride,
+	FeedbackReveal,
+	ItemTryState,
+	ItemTryView,
+	TryOutcome,
+	ResolvedItemSessionControl,
 } from "./types.js";
 
-export const FORMATIVE_ITEM_STATE_VERSION = 1 as const;
+export const ITEM_TRY_STATE_VERSION = 1 as const;
 
-export function createFormativeItemState(
+export function createItemTryState(
 	itemIdentifier: string,
-): FormativeItemState {
+): ItemTryState {
 	return {
-		version: FORMATIVE_ITEM_STATE_VERSION,
+		version: ITEM_TRY_STATE_VERSION,
 		itemIdentifier,
 		tryCount: 0,
 		revealed: false,
@@ -21,7 +21,7 @@ export function createFormativeItemState(
 }
 
 function triesRemaining(
-	policy: ResolvedFormativePolicy,
+	policy: ResolvedItemSessionControl,
 	tryCount: number,
 ): number | "unlimited" {
 	if (policy.maxTries === "unlimited") return "unlimited";
@@ -33,12 +33,12 @@ function hasTriesLeft(remaining: number | "unlimited"): boolean {
 }
 
 function shouldReveal(
-	policy: ResolvedFormativePolicy,
+	policy: ResolvedItemSessionControl,
 	tryCount: number,
 ): boolean {
 	if (policy.feedback === "none") return false;
 	if (policy.revealOn === "on-try") return true;
-	// Defensive: `resolveFormativePolicy` already coerces `"on-final-try"` to
+	// Defensive: `resolveItemSessionControl` already coerces `"on-final-try"` to
 	// `"on-try"` under unlimited Tries, so this branch only guards a
 	// hand-constructed policy.
 	if (policy.maxTries === "unlimited") return true;
@@ -52,13 +52,13 @@ function shouldReveal(
  * state can be checked, so a second click landing before the projection
  * round-trips is dropped rather than spending a Try.
  */
-export function recordFormativeTry(args: {
-	state?: FormativeItemState;
+export function recordTry(args: {
+	state?: ItemTryState;
 	itemIdentifier: string;
-	policy: ResolvedFormativePolicy;
-	outcome: FormativeTryOutcome;
-}): FormativeItemState {
-	const current = args.state ?? createFormativeItemState(args.itemIdentifier);
+	policy: ResolvedItemSessionControl;
+	outcome: TryOutcome;
+}): ItemTryState {
+	const current = args.state ?? createItemTryState(args.itemIdentifier);
 	if (!args.policy.enabled) return current;
 
 	const remaining = triesRemaining(args.policy, current.tryCount);
@@ -67,7 +67,7 @@ export function recordFormativeTry(args: {
 	const tryCount = current.tryCount + 1;
 	return {
 		...current,
-		version: FORMATIVE_ITEM_STATE_VERSION,
+		version: ITEM_TRY_STATE_VERSION,
 		itemIdentifier: args.itemIdentifier,
 		tryCount,
 		revealed: shouldReveal(args.policy, tryCount),
@@ -87,12 +87,12 @@ export function recordFormativeTry(args: {
  * mode.
  *
  * A learner action, so it respects the Try budget: an item with none left keeps
- * its feedback on screen. `hideFormativeItem` is the host-authority version.
+ * its feedback on screen. `hideItemFeedback` is the host-authority version.
  */
-export function retryFormativeItem(args: {
-	state?: FormativeItemState;
-	policy: ResolvedFormativePolicy;
-}): FormativeItemState | undefined {
+export function retryItem(args: {
+	state?: ItemTryState;
+	policy: ResolvedItemSessionControl;
+}): ItemTryState | undefined {
 	const current = args.state;
 	if (!current || !args.policy.enabled) return current;
 	if (!current.revealed) return current;
@@ -114,13 +114,13 @@ export function retryFormativeItem(args: {
  * whatever response is there, including none, which is what "show the answer"
  * means before the learner has answered.
  */
-export function revealFormativeItem(args: {
-	state?: FormativeItemState;
+export function revealItemFeedback(args: {
+	state?: ItemTryState;
 	itemIdentifier: string;
-	policy: ResolvedFormativePolicy;
-	feedback: Exclude<FormativeFeedbackReveal, "none">;
-}): FormativeItemState {
-	const current = args.state ?? createFormativeItemState(args.itemIdentifier);
+	policy: ResolvedItemSessionControl;
+	feedback: Exclude<FeedbackReveal, "none">;
+}): ItemTryState {
+	const current = args.state ?? createItemTryState(args.itemIdentifier);
 	if (!args.policy.enabled) return current;
 	if (current.revealed && current.revealOverride === args.feedback) {
 		return current;
@@ -133,10 +133,10 @@ export function revealFormativeItem(args: {
  * Try budget: a host that revealed an item with no Tries left must be able to
  * put it back.
  */
-export function hideFormativeItem(args: {
-	state?: FormativeItemState;
-	policy: ResolvedFormativePolicy;
-}): FormativeItemState | undefined {
+export function hideItemFeedback(args: {
+	state?: ItemTryState;
+	policy: ResolvedItemSessionControl;
+}): ItemTryState | undefined {
 	const current = args.state;
 	if (!current || !args.policy.enabled) return current;
 	if (!current.revealed && !current.revealOverride) return current;
@@ -144,10 +144,10 @@ export function hideFormativeItem(args: {
 }
 
 function envOverrideFor(
-	policy: ResolvedFormativePolicy,
+	policy: ResolvedItemSessionControl,
 	revealed: boolean,
-	revealOverride: FormativeFeedbackReveal | undefined,
-): FormativeEnvOverride | undefined {
+	revealOverride: FeedbackReveal | undefined,
+): FeedbackEnvOverride | undefined {
 	const feedback = revealOverride ?? policy.feedback;
 	if (!revealed || feedback === "none") return undefined;
 	return {
@@ -157,10 +157,10 @@ function envOverrideFor(
 }
 
 /** Derive everything a rendering component needs from policy plus state. */
-export function resolveFormativeItemView(args: {
-	policy: ResolvedFormativePolicy;
-	state?: FormativeItemState;
-}): FormativeItemView {
+export function resolveItemTryView(args: {
+	policy: ResolvedItemSessionControl;
+	state?: ItemTryState;
+}): ItemTryView {
 	const { policy } = args;
 	const tryCount = args.state?.tryCount ?? 0;
 	const revealed = args.state?.revealed === true;

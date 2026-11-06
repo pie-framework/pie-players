@@ -103,7 +103,7 @@ const hmn = {
 				"Tsis rov qab tau koj cov lus teb uas khaws cia rau feem no. Sim dua.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Kuaj lus teb",
 			tryAgain: "Sim dua",
 			answerRecorded: "Lus teb khaws cia lawm.",

@@ -106,7 +106,7 @@ const it = {
 				"Non è stato possibile ripristinare le risposte salvate di questa sezione. Riprovare.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Verificare la risposta",
 			tryAgain: "Provare di nuovo",
 			answerRecorded: "La risposta è stata registrata.",

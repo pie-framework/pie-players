@@ -105,7 +105,7 @@ const fil = {
 				"Hindi naibalik ang mga naka-save na sagot sa bahaging ito. Subukan muli.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Suriin ang sagot",
 			tryAgain: "Subukan muli",
 			answerRecorded: "Naitala ang sagot.",

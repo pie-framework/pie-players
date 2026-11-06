@@ -108,7 +108,7 @@ const ko = {
 				"이 섹션의 저장된 답안을 복원하지 못했습니다. 다시 시도해 주세요.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "정답 확인",
 			tryAgain: "다시 시도",
 			answerRecorded: "답안이 기록되었습니다.",

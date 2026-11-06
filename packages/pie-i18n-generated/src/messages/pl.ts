@@ -97,7 +97,7 @@ const pl = {
 				"Nie udało się przywrócić zapisanych odpowiedzi tej części. Spróbuj ponownie.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Sprawdź odpowiedź",
 			tryAgain: "Spróbuj ponownie",
 			answerRecorded: "Odpowiedź została zapisana.",

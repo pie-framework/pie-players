@@ -99,7 +99,7 @@ const ro = {
 				"Răspunsurile tale salvate pentru această secțiune nu au putut fi restaurate. Încearcă din nou.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Verifică răspunsul",
 			tryAgain: "Încearcă din nou",
 			answerRecorded: "Răspuns înregistrat.",

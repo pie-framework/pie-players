@@ -104,7 +104,7 @@ const am = {
 				"የእርስዎ የተቀመጡ መልሶች ለዚህ ክፍል መመለስ አልተቻለም። እንደገና ይሞክሩ።",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "መልስ አረጋግጥ",
 			tryAgain: "እንደገና ሞክር",
 			answerRecorded: "መልሱ ተመዝግቧል።",

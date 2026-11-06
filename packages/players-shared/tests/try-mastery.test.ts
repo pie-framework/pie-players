@@ -1,18 +1,18 @@
 import { describe, expect, test } from "bun:test";
 import {
-	rollupFormativeMastery,
-	type FormativeCorrectness,
-	type FormativeItemState,
-} from "../src/formative/index.js";
+	rollupMastery,
+	type TryCorrectness,
+	type ItemTryState,
+} from "../src/item-session-control/index.js";
 
 const stateOf = (
 	itemIdentifier: string,
 	args: {
 		tryCount: number;
-		correctness?: FormativeCorrectness;
+		correctness?: TryCorrectness;
 		firstCorrectTry?: number;
 	},
-): FormativeItemState => ({
+): ItemTryState => ({
 	version: 1,
 	itemIdentifier,
 	tryCount: args.tryCount,
@@ -27,10 +27,10 @@ const stateOf = (
 	firstCorrectTry: args.firstCorrectTry,
 });
 
-describe("rollupFormativeMastery", () => {
+describe("rollupMastery", () => {
 	test("an empty section is not vacuously complete", () => {
 		expect(
-			rollupFormativeMastery({ itemIdentifiers: [], states: {} }),
+			rollupMastery({ itemIdentifiers: [], states: {} }),
 		).toMatchObject({
 			totalItems: 0,
 			scorableItems: 0,
@@ -41,7 +41,7 @@ describe("rollupFormativeMastery", () => {
 
 	test("an untried section is not complete", () => {
 		expect(
-			rollupFormativeMastery({
+			rollupMastery({
 				itemIdentifiers: ["q1", "q2"],
 				states: {},
 			}),
@@ -57,7 +57,7 @@ describe("rollupFormativeMastery", () => {
 	test("one correct answer out of three does not read as complete", () => {
 		// The regression this guards: counting only *outcomes seen* as the
 		// denominator would report mastery after the first correct item.
-		const rollup = rollupFormativeMastery({
+		const rollup = rollupMastery({
 			itemIdentifiers: ["q1", "q2", "q3"],
 			states: {
 				q1: stateOf("q1", {
@@ -76,7 +76,7 @@ describe("rollupFormativeMastery", () => {
 	});
 
 	test("every item mastered completes the section", () => {
-		const rollup = rollupFormativeMastery({
+		const rollup = rollupMastery({
 			itemIdentifiers: ["q1", "q2"],
 			states: {
 				q1: stateOf("q1", { tryCount: 1, correctness: "correct", firstCorrectTry: 1 }),
@@ -92,7 +92,7 @@ describe("rollupFormativeMastery", () => {
 	});
 
 	test("a not-scorable item leaves the denominator rather than scoring zero", () => {
-		const rollup = rollupFormativeMastery({
+		const rollup = rollupMastery({
 			itemIdentifiers: ["q1", "q2", "rubric"],
 			states: {
 				q1: stateOf("q1", { tryCount: 1, correctness: "correct", firstCorrectTry: 1 }),
@@ -111,7 +111,7 @@ describe("rollupFormativeMastery", () => {
 
 	test("a section of only not-scorable items is never complete", () => {
 		expect(
-			rollupFormativeMastery({
+			rollupMastery({
 				itemIdentifiers: ["rubric"],
 				states: { rubric: stateOf("rubric", { tryCount: 1, correctness: "unknown" }) },
 			}),
@@ -119,7 +119,7 @@ describe("rollupFormativeMastery", () => {
 	});
 
 	test("mastery survives a later incorrect try", () => {
-		const rollup = rollupFormativeMastery({
+		const rollup = rollupMastery({
 			itemIdentifiers: ["q1"],
 			states: {
 				q1: stateOf("q1", {
@@ -135,7 +135,7 @@ describe("rollupFormativeMastery", () => {
 
 	test("state for an item outside the section is ignored", () => {
 		expect(
-			rollupFormativeMastery({
+			rollupMastery({
 				itemIdentifiers: ["q1"],
 				states: {
 					q1: stateOf("q1", { tryCount: 1, correctness: "incorrect" }),

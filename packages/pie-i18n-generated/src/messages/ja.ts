@@ -108,7 +108,7 @@ const ja = {
 				"このセクションの保存済みの解答を復元できませんでした。もう一度お試しください。",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "解答を確認",
 			tryAgain: "再試行",
 			answerRecorded: "解答を記録しました。",

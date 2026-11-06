@@ -94,7 +94,7 @@ const thTH = {
 			restoreFailed: "ไม่สามารถกู้คืนคำตอบที่บันทึกไว้ของตอนนี้ได้ ลองอีกครั้ง",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "ตรวจคำตอบ",
 			tryAgain: "ลองอีกครั้ง",
 			answerRecorded: "บันทึกคำตอบแล้ว",

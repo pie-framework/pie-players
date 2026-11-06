@@ -112,7 +112,7 @@ const sv = {
 				"Dina sparade svar för det här avsnittet kunde inte återställas. Försök igen.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Kontrollera svar",
 			tryAgain: "Försök igen",
 			answerRecorded: "Svaret har sparats.",

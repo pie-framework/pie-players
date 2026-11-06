@@ -92,7 +92,7 @@ both.
 | `assessment-player` | Active section selection, assessment-level navigation, assessment session abstraction over section sessions. Optional: a host supplying its own assessment shell reaches the section directly. | Timed cue orchestration or media playback internals. |
 | Section player layouts | Media layout, item reveal/selection, section-level completion view, bridge between media state and child item sessions. Shipped as the existing layouts reading `compositionModel.timedMedia`, which `SectionController` computes with `resolveTimedMediaProjection`; cue activation and pause/resume policy live in the `timed-media` module and `SectionController`. | Child element internals, backend storage, assessment-level routing. |
 | `assessment-toolkit` engine layer | Runtime registration through `SectionControllerBinding`, stage derivation through `SectionRuntimeEngine`/`SectionEngineCore`, composed policy decisions with provenance through `ToolPolicyEngine`, tool/TTS/accessibility service coordination, composition republish to the layout, routing `pie-media-time-source` registrations to the controller, and folding the timed-media signature into the composition revision key. Reached on both entry paths, so tool policy placed here needs no assessment-player. | Media playback internals, per-item controller instantiation, durable storage, product policy. |
-| `SectionController`, in `section-player` | Aggregate section state, the item-session map, per-item completion and formative Try/mastery rollups, timed-media live state and the Media Time Source port, the persistence snapshot shape. | Media playback internals, assessment-level routing, durable storage. |
+| `SectionController`, in `section-player` | Aggregate section state, the item-session map, per-item completion and Try/mastery rollups, timed-media live state and the Media Time Source port, the persistence snapshot shape. | Media playback internals, assessment-level routing, durable storage. |
 | `video-stimulus` | Media rendering: sources, captions, transcript, and the `<video>` element the stimulus card adapts as the section's Media Time Source. | Cue-to-item bindings, scoring, child item sessions. |
 | `item-player` | Rendering normal item content and propagating item sessions/outcomes. | Media timeline policy or section-level aggregation policy. |
 | Child PIE elements | Their own model/session/environment, authoring surface, session-changed events, controller outcomes. | Section composition, media state, persistence. |
@@ -129,7 +129,7 @@ pure `timed-media` module of `@pie-players/pie-players-shared`, with live state 
 `SectionController`. `ToolPolicyEngine` in the toolkit was the other candidate home;
 its decision domain is tool eligibility, so cue policy stays out of it. The toolkit's
 timed-media roles are the event route for Media Time Source registrations and the
-composition revision key, as they are for formative delivery.
+composition revision key, as they are for item session control.
 
 Cue gating does not reuse the canonical `Stage` vocabulary. `players-shared/src/pie/stages.ts`
 is a lifecycle list (`composed`, `engine-ready`, `interactive`, `disposed`),
@@ -154,8 +154,8 @@ section adds the timeline orchestration a plain passage renderer does not own.
 
 Three decisions taken in design review constrain the contract.
 
-**1. Formative delivery ships first.** [ADR 0001](../adr/0001-formative-delivery-before-timed-media.md)
-records it and the [formative delivery contract](../prds/formative-delivery-contract.md)
+**1. Item session control ships first.** [ADR 0001](../adr/0001-formative-delivery-before-timed-media.md)
+records it and the [item session control contract](../prds/item-session-control-contract.md)
 specifies it. A cue's useful gate condition is "answered correctly", and correctness
 at the section layer needs a per-item evaluation seam PIE did not have. Building cues
 first would have forced `responded` as the only expressible condition, then a
@@ -163,12 +163,12 @@ revision of a shipped section slice once correctness arrived.
 
 A gate therefore names a gate condition over delivery state and defines none of its
 own: `responded`, `correct` or `partial-or-better` (`TimedMediaGateCondition`). The
-correctness conditions read the formative `FormativeCorrectness` values `correct`,
+correctness conditions read the `TryCorrectness` values `correct`,
 `partial`, `incorrect` and `unknown`; `responded` reads item completion. `unknown` is
 the state of an item no loaded controller can score, so a correctness gate states
 what it does with it, through a required `onUnknownCorrectness: "release" | "hold"`,
 and never treats it as wrong. A correctness gate also requires the items it names to
-deliver formatively with unlimited Tries (validation error
+enable item session control with unlimited Tries (validation error
 `gate-requires-unlimited-tries`), since anything else is a checkpoint a learner could
 become unable to pass.
 
@@ -210,7 +210,7 @@ const section = {
   sectionType: "timed-media",
   keepTogether: true,
   // A correctness gate needs unlimited Tries.
-  formative: { enabled: true, maxTries: "unlimited", feedback: "correctness" },
+  itemSessionControl: { enabled: true, maxTries: "unlimited", feedback: "correctness" },
   rubricBlocks: [
     {
       identifier: "video-stimulus-1",
@@ -411,7 +411,7 @@ The section from [Section Data](#section-data), delivered:
 6. The child multiple-choice element updates its own session and emits
    `session-changed` through item-player.
 7. `SectionController` records the item session in the section item-session map.
-   Once the item's formative correctness is `correct`, or `unknown`, which this
+   Once the item's Try correctness is `correct`, or `unknown`, which this
    cue's `onUnknownCorrectness: "release"` releases, the gate releases and the cue
    is complete.
 8. The learner resumes playback.
@@ -427,7 +427,7 @@ The section from [Section Data](#section-data), delivered:
 Child item sessions stay in the section item-session map. Media progress and cue
 state are a versioned `timedMedia` slice on `SectionControllerSessionState`, the
 host-facing snapshot `getSession()` returns and `applySession()` accepts, beside the
-formative slice:
+Try slice:
 
 ```ts
 interface TimedMediaSectionSessionSlice {

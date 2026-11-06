@@ -1,7 +1,7 @@
 import type {
-	FormativeCorrectness,
-	FormativeScoredOutcome,
-	FormativeTryOutcome,
+	TryCorrectness,
+	ScoredElementOutcome,
+	TryOutcome,
 } from "./types.js";
 
 /**
@@ -13,8 +13,8 @@ import type {
 const FULL_CREDIT_EPSILON = 1e-9;
 
 function isScored(
-	outcome: FormativeScoredOutcome | null | undefined,
-): outcome is FormativeScoredOutcome & { score: number } {
+	outcome: ScoredElementOutcome | null | undefined,
+): outcome is ScoredElementOutcome & { score: number } {
 	return (
 		!!outcome &&
 		typeof outcome.score === "number" &&
@@ -23,7 +23,7 @@ function isScored(
 }
 
 /** A denominator of 0 or a missing `max` both mean "normalized to 1". */
-function denominatorOf(outcome: FormativeScoredOutcome): number {
+function denominatorOf(outcome: ScoredElementOutcome): number {
 	const max = outcome.max;
 	return typeof max === "number" && Number.isFinite(max) && max > 0 ? max : 1;
 }
@@ -35,16 +35,16 @@ function denominatorOf(outcome: FormativeScoredOutcome): number {
  * use.
  */
 function definedOutcomes(
-	outcomes: ReadonlyArray<FormativeScoredOutcome | null | undefined>,
-): FormativeScoredOutcome[] | undefined {
+	outcomes: ReadonlyArray<ScoredElementOutcome | null | undefined>,
+): ScoredElementOutcome[] | undefined {
 	const defined = outcomes.filter(
-		(outcome): outcome is FormativeScoredOutcome =>
+		(outcome): outcome is ScoredElementOutcome =>
 			!!outcome && typeof outcome === "object",
 	);
 	return defined.length > 0 ? defined : undefined;
 }
 
-function classify(points: number, max: number): FormativeCorrectness {
+function classify(points: number, max: number): TryCorrectness {
 	if (max <= 0) return "unknown";
 	if (points + FULL_CREDIT_EPSILON >= max) return "correct";
 	if (points <= 0) return "incorrect";
@@ -56,7 +56,7 @@ function classify(points: number, max: number): FormativeCorrectness {
  *
  * The aggregation mirrors the policy the persisted API scoring path already
  * documents (`docs/item-player/scoring-and-rubrics.md`), so a browser-derived
- * formative result and a server-derived score do not disagree about what a
+ * Try result and a server-derived score do not disagree about what a
  * multi-element item is worth:
  *
  * - one scored outcome: `points = score`, `max = max ?? 1`;
@@ -68,9 +68,9 @@ function classify(points: number, max: number): FormativeCorrectness {
  * those slots count toward `totalElementCount` and not toward
  * `scoredElementCount`.
  */
-export function aggregateFormativeOutcome(
-	outcomes: ReadonlyArray<FormativeScoredOutcome | null | undefined> | null,
-): FormativeTryOutcome {
+export function aggregateTryOutcome(
+	outcomes: ReadonlyArray<ScoredElementOutcome | null | undefined> | null,
+): TryOutcome {
 	const all = Array.isArray(outcomes) ? outcomes : [];
 	const scored = all.filter(isScored);
 	const totalElementCount = all.length;

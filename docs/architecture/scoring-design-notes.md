@@ -16,9 +16,9 @@ it and is the authoritative aggregator for persisted sessions. Elements that
 need their own aggregation, such as EBSR's Part A gate, keep it inside their
 controller, so an item-level rule never splits them.
 
-Section-level formative delivery aggregates element outcomes by the service's
+Section-level item session control aggregates element outcomes by the service's
 default policy and records a four-valued correctness instead of a score
-([formative delivery contract](../prds/formative-delivery-contract.md)).
+([item session control contract](../prds/item-session-control-contract.md)).
 
 ## Render and Score Path
 

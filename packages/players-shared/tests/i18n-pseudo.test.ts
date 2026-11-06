@@ -81,7 +81,7 @@ describe("pseudoLocalize", () => {
 		expect(rendered.startsWith("[")).toBe(true);
 		expect(rendered.endsWith("]")).toBe(true);
 		// Placeholders the string carries still interpolate.
-		const tries = i18n.plural("player.formative.triesLeft", { count: 3 });
+		const tries = i18n.plural("player.check.triesLeft", { count: 3 });
 		expect(tries).toContain("3");
 		expect(tries.startsWith("[")).toBe(true);
 	});

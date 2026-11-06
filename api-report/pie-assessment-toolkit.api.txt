@@ -51,8 +51,8 @@
   type I18nProvider
   type ITTSProvider
   type ITTSProviderImplementation
-  type InternalFormativeActionDetail
   type InternalMediaTimeSourceDetail
+  type InternalTryActionDetail
   type InterpolationValues
   type ItemPlayerConfig
   type ItemPlayerEventDetail
@@ -60,9 +60,9 @@
   type ItemToolContext
   type LocaleCode
   type MessageKeyInput
-  PIE_INTERNAL_FORMATIVE_ACTION_EVENT
   PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT
   PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT
+  PIE_INTERNAL_TRY_ACTION_EVENT
   PIE_ITEM_PLAYER_EVENT
   PIE_ITEM_SESSION_CHANGED_EVENT
   type PassageToolContext

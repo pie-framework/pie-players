@@ -19,7 +19,7 @@ the educational register of Hebrew assessment software.
   נפתח`, `הקריאה הושהתה`, `הוחלף ל-{unit}` — never bare stative
   participles.
 - Distinct keys never collapse to one label: `common.retry` takes the
-  nominal `ניסיון חוזר` while the formative button keeps `לנסות שוב`;
+  nominal `ניסיון חוזר` while the check button keeps `לנסות שוב`;
   `common.back` is `חזרה`, distinct from `common.previous` = `הקודם`;
   the annotation toolbar's read-aloud button is `הקראה`, distinct from
   the TTS tool name `קריאה בקול`; the annotation tooltip is `הוספת
@@ -39,7 +39,7 @@ the educational register of Hebrew assessment software.
 | test/exam | מבחן | |
 | submit | להגיש | |
 | check answer | לבדוק את התשובה | answer = תשובה |
-| try (formative) | ניסיון | plural ניסיונות |
+| try (check and retry) | ניסיון | plural ניסיונות |
 | settings | הגדרות | |
 | tools | כלים | toolkit = ערכת הכלים |
 | calculator | מחשבון | פשוט, מדעי, גרפי |
@@ -156,7 +156,7 @@ TTS, Web Speech API, HTTP, JSON, API, MP3, OGG, PCM, Hz, `/api/tts`,
 ## Plurals — three CLDR categories, the only `two` in the wave
 
 `Intl.PluralRules("he")` yields `one` (n = 1), `two` (n = 2) and
-`other`. All six count groups (`player.formative.triesLeft`,
+`other`. All six count groups (`player.check.triesLeft`,
 `tools.dictionary.entriesCount`, `tools.pictureDictionary.entriesCount`,
 `debug.tts.browserAvailable`, `debug.tts.pollyAvailable`,
 `debug.tts.googleAvailable`) carry exactly `one`/`two`/`other`, each

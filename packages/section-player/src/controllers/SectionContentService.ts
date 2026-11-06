@@ -4,7 +4,7 @@ import type {
 	PassageEntity,
 	ReferencedPassageEntity,
 } from "@pie-players/pie-players-shared";
-import type { FormativeItemPolicy } from "@pie-players/pie-players-shared/formative";
+import type { ItemSessionControlPolicy } from "@pie-players/pie-players-shared/item-session-control";
 import type { ItemSettings } from "@pie-players/pie-players-shared/types";
 import type {
 	SectionContentModel,
@@ -103,7 +103,7 @@ export class SectionContentService {
 		// renderables are keyed by the normalized passage id this service assigns.
 		// Recorded here rather than re-derived, because deriving that mapping twice
 		// is two implementations of one mapping — the same reason the item ref's
-		// formative policy rides along on `adapterItemRefs`.
+		// item session control policy rides along on `adapterItemRefs`.
 		const stimulusRenderableIdsByRef: Record<string, string> = {};
 		const rubricBlocks = (section.rubricBlocks || []).filter((rb) =>
 			rb.view.includes(view),
@@ -149,7 +149,7 @@ export class SectionContentService {
 		const adapterItemRefs: Array<{
 			identifier: string;
 			item: { id: string; identifier: string };
-			formative?: FormativeItemPolicy;
+			itemSessionControl?: ItemSessionControlPolicy;
 			settings?: ItemSettings;
 		}> = [];
 		for (const [itemIndex, itemRef] of (
@@ -211,7 +211,7 @@ export class SectionContentService {
 					id: resolvedItemId,
 					identifier,
 				},
-				formative: itemRef.formative,
+				itemSessionControl: itemRef.itemSessionControl,
 				settings: itemRef.settings,
 			});
 			if (

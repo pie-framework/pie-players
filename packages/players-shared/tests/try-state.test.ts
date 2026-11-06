@@ -1,17 +1,17 @@
 import { describe, expect, test } from "bun:test";
 import {
-	createFormativeItemState,
-	hideFormativeItem,
-	recordFormativeTry,
-	resolveFormativeItemView,
-	resolveFormativePolicy,
-	retryFormativeItem,
-	revealFormativeItem,
-	type FormativeCorrectness,
-	type FormativeTryOutcome,
-} from "../src/formative/index.js";
+	createItemTryState,
+	hideItemFeedback,
+	recordTry,
+	resolveItemTryView,
+	resolveItemSessionControl,
+	retryItem,
+	revealItemFeedback,
+	type TryCorrectness,
+	type TryOutcome,
+} from "../src/item-session-control/index.js";
 
-const outcome = (correctness: FormativeCorrectness): FormativeTryOutcome => ({
+const outcome = (correctness: TryCorrectness): TryOutcome => ({
 	correctness,
 	points: correctness === "correct" ? 1 : 0,
 	max: 1,
@@ -20,13 +20,13 @@ const outcome = (correctness: FormativeCorrectness): FormativeTryOutcome => ({
 });
 
 const policyOf = (
-	overrides: Parameters<typeof resolveFormativePolicy>[0],
-) => resolveFormativePolicy({ enabled: true, ...overrides });
+	overrides: Parameters<typeof resolveItemSessionControl>[0],
+) => resolveItemSessionControl({ enabled: true, ...overrides });
 
-describe("recordFormativeTry", () => {
+describe("recordTry", () => {
 	test("a disabled policy records nothing", () => {
-		const policy = resolveFormativePolicy({ enabled: false, maxTries: 3 });
-		const next = recordFormativeTry({
+		const policy = resolveItemSessionControl({ enabled: false, maxTries: 3 });
+		const next = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("correct"),
@@ -36,7 +36,7 @@ describe("recordFormativeTry", () => {
 	});
 
 	test("the first try counts and reveals under the default policy", () => {
-		const next = recordFormativeTry({
+		const next = recordTry({
 			itemIdentifier: "q1",
 			policy: policyOf({}),
 			outcome: outcome("incorrect"),
@@ -53,12 +53,12 @@ describe("recordFormativeTry", () => {
 
 	test("a revealed item cannot spend another try until it is retried", () => {
 		const policy = policyOf({ maxTries: 3 });
-		const first = recordFormativeTry({
+		const first = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
-		const blocked = recordFormativeTry({
+		const blocked = recordTry({
 			state: first,
 			itemIdentifier: "q1",
 			policy,
@@ -70,21 +70,21 @@ describe("recordFormativeTry", () => {
 
 	test("tries exhaust and then stop counting", () => {
 		const policy = policyOf({ maxTries: 2, feedback: "none" });
-		let state = createFormativeItemState("q1");
-		state = recordFormativeTry({
+		let state = createItemTryState("q1");
+		state = recordTry({
 			state,
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
-		state = recordFormativeTry({
+		state = recordTry({
 			state,
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
 		expect(state.tryCount).toBe(2);
-		const beyond = recordFormativeTry({
+		const beyond = recordTry({
 			state,
 			itemIdentifier: "q1",
 			policy,
@@ -95,7 +95,7 @@ describe("recordFormativeTry", () => {
 
 	test("feedback none never reveals, however many tries are spent", () => {
 		const policy = policyOf({ maxTries: 2, feedback: "none" });
-		const state = recordFormativeTry({
+		const state = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("correct"),
@@ -106,20 +106,20 @@ describe("recordFormativeTry", () => {
 
 	test("on-final-try withholds the reveal until the last try", () => {
 		const policy = policyOf({ maxTries: 3, revealOn: "on-final-try" });
-		let state = recordFormativeTry({
+		let state = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
 		expect(state.revealed).toBe(false);
-		state = recordFormativeTry({
+		state = recordTry({
 			state,
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
 		expect(state.revealed).toBe(false);
-		state = recordFormativeTry({
+		state = recordTry({
 			state,
 			itemIdentifier: "q1",
 			policy,
@@ -130,21 +130,21 @@ describe("recordFormativeTry", () => {
 
 	test("firstCorrectTry is recorded once and a later wrong answer does not clear it", () => {
 		const policy = policyOf({ maxTries: "unlimited" });
-		let state = recordFormativeTry({
+		let state = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
-		state = retryFormativeItem({ state, policy }) ?? state;
-		state = recordFormativeTry({
+		state = retryItem({ state, policy }) ?? state;
+		state = recordTry({
 			state,
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("correct"),
 		});
 		expect(state.firstCorrectTry).toBe(2);
-		state = retryFormativeItem({ state, policy }) ?? state;
-		state = recordFormativeTry({
+		state = retryItem({ state, policy }) ?? state;
+		state = recordTry({
 			state,
 			itemIdentifier: "q1",
 			policy,
@@ -155,40 +155,40 @@ describe("recordFormativeTry", () => {
 	});
 });
 
-describe("retryFormativeItem", () => {
+describe("retryItem", () => {
 	test("clears the reveal without spending a try", () => {
 		const policy = policyOf({ maxTries: 3 });
-		const checked = recordFormativeTry({
+		const checked = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
-		const retried = retryFormativeItem({ state: checked, policy });
+		const retried = retryItem({ state: checked, policy });
 		expect(retried).toMatchObject({ tryCount: 1, revealed: false });
 		expect(retried?.lastOutcome?.correctness).toBe("incorrect");
 	});
 
 	test("does nothing when nothing is revealed", () => {
 		const policy = policyOf({ maxTries: 3 });
-		const state = createFormativeItemState("q1");
-		expect(retryFormativeItem({ state, policy })).toBe(state);
+		const state = createItemTryState("q1");
+		expect(retryItem({ state, policy })).toBe(state);
 	});
 
 	test("does nothing when tries are spent", () => {
 		const policy = policyOf({ maxTries: 1 });
-		const checked = recordFormativeTry({
+		const checked = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
-		expect(retryFormativeItem({ state: checked, policy })).toBe(checked);
+		expect(retryItem({ state: checked, policy })).toBe(checked);
 	});
 });
 
-describe("resolveFormativeItemView", () => {
+describe("resolveItemTryView", () => {
 	test("a disabled policy offers nothing and projects no env", () => {
-		const view = resolveFormativeItemView({
-			policy: resolveFormativePolicy({ enabled: false }),
+		const view = resolveItemTryView({
+			policy: resolveItemSessionControl({ enabled: false }),
 		});
 		expect(view).toMatchObject({
 			enabled: false,
@@ -200,7 +200,7 @@ describe("resolveFormativeItemView", () => {
 	});
 
 	test("an untried enabled item can be checked and nothing else", () => {
-		const view = resolveFormativeItemView({ policy: policyOf({ maxTries: 2 }) });
+		const view = resolveItemTryView({ policy: policyOf({ maxTries: 2 }) });
 		expect(view).toMatchObject({
 			enabled: true,
 			tryCount: 0,
@@ -213,12 +213,12 @@ describe("resolveFormativeItemView", () => {
 
 	test("correctness feedback projects evaluate mode for a student", () => {
 		const policy = policyOf({ maxTries: 2 });
-		const state = recordFormativeTry({
+		const state = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("partial"),
 		});
-		const view = resolveFormativeItemView({ policy, state });
+		const view = resolveItemTryView({ policy, state });
 		expect(view).toMatchObject({
 			canCheck: false,
 			canRetry: true,
@@ -231,12 +231,12 @@ describe("resolveFormativeItemView", () => {
 
 	test("solution feedback projects the instructor role", () => {
 		const policy = policyOf({ feedback: "solution" });
-		const state = recordFormativeTry({
+		const state = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
-		expect(resolveFormativeItemView({ policy, state }).envOverride).toEqual({
+		expect(resolveItemTryView({ policy, state }).envOverride).toEqual({
 			mode: "evaluate",
 			role: "instructor",
 		});
@@ -244,12 +244,12 @@ describe("resolveFormativeItemView", () => {
 
 	test("feedback none records a try and still projects no env", () => {
 		const policy = policyOf({ maxTries: 2, feedback: "none" });
-		const state = recordFormativeTry({
+		const state = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("correct"),
 		});
-		const view = resolveFormativeItemView({ policy, state });
+		const view = resolveItemTryView({ policy, state });
 		expect(view.envOverride).toBeUndefined();
 		// Nothing was revealed, so there is nothing to dismiss before checking again.
 		expect(view).toMatchObject({ canCheck: true, canRetry: false, tryCount: 1 });
@@ -257,25 +257,25 @@ describe("resolveFormativeItemView", () => {
 
 	test("the override is withdrawn by a retry", () => {
 		const policy = policyOf({ maxTries: 3 });
-		const checked = recordFormativeTry({
+		const checked = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
-		const retried = retryFormativeItem({ state: checked, policy });
+		const retried = retryItem({ state: checked, policy });
 		expect(
-			resolveFormativeItemView({ policy, state: retried }).envOverride,
+			resolveItemTryView({ policy, state: retried }).envOverride,
 		).toBeUndefined();
 	});
 
 	test("a spent single-try item offers neither action", () => {
 		const policy = policyOf({ maxTries: 1 });
-		const state = recordFormativeTry({
+		const state = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
-		expect(resolveFormativeItemView({ policy, state })).toMatchObject({
+		expect(resolveItemTryView({ policy, state })).toMatchObject({
 			canCheck: false,
 			canRetry: false,
 			revealed: true,
@@ -285,12 +285,12 @@ describe("resolveFormativeItemView", () => {
 
 	test("unlimited tries always leave an action available", () => {
 		const policy = policyOf({ maxTries: "unlimited" });
-		const state = recordFormativeTry({
+		const state = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
-		expect(resolveFormativeItemView({ policy, state })).toMatchObject({
+		expect(resolveItemTryView({ policy, state })).toMatchObject({
 			triesRemaining: "unlimited",
 			canRetry: true,
 		});
@@ -300,7 +300,7 @@ describe("resolveFormativeItemView", () => {
 describe("host-forced reveal", () => {
 	test("reveals an item with no try yet, spending no try", () => {
 		const policy = policyOf({ maxTries: 3 });
-		const state = revealFormativeItem({
+		const state = revealItemFeedback({
 			itemIdentifier: "q1",
 			policy,
 			feedback: "solution",
@@ -311,46 +311,46 @@ describe("host-forced reveal", () => {
 			revealOverride: "solution",
 		});
 		expect(
-			resolveFormativeItemView({ policy, state }).envOverride,
+			resolveItemTryView({ policy, state }).envOverride,
 		).toEqual({ mode: "evaluate", role: "instructor" });
 	});
 
 	test("ignores a spent try budget, which a learner retry respects", () => {
 		const policy = policyOf({ maxTries: 1 });
-		const spent = recordFormativeTry({
+		const spent = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
 		// The learner is out of tries, so the reveal is stuck for them...
-		expect(retryFormativeItem({ state: spent, policy })).toBe(spent);
+		expect(retryItem({ state: spent, policy })).toBe(spent);
 		// ...but a host can still put it back.
-		const hidden = hideFormativeItem({ state: spent, policy });
+		const hidden = hideItemFeedback({ state: spent, policy });
 		expect(hidden).toMatchObject({ tryCount: 1, revealed: false });
 		expect(
-			resolveFormativeItemView({ policy, state: hidden }).envOverride,
+			resolveItemTryView({ policy, state: hidden }).envOverride,
 		).toBeUndefined();
 	});
 
 	test("raises the reveal level over the item's own policy", () => {
 		const policy = policyOf({ maxTries: 2, feedback: "correctness" });
-		const checked = recordFormativeTry({
+		const checked = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
 		expect(
-			resolveFormativeItemView({ policy, state: checked }).envOverride,
+			resolveItemTryView({ policy, state: checked }).envOverride,
 		).toEqual({ mode: "evaluate", role: "student" });
 
-		const forced = revealFormativeItem({
+		const forced = revealItemFeedback({
 			state: checked,
 			itemIdentifier: "q1",
 			policy,
 			feedback: "solution",
 		});
 		expect(
-			resolveFormativeItemView({ policy, state: forced }).envOverride,
+			resolveItemTryView({ policy, state: forced }).envOverride,
 		).toEqual({ mode: "evaluate", role: "instructor" });
 		// No Try was spent by showing the answer.
 		expect(forced.tryCount).toBe(1);
@@ -358,52 +358,52 @@ describe("host-forced reveal", () => {
 
 	test("reveals even where the policy withholds feedback entirely", () => {
 		const policy = policyOf({ maxTries: 2, feedback: "none" });
-		const forced = revealFormativeItem({
+		const forced = revealItemFeedback({
 			itemIdentifier: "q1",
 			policy,
 			feedback: "correctness",
 		});
 		expect(
-			resolveFormativeItemView({ policy, state: forced }).envOverride,
+			resolveItemTryView({ policy, state: forced }).envOverride,
 		).toEqual({ mode: "evaluate", role: "student" });
 	});
 
 	test("a learner retry clears the host override rather than keeping it", () => {
 		const policy = policyOf({ maxTries: 3, feedback: "correctness" });
-		let state = recordFormativeTry({
+		let state = recordTry({
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
-		state = revealFormativeItem({
+		state = revealItemFeedback({
 			state,
 			itemIdentifier: "q1",
 			policy,
 			feedback: "solution",
 		});
-		const retried = retryFormativeItem({ state, policy });
+		const retried = retryItem({ state, policy });
 		expect(retried?.revealOverride).toBeUndefined();
 		// The next earned reveal is back at the policy's level, not the teacher's.
-		const rechecked = recordFormativeTry({
+		const rechecked = recordTry({
 			state: retried,
 			itemIdentifier: "q1",
 			policy,
 			outcome: outcome("incorrect"),
 		});
 		expect(
-			resolveFormativeItemView({ policy, state: rechecked }).envOverride,
+			resolveItemTryView({ policy, state: rechecked }).envOverride,
 		).toEqual({ mode: "evaluate", role: "student" });
 	});
 
 	test("re-revealing at the same level is idempotent", () => {
 		const policy = policyOf({ maxTries: 2 });
-		const first = revealFormativeItem({
+		const first = revealItemFeedback({
 			itemIdentifier: "q1",
 			policy,
 			feedback: "correctness",
 		});
 		expect(
-			revealFormativeItem({
+			revealItemFeedback({
 				state: first,
 				itemIdentifier: "q1",
 				policy,
@@ -413,12 +413,12 @@ describe("host-forced reveal", () => {
 	});
 
 	test("a disabled policy refuses both host operations", () => {
-		const policy = resolveFormativePolicy({ enabled: false });
+		const policy = resolveItemSessionControl({ enabled: false });
 		expect(
-			revealFormativeItem({ itemIdentifier: "q1", policy, feedback: "solution" })
+			revealItemFeedback({ itemIdentifier: "q1", policy, feedback: "solution" })
 				.revealed,
 		).toBe(false);
-		const state = createFormativeItemState("q1");
-		expect(hideFormativeItem({ state, policy })).toBe(state);
+		const state = createItemTryState("q1");
+		expect(hideItemFeedback({ state, policy })).toBe(state);
 	});
 });

@@ -112,7 +112,7 @@ const es = {
 				"No se pudieron restaurar las respuestas guardadas de esta sección. Inténtelo de nuevo.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Comprobar respuesta",
 			tryAgain: "Intentar de nuevo",
 			answerRecorded: "Respuesta registrada.",

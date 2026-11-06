@@ -45,7 +45,7 @@ decisions behind the current contracts, including implemented ones, under the
 - [Section player README](../packages/section-player/README.md): the layout elements, inputs, host methods, events and readiness
 - [Integration guide](./section-player/integration-guide.md): the coordinator, the section controller, tool placement and persistence in a production integration
 - [Custom layouts](./section-player/custom-layouts.md): arranging items and passages with `<pie-section-player-kernel-host>` and the panes
-- [Formative delivery](./section-player/formative-delivery.md): check-answer delivery, tries, feedback reveal and section mastery
+- [Item session control](./section-player/item-session-control.md): check-answer delivery, tries, feedback reveal and section mastery
 - [Timed media](../packages/section-player/README.md#timed-media): section-level media that reveals items at cue points
 
 ## Multi-section assessments
@@ -95,7 +95,7 @@ toolkit; the assessment player is a reference assembly
 - [Tool registry](../packages/assessment-toolkit/docs/TOOL_REGISTRY.md): registering a tool, its host surfaces and its content dependencies
 - [Tool host contract](./tools-and-accomodations/tool_host_contract.md): the runtime guarantees between a tool and its host
 - [TTS provider contracts](../packages/tts/README.md) and [calculator provider contracts](../packages/calculator/README.md): the interfaces a custom provider implements; the [calculator adapters](../packages/default-tool-loaders/src/calculator-providers/README.md) are the packaged implementations
-- [Shared player runtime](../packages/players-shared/README.md): the element loaders, formative delivery, timed media and media validation the players share
+- [Shared player runtime](../packages/players-shared/README.md): the element loaders, item session control, timed media and media validation the players share
 - [Context protocol](../packages/pie-context/README.md), [composition context](./architecture/composition-context.md) and [ADR 0003](./adr/0003-elements-read-accessibility-settings-from-a-host-neutral-context.md): how elements read settings from their container
 - [Patterns and widgets](./wcag/patterns-and-widgets.md): accessible interaction patterns for tool and element UI
 - [Element contract](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/PIE_ELEMENT_CONTRACT.md): the shape of a PIE element package, in pie-elements-ng

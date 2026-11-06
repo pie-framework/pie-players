@@ -95,7 +95,7 @@ interface AssessmentSession {
   sectionSessions: Record<string, {
     sectionIdentifier: string;
     updatedAt: string;
-    // currentItemIndex, visitedItemIdentifiers, itemSessions, and formative
+    // currentItemIndex, visitedItemIdentifiers, itemSessions, and tries
     // and timedMedia when the section uses them
     session: SectionControllerSessionState | null;
   }>;

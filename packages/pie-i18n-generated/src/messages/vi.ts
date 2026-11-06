@@ -94,7 +94,7 @@ const vi = {
 			restoreFailed: "Không thể khôi phục câu trả lời đã lưu cho phần này. Vui lòng thử lại.",
 		},
 
-		formative: {
+		check: {
 			checkAnswer: "Kiểm tra câu trả lời",
 			tryAgain: "Thử lại",
 			answerRecorded: "Đã ghi nhận câu trả lời.",

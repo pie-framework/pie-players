@@ -551,8 +551,8 @@ carries `timestamp`, and every one except `section-navigation-change` carries
 | `section-session-applied` | `mode`, `itemSessionCount`, `replay` | A session was applied; `replay: true` after `section-loading-complete` |
 | `section-navigation-change` | `previousSectionId`, `currentSectionId`, `attemptId`, `reason` (`input-change`, `runtime-transition`) | The controller's section identity changed |
 | `section-error` | `source`, `error`, `itemId`, `canonicalItemId`, `contentKind` | An item player failed (`source: "item-player"`), or the section runtime did (`"section-runtime"`), a rejected element pre-warm included, which leaves the items unmounted |
-| `try-recorded` | `itemId`, `canonicalItemId`, `tryCount`, `outcome`, `revealed` | A Try was recorded |
-| `feedback-reveal-changed` | `itemId`, `canonicalItemId`, `revealed`, `feedback`, `tryCount`, `source` | The reveal changed without a Try |
+| `item-try-recorded` | `itemId`, `canonicalItemId`, `tryCount`, `outcome`, `revealed` | A Try was recorded |
+| `item-feedback-reveal-changed` | `itemId`, `canonicalItemId`, `revealed`, `feedback`, `tryCount`, `source` | The reveal changed without a Try |
 | `section-mastery-changed` | `mastery` | The mastery rollup changed |
 | `timed-media-cue-changed` | Active, visited and completed cues, `revealedItemIds`, `gateCueIdentifier`, `mediaCompleted`, `aggregateComplete` | A cue activated, a gate released, or aggregate completion flipped |
 | `timed-media-audio-started` | — | Media audio is running, so read-aloud yields |
@@ -592,7 +592,7 @@ const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
 });
 ```
 
-The defaults leave out `try-recorded`, `feedback-reveal-changed`,
+The defaults leave out `item-try-recorded`, `item-feedback-reveal-changed`,
 `section-mastery-changed` and `timed-media-audio-started`. Name them in
 `subscribeItemEvents({ eventTypes })`, or subscribe through
 `subscribeSectionEvents({ listener, eventTypes, itemIds })`.

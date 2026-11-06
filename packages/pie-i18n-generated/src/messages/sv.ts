@@ -113,7 +113,7 @@ const sv = {
 		},
 
 		check: {
-			checkAnswer: "Kontrollera svar",
+			answer: "Kontrollera svar",
 			tryAgain: "Försök igen",
 			answerRecorded: "Svaret har sparats.",
 			correct: "Rätt.",
@@ -121,7 +121,7 @@ const sv = {
 			notCorrect: "Fel.",
 			notAutoScored:
 				"Svaret har sparats. Den här frågan bedöms inte automatiskt.",
-			checkFailed: "Frågan kunde inte kontrolleras. Försök igen.",
+			failed: "Frågan kunde inte kontrolleras. Försök igen.",
 			triesLeft: {
 				one: "{count} försök kvar.",
 				other: "{count} försök kvar.",

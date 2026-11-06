@@ -57,8 +57,8 @@ import type {
 	TimedMediaCueChangedEvent,
 	TimedMediaInvalidEvent,
 	TimedMediaPolicyDegradedEvent,
-	FeedbackRevealChangedEvent,
-	TryRecordedEvent,
+	ItemFeedbackRevealChangedEvent,
+	ItemTryRecordedEvent,
 	SectionMasteryChangedEvent,
 	ItemCompleteChangedEvent,
 	ItemPlayerErrorEvent,
@@ -619,8 +619,8 @@ export class SectionController implements SectionControllerHandle {
 		if (next === previous) return;
 		this.tryStates = { ...this.tryStates, [canonicalItemId]: next };
 		const timestamp = Date.now();
-		const event: TryRecordedEvent = {
-			type: "try-recorded",
+		const event: ItemTryRecordedEvent = {
+			type: "item-try-recorded",
 			itemId: args.itemId,
 			canonicalItemId,
 			tryCount: next.tryCount,
@@ -740,8 +740,8 @@ export class SectionController implements SectionControllerHandle {
 			...this.tryStates,
 			[args.canonicalItemId]: args.next,
 		};
-		const event: FeedbackRevealChangedEvent = {
-			type: "feedback-reveal-changed",
+		const event: ItemFeedbackRevealChangedEvent = {
+			type: "item-feedback-reveal-changed",
 			itemId: args.itemId,
 			canonicalItemId: args.canonicalItemId,
 			revealed: args.next.revealed,

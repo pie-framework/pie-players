@@ -105,7 +105,7 @@ const enGB = {
 		},
 
 		check: {
-			checkAnswer: "Check answer",
+			answer: "Check answer",
 			tryAgain: "Try again",
 			answerRecorded: "Answer recorded.",
 			correct: "Correct.",
@@ -113,7 +113,7 @@ const enGB = {
 			notCorrect: "Not correct.",
 			notAutoScored:
 				"Answer recorded. This question is not scored automatically.",
-			checkFailed: "This question could not be checked. Try again.",
+			failed: "This question could not be checked. Try again.",
 			triesLeft: {
 				one: "{count} try left.",
 				other: "{count} tries left.",

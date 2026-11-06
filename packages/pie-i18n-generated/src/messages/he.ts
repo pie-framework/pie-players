@@ -99,7 +99,7 @@ const he = {
 		},
 
 		check: {
-			checkAnswer: "לבדוק את התשובה",
+			answer: "לבדוק את התשובה",
 			tryAgain: "לנסות שוב",
 			answerRecorded: "התשובה נרשמה.",
 			correct: "נכון.",
@@ -107,7 +107,7 @@ const he = {
 			notCorrect: "לא נכון.",
 			notAutoScored:
 				"התשובה נרשמה. שאלה זו אינה נבדקת באופן אוטומטי.",
-			checkFailed: "לא ניתן היה לבדוק את שאלה זו. נסו שוב.",
+			failed: "לא ניתן היה לבדוק את שאלה זו. נסו שוב.",
 			triesLeft: {
 				one: "{count} ניסיון נותר.",
 				two: "{count} ניסיונות נותרו.",

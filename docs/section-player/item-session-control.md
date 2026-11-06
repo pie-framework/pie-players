@@ -182,8 +182,8 @@ The controller emits three Try events, each with `timestamp` and
 
 | Event | Payload | Emitted when |
 | --- | --- | --- |
-| `try-recorded` | `itemId`, `canonicalItemId`, `tryCount`, `outcome`, `revealed` | A Try is recorded, including any reveal it causes |
-| `feedback-reveal-changed` | `itemId`, `canonicalItemId`, `revealed`, `feedback` (the Forced Reveal level), `tryCount`, `source` (`"learner"` or `"host"`) | A retry, Forced Reveal or hide changes the reveal |
+| `item-try-recorded` | `itemId`, `canonicalItemId`, `tryCount`, `outcome`, `revealed` | A Try is recorded, including any reveal it causes |
+| `item-feedback-reveal-changed` | `itemId`, `canonicalItemId`, `revealed`, `feedback` (the Forced Reveal level), `tryCount`, `source` (`"learner"` or `"host"`) | A retry, Forced Reveal or hide changes the reveal |
 | `section-mastery-changed` | `mastery` | A Try changes the rollup; reveals never do |
 
 `canonicalItemId` is the item ref `identifier`. The handle's `subscribe()`
@@ -195,7 +195,7 @@ the Try events out of their defaults.
 
 ```ts
 const unsubscribe = controller?.subscribe?.((event) => {
-  if (event.type === "try-recorded") {
+  if (event.type === "item-try-recorded") {
     reportTry(event.canonicalItemId, event.tryCount, event.outcome.correctness);
   }
 });

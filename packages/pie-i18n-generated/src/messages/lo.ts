@@ -103,7 +103,7 @@ const lo = {
 		},
 
 		check: {
-			checkAnswer: "ກວດຄຳຕອບ",
+			answer: "ກວດຄຳຕອບ",
 			tryAgain: "ລອງໃໝ່",
 			answerRecorded: "ບັນທຶກຄຳຕອບແລ້ວ.",
 			correct: "ຖືກ.",
@@ -111,7 +111,7 @@ const lo = {
 			notCorrect: "ບໍ່ຖືກ.",
 			notAutoScored:
 				"ບັນທຶກຄຳຕອບແລ້ວ. ຄຳຖາມນີ້ບໍ່ໄດ້ຕັດຄະແນນອັດຕະໂນມັດ.",
-			checkFailed: "ບໍ່ສາມາດກວດຄຳຖາມນີ້ໄດ້. ລອງໃໝ່ອີກເທື່ອໜຶ່ງ.",
+			failed: "ບໍ່ສາມາດກວດຄຳຖາມນີ້ໄດ້. ລອງໃໝ່ອີກເທື່ອໜຶ່ງ.",
 			triesLeft: {
 				other: "{count} ເທື່ອຍັງເຫຼືອ.",
 			},

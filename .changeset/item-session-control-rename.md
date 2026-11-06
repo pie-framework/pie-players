@@ -8,7 +8,7 @@
 Formative delivery is renamed for its mechanism, with no aliases left behind:
 
 - The authored policy is `itemSessionControl` on sections and item refs, typed `ItemSessionControlPolicy`, and the module is `@pie-players/pie-players-shared/item-session-control`.
-- The controller methods are `recordTry`, `retryItem`, `revealItemFeedback`, `hideItemFeedback` and `getTryProjection`, and the events are `try-recorded` and `feedback-reveal-changed`.
+- The controller methods are `recordTry`, `retryItem`, `revealItemFeedback`, `hideItemFeedback` and `getTryProjection`, and the events are `item-try-recorded` and `item-feedback-reveal-changed`.
 - The persisted session slice and the composition key are `tries`.
 - The toolkit's internal event is `pie-try-action`.
 - The card's classes are `pie-section-player-check*`, and its data hooks are `data-pie-check-status` and `data-pie-check-action`.

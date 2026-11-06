@@ -107,7 +107,7 @@ const de = {
 		},
 
 		check: {
-			checkAnswer: "Antwort prüfen",
+			answer: "Antwort prüfen",
 			tryAgain: "Erneut versuchen",
 			answerRecorded: "Antwort gespeichert.",
 			correct: "Richtig.",
@@ -115,7 +115,7 @@ const de = {
 			notCorrect: "Nicht richtig.",
 			notAutoScored:
 				"Antwort gespeichert. Diese Aufgabe wird nicht automatisch ausgewertet.",
-			checkFailed:
+			failed:
 				"Diese Aufgabe konnte nicht geprüft werden. Versuchen Sie es erneut.",
 			triesLeft: {
 				one: "Noch {count} Versuch übrig.",

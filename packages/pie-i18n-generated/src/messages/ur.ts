@@ -98,7 +98,7 @@ const ur = {
 		},
 
 		check: {
-			checkAnswer: "جواب جانچیں",
+			answer: "جواب جانچیں",
 			tryAgain: "دوبارہ کوشش کریں",
 			answerRecorded: "جواب درج ہو گیا۔",
 			correct: "درست۔",
@@ -106,7 +106,7 @@ const ur = {
 			notCorrect: "درست نہیں۔",
 			notAutoScored:
 				"جواب درج ہو گیا۔ اس سوال کو خودکار طور پر نمبر نہیں دیے جاتے۔",
-			checkFailed: "یہ سوال جانچا نہیں جا سکا۔ دوبارہ کوشش کریں۔",
+			failed: "یہ سوال جانچا نہیں جا سکا۔ دوبارہ کوشش کریں۔",
 			triesLeft: {
 				one: "{count} کوشش باقی ہے۔",
 				other: "{count} کوششیاں باقی ہیں۔",

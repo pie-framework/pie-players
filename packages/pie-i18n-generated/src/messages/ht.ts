@@ -106,7 +106,7 @@ const ht = {
 		},
 
 		check: {
-			checkAnswer: "Tcheke repons lan",
+			answer: "Tcheke repons lan",
 			tryAgain: "Eseye ankò",
 			answerRecorded: "Repons lan anrejistre.",
 			correct: "Kòrèk.",
@@ -114,7 +114,7 @@ const ht = {
 			notCorrect: "Pa kòrèk.",
 			notAutoScored:
 				"Repons lan anrejistre. Kesyon sa a pa evalye otomatikman.",
-			checkFailed: "Kesyon sa a pa t ka tcheke. Eseye ankò.",
+			failed: "Kesyon sa a pa t ka tcheke. Eseye ankò.",
 			triesLeft: {
 				one: "{count} esè ki rete.",
 				other: "{count} esè ki rete.",

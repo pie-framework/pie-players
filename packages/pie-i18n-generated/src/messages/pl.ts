@@ -98,7 +98,7 @@ const pl = {
 		},
 
 		check: {
-			checkAnswer: "Sprawdź odpowiedź",
+			answer: "Sprawdź odpowiedź",
 			tryAgain: "Spróbuj ponownie",
 			answerRecorded: "Odpowiedź została zapisana.",
 			correct: "Poprawnie.",
@@ -106,7 +106,7 @@ const pl = {
 			notCorrect: "Niepoprawnie.",
 			notAutoScored:
 				"Odpowiedź została zapisana. To zadanie nie jest oceniane automatycznie.",
-			checkFailed: "Nie udało się sprawdzić tego zadania. Spróbuj ponownie.",
+			failed: "Nie udało się sprawdzić tego zadania. Spróbuj ponownie.",
 			triesLeft: {
 				one: "Pozostała {count} próba.",
 				few: "Pozostały {count} próby.",

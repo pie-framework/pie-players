@@ -95,14 +95,14 @@ const thTH = {
 		},
 
 		check: {
-			checkAnswer: "ตรวจคำตอบ",
+			answer: "ตรวจคำตอบ",
 			tryAgain: "ลองอีกครั้ง",
 			answerRecorded: "บันทึกคำตอบแล้ว",
 			correct: "ถูกต้อง",
 			partlyCorrect: "ถูกต้องบางส่วน",
 			notCorrect: "ไม่ถูกต้อง",
 			notAutoScored: "บันทึกคำตอบแล้ว คำถามนี้ไม่ได้รับการตรวจให้คะแนนอัตโนมัติ",
-			checkFailed: "ตรวจคำถามนี้ไม่สำเร็จ ลองอีกครั้ง",
+			failed: "ตรวจคำถามนี้ไม่สำเร็จ ลองอีกครั้ง",
 			triesLeft: {
 				other: "เหลือโอกาสอีก {count} ครั้ง",
 			},

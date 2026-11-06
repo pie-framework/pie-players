@@ -115,7 +115,7 @@ const enUS = {
 
 		/** Item session control: check-answer control and its outcome announcements. */
 		check: {
-			checkAnswer: "Check answer",
+			answer: "Check answer",
 			tryAgain: "Try again",
 			answerRecorded: "Answer recorded.",
 			correct: "Correct.",
@@ -123,7 +123,7 @@ const enUS = {
 			notCorrect: "Not correct.",
 			notAutoScored:
 				"Answer recorded. This question is not scored automatically.",
-			checkFailed: "This question could not be checked. Try again.",
+			failed: "This question could not be checked. Try again.",
 			/**
 			 * Appended after the outcome, so the announcement reads
 			 * "Not correct. 2 tries left." Kept a separate plural group rather than

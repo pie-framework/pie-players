@@ -245,8 +245,8 @@ interface SectionControllerEventBase {
 		| "section-loading-complete"
 		| "section-items-complete-changed"
 		| "section-error"
-		| "try-recorded"
-		| "feedback-reveal-changed"
+		| "item-try-recorded"
+		| "item-feedback-reveal-changed"
 		| "section-mastery-changed"
 		| "timed-media-cue-changed"
 		| "timed-media-audio-started"
@@ -369,9 +369,9 @@ export interface SectionErrorEvent extends ItemScopedControllerEventBase {
 	contentKind?: SectionContentKind;
 }
 
-export interface TryRecordedEvent
+export interface ItemTryRecordedEvent
 	extends ItemScopedControllerEventBase {
-	type: "try-recorded";
+	type: "item-try-recorded";
 	itemId: string;
 	canonicalItemId: string;
 	tryCount: number;
@@ -382,11 +382,11 @@ export interface TryRecordedEvent
 /**
  * The reveal state changed without a Try being recorded: a learner dismissed
  * feedback to edit again, or a host forced a reveal or withdrew one. A Try that
- * reveals reports through `try-recorded`.
+ * reveals reports through `item-try-recorded`.
  */
-export interface FeedbackRevealChangedEvent
+export interface ItemFeedbackRevealChangedEvent
 	extends ItemScopedControllerEventBase {
-	type: "feedback-reveal-changed";
+	type: "item-feedback-reveal-changed";
 	itemId: string;
 	canonicalItemId: string;
 	revealed: boolean;
@@ -478,8 +478,8 @@ export type SectionControllerChangeEvent =
 	| SectionLoadingCompleteEvent
 	| SectionItemsCompleteChangedEvent
 	| SectionErrorEvent
-	| TryRecordedEvent
-	| FeedbackRevealChangedEvent
+	| ItemTryRecordedEvent
+	| ItemFeedbackRevealChangedEvent
 	| SectionMasteryChangedEvent
 	| TimedMediaCueChangedEvent
 	| TimedMediaAudioStartedEvent

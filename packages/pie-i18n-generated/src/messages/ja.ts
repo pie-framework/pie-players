@@ -109,7 +109,7 @@ const ja = {
 		},
 
 		check: {
-			checkAnswer: "解答を確認",
+			answer: "解答を確認",
 			tryAgain: "再試行",
 			answerRecorded: "解答を記録しました。",
 			correct: "正解。",
@@ -117,7 +117,7 @@ const ja = {
 			notCorrect: "不正解。",
 			notAutoScored:
 				"解答を記録しました。この問題は自動採点されません。",
-			checkFailed: "この問題を確認できませんでした。もう一度お試しください。",
+			failed: "この問題を確認できませんでした。もう一度お試しください。",
 			triesLeft: {
 				other: "あと{count}回挑戦できます。",
 			},

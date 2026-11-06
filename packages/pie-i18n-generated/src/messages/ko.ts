@@ -109,7 +109,7 @@ const ko = {
 		},
 
 		check: {
-			checkAnswer: "정답 확인",
+			answer: "정답 확인",
 			tryAgain: "다시 시도",
 			answerRecorded: "답안이 기록되었습니다.",
 			correct: "정답입니다.",
@@ -117,7 +117,7 @@ const ko = {
 			notCorrect: "오답입니다.",
 			notAutoScored:
 				"답안이 기록되었습니다. 이 문항은 자동 채점되지 않습니다.",
-			checkFailed: "이 문항을 확인할 수 없습니다. 다시 시도해 주세요.",
+			failed: "이 문항을 확인할 수 없습니다. 다시 시도해 주세요.",
 			triesLeft: {
 				other: "{count}번의 시도가 남았습니다.",
 			},

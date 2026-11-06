@@ -346,14 +346,14 @@ unit test observes; the browser coverage in the Test Plan pins it.
 Three controller events join the existing union:
 
 ```ts
-{ type: "try-recorded", itemId, canonicalItemId, tryCount, outcome, revealed, currentItemIndex, timestamp }
-{ type: "feedback-reveal-changed", itemId, canonicalItemId, revealed, feedback?, tryCount, source: "learner" | "host", currentItemIndex, timestamp }
+{ type: "item-try-recorded", itemId, canonicalItemId, tryCount, outcome, revealed, currentItemIndex, timestamp }
+{ type: "item-feedback-reveal-changed", itemId, canonicalItemId, revealed, feedback?, tryCount, source: "learner" | "host", currentItemIndex, timestamp }
 { type: "section-mastery-changed", mastery, currentItemIndex, timestamp }
 ```
 
-`feedback-reveal-changed` covers every reveal transition a Try did not cause — a
+`item-feedback-reveal-changed` covers every reveal transition a Try did not cause — a
 learner retry, a host reveal, a host withdrawal — with `source` naming which. A
-Try that reveals reports through `try-recorded`, which carries its own
+Try that reveals reports through `item-try-recorded`, which carries its own
 `revealed`.
 
 `section-mastery-changed` emits on rollup change, matching how

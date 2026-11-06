@@ -116,7 +116,7 @@ const fr = {
 		},
 
 		check: {
-			checkAnswer: "Vérifier la réponse",
+			answer: "Vérifier la réponse",
 			tryAgain: "Réessayer",
 			answerRecorded: "Réponse enregistrée.",
 			correct: "Correct.",
@@ -124,7 +124,7 @@ const fr = {
 			notCorrect: "Incorrect.",
 			notAutoScored:
 				"Réponse enregistrée. Cette question n'est pas notée automatiquement.",
-			checkFailed:
+			failed:
 				"Cette question n'a pas pu être vérifiée. Réessayez.",
 			triesLeft: {
 				one: "Il reste {count} tentative.",

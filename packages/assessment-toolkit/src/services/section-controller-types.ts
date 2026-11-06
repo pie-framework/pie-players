@@ -222,9 +222,9 @@ export type SectionControllerSectionErrorEvent = SectionControllerEventBase & {
 	currentItemIndex: number;
 };
 
-export type SectionControllerTryRecordedEvent =
+export type SectionControllerItemTryRecordedEvent =
 	SectionControllerEventBase & {
-		type: "try-recorded";
+		type: "item-try-recorded";
 		itemId: string;
 		canonicalItemId: string;
 		tryCount: number;
@@ -238,12 +238,12 @@ export type SectionControllerTryRecordedEvent =
  * The reveal state changed without a Try being recorded: a learner dismissed
  * feedback to edit again, or a host forced a reveal or withdrew one.
  *
- * A Try that reveals reports through `try-recorded`, which carries its
+ * A Try that reveals reports through `item-try-recorded`, which carries its
  * own `revealed`. This event is for every other transition.
  */
-export type SectionControllerFeedbackRevealChangedEvent =
+export type SectionControllerItemFeedbackRevealChangedEvent =
 	SectionControllerEventBase & {
-		type: "feedback-reveal-changed";
+		type: "item-feedback-reveal-changed";
 		itemId: string;
 		canonicalItemId: string;
 		revealed: boolean;
@@ -341,8 +341,8 @@ export type SectionControllerEvent =
 	| SectionControllerSectionLoadingCompleteEvent
 	| SectionControllerSectionItemsCompleteChangedEvent
 	| SectionControllerSectionErrorEvent
-	| SectionControllerTryRecordedEvent
-	| SectionControllerFeedbackRevealChangedEvent
+	| SectionControllerItemTryRecordedEvent
+	| SectionControllerItemFeedbackRevealChangedEvent
 	| SectionControllerSectionMasteryChangedEvent
 	| SectionControllerTimedMediaCueChangedEvent
 	| SectionControllerTimedMediaAudioStartedEvent

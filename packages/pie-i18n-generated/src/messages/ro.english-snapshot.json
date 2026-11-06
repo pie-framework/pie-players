@@ -66,14 +66,14 @@
 	"player.assessment.noSections": "No sections",
 	"player.assessment.loadFailed": "The assessment could not be loaded. Try again.",
 	"player.assessment.restoreFailed": "Your saved answers for this section could not be restored. Try again.",
-	"player.check.checkAnswer": "Check answer",
+	"player.check.answer": "Check answer",
 	"player.check.tryAgain": "Try again",
 	"player.check.answerRecorded": "Answer recorded.",
 	"player.check.correct": "Correct.",
 	"player.check.partlyCorrect": "Partly correct.",
 	"player.check.notCorrect": "Not correct.",
 	"player.check.notAutoScored": "Answer recorded. This question is not scored automatically.",
-	"player.check.checkFailed": "This question could not be checked. Try again.",
+	"player.check.failed": "This question could not be checked. Try again.",
 	"player.check.triesLeft": {
 		"one": "{count} try left.",
 		"other": "{count} tries left."

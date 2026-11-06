@@ -101,7 +101,7 @@ const fa = {
 		},
 
 		check: {
-			checkAnswer: "بررسی پاسخ",
+			answer: "بررسی پاسخ",
 			tryAgain: "دوباره تلاش کنید",
 			answerRecorded: "پاسخ ثبت شد.",
 			correct: "درست.",
@@ -109,7 +109,7 @@ const fa = {
 			notCorrect: "نادرست.",
 			notAutoScored:
 				"پاسخ ثبت شد. این پرسش به‌صورت خودکار نمره‌گذاری نمی‌شود.",
-			checkFailed: "بررسی این پرسش ممکن نشد. دوباره تلاش کنید.",
+			failed: "بررسی این پرسش ممکن نشد. دوباره تلاش کنید.",
 			triesLeft: {
 				one: "{count} فرصت باقی مانده است.",
 				other: "{count} فرصت باقی مانده است.",

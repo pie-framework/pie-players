@@ -257,7 +257,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		interfaceI18n.t(
 			tryView?.canRetry
 				? "player.check.tryAgain"
-				: "player.check.checkAnswer",
+				: "player.check.answer",
 		),
 	);
 
@@ -298,7 +298,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 	}
 
 	const checkStatus = $derived.by(() => {
-		if (checkFailed) return interfaceI18n.t("player.check.checkFailed");
+		if (checkFailed) return interfaceI18n.t("player.check.failed");
 		if (!tryView?.enabled) return "";
 		const outcome = describeOutcome(tryView);
 		if (!outcome) return "";

@@ -113,7 +113,7 @@ const es = {
 		},
 
 		check: {
-			checkAnswer: "Comprobar respuesta",
+			answer: "Comprobar respuesta",
 			tryAgain: "Intentar de nuevo",
 			answerRecorded: "Respuesta registrada.",
 			correct: "Correcto.",
@@ -121,7 +121,7 @@ const es = {
 			notCorrect: "Incorrecto.",
 			notAutoScored:
 				"Respuesta registrada. Esta pregunta no se califica automáticamente.",
-			checkFailed: "No se pudo comprobar esta pregunta. Inténtelo de nuevo.",
+			failed: "No se pudo comprobar esta pregunta. Inténtelo de nuevo.",
 			triesLeft: {
 				one: "Queda {count} intento.",
 				other: "Quedan {count} intentos.",

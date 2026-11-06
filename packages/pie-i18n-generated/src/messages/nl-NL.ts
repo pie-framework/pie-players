@@ -108,7 +108,7 @@ const nlNL = {
 		},
 
 		check: {
-			checkAnswer: "Antwoord controleren",
+			answer: "Antwoord controleren",
 			tryAgain: "Opnieuw proberen",
 			answerRecorded: "Antwoord opgeslagen.",
 			correct: "Goed.",
@@ -116,7 +116,7 @@ const nlNL = {
 			notCorrect: "Niet goed.",
 			notAutoScored:
 				"Antwoord opgeslagen. Deze vraag wordt niet automatisch nagekeken.",
-			checkFailed: "Deze vraag kon niet worden nagekeken. Probeer het opnieuw.",
+			failed: "Deze vraag kon niet worden nagekeken. Probeer het opnieuw.",
 			triesLeft: {
 				one: "Nog {count} poging over.",
 				other: "Nog {count} pogingen over.",

@@ -109,14 +109,14 @@ const ne = {
 		},
 
 		check: {
-			checkAnswer: "उत्तर जाँच्नुहोस्",
+			answer: "उत्तर जाँच्नुहोस्",
 			tryAgain: "फेरि प्रयास गर्नुहोस्",
 			answerRecorded: "उत्तर रेकर्ड गरियो।",
 			correct: "ठीक छ।",
 			partlyCorrect: "आंशिक रूपमा ठीक छ।",
 			notCorrect: "ठीक छैन।",
 			notAutoScored: "उत्तर रेकर्ड गरियो। यो प्रश्न स्वतः स्कोर गरिँदैन।",
-			checkFailed: "यो प्रश्न जाँच्न सकिएन। फेरि प्रयास गर्नुहोस्।",
+			failed: "यो प्रश्न जाँच्न सकिएन। फेरि प्रयास गर्नुहोस्।",
 			// Nepali keeps the noun singular after a numeral, so the plural group
 			// varies the verb (छ / छन्), not the noun.
 			triesLeft: {

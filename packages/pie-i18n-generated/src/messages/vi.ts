@@ -95,14 +95,14 @@ const vi = {
 		},
 
 		check: {
-			checkAnswer: "Kiểm tra câu trả lời",
+			answer: "Kiểm tra câu trả lời",
 			tryAgain: "Thử lại",
 			answerRecorded: "Đã ghi nhận câu trả lời.",
 			correct: "Đúng.",
 			partlyCorrect: "Đúng một phần.",
 			notCorrect: "Chưa đúng.",
 			notAutoScored: "Đã ghi nhận câu trả lời. Câu hỏi này không được chấm điểm tự động.",
-			checkFailed: "Không thể kiểm tra câu hỏi này. Vui lòng thử lại.",
+			failed: "Không thể kiểm tra câu hỏi này. Vui lòng thử lại.",
 			triesLeft: {
 				other: "Còn {count} lượt thử.",
 			},

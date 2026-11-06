@@ -97,7 +97,7 @@ describe("SectionController item session control", () => {
 		);
 		controller.recordTry({ itemId: "q1", outcomes: scored(1) });
 
-		const tryEvent = events.find((event) => event.type === "try-recorded");
+		const tryEvent = events.find((event) => event.type === "item-try-recorded");
 		expect(tryEvent).toMatchObject({
 			itemId: "q1",
 			canonicalItemId: "q1",
@@ -147,7 +147,7 @@ describe("SectionController item session control", () => {
 		controller.recordTry({ itemId: "q1", outcomes: scored(0) });
 		controller.recordTry({ itemId: "q1", outcomes: scored(1) });
 		expect(
-			events.filter((event) => event.type === "try-recorded"),
+			events.filter((event) => event.type === "item-try-recorded"),
 		).toHaveLength(1);
 		expect(controller.getTryProjection()?.states.q1?.tryCount).toBe(1);
 	});
@@ -163,7 +163,7 @@ describe("SectionController item session control", () => {
 		controller.retryItem({ itemId: "q1" });
 
 		expect(
-			events.find((event) => event.type === "feedback-reveal-changed"),
+			events.find((event) => event.type === "item-feedback-reveal-changed"),
 		).toMatchObject({
 			itemId: "q1",
 			canonicalItemId: "q1",
@@ -274,7 +274,7 @@ describe("SectionController item session control", () => {
 			revealOverride: "solution",
 		});
 		expect(
-			events.find((event) => event.type === "feedback-reveal-changed"),
+			events.find((event) => event.type === "item-feedback-reveal-changed"),
 		).toMatchObject({
 			itemId: "q1",
 			revealed: true,
@@ -374,7 +374,7 @@ describe("SectionController item session control", () => {
 			makeSection({ itemSessionControl: { enabled: true }, items: [{ identifier: "q1" }] }),
 		);
 		await expect(controller.checkItem({ itemId: "q1" })).rejects.toThrow();
-		expect(events.filter((event) => event.type === "try-recorded")).toHaveLength(0);
+		expect(events.filter((event) => event.type === "item-try-recorded")).toHaveLength(0);
 
 		const scoredIds: string[] = [];
 		controller.registerItemScorer(async (canonicalItemId) => {
@@ -394,7 +394,7 @@ describe("SectionController item session control", () => {
 		);
 		controller.registerItemScorer(async () => null);
 		await expect(controller.checkItem({ itemId: "q1" })).rejects.toThrow();
-		expect(events.filter((event) => event.type === "try-recorded")).toHaveLength(0);
+		expect(events.filter((event) => event.type === "item-try-recorded")).toHaveLength(0);
 
 		let release: (value: ReturnType<typeof scored>) => void = () => {};
 		let calls = 0;

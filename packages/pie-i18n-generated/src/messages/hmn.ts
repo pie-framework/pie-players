@@ -103,8 +103,8 @@ const hmn = {
 				"Tsis rov qab tau koj cov lus teb uas khaws cia rau feem no. Sim dua.",
 		},
 
-		formative: {
-			checkAnswer: "Kuaj lus teb",
+		check: {
+			answer: "Kuaj lus teb",
 			tryAgain: "Sim dua",
 			answerRecorded: "Lus teb khaws cia lawm.",
 			correct: "Tseeb.",
@@ -112,7 +112,7 @@ const hmn = {
 			notCorrect: "Tsis tseeb.",
 			notAutoScored:
 				"Lus teb khaws cia lawm. Kev nug no tsis ntsuam xyuas tus kheej.",
-			checkFailed: "Tsis kuaj tau kev nug no. Sim dua.",
+			failed: "Tsis kuaj tau kev nug no. Sim dua.",
 			triesLeft: {
 				other: "{count} zaus tshuav.",
 			},

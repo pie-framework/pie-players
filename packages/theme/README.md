@@ -341,7 +341,7 @@ The content path scales completely:
 - Every font size in `components.css`, which styles item content, is relative
   (`em`, `%`, `larger`/`smaller`) and follows too.
 - Learner-facing text that declares its own size reads `--pie-font-scale`
-  directly: the item and passage card titles, the formative status line, the
+  directly: the item and passage card titles, the check status line, the
   tabbed layout's labels and the item player's build warning. A card wraps the
   shell that gets scaled, so it cannot inherit the scale.
 

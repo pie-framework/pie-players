@@ -7,7 +7,7 @@
  * the port and applies the effects; nothing here touches media.
  */
 
-import type { FormativeCorrectness } from "../formative/types.js";
+import type { TryCorrectness } from "../item-session-control/types.js";
 import type {
 	MediaTimeSourceCapabilities,
 	ResolvedTimedMediaCue,
@@ -93,7 +93,7 @@ function itemSatisfiesGate(
 	if (cue.releaseOn === "responded") {
 		return delivery.respondedByItemId[itemId] === true;
 	}
-	const correctness: FormativeCorrectness | undefined =
+	const correctness: TryCorrectness | undefined =
 		delivery.correctnessByItemId[itemId];
 	if (correctness === undefined) return false;
 	if (correctness === "unknown") return cue.onUnknownCorrectness === "release";

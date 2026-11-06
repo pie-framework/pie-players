@@ -102,7 +102,7 @@
 
 ./policies
   DEFAULT_SECTION_PLAYER_POLICIES
-  type SectionPlayerFormativeControlPolicy
+  type SectionPlayerCheckControlPolicy
   type SectionPlayerPolicies
   type SectionPlayerPreloadPolicy
   type SectionPlayerReadinessPolicy

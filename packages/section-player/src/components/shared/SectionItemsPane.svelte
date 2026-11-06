@@ -48,7 +48,7 @@ Items pane of a section player: renders the item cards of the current compositio
 	import {
 		DEFAULT_SECTION_BASE_HEADING_LEVEL,
 		getCanonicalItemId,
-		getFormativeItemView,
+		getItemTryView,
 		getItemPlayerParams,
 		getItemSettings,
 		getTimedMediaItemView,
@@ -105,7 +105,7 @@ Items pane of a section player: renders the item cards of the current compositio
 		layout?.componentTag ?? "pie-section-player-items-pane",
 	);
 	const preloadEnabled = $derived(layout?.preloadEnabled ?? true);
-	const formativeControlEnabled = $derived(layout?.formativeControlEnabled ?? true);
+	const checkControlEnabled = $derived(layout?.checkControlEnabled ?? true);
 	const reportWarmup = $derived(layout?.reportWarmup ?? null);
 
 	const logger = $derived(getPreloadLogger(componentTag));
@@ -731,7 +731,7 @@ Items pane of a section player: renders the item cards of the current compositio
 			<!-- Resolved once and used twice: the card renders the control from it, and
 			     the player params project its env override. Two derivations of the same
 			     predicate could disagree about whether feedback is on screen. -->
-			{@const formativeView = getFormativeItemView({ compositionModel, canonicalItemId })}
+			{@const tryView = getItemTryView({ compositionModel, canonicalItemId })}
 			<!-- Cue state for this item. A pending card stays mounted and hidden: its
 			     shell registration, its session and the section's loading accounting all
 			     survive, where mounting on the cue would tear the item player down again
@@ -756,12 +756,12 @@ Items pane of a section player: renders the item cards of the current compositio
 					playerStrategy,
 					itemIndex,
 					baseHeadingLevel,
-					formativeView,
+					tryView,
 					i18n: chromeRuntimeContext?.i18n,
 					contentLanguage: chromeRuntimeContext?.contentLanguageDefault,
 				})}
-				{formativeView}
-				{formativeControlEnabled}
+				{tryView}
+				{checkControlEnabled}
 				{timedMediaView}
 				itemToolbarTools={itemToolbarTools}
 				{toolRegistry}
@@ -890,7 +890,7 @@ Items pane of a section player: renders the item cards of the current compositio
 	}
 
 	/* Painted only from `--pie-*` chains, so it follows every base theme and colour
-	   scheme without a hook of its own — same rule as the formative status line, and
+	   scheme without a hook of its own — same rule as the check status line, and
 	   colour is never the only signal here either. */
 	.pie-section-player-timed-media-status {
 		margin: 0;

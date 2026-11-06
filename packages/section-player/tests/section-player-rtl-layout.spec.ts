@@ -6,7 +6,7 @@ import { expect, test, type Page } from "@playwright/test";
  * `direction` inherits through the flat tree, so one `dir` on the shell host
  * reaches every card header without a stamp of its own — which is also how
  * the interface-locale stamps reach it. The card CSS pushes end-of-row
- * controls (the item toolbar, the formative button) to the trailing edge with
+ * controls (the item toolbar, the check button) to the trailing edge with
  * `margin-inline-start`, and this spec holds that to geometry: an attribute
  * assertion cannot see a physical `margin-left` that fails to flip.
  */
@@ -135,34 +135,34 @@ test.describe("section player rtl layout", () => {
 		);
 	});
 
-	test("the card footer's formative control mirrors like the header toolbar", async ({
+	test("the card footer's check control mirrors like the header toolbar", async ({
 		page,
 	}) => {
 		// Checklist point 1: the footer's check-answer button carries the same
 		// `margin-inline-start: auto` trailing-edge rule as the header toolbar,
-		// and the geometry has to flip with it. The formative demo is the one
+		// and the geometry has to flip with it. The item session control demo is the one
 		// surface that renders the footer at all; the direction comes from a
 		// forced `dir` for the same reason the first case forces it — the rule
 		// reads the inherited direction, and the shipped-`ar` case above already
 		// proves the stamping path end to end.
 		await page.setViewportSize(WIDE);
-		await page.goto("/formative-delivery?mode=candidate&layout=splitpane", {
+		await page.goto("/item-session-control?mode=candidate&layout=splitpane", {
 			waitUntil: "networkidle",
 		});
 		const button = page
-			.locator('[data-canonical-item-id="fd-q1"] [data-pie-formative-action]')
+			.locator('[data-canonical-item-id="isc-q1"] [data-pie-check-action]')
 			.first();
 		await expect(button).toBeVisible({ timeout: 30_000 });
 
-		const container = '[data-canonical-item-id="fd-q1"]';
-		expectAllHugTrailingEdgeLtr(await edgeGaps(page, container, "[data-pie-formative-action]"));
+		const container = '[data-canonical-item-id="isc-q1"]';
+		expectAllHugTrailingEdgeLtr(await edgeGaps(page, container, "[data-pie-check-action]"));
 
 		await page.evaluate(() => {
 			document
 				.querySelector("pie-section-player-shell")
 				?.setAttribute("dir", "rtl");
 		});
-		expectAllHugTrailingEdgeRtl(await edgeGaps(page, container, "[data-pie-formative-action]"));
+		expectAllHugTrailingEdgeRtl(await edgeGaps(page, container, "[data-pie-check-action]"));
 	});
 
 	test("split-pane pane order follows the writing direction", async ({

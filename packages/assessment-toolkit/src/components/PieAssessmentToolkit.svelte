@@ -142,7 +142,7 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 	import {
 		PIE_INTERNAL_CONTENT_IDENTITY_EVENT,
 		PIE_INTERNAL_CONTENT_LOADED_EVENT,
-		PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
+		PIE_INTERNAL_TRY_ACTION_EVENT,
 		PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
 		PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT,
 		PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT,
@@ -150,7 +150,7 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 		PIE_UNREGISTER_EVENT,
 		type InternalContentIdentityDetail,
 		type InternalContentLoadedDetail,
-		type InternalFormativeActionDetail,
+		type InternalTryActionDetail,
 		type InternalItemSessionChangedDetail,
 		type InternalItemPlayerErrorDetail,
 		type InternalMediaTimeSourceDetail,
@@ -193,7 +193,7 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 		| typeof PIE_INTERNAL_CONTENT_LOADED_EVENT
 		| typeof PIE_INTERNAL_CONTENT_IDENTITY_EVENT
 		| typeof PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT
-		| typeof PIE_INTERNAL_FORMATIVE_ACTION_EVENT
+		| typeof PIE_INTERNAL_TRY_ACTION_EVENT
 		| typeof PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT;
 	type HostRuntimeEventHandler = (event: Event) => void;
 
@@ -202,7 +202,7 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 		currentItemIndex: number;
 		renderableSignature: string;
 		itemSessionSignature: string;
-		formativeSignature: string;
+		trySignature: string;
 		timedMediaSignature: string;
 	}
 
@@ -758,7 +758,7 @@ const DEFAULT_ENV = {
 	}
 
 	/**
-	 * Formative Try state, folded into the revision key.
+	 * Try state, folded into the revision key.
 	 *
 	 * Load-bearing: recording a Try changes neither the renderables nor the item
 	 * sessions, so without this the revision key is identical before and after
@@ -769,8 +769,8 @@ const DEFAULT_ENV = {
 	 * points are deliberately excluded: a re-check that produces the same
 	 * correctness with a different partial score is the same screen.
 	 */
-	function toFormativeSignature(model: UnknownRecord): string {
-		const states = asRecord(asRecord(model.formative).states);
+	function toTrySignature(model: UnknownRecord): string {
+		const states = asRecord(asRecord(model.tries).states);
 		return Object.entries(states)
 			.map(([itemId, value]) => {
 				const state = asRecord(value);
@@ -785,7 +785,7 @@ const DEFAULT_ENV = {
 
 	/**
 	 * Timed-media cue state, folded into the revision key for the same reason
-	 * formative state had to be: a cue firing changes neither the renderables nor
+	 * Try state had to be: a cue firing changes neither the renderables nor
 	 * the item sessions, so without this the key is identical before and after and
 	 * the emit is coalesced away — the controller would hold correct cue state while
 	 * the pane kept every gated item hidden.
@@ -814,14 +814,14 @@ const DEFAULT_ENV = {
 			currentItemIndex: toCurrentItemIndex(typed),
 			renderableSignature,
 			itemSessionSignature,
-			formativeSignature: toFormativeSignature(typed),
+			trySignature: toTrySignature(typed),
 			timedMediaSignature: toTimedMediaSignature(typed),
 		};
 	}
 
 	function getCompositionRevisionKey(model: unknown): string {
 		const snapshot = toCompositionSnapshot(model);
-		return `${snapshot.sectionId}|${snapshot.currentItemIndex}|${snapshot.renderableSignature}|${snapshot.itemSessionSignature}|${snapshot.formativeSignature}|${snapshot.timedMediaSignature}`;
+		return `${snapshot.sectionId}|${snapshot.currentItemIndex}|${snapshot.renderableSignature}|${snapshot.itemSessionSignature}|${snapshot.trySignature}|${snapshot.timedMediaSignature}`;
 	}
 
 	function isKnownPlayerType(value: unknown): value is ItemPlayerType {
@@ -1985,13 +1985,13 @@ const DEFAULT_ENV = {
 				// A learner's check / retry. The card supplies the outcomes it got
 				// from `provideScore()`; the controller derives correctness, so the
 				// route carries data rather than a decision.
-				name: PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
+				name: PIE_INTERNAL_TRY_ACTION_EVENT,
 				handler: (event: Event) => {
 					if (!claimLocalEvent(event)) return;
-					const detail = getEventDetail<InternalFormativeActionDetail>(event);
+					const detail = getEventDetail<InternalTryActionDetail>(event);
 					if (!detail?.itemId) return;
 					if (detail.action !== "check" && detail.action !== "retry") return;
-					sectionBinding.handleFormativeAction({
+					sectionBinding.handleTryAction({
 						itemId: detail.itemId,
 						canonicalItemId: detail.canonicalItemId,
 						action: detail.action,

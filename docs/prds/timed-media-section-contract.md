@@ -11,15 +11,15 @@ Owner: PIE Players maintainers
 
 This PRD defines the Timed-Media Section: a section whose shared media timeline
 decides when its items are delivered, through cues over a media stimulus, a
-playback policy, a session slice and gates on formative state. It is for
+playback policy, a session slice and gates on Try state. It is for
 maintainers of the section player and the shared types, and for adapter authors
 mapping the shape to other formats. Terms follow the
 [timed media language](../../CONTEXT.md#timed-media-language).
 
-Timed media is sequenced behind formative delivery
+Timed media is sequenced behind item session control
 ([ADR 0001](../adr/0001-formative-delivery-before-timed-media.md)), because a
-correctness gate needs the per-item evaluation seam and the `FormativeCorrectness`
-values that the [formative delivery contract](./formative-delivery-contract.md)
+correctness gate needs the per-item evaluation seam and the `TryCorrectness`
+values that the [item session control contract](./item-session-control-contract.md)
 supplies.
 
 Related architecture:
@@ -30,7 +30,7 @@ Related architecture:
 - [Interaction event contract](./shared-contracts/interaction-event-contract.md)
 - [Score components and section outcomes](./shared-contracts/score-components-and-section-outcomes.md)
 - [Accessibility runtime patterns](./shared-contracts/accessibility-runtime-patterns.md)
-- [Formative delivery contract](./formative-delivery-contract.md) — supplies the state a gate condition names
+- [Item session control contract](./item-session-control-contract.md) — supplies the state a gate condition names
 - [Formative delivery before timed media](../adr/0001-formative-delivery-before-timed-media.md) — the sequencing record
 - [Sign language (ASL) support](./sign-language-asl-support.md) — sibling media contract, out of scope here
 
@@ -167,7 +167,7 @@ is later presentation work. It closes no capability gap.
   time and delivery state with one authored source, so provenance buys nothing and
   the capability-neutral core would gain a second unrelated domain. A layout is
   the wrong home too, because every layout hosting timed media would re-implement
-  the reduction. Formative delivery splits its policy the same way.
+  the reduction. Item session control splits its policy the same way.
 - Public export path: `@pie-players/pie-players-shared/timed-media` for the cue,
   policy and session-slice types, validation, the reduction, the projection and
   the port. `TimedMediaSectionData`, the authored half, is also exported beside
@@ -325,8 +325,8 @@ capability probe, against the **Tool Surface Failure** rule in
   and a layout reads the first to decide what is pending, so an item only a
   metadata cue names is delivered normally. Only a metadata cue may name no items.
 - `responded` reads item completion, so it works in a section that does not
-  deliver formatively. A correctness gate requires the items it names to deliver
-  formatively with unlimited Tries, and validation refuses anything else with
+  enable item session control. A correctness gate requires the items it names to deliver
+  under item session control with unlimited Tries, and validation refuses anything else with
   `gate-requires-unlimited-tries` naming the item refs: a gate on `correct`
   releases only while the learner has a Try to spend, and a forced reveal is not a
   correct answer.
@@ -471,7 +471,7 @@ Hosts own:
   validates it whenever the section is built.
 - The session slice carries `version: 1` and persists in
   `SectionControllerSessionState.timedMedia`, extending the section snapshot as
-  the formative slice does. It hydrates with the rest of the snapshot.
+  the Try slice does. It hydrates with the rest of the snapshot.
 - `normalizeTimedMediaSectionSlice` rejects an unknown version whole: delivery
   restarts from clean cue state and item sessions survive. An absent slice reads
   like a snapshot from before timed media.

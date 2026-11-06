@@ -301,7 +301,7 @@ describe("<pie-assessment-toolkit> lifecycle", () => {
 
 	test("a check on an item whose ref is not its item id reaches the controller", async () => {
 		// The composition keys the renderable by its item id; the controller keys
-		// formative state by the ref identifier the card names as canonical.
+		// Try state by the ref identifier the card names as canonical.
 		const tries: string[] = [];
 		const { element } = await mount({
 			sectionId: "s1",
@@ -312,13 +312,13 @@ describe("<pie-assessment-toolkit> lifecycle", () => {
 					section: section("s1"),
 					renderables: [{ flavor: "item", entity: { id: "item-1" } }],
 				}),
-				recordFormativeTry: ({ itemId }: { itemId: string }) => tries.push(itemId),
+				recordTry: ({ itemId }: { itemId: string }) => tries.push(itemId),
 			}),
 		});
 		const card = document.createElement("div");
 		element.append(card);
 		card.dispatchEvent(
-			new CustomEvent("pie-formative-action", {
+			new CustomEvent("pie-try-action", {
 				bubbles: true,
 				composed: true,
 				detail: { itemId: "item-1", canonicalItemId: "ref-1", action: "check", outcomes: [] },

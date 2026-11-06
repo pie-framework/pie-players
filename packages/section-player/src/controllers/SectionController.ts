@@ -6,23 +6,23 @@ import {
 	isGlobalDebugEnabled,
 } from "@pie-players/pie-players-shared";
 import {
-	aggregateFormativeOutcome,
-	isFormativeSectionEnabled,
-	normalizeFormativeSectionSlice,
-	recordFormativeTry,
-	resolveFormativePolicies,
-	retryFormativeItem,
-	revealFormativeItem,
-	hideFormativeItem,
-	rollupFormativeMastery,
-	toFormativeSectionSlice,
-	type FormativeCorrectness,
-	type FormativeItemState,
-	type FormativeMasteryRollup,
-	type FormativeScoredOutcome,
-	type FormativeSectionProjection,
-	type ResolvedFormativePolicy,
-} from "@pie-players/pie-players-shared/formative";
+	aggregateTryOutcome,
+	isItemSessionControlEnabledInSection,
+	normalizeTrySectionSlice,
+	recordTry,
+	resolveItemSessionControls,
+	retryItem,
+	revealItemFeedback,
+	hideItemFeedback,
+	rollupMastery,
+	toTrySectionSlice,
+	type TryCorrectness,
+	type ItemTryState,
+	type MasteryRollup,
+	type ScoredElementOutcome,
+	type TrySectionProjection,
+	type ResolvedItemSessionControlPolicy,
+} from "@pie-players/pie-players-shared/item-session-control";
 import {
 	createTimedMediaState,
 	normalizeTimedMediaSectionData,
@@ -57,8 +57,8 @@ import type {
 	TimedMediaCueChangedEvent,
 	TimedMediaInvalidEvent,
 	TimedMediaPolicyDegradedEvent,
-	FormativeRevealChangedEvent,
-	FormativeTryRecordedEvent,
+	ItemFeedbackRevealChangedEvent,
+	ItemTryRecordedEvent,
 	SectionMasteryChangedEvent,
 	ItemCompleteChangedEvent,
 	ItemPlayerErrorEvent,
@@ -112,14 +112,14 @@ interface NormalizedApplySession {
 	itemSessions: TestAttemptSession["itemSessions"];
 	itemSessionCount: number;
 	/**
-	 * `null` when the incoming snapshot carried no readable formative slice —
+	 * `null` when the incoming snapshot carried no readable Try slice —
 	 * absent, or a version this build rejects. Distinguished from an empty record
 	 * so `replace` can clear state while `merge` leaves it alone.
 	 */
-	formativeStates: Record<string, FormativeItemState> | null;
+	tryStates: Record<string, ItemTryState> | null;
 	/**
 	 * `null` when the snapshot carried no readable timed-media slice. Same
-	 * replace-clears / merge-leaves-alone distinction as `formativeStates`.
+	 * replace-clears / merge-leaves-alone distinction as `tryStates`.
 	 */
 	timedMediaState: TimedMediaSectionSessionSlice | null;
 }
@@ -150,7 +150,7 @@ function sectionIdentifierOf(
 
 /**
  * Owns aggregate section state: item sessions and navigation, the renderable
- * lifecycle, completion, formative delivery, and timed-media cue state with its
+ * lifecycle, completion, item session control, and timed-media cue state with its
  * Media Time Source port. Item-level controllers share contracts with it but
  * are not composed here.
  */
@@ -165,7 +165,7 @@ export class SectionController implements SectionControllerHandle {
 	// `score()` reaches the rendered item players.
 	private pendingSessionCommit: (() => void) | null = null;
 	private itemScorer: SectionItemScorer | null = null;
-	private readonly pendingFormativeChecks = new Set<string>();
+	private readonly pendingItemChecks = new Set<string>();
 	private saveQueue: Promise<void> = Promise.resolve();
 	private state: SectionControllerState = {
 		input: null,
@@ -216,12 +216,12 @@ export class SectionController implements SectionControllerHandle {
 	private nextApplyRevision = 0;
 	private lastReplayedApplyRevision = 0;
 	private pendingApplyReplay: PendingApplyReplay | null = null;
-	// Formative delivery. Both maps are keyed by canonical item id, the same key
+	// Item session control. Both maps are keyed by canonical item id, the same key
 	// `itemSessions` and `itemCompletionByCanonicalId` use, so one id addresses an
 	// item's responses, its completion and its Try state.
-	private formativePolicies: Record<string, ResolvedFormativePolicy> = {};
-	private formativeStates: Record<string, FormativeItemState> = {};
-	private formativeEnabled = false;
+	private itemSessionControls: Record<string, ResolvedItemSessionControlPolicy> = {};
+	private tryStates: Record<string, ItemTryState> = {};
+	private itemSessionControlEnabled = false;
 	private lastMasterySignature = "";
 	// Timed media. `timedMediaData` is null for a section that is not timed media
 	// and for one whose authored `timedMedia` failed validation — both deliver as
@@ -346,7 +346,7 @@ export class SectionController implements SectionControllerHandle {
 		// Rebuilt on every initialize, including same-cohort `updateInput`: an
 		// authoring edit or a host policy change should reach delivery, and Try
 		// state survives it because it lives in a separate map.
-		this.rebuildFormativePolicies();
+		this.rebuildItemSessionControls();
 		this.rebuildTimedMedia();
 		this.bootstrapCompletionFromSessions();
 		if (sectionIdentityChanged) {
@@ -440,7 +440,7 @@ export class SectionController implements SectionControllerHandle {
 			itemSessionsByItemId: this.getItemSessionsByItemId(),
 			testAttemptSession: this.getResolvedTestAttemptSession(),
 			itemViewModels,
-			formative: this.getFormativeProjection(),
+			tries: this.getTryProjection(),
 			timedMedia: this.getTimedMediaProjection(),
 		};
 	}
@@ -543,49 +543,49 @@ export class SectionController implements SectionControllerHandle {
 		// Each slice is omitted entirely where its feature is off, so a section that
 		// uses neither produces snapshots byte-identical to what this controller
 		// produced before either contract.
-		const withFormative = this.formativeEnabled
-			? { ...base, formative: toFormativeSectionSlice(this.formativeStates) }
+		const withTries = this.itemSessionControlEnabled
+			? { ...base, tries: toTrySectionSlice(this.tryStates) }
 			: base;
-		if (!this.timedMediaData) return withFormative;
+		if (!this.timedMediaData) return withTries;
 		return {
-			...withFormative,
+			...withTries,
 			timedMedia: toTimedMediaSectionSlice(this.timedMediaState),
 		};
 	}
 
 	// ------------------------------------------------------------------
-	// Formative delivery
+	// Item session control
 	// ------------------------------------------------------------------
 
-	private rebuildFormativePolicies(): void {
-		const sectionPolicy = this.state.input?.section?.formative ?? null;
+	private rebuildItemSessionControls(): void {
+		const sectionPolicy = this.state.input?.section?.itemSessionControl ?? null;
 		const items = this.state.viewModel.adapterItemRefs
 			.map((itemRef) => ({
 				identifier: itemRef.identifier || itemRef.item?.id || "",
-				policy: itemRef.formative ?? null,
+				policy: itemRef.itemSessionControl ?? null,
 			}))
 			.filter((entry) => !!entry.identifier);
-		this.formativePolicies = resolveFormativePolicies({
+		this.itemSessionControls = resolveItemSessionControls({
 			sectionPolicy,
 			items,
 		});
-		this.formativeEnabled = isFormativeSectionEnabled(this.formativePolicies);
+		this.itemSessionControlEnabled = isItemSessionControlEnabledInSection(this.itemSessionControls);
 	}
 
-	private computeMastery(): FormativeMasteryRollup {
-		return rollupFormativeMastery({
+	private computeMastery(): MasteryRollup {
+		return rollupMastery({
 			itemIdentifiers: this.getSectionItemIdentifiers(),
-			states: this.formativeStates,
+			states: this.tryStates,
 		});
 	}
 
-	public getFormativeProjection(): FormativeSectionProjection | null {
-		if (!this.formativeEnabled) return null;
+	public getTryProjection(): TrySectionProjection | null {
+		if (!this.itemSessionControlEnabled) return null;
 		return this.cloneForRead({
 			version: 1 as const,
 			enabled: true,
-			policies: this.formativePolicies,
-			states: this.formativeStates,
+			policies: this.itemSessionControls,
+			states: this.tryStates,
 			mastery: this.computeMastery(),
 		});
 	}
@@ -599,28 +599,28 @@ export class SectionController implements SectionControllerHandle {
 	 * — a second click landing before the composition republishes is dropped
 	 * rather than spending a Try.
 	 */
-	public recordFormativeTry(args: {
+	public recordTry(args: {
 		itemId: string;
 		outcomes?: unknown[];
 	}): void {
 		const canonicalItemId = this.getCanonicalItemId(args.itemId);
-		const policy = this.formativePolicies[canonicalItemId];
+		const policy = this.itemSessionControls[canonicalItemId];
 		if (!policy?.enabled) return;
-		const outcome = aggregateFormativeOutcome(
-			(args.outcomes ?? []) as Array<FormativeScoredOutcome | undefined>,
+		const outcome = aggregateTryOutcome(
+			(args.outcomes ?? []) as Array<ScoredElementOutcome | undefined>,
 		);
-		const previous = this.formativeStates[canonicalItemId];
-		const next = recordFormativeTry({
+		const previous = this.tryStates[canonicalItemId];
+		const next = recordTry({
 			state: previous,
 			itemIdentifier: canonicalItemId,
 			policy,
 			outcome,
 		});
 		if (next === previous) return;
-		this.formativeStates = { ...this.formativeStates, [canonicalItemId]: next };
+		this.tryStates = { ...this.tryStates, [canonicalItemId]: next };
 		const timestamp = Date.now();
-		const event: FormativeTryRecordedEvent = {
-			type: "formative-try-recorded",
+		const event: ItemTryRecordedEvent = {
+			type: "item-try-recorded",
 			itemId: args.itemId,
 			canonicalItemId,
 			tryCount: next.tryCount,
@@ -642,39 +642,39 @@ export class SectionController implements SectionControllerHandle {
 	 * registered a scorer, the item's player has not mounted, or scoring throws;
 	 * drops a call while a check of the same item is pending.
 	 */
-	public async checkFormativeItem(args: { itemId: string }): Promise<void> {
+	public async checkItem(args: { itemId: string }): Promise<void> {
 		const canonicalItemId = this.getCanonicalItemId(args.itemId);
-		if (!this.formativePolicies[canonicalItemId]?.enabled) return;
-		if (this.pendingFormativeChecks.has(canonicalItemId)) return;
+		if (!this.itemSessionControls[canonicalItemId]?.enabled) return;
+		if (this.pendingItemChecks.has(canonicalItemId)) return;
 		const scorer = this.itemScorer;
 		if (!scorer) {
 			throw new Error(`No item scorer is registered to check item ${args.itemId}.`);
 		}
-		this.pendingFormativeChecks.add(canonicalItemId);
+		this.pendingItemChecks.add(canonicalItemId);
 		try {
 			const outcomes = await scorer(canonicalItemId);
 			if (outcomes === null) {
 				throw new Error(`Item ${args.itemId} has not mounted, so it cannot be checked.`);
 			}
 			// `false` is an item with no scorable model: a real Try with `unknown` correctness.
-			this.recordFormativeTry({
+			this.recordTry({
 				itemId: args.itemId,
 				outcomes: Array.isArray(outcomes) ? outcomes : [],
 			});
 		} finally {
-			this.pendingFormativeChecks.delete(canonicalItemId);
+			this.pendingItemChecks.delete(canonicalItemId);
 		}
 	}
 
 	/** Dismiss a reveal and reopen the item, withdrawing its env projection. */
-	public retryFormativeItem(args: { itemId: string }): void {
+	public retryItem(args: { itemId: string }): void {
 		const canonicalItemId = this.getCanonicalItemId(args.itemId);
-		const policy = this.formativePolicies[canonicalItemId];
+		const policy = this.itemSessionControls[canonicalItemId];
 		if (!policy?.enabled) return;
-		const previous = this.formativeStates[canonicalItemId];
-		const next = retryFormativeItem({ state: previous, policy });
+		const previous = this.tryStates[canonicalItemId];
+		const next = retryItem({ state: previous, policy });
 		if (!next || next === previous) return;
-		this.commitFormativeReveal({
+		this.commitFeedbackReveal({
 			itemId: args.itemId,
 			canonicalItemId,
 			next,
@@ -686,23 +686,23 @@ export class SectionController implements SectionControllerHandle {
 	 * Reveal on host authority — a teacher-driven "show the answer". Spends no
 	 * Try and ignores the Try budget.
 	 */
-	public revealFormativeItem(args: {
+	public revealItemFeedback(args: {
 		itemId: string;
 		feedback: "correctness" | "solution";
 	}): void {
 		const canonicalItemId = this.getCanonicalItemId(args.itemId);
-		const policy = this.formativePolicies[canonicalItemId];
+		const policy = this.itemSessionControls[canonicalItemId];
 		if (!policy?.enabled) return;
 		if (args.feedback !== "correctness" && args.feedback !== "solution") return;
-		const previous = this.formativeStates[canonicalItemId];
-		const next = revealFormativeItem({
+		const previous = this.tryStates[canonicalItemId];
+		const next = revealItemFeedback({
 			state: previous,
 			itemIdentifier: canonicalItemId,
 			policy,
 			feedback: args.feedback,
 		});
 		if (next === previous) return;
-		this.commitFormativeReveal({
+		this.commitFeedbackReveal({
 			itemId: args.itemId,
 			canonicalItemId,
 			next,
@@ -711,14 +711,14 @@ export class SectionController implements SectionControllerHandle {
 	}
 
 	/** Withdraw a reveal on host authority, Try budget notwithstanding. */
-	public hideFormativeItem(args: { itemId: string }): void {
+	public hideItemFeedback(args: { itemId: string }): void {
 		const canonicalItemId = this.getCanonicalItemId(args.itemId);
-		const policy = this.formativePolicies[canonicalItemId];
+		const policy = this.itemSessionControls[canonicalItemId];
 		if (!policy?.enabled) return;
-		const previous = this.formativeStates[canonicalItemId];
-		const next = hideFormativeItem({ state: previous, policy });
+		const previous = this.tryStates[canonicalItemId];
+		const next = hideItemFeedback({ state: previous, policy });
 		if (!next || next === previous) return;
-		this.commitFormativeReveal({
+		this.commitFeedbackReveal({
 			itemId: args.itemId,
 			canonicalItemId,
 			next,
@@ -730,18 +730,18 @@ export class SectionController implements SectionControllerHandle {
 	 * Store a reveal transition and announce it. Shared by the three callers so
 	 * one event describes every reveal change a Try did not cause.
 	 */
-	private commitFormativeReveal(args: {
+	private commitFeedbackReveal(args: {
 		itemId: string;
 		canonicalItemId: string;
-		next: FormativeItemState;
+		next: ItemTryState;
 		source: "learner" | "host";
 	}): void {
-		this.formativeStates = {
-			...this.formativeStates,
+		this.tryStates = {
+			...this.tryStates,
 			[args.canonicalItemId]: args.next,
 		};
-		const event: FormativeRevealChangedEvent = {
-			type: "formative-reveal-changed",
+		const event: ItemFeedbackRevealChangedEvent = {
+			type: "item-feedback-reveal-changed",
 			itemId: args.itemId,
 			canonicalItemId: args.canonicalItemId,
 			revealed: args.next.revealed,
@@ -764,7 +764,7 @@ export class SectionController implements SectionControllerHandle {
 	 * every intermediate count.
 	 */
 	private emitMasteryIfChanged(timestamp: number): void {
-		if (!this.formativeEnabled) return;
+		if (!this.itemSessionControlEnabled) return;
 		const mastery = this.computeMastery();
 		const signature = JSON.stringify(mastery);
 		if (signature === this.lastMasterySignature) return;
@@ -794,7 +794,7 @@ export class SectionController implements SectionControllerHandle {
 	//
 	// Cue policy itself is a pure reduction in
 	// `@pie-players/pie-players-shared/timed-media`. What lives here is the live
-	// state and the port: the same split formative delivery uses, and for the same
+	// state and the port: the same split item session control uses, and for the same
 	// reason — one rollup over one item set belongs in one place, and a section
 	// that already owns item sessions and completion is that place.
 
@@ -811,12 +811,12 @@ export class SectionController implements SectionControllerHandle {
 			itemIdentifiers: this.getSectionItemIdentifiers(),
 			resolveStimulusRenderableId: (stimulusRef) =>
 				this.state.viewModel.stimulusRenderableIdsByRef?.[stimulusRef],
-			// Resolved formative policies are already rebuilt at this point in
+			// Resolved item session control policies are already rebuilt at this point in
 			// `initialize`, which is what lets validation refuse a correctness gate
 			// that a learner could never pass.
 			resolveItemTryBudget: (itemIdentifier) => {
-				const policy = this.formativePolicies[itemIdentifier];
-				if (!policy?.enabled) return "not-formative";
+				const policy = this.itemSessionControls[itemIdentifier];
+				if (!policy?.enabled) return "none";
 				return policy.maxTries === "unlimited" ? "unlimited" : "finite";
 			},
 		});
@@ -875,15 +875,15 @@ export class SectionController implements SectionControllerHandle {
 	 * The delivery state cue gates read, assembled from state this controller
 	 * already keeps: completion answers `"responded"`, and the last Try's
 	 * correctness answers the correctness conditions. A gate on `"responded"`
-	 * therefore works in a section that does not deliver formatively at all.
+	 * therefore works in a section that does not enable item session control at all.
 	 */
 	private getTimedMediaDeliveryState(): TimedMediaDeliveryState {
 		const respondedByItemId: Record<string, boolean> = {};
 		for (const [itemId, complete] of this.itemCompletionByCanonicalId) {
 			respondedByItemId[itemId] = complete === true;
 		}
-		const correctnessByItemId: Record<string, FormativeCorrectness> = {};
-		for (const [itemId, state] of Object.entries(this.formativeStates)) {
+		const correctnessByItemId: Record<string, TryCorrectness> = {};
+		for (const [itemId, state] of Object.entries(this.tryStates)) {
 			const correctness = state.lastOutcome?.correctness;
 			if (correctness) correctnessByItemId[itemId] = correctness;
 		}
@@ -1686,7 +1686,7 @@ export class SectionController implements SectionControllerHandle {
 		this.sectionItemsComplete = false;
 		this.completedCount = 0;
 		this.totalItems = 0;
-		this.formativeStates = {};
+		this.tryStates = {};
 		this.lastMasterySignature = "";
 		this.timedMediaState = createTimedMediaState();
 		this.lastTimedMediaSignature = "";
@@ -1943,8 +1943,8 @@ export class SectionController implements SectionControllerHandle {
 			visitedItemIdentifiers: visited,
 			itemSessions: normalizedItemSessions,
 			itemSessionCount: Object.keys(normalizedItemSessions).length,
-			formativeStates: normalizeFormativeSectionSlice({
-				slice: session.formative,
+			tryStates: normalizeTrySectionSlice({
+				slice: session.tries,
 				allowedItemIdentifiers: Array.from(allowedCanonicalIds),
 			}),
 			timedMediaState: normalizeTimedMediaSectionSlice({
@@ -2025,16 +2025,16 @@ export class SectionController implements SectionControllerHandle {
 			this.state.testAttemptSession.navigationState.currentItemIndex = 0;
 			this.state.viewModel.currentItemIndex = 0;
 		}
-		if (normalized.formativeStates) {
-			this.formativeStates =
+		if (normalized.tryStates) {
+			this.tryStates =
 				mode === "merge"
-					? { ...this.formativeStates, ...normalized.formativeStates }
-					: normalized.formativeStates;
+					? { ...this.tryStates, ...normalized.tryStates }
+					: normalized.tryStates;
 		} else if (mode === "replace") {
-			// A replace with no readable slice clears formative state, the same way
+			// A replace with no readable slice clears Try state, the same way
 			// it clears visited items. A rejected slice therefore restarts Tries
 			// while item sessions in the same snapshot are applied untouched.
-			this.formativeStates = {};
+			this.tryStates = {};
 		}
 		if (normalized.timedMediaState) {
 			// No merge case: cue state is section-scoped, so there are no per-key

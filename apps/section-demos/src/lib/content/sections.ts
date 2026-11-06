@@ -35,7 +35,7 @@ import { demoShadowReadingSection } from "./demo-shadow-reading";
 import { demoContentLanguageSection } from "./demo-content-language";
 import { demoTwoPassagesSection } from "./demo-two-passages";
 import { demoPrintShowcaseSection } from "./demo-print-showcase";
-import { demoFormativeDeliverySection } from "./demo-formative-delivery";
+import { demoItemSessionControlSection } from "./demo-item-session-control";
 import { demoTimedMediaSection } from "./demo-timed-media";
 import { demoTimedMediaVideoStimulusSection } from "./demo-timed-media-video-stimulus";
 import { demoInterfaceLocaleSection } from "./demo-interface-locale";
@@ -649,24 +649,24 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		allowElementVersionOverrides: false,
 		section: demoPrintShowcaseSection,
 	},
-	"formative-delivery": {
-		id: "formative-delivery",
-		name: "Formative Delivery (check answer, retry, mastery)",
+	"item-session-control": {
+		id: "item-session-control",
+		name: "Item Session Control (check answer, retry, mastery)",
 		description:
-			"Check-answer delivery driven entirely by the section's `formative` policy: Try counts, feedback reveal, and per-item overrides. Four items show the four policy shapes side by side.",
+			"Check-answer delivery driven entirely by the section's `itemSessionControl` policy: Try counts, feedback reveal, and per-item overrides. Four items show the four policy shapes side by side.",
 		integrationLevel: 2,
-		integrationTheme: "Formative delivery",
+		integrationTheme: "Item session control",
 		focus:
 			'Shows that PIE renders no feedback of its own — a reveal projects `mode: "evaluate"` onto that one item and the element draws the rest, which is why the behavior needed no new evaluation machinery.',
 		whatMakesItTick: [
-			"`section.formative` sets the default (three Tries, correctness feedback); each `assessmentItemRefs[].formative` overrides it field by field.",
+			"`section.itemSessionControl` sets the default (three Tries, correctness feedback); each `assessmentItemRefs[].itemSessionControl` overrides it field by field.",
 			"A check calls the item player's existing `provideScore()` and reports the outcomes; the section controller derives correctness and owns Try state.",
 			'Only the revealed item\'s `env` becomes `mode: "evaluate"` — its neighbours stay editable, which is the per-item seam the section env never had.',
-			'`fd-q2` uses `feedback: "solution"`, so its reveal projects `role: "instructor"` and the element shows the authored correct response.',
-			'`fd-q3` uses `revealOn: "on-final-try"`: the first two checks record a Try and reveal nothing.',
-			"`fd-q4` sets `enabled: false`, so one ordinary item sits inside a formative section with no control at all.",
+			'`isc-q2` uses `feedback: "solution"`, so its reveal projects `role: "instructor"` and the element shows the authored correct response.',
+			'`isc-q3` uses `revealOn: "on-final-try"`: the first two checks record a Try and reveal nothing.',
+			"`isc-q4` sets `enabled: false`, so one ordinary item sits inside a section with item session control and has no check control at all.",
 		],
-		section: demoFormativeDeliverySection,
+		section: demoItemSessionControlSection,
 	},
 	"timed-media": {
 		id: "timed-media",
@@ -680,7 +680,7 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		whatMakesItTick: [
 			'The stimulus is a `class: "stimulus"` rubric block whose passage config mounts the media element; `timedMedia` carries only `stimulusRef`, the cues and the policy.',
 			"`cue-first-step` reveals `tm-q1` at 0:04 and playback continues; a revealed card is mounted-and-hidden until its cue fires, so its session and shell registration survive a seek backwards.",
-			"`cue-scrub-time` gates `tm-q2` at 0:10: playback pauses, focus moves to the card, and only a correct answer releases it — the condition names the formative `FormativeCorrectness` vocabulary rather than defining its own.",
+			"`cue-scrub-time` gates `tm-q2` at 0:10: playback pauses, focus moves to the card, and only a correct answer releases it — the condition names the `TryCorrectness` vocabulary rather than defining its own.",
 			"`onUnknownCorrectness` is stated explicitly, because an item no controller can score has to have an authored answer rather than being treated as wrong.",
 			"`allowSeekAhead: false` clamps a forward seek to the furthest position reached, which is what stops a learner scrubbing past a gate.",
 			"`tm-q3` is named by no cue, so the timeline sequences what it names and leaves everything else alone.",

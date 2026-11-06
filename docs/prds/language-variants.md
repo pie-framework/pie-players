@@ -164,7 +164,7 @@ family on import.
 - Item player: a load with `requestedLanguages` refetches on change, and a
   response `identity` sets `env.locale` for render, save and score.
 - Section player: two items in different languages in one section stamp their
-  own `lang` and read aloud in their own voice, through a formative reveal.
+  own `lang` and read aloud in their own voice, through a feedback reveal.
 - Backend conformance: the backend runs the same fixtures; a load for `es-MX`
   against a family with `es` serves `es` with no substitution; `fr` serves the
   source with `substitution: "fallback"`; `fallback: "none"` fails the load; a

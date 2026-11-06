@@ -1,7 +1,7 @@
 import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 
 /**
- * Formative delivery: check-answer, retry, and mastery.
+ * Item session control: check-answer, retry, and mastery.
  *
  * Exercises every branch of the resolved policy in one section, because the
  * interesting part is how the four differ side by side:
@@ -14,9 +14,9 @@ import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
  * - `q3` withholds feedback until the tries are spent (`on-final-try`), so the
  *   first two checks record a Try and reveal nothing.
  * - `q4` opts out entirely, proving one item can stay ordinary inside a
- *   formative section.
+ *   section with item session control.
  *
- * See `docs/prds/formative-delivery-contract.md`.
+ * See `docs/prds/item-session-control-contract.md`.
  */
 const choiceItem = (args: {
 	itemId: string;
@@ -43,14 +43,14 @@ const choiceItem = (args: {
 	},
 });
 
-export const demoFormativeDeliverySection: AssessmentSection = {
-	identifier: "formative-delivery",
-	title: "Formative Delivery",
+export const demoItemSessionControlSection: AssessmentSection = {
+	identifier: "item-session-control",
+	title: "Item Session Control",
 	keepTogether: true,
 
 	// The section default. Every item inherits it unless its own ref overrides a
 	// field.
-	formative: {
+	itemSessionControl: {
 		enabled: true,
 		maxTries: 3,
 		feedback: "correctness",
@@ -58,11 +58,11 @@ export const demoFormativeDeliverySection: AssessmentSection = {
 
 	assessmentItemRefs: [
 		{
-			identifier: "fd-q1",
+			identifier: "isc-q1",
 			required: true,
 			item: choiceItem({
-				itemId: "fd-item-1",
-				modelId: "fd-m1",
+				itemId: "isc-item-1",
+				modelId: "isc-m1",
 				prompt:
 					"Three tries with correctness feedback. Which planet has the shortest year?",
 				choices: [
@@ -74,12 +74,12 @@ export const demoFormativeDeliverySection: AssessmentSection = {
 			}),
 		},
 		{
-			identifier: "fd-q2",
+			identifier: "isc-q2",
 			required: true,
-			formative: { maxTries: 1, feedback: "solution" },
+			itemSessionControl: { maxTries: 1, feedback: "solution" },
 			item: choiceItem({
-				itemId: "fd-item-2",
-				modelId: "fd-m2",
+				itemId: "isc-item-2",
+				modelId: "isc-m2",
 				prompt:
 					"One try, then the answer is shown. Which gas makes up most of Earth's atmosphere?",
 				choices: [
@@ -91,12 +91,12 @@ export const demoFormativeDeliverySection: AssessmentSection = {
 			}),
 		},
 		{
-			identifier: "fd-q3",
+			identifier: "isc-q3",
 			required: true,
-			formative: { maxTries: 3, revealOn: "on-final-try" },
+			itemSessionControl: { maxTries: 3, revealOn: "on-final-try" },
 			item: choiceItem({
-				itemId: "fd-item-3",
-				modelId: "fd-m3",
+				itemId: "isc-item-3",
+				modelId: "isc-m3",
 				prompt:
 					"Three tries, but nothing is revealed until the last one. What is the largest ocean?",
 				choices: [
@@ -108,12 +108,12 @@ export const demoFormativeDeliverySection: AssessmentSection = {
 			}),
 		},
 		{
-			identifier: "fd-q4",
+			identifier: "isc-q4",
 			required: true,
-			formative: { enabled: false },
+			itemSessionControl: { enabled: false },
 			item: choiceItem({
-				itemId: "fd-item-4",
-				modelId: "fd-m4",
+				itemId: "isc-item-4",
+				modelId: "isc-m4",
 				prompt:
 					"Opted out: this item has no check control and no feedback. Which metal is liquid at room temperature?",
 				choices: [

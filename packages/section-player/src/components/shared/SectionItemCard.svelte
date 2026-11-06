@@ -23,12 +23,12 @@
 			itemToolbarTools: { attribute: "item-toolbar-tools", type: "String" },
 			toolRegistry: { type: "Object", reflect: false },
 			hostButtons: { type: "Object", reflect: false },
-			// Resolved formative delivery state for this item, or null when the
-			// section does not deliver formatively. The pane derives it; this card
+			// Resolved item session control state for this item, or null when the
+			// section does not enable item session control. The pane derives it; this card
 			// renders it and reports learner actions.
-			formativeView: { attribute: "formative-view", type: "Object", reflect: false },
-			// `policies.formativeControl.enabled`; off leaves the status line without its button.
-			formativeControlEnabled: { attribute: "formative-control-enabled", type: "Boolean" },
+			tryView: { attribute: "try-view", type: "Object", reflect: false },
+			// `policies.checkControl.enabled`; off leaves the status line without its button.
+			checkControlEnabled: { attribute: "check-control-enabled", type: "Boolean" },
 			// Resolved cue state for this item, or null when the section is not timed
 			// media. The pane derives it; this card renders it.
 			timedMediaView: { attribute: "timed-media-view", type: "Object", reflect: false },
@@ -39,9 +39,9 @@
 
 <!--
 @component
-Item card of a section player: renders an item's heading, `<pie-item-toolbar>` and item player inside `<pie-item-scope>`, with a check-answer control when formative delivery is on. The items pane renders one per item and sets its properties.
+Item card of a section player: renders an item's heading, `<pie-item-toolbar>` and item player inside `<pie-item-scope>`, with a check-answer control when item session control is on. The items pane renders one per item and sets its properties.
 
-@fires {CustomEvent<InternalFormativeActionDetail>} pie-formative-action - When the learner presses the check-answer or try-again control, carrying the item player's `provideScore()` outcomes on a check.
+@fires {CustomEvent<InternalTryActionDetail>} pie-try-action - When the learner presses the check-answer or try-again control, carrying the item player's `provideScore()` outcomes on a check.
 -->
 
 <script lang="ts">
@@ -59,15 +59,15 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		catalogOwnerContextFor,
 		connectToolRuntimeContext,
 		dispatchCrossBoundaryEvent,
-		PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
-		type InternalFormativeActionDetail,
+		PIE_INTERNAL_TRY_ACTION_EVENT,
+		type InternalTryActionDetail,
 	} from "@pie-players/pie-assessment-toolkit";
 	import type {
 		ItemEntity,
 		ItemSettings,
 	} from "@pie-players/pie-players-shared/types";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
-	import type { FormativeItemView } from "@pie-players/pie-players-shared/formative";
+	import type { ItemTryView } from "@pie-players/pie-players-shared/item-session-control";
 	import type { TimedMediaItemView } from "./section-player-view-state.js";
 	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
 	import { resolveCardTitle } from "./card-title.js";
@@ -99,8 +99,8 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		itemToolbarTools,
 		toolRegistry = null as ToolRegistry | null,
 		hostButtons = [] as ToolbarItem[],
-		formativeView = null as FormativeItemView | null,
-		formativeControlEnabled = true,
+		tryView = null as ItemTryView | null,
+		checkControlEnabled = true,
 		timedMediaView = null as TimedMediaItemView | null,
 	} = $props<{
 		item: ItemEntity;
@@ -116,8 +116,8 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		itemToolbarTools: string;
 		toolRegistry?: ToolRegistry | null;
 		hostButtons?: ToolbarItem[];
-		formativeView?: FormativeItemView | null;
-		formativeControlEnabled?: boolean;
+		tryView?: ItemTryView | null;
+		checkControlEnabled?: boolean;
 		timedMediaView?: TimedMediaItemView | null;
 	}>();
 
@@ -234,7 +234,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 	}
 
 	// ------------------------------------------------------------------
-	// Formative delivery
+	// Item session control
 	// ------------------------------------------------------------------
 	//
 	// The card owns the control because it owns the item player node, and
@@ -247,26 +247,26 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 	let checkPending = $state(false);
 	let checkFailed = $state(false);
 
-	const formativeEnabled = $derived(formativeView?.enabled === true);
-	const showFormativeControl = $derived(
-		formativeEnabled &&
-			formativeControlEnabled !== false &&
-			(formativeView?.canCheck || formativeView?.canRetry),
+	const itemSessionControlEnabled = $derived(tryView?.enabled === true);
+	const showCheckControl = $derived(
+		itemSessionControlEnabled &&
+			checkControlEnabled !== false &&
+			(tryView?.canCheck || tryView?.canRetry),
 	);
-	const formativeButtonLabel = $derived(
+	const checkButtonLabel = $derived(
 		interfaceI18n.t(
-			formativeView?.canRetry
-				? "player.formative.tryAgain"
-				: "player.formative.checkAnswer",
+			tryView?.canRetry
+				? "player.check.tryAgain"
+				: "player.check.answer",
 		),
 	);
 
-	function describeTriesRemaining(view: FormativeItemView): string {
+	function describeTriesRemaining(view: ItemTryView): string {
 		if (view.triesRemaining === "unlimited") return "";
 		if (view.triesRemaining <= 0) return "";
 		// `plural` rather than a count === 1 branch: the two-form split is English's,
 		// and a locale with a `few`/`many` category needs the catalog consulted.
-		return interfaceI18n.plural?.("player.formative.triesLeft", {
+		return interfaceI18n.plural?.("player.check.triesLeft", {
 			count: view.triesRemaining,
 		}) ?? "";
 	}
@@ -277,44 +277,44 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 	 * under `feedback: "none"`, and announcing it there would leak what the policy
 	 * withheld.
 	 */
-	function describeOutcome(view: FormativeItemView): string {
+	function describeOutcome(view: ItemTryView): string {
 		if (!view.revealed) {
 			return view.tryCount > 0
-				? interfaceI18n.t("player.formative.answerRecorded")
+				? interfaceI18n.t("player.check.answerRecorded")
 				: "";
 		}
 		switch (view.lastOutcome?.correctness) {
 			case "correct":
-				return interfaceI18n.t("player.formative.correct");
+				return interfaceI18n.t("player.check.correct");
 			case "partial":
-				return interfaceI18n.t("player.formative.partlyCorrect");
+				return interfaceI18n.t("player.check.partlyCorrect");
 			case "incorrect":
-				return interfaceI18n.t("player.formative.notCorrect");
+				return interfaceI18n.t("player.check.notCorrect");
 			case "unknown":
-				return interfaceI18n.t("player.formative.notAutoScored");
+				return interfaceI18n.t("player.check.notAutoScored");
 			default:
-				return interfaceI18n.t("player.formative.answerRecorded");
+				return interfaceI18n.t("player.check.answerRecorded");
 		}
 	}
 
-	const formativeStatus = $derived.by(() => {
-		if (checkFailed) return interfaceI18n.t("player.formative.checkFailed");
-		if (!formativeView?.enabled) return "";
-		const outcome = describeOutcome(formativeView);
+	const checkStatus = $derived.by(() => {
+		if (checkFailed) return interfaceI18n.t("player.check.failed");
+		if (!tryView?.enabled) return "";
+		const outcome = describeOutcome(tryView);
 		if (!outcome) return "";
-		const remaining = formativeView.canRetry
-			? describeTriesRemaining(formativeView)
+		const remaining = tryView.canRetry
+			? describeTriesRemaining(tryView)
 			: "";
 		return remaining ? `${outcome} ${remaining}` : outcome;
 	});
 
-	function dispatchFormativeAction(
+	function dispatchTryAction(
 		action: "check" | "retry",
 		outcomes?: unknown[],
 	): void {
 		const host = getHostElementFromAnchor(contextAnchor);
 		if (!host || !item?.id) return;
-		const payload: InternalFormativeActionDetail = {
+		const payload: InternalTryActionDetail = {
 			itemId: item.id,
 			canonicalItemId: canonicalItemId || item.id,
 			action,
@@ -322,7 +322,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		};
 		dispatchCrossBoundaryEvent(
 			host,
-			PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
+			PIE_INTERNAL_TRY_ACTION_EVENT,
 			payload,
 		);
 	}
@@ -343,14 +343,14 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		return scorer ? scorer() : null;
 	}
 
-	async function handleFormativeClick(): Promise<void> {
-		if (!formativeView?.enabled || checkPending) return;
+	async function handleCheckClick(): Promise<void> {
+		if (!tryView?.enabled || checkPending) return;
 		checkFailed = false;
-		if (formativeView.canRetry) {
-			dispatchFormativeAction("retry");
+		if (tryView.canRetry) {
+			dispatchTryAction("retry");
 			return;
 		}
-		if (!formativeView.canCheck) return;
+		if (!tryView.canCheck) return;
 		const scorer = itemPlayerScorer();
 		if (!scorer) {
 			checkFailed = true;
@@ -362,7 +362,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 			// `false` means the item has no models to score, which is exactly the
 			// `unknown` correctness case — the Try is real and gets recorded. A throw
 			// is an error rather than an unscorable item, so it costs no Try.
-			dispatchFormativeAction("check", Array.isArray(results) ? results : []);
+			dispatchTryAction("check", Array.isArray(results) ? results : []);
 		} catch (error) {
 			checkFailed = true;
 			console.warn(
@@ -462,16 +462,16 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 			{/snippet}
 		</SectionCardMediaSplit>
 		<div data-region="footer">
-			{#if formativeEnabled}
-				<div class="pie-section-player-formative">
+			{#if itemSessionControlEnabled}
+				<div class="pie-section-player-check">
 					<!-- Present before it has content, so the first announcement is not
 					     lost to a live region that did not yet exist (WCAG 4.1.3). -->
 					<p
-						class="pie-section-player-formative__status"
-						data-pie-formative-status
+						class="pie-section-player-check__status"
+						data-pie-check-status
 						aria-live="polite"
-					>{formativeStatus}</p>
-					{#if showFormativeControl}
+					>{checkStatus}</p>
+					{#if showCheckControl}
 						<!-- Removed rather than disabled once Tries are spent: a disabled
 						     control left in the tab order carries no explanation.
 
@@ -484,11 +484,11 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 						     reducer. -->
 						<button
 							type="button"
-							class="pie-section-player-formative__button"
-							data-pie-formative-action={formativeView?.canRetry ? "retry" : "check"}
+							class="pie-section-player-check__button"
+							data-pie-check-action={tryView?.canRetry ? "retry" : "check"}
 							aria-busy={checkPending ? "true" : undefined}
-							onclick={handleFormativeClick}
-						>{formativeButtonLabel}</button>
+							onclick={handleCheckClick}
+						>{checkButtonLabel}</button>
 					{/if}
 				</div>
 			{/if}
@@ -641,9 +641,9 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		color: var(--pie-text, #111827);
 	}
 
-	/* Formative control. Painted only from `--pie-*` chains so it follows every
+	/* Check control. Painted only from `--pie-*` chains so it follows every
 	   base theme, provider and colour scheme without a hook of its own. */
-	.pie-section-player-formative {
+	.pie-section-player-check {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
@@ -653,7 +653,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		border-top: 1px solid var(--pie-border-light, #e5e7eb);
 	}
 
-	.pie-section-player-formative__status {
+	.pie-section-player-check__status {
 		margin: 0;
 		/* Tries remaining and correctness, and the only signal carrying either —
 		   the note below is why no colour accompanies it. So it follows the font
@@ -667,7 +667,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 
 	/* Empty until a Try lands; collapse so the footer does not reserve a blank
 	   row before there is anything to announce. */
-	.pie-section-player-formative__status:empty {
+	.pie-section-player-check__status:empty {
 		display: none;
 	}
 
@@ -675,7 +675,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 	   ordinary button and a host that restyles ordinary buttons should get it for
 	   free. Geometry stays literal, as it does on the scroll hint — the contract
 	   certifies colour pairs, not radii. */
-	.pie-section-player-formative__button {
+	.pie-section-player-check__button {
 		/* Comfortably past the 24x24 minimum in WCAG 2.5.8, and the padding keeps
 		   it there at the smallest supported text size. */
 		min-height: 2.25rem;
@@ -689,26 +689,26 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		cursor: pointer;
 	}
 
-	.pie-section-player-formative__button:hover {
+	.pie-section-player-check__button:hover {
 		background: var(--pie-button-hover-bg, var(--pie-background-dark, #f9fafb));
 		border-color: var(--pie-button-hover-border, var(--pie-border, #8b919c));
 		color: var(--pie-button-hover-color, var(--pie-text, #111827));
 	}
 
-	.pie-section-player-formative__button:active {
+	.pie-section-player-check__button:active {
 		/* `--pie-button-color` is the only ink the contract certifies against this
 		   fill, so the pair stays together. */
 		background: var(--pie-button-active-bg, var(--pie-background-dark, #f3f4f6));
 		color: var(--pie-button-color, var(--pie-text, #374151));
 	}
 
-	.pie-section-player-formative__button:focus-visible {
+	.pie-section-player-check__button:focus-visible {
 		outline: 2px solid
 			var(--pie-button-focus-outline, var(--pie-primary, #3b82f6));
 		outline-offset: 2px;
 	}
 
-	.pie-section-player-formative__button[aria-busy="true"] {
+	.pie-section-player-check__button[aria-busy="true"] {
 		cursor: progress;
 	}
 

@@ -6,7 +6,7 @@ elements, their inputs, host methods and events, and the package exports. The
 [section player integration guide](../../docs/section-player/integration-guide.md)
 walks through an integration end to end,
 [Custom Section Layouts](../../docs/section-player/custom-layouts.md) covers
-host-built layouts, [Formative Delivery](../../docs/section-player/formative-delivery.md)
+host-built layouts, [Item Session Control](../../docs/section-player/item-session-control.md)
 covers practice sections, and the package's
 [architecture notes](./ARCHITECTURE.md) cover its internals.
 
@@ -125,7 +125,7 @@ are clamped to their range.
 | `section` | property | — | The `AssessmentSection` to deliver |
 | `session` | property | — | The section's session, a `SectionControllerSessionState` ([Session lifecycle](#session-lifecycle)) |
 | `assessment` | property | — | The `AssessmentEntity` whose `personalNeedsProfile` and `settings` tool policy reads, forwarded to a coordinator the player builds. A coordinator passed in `runtime` is the host's to bind with `updateAssessment`. A section's own `personalNeedsProfile` is not read, and the player warns once when it finds one |
-| `policies` | property | `DEFAULT_SECTION_PLAYER_POLICIES` | A partial `SectionPlayerPolicies` for readiness, element pre-warm, telemetry and the formative control ([Policies](#policies)) |
+| `policies` | property | `DEFAULT_SECTION_PLAYER_POLICIES` | A partial `SectionPlayerPolicies` for readiness, element pre-warm, telemetry and the check control ([Policies](#policies)) |
 | `hooks` | property | — | Host callbacks, a `SectionPlayerHostHooks` ([Card titles](#card-titles)) |
 | `toolRegistry` | property | `createPackagedToolRegistry()` | The registry the toolbars load tools from ([Tools](#tools)) |
 | `sectionHostButtons`, `itemHostButtons`, `passageHostButtons` | property | — | Host buttons appended to the section, item and passage toolbars |
@@ -248,7 +248,7 @@ from `@pie-players/pie-section-player/policies`.
 | `readiness.mode` | `"progressive"` | `"progressive"` or `"strict"`. Both hold the `interactive` stage and `pie-loading-complete` until the element pre-warm resolves, and the two currently emit the same sequence |
 | `preload.enabled` | `true` | `false` skips the section's element pre-warm, the step that loads every element the items name before they mount. Items still mount, and each item player registers its own elements. For a host that owns element registration end to end |
 | `telemetry.enabled` | `true` | `false` stops the `pie-section-*` instrumentation stream ([Instrumentation](#instrumentation)) |
-| `formativeControl.enabled` | `true` | `false` removes the formative Check answer / Try again button and keeps its status line, for a host that drives Tries through the controller ([Formative Delivery](../../docs/section-player/formative-delivery.md#check-control)) |
+| `checkControl.enabled` | `true` | `false` removes the Check answer / Try again button and keeps its status line, for a host that drives Tries through the controller ([Item Session Control](../../docs/section-player/item-session-control.md#check-control)) |
 
 `resolveSectionPlayerPolicies(policies)` from
 `@pie-players/pie-section-player/policies` returns the filled-in object, for
@@ -346,7 +346,7 @@ contract.
 
 | Member | Effect |
 | --- | --- |
-| `getSession()` | The section session, a `SectionControllerSessionState`: `currentItemIndex`, `visitedItemIdentifiers`, `itemSessions`, and `formative` and `timedMedia` when the section uses them |
+| `getSession()` | The section session, a `SectionControllerSessionState`: `currentItemIndex`, `visitedItemIdentifiers`, `itemSessions`, and `tries` and `timedMedia` when the section uses them |
 | `applySession(session, { mode })` | Applies a section session. `"replace"` (the default) replaces it; `"merge"` overlays it item by item. Item entries may be canonical entries or raw item sessions |
 | `updateItemSession(itemId, detail)` | Writes one item's session synchronously and emits `item-session-data-changed` or `item-session-meta-changed` |
 | `hydrate()` | Loads the session from the persistence strategy and applies it in replace mode; a no-op without a strategy or a stored session |
@@ -357,7 +357,7 @@ contract.
 | `subscribe(listener)` | Delivers every controller event to `listener` until the returned function is called or the controller is disposed |
 | `getRuntimeState()` | Introspection only; persist `getSession()` |
 | `updateInput(input)` | Refreshes the composition for the same cohort, the `(sectionId, attemptId)` pair, and keeps the in-memory session |
-| Formative members | `recordFormativeTry`, `retryFormativeItem`, `revealFormativeItem`, `hideFormativeItem`, `getFormativeProjection` ([Formative delivery](#formative-delivery)) |
+| Try members | `checkItem`, `recordTry`, `retryItem`, `revealItemFeedback`, `hideItemFeedback`, `getTryProjection` ([Item session control](#item-session-control)) |
 | Timed-media members | `attachMediaTimeSource`, `detachMediaTimeSource`, `pauseMediaForCompetingAudio`, `getTimedMediaProjection` ([Timed media](#timed-media)) |
 
 ### Session lifecycle
@@ -510,7 +510,7 @@ identity.
 | `runtime-ready` | `runtimeId`, `coordinator`, `ownership` | Once per coordinator, before the first section starts: the earliest point a host holds the coordinator |
 | `toolkit-ready` | `runtimeId`, `assessmentId`, `sectionId`, `itemPlayer`, `coordinator` | For each section, a microtask after its controller resolves and its composition goes out |
 | `section-ready` | `sectionId`, `attemptId`, `controller` (or `null`) | After that section's `toolkit-ready` and its `engine-ready` stage |
-| `composition-changed` | `composition`, `version` | The composition changed; `composition.formative` carries the formative projection |
+| `composition-changed` | `composition`, `version` | The composition changed; `composition.tries` carries the Try projection |
 | `session-changed` | The normalized item session, plus `itemId`, `canonicalItemId` and `sourceRuntimeId` | An item's session changed |
 | `item-session-changed` | The normalized item session | Re-dispatched by `<pie-item-scope>` from an element's `session-changed` |
 | `item-player-event` | `itemId`, `canonicalItemId`, `type`, `detail` | An item player fired `type`, one of `RELAYED_ITEM_PLAYER_EVENTS`, with its own `detail` |
@@ -551,8 +551,8 @@ carries `timestamp`, and every one except `section-navigation-change` carries
 | `section-session-applied` | `mode`, `itemSessionCount`, `replay` | A session was applied; `replay: true` after `section-loading-complete` |
 | `section-navigation-change` | `previousSectionId`, `currentSectionId`, `attemptId`, `reason` (`input-change`, `runtime-transition`) | The controller's section identity changed |
 | `section-error` | `source`, `error`, `itemId`, `canonicalItemId`, `contentKind` | An item player failed (`source: "item-player"`), or the section runtime did (`"section-runtime"`), a rejected element pre-warm included, which leaves the items unmounted |
-| `formative-try-recorded` | `itemId`, `canonicalItemId`, `tryCount`, `outcome`, `revealed` | A Try was recorded |
-| `formative-reveal-changed` | `itemId`, `canonicalItemId`, `revealed`, `feedback`, `tryCount`, `source` | The reveal changed without a Try |
+| `item-try-recorded` | `itemId`, `canonicalItemId`, `tryCount`, `outcome`, `revealed` | A Try was recorded |
+| `item-feedback-reveal-changed` | `itemId`, `canonicalItemId`, `revealed`, `feedback`, `tryCount`, `source` | The reveal changed without a Try |
 | `section-mastery-changed` | `mastery` | The mastery rollup changed |
 | `timed-media-cue-changed` | Active, visited and completed cues, `revealedItemIds`, `gateCueIdentifier`, `mediaCompleted`, `aggregateComplete` | A cue activated, a gate released, or aggregate completion flipped |
 | `timed-media-audio-started` | — | Media audio is running, so read-aloud yields |
@@ -592,7 +592,7 @@ const unsubscribeSection = coordinator.subscribeSectionLifecycleEvents({
 });
 ```
 
-The defaults leave out `formative-try-recorded`, `formative-reveal-changed`,
+The defaults leave out `item-try-recorded`, `item-feedback-reveal-changed`,
 `section-mastery-changed` and `timed-media-audio-started`. Name them in
 `subscribeItemEvents({ eventTypes })`, or subscribe through
 `subscribeSectionEvents({ listener, eventTypes, itemIds })`.
@@ -606,13 +606,13 @@ Item-scoped events carry both id forms, and both are always populated.
 `itemId` is the bare `item.id`, the form `applySession` expects.
 `canonicalItemId` is that item's adapter identifier, and falls back to `itemId`
 when the section was not built from an adapter or no adapter ref matches it.
-Correlate with formative policy and `runtime.player.resolveBackend` by
+Correlate with item session control policy and `runtime.player.resolveBackend` by
 `canonicalItemId`; reach the session by `itemId`.
 
-## Formative delivery
+## Item session control
 
-A section with `formative` set delivers as practice: each formative item gets a
-check-answer control, records Tries against `maxTries`, and reveals feedback by
+A section with `itemSessionControl` set lets the learner check and retry: each
+enabled item gets a check-answer control, records Tries against `maxTries`, and reveals feedback by
 `feedback` and `revealOn` (`"on-try"`, or `"on-final-try"`, which resolves to
 `"on-try"` under `maxTries: "unlimited"`). An item ref changes the section's
 policy field by field. A revealed item gets the env projection, `mode:
@@ -620,11 +620,11 @@ policy field by field. A revealed item gets the env projection, `mode:
 section env for that item alone, and the element draws the feedback. A section
 in which no item is enabled delivers unchanged, with no control, state or env
 projection. Scoring a Try needs an unhosted item player
-([player requirements](../../docs/section-player/formative-delivery.md#player-requirements)):
+([player requirements](../../docs/section-player/item-session-control.md#player-requirements)):
 in a hosted player `provideScore()` returns empty slots and every Try records
-`unknown`. [Formative Delivery](../../docs/section-player/formative-delivery.md)
+`unknown`. [Item Session Control](../../docs/section-player/item-session-control.md)
 covers the policy, the controller methods and events, mastery and persistence;
-the [formative delivery contract](../../docs/prds/formative-delivery-contract.md)
+the [item session control contract](../../docs/prds/item-session-control-contract.md)
 holds the specification and its QTI 3 mapping.
 
 ## Timed media
@@ -637,7 +637,7 @@ const section: AssessmentSection = {
   identifier: "water-cycle",
   sectionType: "timed-media",
   // A correctness gate needs unlimited Tries; see below.
-  formative: { enabled: true, maxTries: "unlimited", feedback: "correctness" },
+  itemSessionControl: { enabled: true, maxTries: "unlimited", feedback: "correctness" },
   rubricBlocks: [
     {
       identifier: "video-stimulus-1",
@@ -782,8 +782,8 @@ With `runtime.player.backend.delivery` enabled, each item player's `itemId` and
 An enabled `backend.delivery` also sets `hosted: true` on each embedded item
 player unless `runtime.player.hosted` is set, so the item players load no
 element controllers and render the models the server returns. Those item players
-cannot score in the browser, so formative Tries record `unknown`: formative
-delivery needs an unhosted player.
+cannot score in the browser, so Tries record `unknown`: item session control
+needs an unhosted player.
 
 `runtime.player.resolveBackend(context, baseBackend)` maps per-item identity
 when the derivation does not fit. `context` carries `itemId`, `canonicalItemId`,
@@ -828,7 +828,7 @@ item's calls. A coordinator hook,
 `ToolkitCoordinatorHooks.createSectionSessionPersistence`, returns the strategy
 for each section controller, created once per `(assessmentId, sectionId,
 attemptId)`; it loads and saves the `SectionControllerSessionState` that carries
-navigation, item sessions, and formative and timed-media state.
+navigation, item sessions, and Try and timed-media state.
 
 ```ts
 import { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";

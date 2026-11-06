@@ -17,7 +17,7 @@ describe("generated catalog loaders", () => {
 		const catalog = await loadGeneratedCatalog("th-TH");
 		expect((catalog.common as Record<string, string>).close).toBe("ปิด");
 		const triesLeft = (
-			(catalog.player as Record<string, unknown>).formative as Record<
+			(catalog.player as Record<string, unknown>).check as Record<
 				string,
 				unknown
 			>

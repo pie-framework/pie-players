@@ -116,13 +116,13 @@ unbuilt framework-completing capabilities.
   element versions that keep the audio playable. Implemented across the
   toolkit, the item player, the elements and the markup passes; the PRD awaits
   acceptance of its open questions.
-- [`formative-delivery-contract.md`](./formative-delivery-contract.md) -
+- [`item-session-control-contract.md`](./item-session-control-contract.md) -
   `Accepted`. Try state, feedback reveal as a per-item `env` projection, and
   section mastery over the shipped client-side scoring path. Integrator guide:
-  [Formative delivery](../section-player/formative-delivery.md).
+  [Item session control](../section-player/item-session-control.md).
 - [`timed-media-section-contract.md`](./timed-media-section-contract.md) -
   `Accepted`. Section-level timed media with cue-driven item orchestration; cue
-  gate conditions read formative state. Integrator guide:
+  gate conditions read Try state. Integrator guide:
   [Timed media](../../packages/section-player/README.md#timed-media).
 - [`assessment-authoritative-submission.md`](./assessment-authoritative-submission.md) -
   `Draft`, unscheduled. A host-supplied terminal submission operation for the

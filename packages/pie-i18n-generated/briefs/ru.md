@@ -225,7 +225,7 @@ CLDR Russian: **one** = integers with `i % 10` = 1 and `i % 100` ≠ 11 (1,
 (0, 5–9, 10–20, 100, 1000000); **other** = fractions (1,5). Every group
 carries all four, each with `{count}`:
 
-- `player.formative.triesLeft`: `Осталась {count} попытка.` / `Остались
+- `player.check.triesLeft`: `Осталась {count} попытка.` / `Остались
   {count} попытки.` / `Осталось {count} попыток.` / `Осталось {count}
   попытки.`
 - `tools.dictionary.entriesCount`: `{count} статья` / `{count} статьи` /

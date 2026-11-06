@@ -38,7 +38,7 @@ export type ItemPlayerEventParity = "relayed" | "section" | "authoring";
 export const ITEM_PLAYER_PROPERTY_PARITY = {
 	config: "section",
 	session: "section",
-	// `runtime.env`, narrowed per item to its content language and formative state.
+	// `runtime.env`, narrowed per item to its content language and Try state.
 	env: "section",
 	// `runtime.playerType`.
 	strategy: "section",

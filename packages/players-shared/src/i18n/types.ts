@@ -64,7 +64,7 @@ type PluralCategoryKey = keyof PluralTranslation;
  * Dot-notation keys of a catalog shape.
  *
  * A plural group terminates the path at the group itself: `plural()` is called
- * with `player.formative.triesLeft`, never with `…triesLeft.other`. A group is
+ * with `player.check.triesLeft`, never with `…triesLeft.other`. A group is
  * recognized by every one of its keys being a CLDR plural category — the
  * containment has to run this way round, because a group carrying only
  * `one`/`other` does not contain the whole category union.

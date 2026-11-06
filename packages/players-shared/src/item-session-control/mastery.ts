@@ -1,6 +1,6 @@
-import type { FormativeItemState, FormativeMasteryRollup } from "./types.js";
+import type { ItemTryState, MasteryRollup } from "./types.js";
 
-export const FORMATIVE_MASTERY_VERSION = 1 as const;
+export const MASTERY_ROLLUP_VERSION = 1 as const;
 
 /**
  * Roll Try outcomes up to the section.
@@ -12,10 +12,10 @@ export const FORMATIVE_MASTERY_VERSION = 1 as const;
  * excluded: nothing yet says it cannot be scored, so it keeps the section from
  * reading as complete after one correct answer.
  */
-export function rollupFormativeMastery(args: {
+export function rollupMastery(args: {
 	itemIdentifiers: readonly string[];
-	states: Record<string, FormativeItemState>;
-}): FormativeMasteryRollup {
+	states: Record<string, ItemTryState>;
+}): MasteryRollup {
 	const identifiers = args.itemIdentifiers ?? [];
 	const totalItems = identifiers.length;
 	let notScorableItems = 0;
@@ -36,7 +36,7 @@ export function rollupFormativeMastery(args: {
 
 	const scorableItems = Math.max(0, totalItems - notScorableItems);
 	return {
-		version: FORMATIVE_MASTERY_VERSION,
+		version: MASTERY_ROLLUP_VERSION,
 		totalItems,
 		scorableItems,
 		masteredItems,

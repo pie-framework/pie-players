@@ -104,15 +104,15 @@ const am = {
 				"የእርስዎ የተቀመጡ መልሶች ለዚህ ክፍል መመለስ አልተቻለም። እንደገና ይሞክሩ።",
 		},
 
-		formative: {
-			checkAnswer: "መልስ አረጋግጥ",
+		check: {
+			answer: "መልስ አረጋግጥ",
 			tryAgain: "እንደገና ሞክር",
 			answerRecorded: "መልሱ ተመዝግቧል።",
 			correct: "ትክክል ነው።",
 			partlyCorrect: "ከፊል ትክክል ነው።",
 			notCorrect: "ትክክል አይደልም።",
 			notAutoScored: "መልሱ ተመዝግቧል። ይህ ጥያቄ በራስ-ሰር አይሰራም።",
-			checkFailed: "ይህ ጥያቄ ማረጋገጥ አልተቻለም። እንደገና ሞክር።",
+			failed: "ይህ ጥያቄ ማረጋገጥ አልተቻለም። እንደገና ሞክር።",
 			triesLeft: {
 				one: "{count} ሙከራ ቀርቧል።",
 				other: "{count} ሙከራዎች ቀርበዋል።",

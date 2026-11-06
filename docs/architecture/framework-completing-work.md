@@ -8,7 +8,7 @@ is the record.
 
 Related:
 
-- [Formative delivery contract](../prds/formative-delivery-contract.md) — the
+- [Item session control contract](../prds/item-session-control-contract.md) — the
   worked example most of the classifications below draw on
 - [Timed media section](timed-media-section.md) — where the port mechanism was
   first decided
@@ -87,10 +87,10 @@ Framework-completing, unbuilt, in priority order:
 
 | Capability | Boundary it must live inside | State |
 | --- | --- | --- |
-| External or asynchronous Try outcome | Try state machine and the `revealed` projection | `recordFormativeTry({ itemId, outcomes })` is synchronous with outcomes in hand; no Try can be recorded pending, and none can be revised. Autograders, code execution, human scoring, LLM feedback and peer aggregation all need it, and it is what turns `correctness: "unknown"` from a terminal state into a pending one |
-| Hint reveal level | `FormativeFeedbackReveal` and the per-item `env` projection | The enum is `none \| correctness \| solution`; a fourth level is additive here plus an authored element-side field, and unreachable from a host |
-| Element formative-loop conformance | The element contract in `pie-elements-ng` | [`PIE_ELEMENT_CONTRACT.md`](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/PIE_ELEMENT_CONTRACT.md) names the four modes and `outcome(model, session, env)`, and states nothing about what an element renders under `evaluate` × `student` versus `evaluate` × `instructor`, or that an `outcome()` without `score`/`max` drops the item out of every mastery denominator as `unknown` |
-| Cross-section mastery rollup | `AssessmentSession` | Arithmetic over `FormativeSectionProjection`, inheriting two settled rules: `unknown` items leave the denominator, and `scorableItems === 0` is never vacuously complete. Its input exists: the canonical assessment snapshot carries the `formative` slice, with round-trip coverage in `packages/assessment-player/tests/assessment-session-slice-round-trip.test.ts` |
+| External or asynchronous Try outcome | Try state machine and the `revealed` projection | `recordTry({ itemId, outcomes })` is synchronous with outcomes in hand; no Try can be recorded pending, and none can be revised. Autograders, code execution, human scoring, LLM feedback and peer aggregation all need it, and it is what turns `correctness: "unknown"` from a terminal state into a pending one |
+| Hint reveal level | `FeedbackReveal` and the per-item `env` projection | The enum is `none \| correctness \| solution`; a fourth level is additive here plus an authored element-side field, and unreachable from a host |
+| Element check-and-retry conformance | The element contract in `pie-elements-ng` | [`PIE_ELEMENT_CONTRACT.md`](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/PIE_ELEMENT_CONTRACT.md) names the four modes and `outcome(model, session, env)`, and states nothing about what an element renders under `evaluate` × `student` versus `evaluate` × `instructor`, or that an `outcome()` without `score`/`max` drops the item out of every mastery denominator as `unknown` |
+| Cross-section mastery rollup | `AssessmentSession` | Arithmetic over `TrySectionProjection`, inheriting two settled rules: `unknown` items leave the denominator, and `scorableItems === 0` is never vacuously complete. Its input exists: the canonical assessment snapshot carries the `tries` slice, with round-trip coverage in `packages/assessment-player/tests/assessment-session-slice-round-trip.test.ts` |
 | Interaction event projection | Event identity and versioning | Instrumentation providers ship; the projection envelope — source reference, category, version — does not, and a host cannot synthesize stable identity from outside |
 | Process and branching vocabulary | Section state machine | [Branching and process events](../prds/shared-contracts/branching-and-process-events.md), `Draft`, with Try state as its prerequisite and now shipped |
 
@@ -114,10 +114,10 @@ scope ([product scope](./architecture.md#product-scope)).
 Refusing product-completing work is only defensible where the seam is complete.
 Four shapes discharge that obligation, and each is already load-bearing:
 
-**Per-item state addressable by canonical id.** `FormativeSectionProjection.states`
-is `Record<string, FormativeItemState>` carrying `tryCount`, `firstCorrectTry`
+**Per-item state addressable by canonical id.** `TrySectionProjection.states`
+is `Record<string, ItemTryState>` carrying `tryCount`, `firstCorrectTry`
 and `lastOutcome`, so a host joins its own alignment table against it and
-computes any rollup it wants. `FormativeMasteryRollup` stays flat for that
+computes any rollup it wants. `MasteryRollup` stays flat for that
 reason — a dimensioned rollup would embed one taxonomy in the framework.
 
 **Open model shapes.** `PieModel` carries an index signature, so an element
@@ -125,12 +125,12 @@ models whatever feedback, rationale or hint fields it needs without a
 players-shared change. The element library is a starting set, not the surface.
 
 **Authored policy as validated wire data, resolved per field.**
-`resolveFormativePolicy` merges built-in defaults, section policy and item-ref
+`resolveItemSessionControl` merges built-in defaults, section policy and item-ref
 override with each field falling through independently on an unrecognized value,
 so a CMS feeding policy costs one field on a typo rather than the section. No
 authoring UI is owed; a documented schema and this resolution order are.
 
-**Host-supplied outcomes.** `SectionController.recordFormativeTry` accepts
+**Host-supplied outcomes.** `SectionController.recordTry` accepts
 outcomes the host computed anywhere, including server-side, which is what keeps
 the answer key out of the browser where a product needs it there. The shipped
 control does not use that path — `SectionItemCard` requires `provideScore()` on
@@ -165,7 +165,7 @@ selection, and coarse adaptivity already works through remount-and-hydrate.
 
 `SectionController.normalizeApplySession` filters an applied snapshot against the
 **current** section's item refs: item sessions and `visitedItemIdentifiers` are
-dropped for identifiers the new section does not contain, the formative slice is
+dropped for identifiers the new section does not contain, the Try slice is
 normalized against the same allowed set, a `timedMedia` slice is normalized
 against the new section's cue data, and `currentItemIndex` is clamped to the new
 item count. So a host that snapshots, sets a revised section, and re-hydrates

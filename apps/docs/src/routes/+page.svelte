@@ -21,7 +21,7 @@
 				'Item and passage toolbars',
 				'Navigation within the section',
 				'Section session state through the SectionController',
-				'Formative check-answer delivery'
+				'Check-answer delivery with item session control'
 			]
 		},
 		{

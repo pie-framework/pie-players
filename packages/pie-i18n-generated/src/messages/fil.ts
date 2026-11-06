@@ -105,8 +105,8 @@ const fil = {
 				"Hindi naibalik ang mga naka-save na sagot sa bahaging ito. Subukan muli.",
 		},
 
-		formative: {
-			checkAnswer: "Suriin ang sagot",
+		check: {
+			answer: "Suriin ang sagot",
 			tryAgain: "Subukan muli",
 			answerRecorded: "Naitala ang sagot.",
 			correct: "Tama.",
@@ -114,7 +114,7 @@ const fil = {
 			notCorrect: "Hindi tama.",
 			notAutoScored:
 				"Naitala ang sagot. Hindi awtomatikong ini-grade ang tanong na ito.",
-			checkFailed: "Hindi masuri ang tanong na ito. Subukan muli.",
+			failed: "Hindi masuri ang tanong na ito. Subukan muli.",
 			triesLeft: {
 				one: "May {count} pagsubok na natitira.",
 				other: "May {count} pagsubok na natitira.",

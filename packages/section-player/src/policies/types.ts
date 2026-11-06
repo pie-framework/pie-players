@@ -11,11 +11,11 @@ export type SectionPlayerTelemetryPolicy = {
 };
 
 /**
- * Whether formative item cards render the Check answer / Try again button. A
- * host with its own submit flow turns it off and calls the controller's
- * `checkFormativeItem` and `retryFormativeItem`; the status line stays.
+ * Whether item cards under item session control render the Check answer /
+ * Try again button. A host with its own submit flow turns it off and calls the
+ * controller's `checkItem` and `retryItem`; the status line stays.
  */
-export type SectionPlayerFormativeControlPolicy = {
+export type SectionPlayerCheckControlPolicy = {
 	enabled: boolean;
 };
 
@@ -23,5 +23,5 @@ export type SectionPlayerPolicies = {
 	readiness: SectionPlayerReadinessPolicy;
 	preload: SectionPlayerPreloadPolicy;
 	telemetry: SectionPlayerTelemetryPolicy;
-	formativeControl: SectionPlayerFormativeControlPolicy;
+	checkControl: SectionPlayerCheckControlPolicy;
 };

@@ -45,9 +45,9 @@
 			"types": "./dist/types/index.d.ts",
 			"import": "./dist/types/index.js"
 		},
-		"./formative": {
-			"types": "./dist/formative/index.d.ts",
-			"import": "./dist/formative/index.js"
+		"./item-session-control": {
+			"types": "./dist/item-session-control/index.d.ts",
+			"import": "./dist/item-session-control/index.js"
 		},
 		"./timed-media": {
 			"types": "./dist/timed-media/index.d.ts",

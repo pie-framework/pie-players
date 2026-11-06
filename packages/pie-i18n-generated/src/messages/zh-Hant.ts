@@ -97,15 +97,15 @@ const zhHant = {
 			restoreFailed: "無法還原您在本題組中已儲存的答案。請再試一次。",
 		},
 
-		formative: {
-			checkAnswer: "檢查答案",
+		check: {
+			answer: "檢查答案",
 			tryAgain: "再試一次",
 			answerRecorded: "答案已記錄。",
 			correct: "正確。",
 			partlyCorrect: "部分正確。",
 			notCorrect: "不正確。",
 			notAutoScored: "答案已記錄。本題不採計自動評分。",
-			checkFailed: "無法檢查本題。請再試一次。",
+			failed: "無法檢查本題。請再試一次。",
 			triesLeft: {
 				other: "剩餘 {count} 次作答機會。",
 			},

@@ -234,7 +234,7 @@ describe("normalizeTimedMediaSectionData", () => {
 		expect(result.errors[0].message).toContain("q1");
 	});
 
-	test("a correctness gate over a non-formative item is refused", () => {
+	test("a correctness gate over an item without item session control is refused", () => {
 		const result = validate(
 			{
 				stimulusRef: "video-stimulus-1",
@@ -251,7 +251,7 @@ describe("normalizeTimedMediaSectionData", () => {
 					},
 				],
 			},
-			{ budgets: { q1: "not-formative" } },
+			{ budgets: { q1: "none" } },
 		);
 		expect(codes(result)).toEqual(["gate-requires-unlimited-tries"]);
 	});
@@ -269,7 +269,7 @@ describe("normalizeTimedMediaSectionData", () => {
 					},
 				],
 			},
-			{ budgets: { q1: "not-formative" } },
+			{ budgets: { q1: "none" } },
 		);
 		expect(result.errors).toEqual([]);
 	});

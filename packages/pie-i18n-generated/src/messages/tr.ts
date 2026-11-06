@@ -95,8 +95,8 @@ const tr = {
 				"Bu bölümdeki kayıtlı cevaplarınız geri yüklenemedi. Tekrar deneyin.",
 		},
 
-		formative: {
-			checkAnswer: "Cevabı kontrol et",
+		check: {
+			answer: "Cevabı kontrol et",
 			tryAgain: "Tekrar dene",
 			answerRecorded: "Cevap kaydedildi.",
 			correct: "Doğru.",
@@ -104,7 +104,7 @@ const tr = {
 			notCorrect: "Yanlış.",
 			notAutoScored:
 				"Cevap kaydedildi. Bu soru otomatik puanlanmıyor.",
-			checkFailed: "Bu soru kontrol edilemedi. Tekrar deneyin.",
+			failed: "Bu soru kontrol edilemedi. Tekrar deneyin.",
 			triesLeft: {
 				one: "{count} deneme hakkı kaldı.",
 				other: "{count} deneme hakkı kaldı.",

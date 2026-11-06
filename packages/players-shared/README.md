@@ -2,7 +2,7 @@
 
 Shared runtime utilities for the `@pie-players/*` player suite: the element
 loader, PIE config and session helpers, markup security, i18n, and the
-formative, timed-media and media contracts. For framework code and host
+item session control, timed-media and media contracts. For framework code and host
 integrations that need the helpers the player packages use.
 
 ## Public Exports
@@ -23,7 +23,7 @@ The subpaths below are the package's `exports`; nothing else is importable.
 | `/security/private-hosts` | `isPrivateHostname` and `isCloudMetadataHostname`, the host classification for a URL a server fetches on someone else's behalf. Node-safe: it loads none of the markup sanitizers |
 | `/object` | `mergeObjectsIgnoringNullUndefined`, `cloneDeep`, `isPlainRecord` |
 | `/types` | The shared types: item, passage, section and session entities, PIE models and controllers, accessibility catalogs, and the [media vocabulary](#media-validation) |
-| `/formative` | [Formative delivery](#formative-delivery) |
+| `/item-session-control` | [Item session control](#item-session-control) |
 | `/timed-media` | [Timed media](#timed-media) |
 | `/media` | [Media validation](#media-validation) |
 | `/pie` | PIE runtime utilities: config helpers, bundle initialization, `ItemController` and the item session contract, session commit and snapshots, authoring helpers, math renderer setup, instrumentation event maps ([PIE utilities](src/pie/README.md)) |
@@ -40,9 +40,9 @@ The subpaths below are the package's `exports`; nothing else is importable.
 | `/ui/fontawesome` | The FontAwesome `<nds-icon-button>` glyphs need: the one FA Free pin, Pro detection, the `<head>` and shadow-root installs, and the glyph weight. The assessment toolkit, the section player and `@pie-players/pie-tool-tts-inline` use it |
 | `/tools/term-lookup` | Term normalization and the lookup session the dictionary tools share; the host supplies the endpoint or a resolver |
 
-## Formative Delivery
+## Item Session Control
 
-`@pie-players/pie-players-shared/formative` holds the policy resolution, outcome
+`@pie-players/pie-players-shared/item-session-control` holds the policy resolution, outcome
 aggregation, Try-state reducer, item view, and mastery rollup that
 `pie-section-player` drives. It is pure (no DOM, no timers, no element
 registry), so it is testable without a browser and importable by an adapter that
@@ -50,18 +50,18 @@ has no player.
 
 ```ts
 import {
-  aggregateFormativeOutcome,
-  resolveFormativePolicy,
-  resolveFormativeItemView,
-  rollupFormativeMastery,
-} from "@pie-players/pie-players-shared/formative";
+  aggregateTryOutcome,
+  resolveItemSessionControl,
+  resolveItemTryView,
+  rollupMastery,
+} from "@pie-players/pie-players-shared/item-session-control";
 ```
 
-The authored half, `FormativeDeliveryPolicy` on `AssessmentSection` and
-`FormativeItemPolicy` on `AssessmentItemRef`, is re-exported from the package
+The authored half, `ItemSessionControlPolicy` on `AssessmentSection` and
+`AssessmentItemRef`, is re-exported from the package
 root and from `/types`, beside the section types it annotates.
 
-The contract is [`docs/prds/formative-delivery-contract.md`](../../docs/prds/formative-delivery-contract.md),
+The contract is [`docs/prds/item-session-control-contract.md`](../../docs/prds/item-session-control-contract.md),
 including the QTI 3 mapping and why PIE says **Try** rather than "attempt".
 
 ## Timed Media
@@ -94,7 +94,7 @@ re-exported from the package root and from `/types`, beside the section types it
 annotates.
 
 The contract is [`docs/prds/timed-media-section-contract.md`](../../docs/prds/timed-media-section-contract.md),
-including why cue gate conditions name the formative vocabulary and why an
+including why cue gate conditions name the Try vocabulary and why an
 unenforceable policy degrades to advisory rather than failing closed.
 
 ## Media Validation

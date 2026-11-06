@@ -17,7 +17,7 @@ export interface VerifiedLtiLaunchContext {
 
 /**
  * The canonical section snapshot, not a local restatement of its first three
- * fields, so an LTI round trip carries the `formative` and `timedMedia` slices
+ * fields, so an LTI round trip carries the `tries` and `timedMedia` slices
  * rather than silently narrowing them away.
  */
 export type SectionSessionSnapshot = SectionControllerSessionState;

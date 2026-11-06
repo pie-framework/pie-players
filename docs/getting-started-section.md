@@ -181,7 +181,7 @@ A first section emits `pie-stage-change` `composed`, `runtime-ready`, `toolkit-r
 - Inputs, host methods, events and exports: the [section player reference](../packages/section-player/README.md).
 - An integration end to end, from runtime configuration to persistence strategies: the [section player integration guide](section-player/integration-guide.md).
 - Host-built layouts: [custom layouts](section-player/custom-layouts.md).
-- Practice sections, where the learner checks an answer, sees feedback and tries again: [formative delivery](section-player/formative-delivery.md).
+- Practice sections, where the learner checks an answer, sees feedback and tries again: [item session control](section-player/item-session-control.md).
 - Which tools each learner receives: [tools and accommodations](tools-and-accomodations/architecture.md).
 - Tool providers, text-to-speech and the coordinator API: the [assessment toolkit](../packages/assessment-toolkit/README.md).
 - Colors, fonts and dark mode: [theming](theming/how-theming-works.md).

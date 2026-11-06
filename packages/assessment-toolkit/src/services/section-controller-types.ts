@@ -1,9 +1,9 @@
 import type {
-	FormativeFeedbackReveal,
-	FormativeMasteryRollup,
-	FormativeSectionProjection,
-	FormativeTryOutcome,
-} from "@pie-players/pie-players-shared/formative";
+	FeedbackReveal,
+	MasteryRollup,
+	TrySectionProjection,
+	TryOutcome,
+} from "@pie-players/pie-players-shared/item-session-control";
 import type {
 	MediaTimeSource,
 	TimedMediaDegradation,
@@ -222,13 +222,13 @@ export type SectionControllerSectionErrorEvent = SectionControllerEventBase & {
 	currentItemIndex: number;
 };
 
-export type SectionControllerFormativeTryRecordedEvent =
+export type SectionControllerItemTryRecordedEvent =
 	SectionControllerEventBase & {
-		type: "formative-try-recorded";
+		type: "item-try-recorded";
 		itemId: string;
 		canonicalItemId: string;
 		tryCount: number;
-		outcome: FormativeTryOutcome;
+		outcome: TryOutcome;
 		/** Whether feedback is now on screen for this item. */
 		revealed: boolean;
 		currentItemIndex: number;
@@ -238,17 +238,17 @@ export type SectionControllerFormativeTryRecordedEvent =
  * The reveal state changed without a Try being recorded: a learner dismissed
  * feedback to edit again, or a host forced a reveal or withdrew one.
  *
- * A Try that reveals reports through `formative-try-recorded`, which carries its
+ * A Try that reveals reports through `item-try-recorded`, which carries its
  * own `revealed`. This event is for every other transition.
  */
-export type SectionControllerFormativeRevealChangedEvent =
+export type SectionControllerItemFeedbackRevealChangedEvent =
 	SectionControllerEventBase & {
-		type: "formative-reveal-changed";
+		type: "item-feedback-reveal-changed";
 		itemId: string;
 		canonicalItemId: string;
 		revealed: boolean;
 		/** Reveal level in force, when a host overrode the policy's. */
-		feedback?: FormativeFeedbackReveal;
+		feedback?: FeedbackReveal;
 		/** Tries already spent; none of these transitions consume one. */
 		tryCount: number;
 		source: "learner" | "host";
@@ -258,7 +258,7 @@ export type SectionControllerFormativeRevealChangedEvent =
 export type SectionControllerSectionMasteryChangedEvent =
 	SectionControllerEventBase & {
 		type: "section-mastery-changed";
-		mastery: FormativeMasteryRollup;
+		mastery: MasteryRollup;
 		currentItemIndex: number;
 	};
 
@@ -341,8 +341,8 @@ export type SectionControllerEvent =
 	| SectionControllerSectionLoadingCompleteEvent
 	| SectionControllerSectionItemsCompleteChangedEvent
 	| SectionControllerSectionErrorEvent
-	| SectionControllerFormativeTryRecordedEvent
-	| SectionControllerFormativeRevealChangedEvent
+	| SectionControllerItemTryRecordedEvent
+	| SectionControllerItemFeedbackRevealChangedEvent
 	| SectionControllerSectionMasteryChangedEvent
 	| SectionControllerTimedMediaCueChangedEvent
 	| SectionControllerTimedMediaAudioStartedEvent
@@ -559,7 +559,7 @@ export interface SectionControllerHandle {
 	/**
 	 * Record one Try for an item: derive correctness from the element outcomes,
 	 * increment the Try count, and reveal feedback if the item's resolved
-	 * formative policy says so.
+	 * item session control policy says so.
 	 *
 	 * `outcomes` is what `pie-item-player.provideScore()` returned. The caller
 	 * does not interpret it — correctness derivation belongs to the controller so
@@ -568,24 +568,24 @@ export interface SectionControllerHandle {
 	 * No-op when the item's policy is disabled, when feedback is already
 	 * revealed, or when Tries are spent, which makes a double submit safe.
 	 */
-	recordFormativeTry?(args: { itemId: string; outcomes?: unknown[] }): void;
+	recordTry?(args: { itemId: string; outcomes?: unknown[] }): void;
 	/**
 	 * Score a rendered item through the registered item scorer and record the
 	 * Try from its outcomes: Check answer, for a host that hides the built-in
-	 * control (`policies.formativeControl.enabled: false`). Rejects, spending no
+	 * control (`policies.checkControl.enabled: false`). Rejects, spending no
 	 * Try, when no layout has registered a scorer, the item's player has not
 	 * mounted, or scoring throws. A call while a check of the same item is
 	 * pending is dropped.
 	 */
-	checkFormativeItem?(args: { itemId: string }): Promise<void>;
+	checkItem?(args: { itemId: string }): Promise<void>;
 	/**
 	 * Dismiss a revealed item's feedback and reopen it for editing. Withdrawing
 	 * the reveal is what withdraws the `mode: "evaluate"` projection.
 	 *
 	 * The learner action, so it respects the Try budget: no-op when nothing is
-	 * revealed or Tries are spent. Use `hideFormativeItem` for host authority.
+	 * revealed or Tries are spent. Use `hideItemFeedback` for host authority.
 	 */
-	retryFormativeItem?(args: { itemId: string }): void;
+	retryItem?(args: { itemId: string }): void;
 	/**
 	 * Reveal an item on host authority — a teacher-driven "show the answer".
 	 *
@@ -595,25 +595,25 @@ export interface SectionControllerHandle {
 	 * `feedback` is stated rather than taken from the policy, because a reveal
 	 * under `feedback: "none"` would project nothing.
 	 */
-	revealFormativeItem?(args: {
+	revealItemFeedback?(args: {
 		itemId: string;
 		feedback: "correctness" | "solution";
 	}): void;
 	/**
-	 * Withdraw a reveal on host authority. Unlike `retryFormativeItem` this
+	 * Withdraw a reveal on host authority. Unlike `retryItem` this
 	 * ignores the Try budget, so a host that revealed a spent item can put it
 	 * back.
 	 */
-	hideFormativeItem?(args: { itemId: string }): void;
+	hideItemFeedback?(args: { itemId: string }): void;
 	/**
-	 * The section's formative projection — resolved policies, per-item state, and
+	 * The section's Try projection — resolved policies, per-item state, and
 	 * the mastery rollup.
 	 *
-	 * `null` when no item in the section delivers formatively. The same
+	 * `null` when no item in the section enables item session control. The same
 	 * projection rides on the composition model, so layouts normally read it from
 	 * there rather than calling this.
 	 */
-	getFormativeProjection?(): FormativeSectionProjection | null;
+	getTryProjection?(): TrySectionProjection | null;
 	/**
 	 * Bind the section's Media Time Source — the only way it reaches media.
 	 *

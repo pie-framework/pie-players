@@ -4,4 +4,4 @@ import type { PageLoad } from "./$types";
 export const ssr = false;
 
 export const load: PageLoad = ({ url }) =>
-	loadDemoRouteDataById("formative-delivery", url);
+	loadDemoRouteDataById("item-session-control", url);

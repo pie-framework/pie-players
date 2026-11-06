@@ -97,8 +97,8 @@ const pl = {
 				"Nie udało się przywrócić zapisanych odpowiedzi tej części. Spróbuj ponownie.",
 		},
 
-		formative: {
-			checkAnswer: "Sprawdź odpowiedź",
+		check: {
+			answer: "Sprawdź odpowiedź",
 			tryAgain: "Spróbuj ponownie",
 			answerRecorded: "Odpowiedź została zapisana.",
 			correct: "Poprawnie.",
@@ -106,7 +106,7 @@ const pl = {
 			notCorrect: "Niepoprawnie.",
 			notAutoScored:
 				"Odpowiedź została zapisana. To zadanie nie jest oceniane automatycznie.",
-			checkFailed: "Nie udało się sprawdzić tego zadania. Spróbuj ponownie.",
+			failed: "Nie udało się sprawdzić tego zadania. Spróbuj ponownie.",
 			triesLeft: {
 				one: "Pozostała {count} próba.",
 				few: "Pozostały {count} próby.",

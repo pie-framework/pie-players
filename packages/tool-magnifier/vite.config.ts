@@ -5,6 +5,7 @@ import dts from "vite-plugin-dts";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
 
 export default defineConfig({
 	// The tap controls compile into this bundle from players-shared source; see
@@ -16,6 +17,7 @@ export default defineConfig({
 		),
 	},
 	plugins: [
+		preserveLegalComments(),
 		svelte({
 			compilerOptions: {
 				customElement: true,

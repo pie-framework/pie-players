@@ -3,9 +3,11 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
 
 export default defineConfig({
 	plugins: [
+		preserveLegalComments(),
 		svelte({
 			compilerOptions: { rootDir: svelteRootDir(__dirname) },
 			emitCss: false,

@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import {
 	analyzeSpeechRuleEngineBoundary,
+	findInlinedLibrariesWithoutNotice,
 	findInlinedSreLocaleTables,
 	findModuleSpecifiers,
 	findPromiseStaticsBeyondBaseline,
@@ -15,6 +16,10 @@ import {
 	looksUnminified,
 	newUrlTailLength,
 } from "../check-bundle-safety.mjs";
+import {
+	LICENSED_LIBRARIES,
+	preserveLegalComments,
+} from "../../packages/players-shared/legal-comments.mjs";
 import { escapeSourceMapCommentText } from "../../packages/players-shared/source-map-comment-text.mjs";
 
 // Roughly the shape the toolkit CE artifact had before it was minified:
@@ -475,5 +480,49 @@ describe("findPromiseStaticsBeyondBaseline", () => {
 		expect(
 			findPromiseStaticsBeyondBaseline("this.disposePromise.finally(f);initPromise.any"),
 		).toEqual([]);
+	});
+});
+
+describe("licence notices", () => {
+	const dompurifyBody =
+		"cfg.ADD_DATA_URI_TAGS;cfg.FORBID_CONTENTS;cfg.USE_PROFILES;";
+	const mathliveBody = "class MathfieldElement{};window.mathVirtualKeyboard;";
+
+	test("flags an inlined library whose notice was stripped", () => {
+		expect(findInlinedLibrariesWithoutNotice(dompurifyBody)).toEqual([
+			"DOMPurify",
+		]);
+	});
+
+	test("accepts the same library with its notice", () => {
+		expect(
+			findInlinedLibrariesWithoutNotice(
+				`/*! @license DOMPurify 3.4.17 | Apache-2.0 */${dompurifyBody}`,
+			),
+		).toEqual([]);
+	});
+
+	test("does not take a lone config key for the library", () => {
+		expect(findInlinedLibrariesWithoutNotice("cfg.ADD_DATA_URI_TAGS")).toEqual(
+			[],
+		);
+	});
+
+	test("the plugin writes the banner of a library with no upstream notice", () => {
+		const out = preserveLegalComments().renderChunk(mathliveBody);
+		expect(out.code.startsWith("/*! @license MathLive | MIT")).toBe(true);
+		expect(preserveLegalComments().renderChunk(out.code)).toBeNull();
+		expect(findInlinedLibrariesWithoutNotice(out.code)).toEqual([]);
+	});
+
+	test("the plugin leaves a notice upstream owns to the bundler", () => {
+		expect(preserveLegalComments().renderChunk(dompurifyBody)).toBeNull();
+	});
+
+	test("every banner satisfies its own notice pattern", () => {
+		for (const library of LICENSED_LIBRARIES) {
+			if (library.banner)
+				expect(library.notice.test(library.banner)).toBe(true);
+		}
 	});
 });

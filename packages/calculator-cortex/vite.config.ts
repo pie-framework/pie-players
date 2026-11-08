@@ -3,10 +3,12 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
 
 export default defineConfig({
 	base: "./",
 	plugins: [
+		preserveLegalComments(),
 		svelte({
 			compilerOptions: { rootDir: svelteRootDir(import.meta.dirname) },
 			emitCss: false,
@@ -20,6 +22,8 @@ export default defineConfig({
 			include: ["src/**/*.ts", "svelte-shims.d.ts"],
 		}),
 	],
+	// The evaluation worker is a separate bundle, so it takes the plugin itself.
+	worker: { plugins: () => [preserveLegalComments()] },
 	build: {
 		lib: {
 			entry: resolve(import.meta.dirname, "src/index.ts"),

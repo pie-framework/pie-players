@@ -7,6 +7,7 @@ import {
 	MATH_RENDERING_MODULE_FACTORY,
 	MATHJAX_3_SETUP_TEXT,
 } from "../packages/players-shared/math-rendering-module-deferral.mjs";
+import { findLibrariesMissingNotice } from "../packages/players-shared/legal-comments.mjs";
 import { SOURCE_MAP_COMMENT_TEXT } from "../packages/players-shared/source-map-comment-text.mjs";
 import { readPublishPolicy } from "./lib/pack-inspection.mjs";
 import { scanScriptImports } from "./lib/package-import-graph.mjs";
@@ -892,6 +893,30 @@ function checkNoSourceMapCommentText(failures) {
 	}
 }
 
+/**
+ * The names of the libraries `content` inlines without the licence notice their
+ * licence requires. Minifying strips `@license` comments unless the build lists
+ * `preserveLegalComments()` (packages/players-shared/legal-comments.mjs).
+ */
+export function findInlinedLibrariesWithoutNotice(content) {
+	return findLibrariesMissingNotice(content).map((library) => library.name);
+}
+
+function checkLicenseNotices(failures) {
+	for (const dir of listBundleRoots()) {
+		for (const filePath of collectJsFiles(dir)) {
+			const missing = findInlinedLibrariesWithoutNotice(
+				readFileSync(filePath, "utf8"),
+			);
+			if (missing.length > 0) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, filePath)} inlines ${missing.join(", ")} without its licence notice; list preserveLegalComments() from packages/players-shared/legal-comments.mjs in the package's Vite build`,
+				);
+			}
+		}
+	}
+}
+
 function main() {
 	const failures = [];
 	const filesChecked =
@@ -907,6 +932,7 @@ function main() {
 	// URL, and they hold the whole calculator runtime in one chunk.
 	checkNewUrlTails(failures);
 	checkNoSourceMapCommentText(failures);
+	checkLicenseNotices(failures);
 	checkMathJax3Deferred(failures);
 	checkPromiseStatics(failures);
 	const browserBuilds = checkBrowserBuilds(failures);

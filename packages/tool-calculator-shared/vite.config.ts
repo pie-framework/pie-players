@@ -3,6 +3,7 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
 
 /**
  * Builds `./calculator-element`, the one published entry. Hosts resolve it at
@@ -14,6 +15,7 @@ import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
  */
 export default defineConfig({
 	plugins: [
+		preserveLegalComments(),
 		svelte({
 			compilerOptions: {
 				customElement: true,

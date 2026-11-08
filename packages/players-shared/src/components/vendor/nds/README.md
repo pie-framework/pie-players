@@ -29,6 +29,17 @@ lands, so it never leaks into a consumer's own dependency set.
 | Last sync commit | `1c728d3` |
 | Bundler | Vite 7 in lib mode, ES output, single-file (Lit inlined) |
 
+## Licence
+
+The inlined Lit runtime is BSD-3-Clause, Copyright Google LLC. Its `@license`
+comments sit in `nds-icon-button.js` and must survive every refresh, since the
+licence requires the notice to travel with a redistributed copy.
+
+The NDS component code is Renaissance's own. The bundle carries no NDS licence
+header and the repository records no separate terms, so it ships inside
+`@pie-players/pie-players-shared` under that package's MIT licence (`LICENSE`).
+Renaissance owns that call; record any different terms here.
+
 ## Why a vendored bundle, not an npm dep
 
 NDS is not currently published to a registry the `@pie-players/*` chain can

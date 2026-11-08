@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 import {
@@ -25,6 +25,16 @@ const isValidBugs = (bugs) => {
 	if (!bugs || typeof bugs !== "object") return false;
 	return typeof bugs.url === "string" && bugs.url.startsWith("http");
 };
+
+// npm packs a root file named LICENSE or LICENCE (any extension) whatever `files`
+// says, so its presence in the package directory is what ships it.
+const LICENSE_FILE = /^licen[cs]e(\.[a-z]+)?$/i;
+
+const hasLicenseFile = (dir) =>
+	readdirSync(dir).some(
+		(name) =>
+			LICENSE_FILE.test(name) && statSync(path.join(dir, name)).size > 0,
+	);
 
 const run = () => {
 	const policy = readPublishPolicy(ROOT);
@@ -119,6 +129,14 @@ const run = () => {
 					);
 				}
 			}
+		}
+
+		// Every licence the bundled code is under (MIT, BSD-3-Clause, Apache-2.0)
+		// requires its text to accompany a redistributed copy.
+		if (!hasLicenseFile(dir)) {
+			missing.push(
+				"missing LICENSE file (copy the root LICENSE; npm packs it automatically)",
+			);
 		}
 
 		if (policy.requireNodeEngine) {

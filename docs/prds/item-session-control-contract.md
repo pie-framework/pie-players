@@ -490,6 +490,8 @@ reinterpreting it:
 | `itemSessionControl.feedback === "solution"` | `qti-item-session-control@show-solution` |
 | `ItemTryState.tryCount` | item session `numAttempts` |
 | `TryOutcome.correctness` | derived from `SCORE` / `MAX_SCORE`, not a QTI variable |
+| (no field — revisiting a checked item is always available) | `qti-item-session-control@allow-review` |
+| (no field — suspend/resume is always available) | `qti-item-session-control@allow-suspend` |
 
 The authored policy takes QTI's name, `itemSessionControl`, because it carries
 the same fields at the same two levels with the same resolution order. The
@@ -498,6 +500,12 @@ codebase — `TestAttemptSession` for the administration and
 `TestAttemptItemSession.attemptCount` for session realization — and a third
 `attempt` at the item level would be read as one of those. **Try** is
 unambiguous and maps cleanly.
+
+QTI's `allow-review` and `allow-suspend` get no PIE field because PIE makes
+both unconditional. What locks editing after a check is the **Feedback
+Reveal**, not a review gate, so a learner can revisit any item while the
+session is open; and suspend/resume is what the section and assessment session
+persistence layers do by default.
 
 QTI's `allow-comment`, `allow-skipping`, and `validate-responses` are not
 represented. There is no candidate-comment surface, no skip gate, and no

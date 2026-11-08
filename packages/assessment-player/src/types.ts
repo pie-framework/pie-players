@@ -24,6 +24,7 @@ import type {
  */
 export type {
 	AssessmentSession,
+	AssessmentSection,
 	AssessmentSectionSessionState,
 	AssessmentSessionNavigationState,
 	AssessmentSessionRealization,

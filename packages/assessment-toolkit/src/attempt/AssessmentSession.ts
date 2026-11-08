@@ -99,3 +99,20 @@ export function setCurrentSectionPosition(
 		},
 	};
 }
+
+/**
+ * Marks the administration submitted: stamps `completedAt` on the first submit
+ * and refreshes `updatedAt`. A repeated submit keeps the first timestamp, so a
+ * host that calls `submit()` twice, or resumes an already-submitted session,
+ * does not move the completion time.
+ */
+export function markAssessmentSessionSubmitted(
+	session: AssessmentSession,
+): AssessmentSession {
+	const at = nowIso();
+	return {
+		...session,
+		updatedAt: at,
+		completedAt: session.completedAt ?? at,
+	};
+}

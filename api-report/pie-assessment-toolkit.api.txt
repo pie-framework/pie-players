@@ -190,6 +190,7 @@
   frameworkErrorFromUnknown
   hasReadableText
   hasSpokenContent
+  markAssessmentSessionSubmitted
   setCurrentPosition
   setCurrentSectionPosition
   toFrameworkErrorModel

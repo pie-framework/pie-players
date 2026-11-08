@@ -49,9 +49,7 @@
 		"@pie-players/pie-tool-calculator-desmos": ["@pie-players/pie-calculator"],
 		"@pie-players/pie-tool-calculator-shared": ["@pie-players/pie-calculator"]
 	},
-	"allowedUnreachableDependencies": {
-		"@pie-players/pie-item-player": ["@pie-players/pie-context"]
-	},
+	"allowedUnreachableDependencies": {},
 	"workspaceRoots": ["packages"],
 	"forbiddenPublicExports": {
 		"@pie-players/pie-players-shared": [

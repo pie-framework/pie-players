@@ -21,6 +21,10 @@
 	],
 	"main": "./dist/calculator-element.js",
 	"exports": {
+		".": {
+			"types": "./dist/calculator-element.d.ts",
+			"import": "./dist/calculator-element.js"
+		},
 		"./calculator-element": {
 			"types": "./dist/calculator-element.d.ts",
 			"import": "./dist/calculator-element.js"

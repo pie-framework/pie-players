@@ -552,7 +552,7 @@ export function findUnresolvableBrowserSpecifiers(content, allowed = []) {
 
 function readAllowedUndeclaredRuntimeImports(packageName) {
 	const policy = readPublishPolicy(ROOT);
-	return policy.allowedUndeclaredRuntimeImports?.[packageName] ?? [];
+	return policy.allowedUndeclaredRuntimeImports?.browser?.[packageName] ?? [];
 }
 
 /**

@@ -171,8 +171,12 @@ Section player core that renders `<pie-assessment-toolkit>` for its `runtime`, `
 			surfaceRuntimeContext = value;
 		});
 	});
-	const defaultToolRegistry = createPackagedToolRegistry();
-	const effectiveToolRegistry = $derived(toolRegistry ?? defaultToolRegistry);
+	// A derived is computed on its first read, and this one is read only when no
+	// registry is supplied, so a host's registry, or the one a layout passes
+	// down, leaves the packaged registry unbuilt. It reads no state, so it is
+	// built at most once.
+	const packagedToolRegistry = $derived(createPackagedToolRegistry());
+	const effectiveToolRegistry = $derived(toolRegistry ?? packagedToolRegistry);
 	const effectiveOnFrameworkError = $derived.by(() => runtime?.onFrameworkError);
 	const effectiveSectionId = $derived(
 		resolveSectionId({ sectionId, section, assessmentId: effectiveAssessmentId }),

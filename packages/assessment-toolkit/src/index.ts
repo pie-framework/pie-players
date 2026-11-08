@@ -288,6 +288,7 @@ export type {
 } from "./attempt/AssessmentSession.js";
 export {
 	createNewAssessmentSession,
+	markAssessmentSessionSubmitted,
 	setCurrentSectionPosition,
 	upsertSectionSession,
 } from "./attempt/AssessmentSession.js";

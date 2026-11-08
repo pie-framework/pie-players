@@ -184,6 +184,11 @@ export type ReferencedItemEntity = Omit<
 // QTI 2.x counterparts.
 // ============================================================================
 
+/**
+ * QTI 3 `qti-rubric-block@view` roles — the complete token set of the QTI 3.0
+ * ASI information model (v3p0p1). QTI 3 kebab-cases element names but keeps
+ * these camelCase attribute values unchanged from QTI 2.x.
+ */
 export type RubricBlockView =
 	| "author"
 	| "candidate"
@@ -319,8 +324,20 @@ export interface AssessmentSection extends BaseEntity {
 export interface TestPart {
 	id?: string;
 	identifier: string;
-	navigationMode: "linear" | "nonlinear";
-	submissionMode: "individual" | "simultaneous";
+	/**
+	 * QTI 3.0 import metadata (`qti-test-part@navigation-mode`), declared for
+	 * structural fidelity and read by no player. PIE delivery is index-linear
+	 * over the flattened section plan whatever this says, so it stays optional
+	 * rather than requiring a value the runtime cannot honor.
+	 */
+	navigationMode?: "linear" | "nonlinear";
+	/**
+	 * QTI 3.0 import metadata (`qti-test-part@submission-mode`), declared for
+	 * structural fidelity and read by no player. How an item commits its
+	 * response is delivery policy (ADR 0005, `sessionCommitContext`), not this
+	 * field.
+	 */
+	submissionMode?: "individual" | "simultaneous";
 	sections: AssessmentSection[];
 }
 

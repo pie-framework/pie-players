@@ -324,9 +324,10 @@ not a claim that consumer verification or implementation has already happened.
 
 ## Deferred work-computer check — R-10 / D3 client compatibility
 
-**Status:** deferred by maintainer on 2026-11-04; requires client checkouts on
-a different computer. This is a separate verification task, not an unresolved
-design choice and not a reason to stop unrelated remediation.
+**Status:** verified 2026-11-08 (results below). Originally deferred by the
+maintainer on 2026-11-04; required client checkouts on a different computer.
+This is a separate verification task, not an unresolved design choice and not a
+reason to stop unrelated remediation.
 
 **Question:** for every known client and its actual TTS endpoint, which language
 fields are configured, sent and accepted; which override wins; and are speech
@@ -349,6 +350,38 @@ cases. Update consumer-pad rows only when evidence contradicts them; do not
 advance full-refresh dates for a targeted check. Record results here. No wire
 implementation, external client migration, release or publish is implied by
 this verification handoff.
+
+### Result — 2026-11-08
+
+Every recorded consumer resolved; the backend that serves the two
+client-facing server read-aloud hosts was read as well as their browser
+configuration.
+
+- **Who speaks through a server.** Two client-facing hosts and the internally
+  controlled host, all on `backend: "server"`, `serverProvider: "custom"`,
+  `transportMode: "custom"`, `endpointMode: "rootPost"`,
+  `endpointValidationMode: "none"`, with `lang_id` set from the host's locale.
+  None sets `engine`, `format` or `speechMarksMode`. One other host uses the
+  browser backend; the rest have no read-aloud. No host implements
+  `ITTSProvider` or names another vendor.
+- **What each endpoint reads.** The client-facing hosts' backend binds the
+  request as camelCase JSON and reads `langId` only, then sends the upstream
+  service `lang_id`. The internally controlled host's route reads `lang_id`
+  only. The two endpoints behind the one `custom` transport therefore require
+  opposite spellings.
+- **Precedence.** A host-set `lang_id` wins on the custom transport, as
+  documented; no host relies on content language overriding it.
+- **Speech marks.** The client-facing backend returns inline `speechMarks`
+  already normalized against the request text, fetching the marks URL itself
+  and falling back to none; the internal route returns inline marks when it has
+  them plus the `word` URL. The client's inline-marks path is load-bearing; the
+  URL path is still exercised.
+
+**Migration plan.** Dual-send stays: `langId` cannot leave the wire while the
+client-facing backend exists, and `lang_id` can leave it only after the
+internally controlled route reads `langId`. The canonical internal field
+(D3) lands with the custom adapter emitting both until then. No pad row is
+contradicted, so no pad edit.
 
 ## Sequential execution plan — 1.0 stabilization
 
@@ -375,7 +408,7 @@ and a final audit, rather than a decision prerequisite left until the end.
 | 1 / R-01, then R-07 | Finish the two existing branches as separate PRs; do not combine or rewrite already verified fixes merely to fit the new grouping. R-01 restores accessible undo; R-07 defers tracked-effect writes. | Re-verify against current develop, per-item tests and full push gate; changeset in each; record PR and merge separately. R-07 must merge before batch 5. | R-01: done (#932, merged 7ce8863bc). R-07: done (#933, merged 4e341f221). |
 | 2 / R-04 | Make source-export and pack-integrity validation share the existing collectors. Keep existing command entrypoints initially. Leave unrelated script deletions and D1 out. | `check:scripts`, collector regression tests, both validation callers agree on build-config declarations; no changeset. | done (#934, merged cac1c0059); remaining R-04 infrastructure scope stays in batch 11 |
 | 3 / R-02 + R-15 | Finish self-contained debug-panel styles and their class gate; fix tts-settings declarations to use the minimal structural coordinator contract. Inspect all five packages, but change dependency classification only where runtime imports permit it. | Non-DaisyUI visual/keyboard check; panel tests; declaration consumer check without toolkit/skipLibCheck; API report, pad, packaging checks and changeset. Upstream TTS styling is retained. | done (#935, merged a4b4627f8): PNP debugger toggles style themselves (their root-qualified rules had been pruned by Svelte, leaving them on host `.active`/`.danger`), light-DOM class gate added, tts-settings declares a structural coordinator. DebugPanelToggles is demo-only — no host imports it (consumer sweep 2026-11-04) — so it leaves the published package in batch 12 instead of being restyled. |
-| 4 / R-03 + R-13 + R-14 + annotation portion of R-24 | One icon pass: centralize FA pin/detection/shadow installation; wire all three consumers; complete fallback glyphs; migrate affected registrations and widen neutrality checks in the same PR. Localize annotation announcements while those controls are under verification. Preserve current provider defaults and public icon keys; defer a rename if it would break callers. | FontAwesome asset/browser specs, single-pin guard, registration and neutrality tests, visual checks, API report/pad for added shared surface; changeset. R-13/R-14 land atomically. | in progress (fix/r03-toolbar-glyphs, #936); R-13 upstream coordinator work already closed |
+| 4 / R-03 + R-13 + R-14 + annotation portion of R-24 | One icon pass: centralize FA pin/detection/shadow installation; wire all three consumers; complete fallback glyphs; migrate affected registrations and widen neutrality checks in the same PR. Localize annotation announcements while those controls are under verification. Preserve current provider defaults and public icon keys; defer a rename if it would break callers. | FontAwesome asset/browser specs, single-pin guard, registration and neutrality tests, visual checks, API report/pad for added shared surface; changeset. R-13/R-14 land atomically. | done (#936, merged 5dfbb6f54); R-13 upstream coordinator work already closed. No rename was deferred; the vendored tag rename is tracked under the 2026-11-08 architecture-review decisions below. |
 
 ### Wave 1 — Interaction and data correctness
 
@@ -400,6 +433,19 @@ release until every original finding is eliminated.
 | 11 / R-11 + remaining R-23, then remaining R-25/R-04 | Calculator lifecycle/telemetry and helper dedupe together if a demonstrated leak/divergence warrants it; otherwise defer the new package (D5). Separately finish release-infrastructure cleanup only where it fixes a verified gate/build risk. Unused smoke tool (D1), auth refactors, resolutions removal and broad svelte-check alignment are not automatic stabilization work. | Package/fixed-versioning checks if D5 approved; relevant regressions and scripts tests; separate runtime and infrastructure PRs rather than one cross-cutting cleanup PR. | deferred recommendation; pending maintainer disposition |
 | 12 / R-22 + removal portions of R-16/R-17/R-21 | One explicit public-surface batch: exact symbol list, consumer verification and migration notes before editing. Includes assessment readiness type/selectors, public controller methods and session-result narrowing, catalog-store writers, and the R-22 inventory. D8 governs registry retention. No removals elsewhere. | Maintainer-approved removal list; pad procedure, API report, type/consumer and packaging checks; patch changeset names affected host shapes. If approved, land immediately before the coordinated lockstep release, with time for release-candidate verification. Publishing itself needs a separate instruction. | held; no blanket approval and no scheduled release |
 | 13 / R-26 | Audit every original R-id and D-id: completed scope, deferred scope with rationale, remaining client impacts, and release-candidate evidence. | No silent omissions; unresolved choices cannot be treated as accepted defaults. | ongoing, final audit after applicable batches |
+
+## Pre-1.0 architecture review decisions — 2026-11-08
+
+A separate pre-1.0 architecture review raised four items, checked against
+every recorded consumer on 2026-11-08 and decided by the maintainer the same
+day.
+
+| Item | Evidence | Decision | Status |
+|---|---|---|---|
+| Vendored `nds-icon-button` registered under the design system's own tag (within R-03) | No host selects or styles the tag or its BEM classes. One host sets `nds-icons`. A host shell page loads the design system's own `nds-icon-button`, registered without a define guard, before PIE loads, so PIE's copy is skipped there (version skew) and the reverse order would throw in the shell. | Rename the registered tag to `pie-nds-icon-button`; BEM classes, the `./nds-icon-button` export path and eager registration stay. | todo |
+| Closed TTS vendor/transport unions (R-10) | See the R-10 / D3 result above: no host uses another vendor or its own provider. | Add a host-provider seam now: a host can hand the toolkit an `ITTSProvider` without posing as a server. Additive; the existing unions and wire behavior stay. Shape confirmed with the maintainer before implementation. | todo |
+| Module singletons when `players-shared` loads twice | The preloaded strategy puts two copies on one page by design: one client-facing host loads the preloaded build and the section player's bundle on every launch, possibly at different versions. The preloaded copy's `pie-item-player` registers first, so its observer and loader run and the other copy's stay idle. | ADR: multiple copies are supported; `Symbol.for`/window-keyed state is the cross-copy contract and module state is per copy. No second-copy warning. A singleton moves to window state only when a host shows it doubling; i18n coordinates with R-12. | todo |
+| Package names that promise a vendor or a different tool (adjacent to D5) | No host imports `pie-tool-calculator-desmos`, `pie-tool-calculator-inline-desmos` or `pie-tool-theme`; three hosts only declare them. | Non-breaking: correct descriptions and READMEs, rename the `packages/tool-color-scheme` directory. Published names stay for 1.0. | todo |
 
 ## Client-visible changes: the 1.0 case
 

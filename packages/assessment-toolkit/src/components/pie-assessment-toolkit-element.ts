@@ -1,3 +1,3 @@
 import "./PieAssessmentToolkit.custom-element.js";
 
-export {};
+export type { PieAssessmentToolkitElement } from "./element-contracts.js";

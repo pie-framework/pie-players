@@ -61,19 +61,18 @@ An item's scope for the toolkit's tools, in a section player's card or around a 
 	} from "../runtime/item-feature-decisions.js";
 	import { createShellEventBridge } from "../runtime/shell-event-bridge.js";
 	import { createShellScope } from "../runtime/shell-scope.js";
-	import type { ItemSettings } from "@pie-players/pie-players-shared/types";
-	import type { TTSHighlightTargetResolver } from "../services/tts/highlight-target-resolver.js";
+	import type { ItemScopeElementProps } from "./element-contracts.js";
 
 	let {
 		itemId = "",
 		canonicalItemId = "",
 		contentKind = "assessment-item",
 		regionPolicy = "default",
-		scopeElement = null as HTMLElement | null,
-		ttsHighlightTargetResolver = null as TTSHighlightTargetResolver | null,
-		item = null as unknown,
-		settings = null as ItemSettings | null,
-	} = $props();
+		scopeElement = null,
+		ttsHighlightTargetResolver = null,
+		item = null,
+		settings = null,
+	}: ItemScopeElementProps = $props();
 
 	let anchor = $state<HTMLDivElement | null>(null);
 	const host = $derived.by((): HTMLElement | null => {

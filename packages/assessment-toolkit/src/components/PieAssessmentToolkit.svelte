@@ -134,6 +134,7 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 	} from "../services/framework-error.js";
 	import { FrameworkErrorBus } from "../services/framework-error-bus.js";
 	import type { ToolRegistry } from "../services/ToolRegistry.js";
+	import type { AssessmentToolkitElementProps, HostItemPlayerInput } from "./element-contracts.js";
 	import {
 		normalizeAndValidateToolsConfig,
 		type ToolConfigStrictness,
@@ -217,12 +218,6 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 		payloadSignature: string;
 	}
 
-	type HostItemPlayerInput = Partial<
-	Pick<
-		ItemPlayerConfig,
-		"type" | "tagName" | "version" | "source" | "loaderConfig" | "loaderOptions"
-	>
-	> | null;
 
 	const runtimeId = createRuntimeId("toolkit");
 	// Resolves the section's controller and carries shell registration, content
@@ -257,30 +252,25 @@ const DEFAULT_ENV = {
 		env = {},
 		ndsIcons = false,
 		locale = "",
-		i18n = null as I18nProvider | null,
+		i18n = null,
 		contentLanguage = "",
 		lazyInit = false,
-		toolConfigStrictness = "error" as ToolConfigStrictness,
+		toolConfigStrictness = "error",
 		tools = {},
-		toolContextResolvers = null as Record<string, unknown> | null,
+		toolContextResolvers = null,
 		enabledTools = "",
-		toolRegistry = null as ToolRegistry | null,
+		toolRegistry = null,
 		accessibility = {},
-		player = null as HostItemPlayerInput,
-		playerType = "" as ItemPlayerType | "",
-		coordinator = null as ToolkitCoordinator | null,
-		createSectionController = null as null | (() => unknown),
-		onFrameworkError = null as null | ((errorModel: FrameworkErrorModel) => void),
-		errorRenderer = null as
-			| null
-			| ((errorModel: FrameworkErrorModel) => {
-					title?: string;
-					details?: string[];
-			  }),
-		assessment = null as AssessmentEntity | null,
+		player = null,
+		playerType = "",
+		coordinator = null,
+		createSectionController = null,
+		onFrameworkError = null,
+		errorRenderer = null,
+		assessment = null,
 		isolation = "inherit",
-		session = null as SectionControllerSessionState | null,
-	} = $props();
+		session = null,
+	}: AssessmentToolkitElementProps = $props();
 
 	let anchor = $state<HTMLDivElement | null>(null);
 	let ownedCoordinator = $state<ToolkitCoordinator | null>(null);

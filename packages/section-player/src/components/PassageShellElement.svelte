@@ -26,21 +26,19 @@ Shell around a passage in a section player: it publishes the passage's identity 
 -->
 
 <script lang="ts">
-	import {
-		createShellScope,
-		type TTSHighlightTargetResolver,
-	} from "@pie-players/pie-assessment-toolkit";
+	import { createShellScope } from "@pie-players/pie-assessment-toolkit";
 	import { createShellEventBridge } from "@pie-players/pie-assessment-toolkit";
+	import type { PassageShellElementProps } from "../contracts/elements.js";
 
 	let {
 		itemId = "",
 		canonicalItemId = "",
 		contentKind = "rubric-block-stimulus",
 		regionPolicy = "default",
-		scopeElement = null as HTMLElement | null,
-		ttsHighlightTargetResolver = null as TTSHighlightTargetResolver | null,
-		item = null as unknown,
-	} = $props();
+		scopeElement = null,
+		ttsHighlightTargetResolver = null,
+		item = null,
+	}: PassageShellElementProps = $props();
 
 	let anchor = $state<HTMLDivElement | null>(null);
 

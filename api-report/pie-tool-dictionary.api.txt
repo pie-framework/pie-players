@@ -9,4 +9,5 @@
   type DictionaryLookupRequest
   type DictionaryLookupResult
   type DictionarySense
+  type PieToolDictionaryElement
   default

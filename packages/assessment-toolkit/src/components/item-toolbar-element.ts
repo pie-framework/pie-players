@@ -1,3 +1,3 @@
 import "./ItemToolBar.custom-element.js";
 
-export {};
+export type { PieItemToolbarElement } from "./element-contracts.js";

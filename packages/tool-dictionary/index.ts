@@ -11,6 +11,17 @@
  * property to use a client of your own.
  */
 
+import type { DictionaryElementProps } from "./element-props.js";
+
+/** Native host interface for `<pie-tool-dictionary>`. Properties may be unset until it mounts. */
+export interface PieToolDictionaryElement extends HTMLElement, DictionaryElementProps {}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-tool-dictionary": PieToolDictionaryElement;
+	}
+}
+
 export type {
 	DictionaryEntry,
 	DictionaryLookup,

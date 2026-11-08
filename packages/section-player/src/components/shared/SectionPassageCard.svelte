@@ -40,8 +40,6 @@ Passage card of a section player: renders a passage's heading, `<pie-item-toolba
 	import type {
 		AssessmentToolkitRuntimeContext,
 		CatalogOwnerContext,
-		ToolRegistry,
-		ToolbarItem,
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
 		catalogOwnerContextFor,
@@ -54,10 +52,10 @@ Passage card of a section player: renders a passage's heading, `<pie-item-toolba
 		createMediaElementTimeSource,
 		findMediaElement,
 	} from "@pie-players/pie-players-shared/timed-media";
-	import type { PassageEntity } from "@pie-players/pie-players-shared/types";
 	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
+	import type { SectionPassageCardElementProps } from "../../contracts/elements.js";
 	import { resolveCardTitle } from "./card-title.js";
-	import type { PlayerElementParams } from "./player-action.js";
+	import type { PlayerElementAction } from "./player-action.js";
 	import {
 		DEFAULT_SECTION_BASE_HEADING_LEVEL,
 		normalizeBaseHeadingLevel,
@@ -74,25 +72,21 @@ Passage card of a section player: renders a passage's heading, `<pie-item-toolba
 
 	let {
 		passage,
-		baseHeadingLevel = DEFAULT_SECTION_BASE_HEADING_LEVEL as number,
+		baseHeadingLevel = DEFAULT_SECTION_BASE_HEADING_LEVEL,
 		resolvedPlayerTag = "div",
-		playerAction = (_node: HTMLElement, _params: PlayerElementParams) => undefined,
+		playerAction = () => undefined,
 		playerParams,
 		passageToolbarTools,
-		toolRegistry = null as ToolRegistry | null,
-		hostButtons = [] as ToolbarItem[],
+		toolRegistry = null,
+		hostButtons = [],
 		timedMediaStimulus = false,
-	} = $props<{
-		passage: PassageEntity;
-		baseHeadingLevel?: number;
-		resolvedPlayerTag?: string;
-		playerAction?: (node: HTMLElement, params: PlayerElementParams) => unknown;
-		playerParams: PlayerElementParams;
-		passageToolbarTools: string;
-		toolRegistry?: ToolRegistry | null;
-		hostButtons?: ToolbarItem[];
-		timedMediaStimulus?: boolean;
-	}>();
+	}: SectionPassageCardElementProps &
+		Required<
+			Pick<
+				SectionPassageCardElementProps,
+				"passage" | "playerParams" | "passageToolbarTools"
+			>
+		> = $props();
 
 	// Clamped here rather than trusted: the pane normalizes, but this card is a
 	// custom element a host can drive directly, and an out-of-range level would
@@ -107,7 +101,7 @@ Passage card of a section player: renders a passage's heading, `<pie-item-toolba
 	let contextAnchor = $state<HTMLDivElement | null>(null);
 	let contextResolvedPlayerTag = $state<string | null>(null);
 	let contextPlayerAction = $state<
-		((node: HTMLElement, params: PlayerElementParams) => unknown) | null
+		PlayerElementAction | null
 	>(null);
 	let contextCardTitleFormatter = $state<SectionPlayerCardTitleFormatter | null>(null);
 	let contextConnected = $state(false);

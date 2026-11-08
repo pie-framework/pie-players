@@ -6,6 +6,7 @@
 .
   AMERICAN_SIGN_LANGUAGE
   CONTENT_MEDIA_SURFACE
+  type PieToolSignLanguageElement
   type ResolvedSignLanguageAlternate
   SIGN_LANGUAGE_CATALOG_TYPE
   SIGN_LANGUAGE_ELEMENT_TAG

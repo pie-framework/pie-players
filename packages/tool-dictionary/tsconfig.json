@@ -8,6 +8,6 @@
 		"composite": true,
 		"moduleResolution": "NodeNext"
 	},
-	"include": ["index.ts", "lookup.ts", "tool-dictionary.svelte"],
+	"include": ["index.ts", "element-props.ts", "lookup.ts", "tool-dictionary.svelte"],
 	"exclude": ["node_modules", "dist"]
 }

@@ -22,6 +22,16 @@
 
 // Registers `<pie-tool-sign-language>`.
 import "./src/SignLanguageMediaRegion.svelte";
+import type { SignLanguageElementProps } from "./src/element-props.js";
+
+/** Native host interface for `<pie-tool-sign-language>`. `media` is unset until the host assigns it. */
+export interface PieToolSignLanguageElement extends HTMLElement, SignLanguageElementProps {}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-tool-sign-language": PieToolSignLanguageElement;
+	}
+}
 
 export {
 	CONTENT_MEDIA_SURFACE,

@@ -21,7 +21,7 @@ export default defineConfig({
 			// No `insertTypesEntry`: it derives the types entry from the bundle
 			// entry, which is a `.svelte` file with no declarations, and writes a
 			// stub over the `index.d.ts` emitted from `index.ts`.
-			include: ["index.ts", "lookup.ts"],
+			include: ["index.ts", "element-props.ts", "lookup.ts"],
 		}),
 	],
 	build: {

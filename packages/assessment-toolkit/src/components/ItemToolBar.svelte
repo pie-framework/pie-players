@@ -110,6 +110,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	import type { ElementToolContext, ItemToolContext, ToolContext } from '../services/tool-context.js';
 	import { elementSupports } from '../services/tool-context.js';
 	import type { ToolPolicyDecision } from '../policy/engine.js';
+	import type { ItemToolbarElementProps } from './element-contracts.js';
 	import { createDecidedToolsTracker } from '../services/toolbar-decided-tools.js';
 	// Side-effect import: registers <pie-nds-icon-button>. Single vendored source of
 	// truth lives in players-shared (Lit inlined, self-contained); see
@@ -193,7 +194,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 
 	// Props
 	let {
-		level = 'item' as ToolScopeLevel,
+		level = 'item',
 		scopeId = '',
 		itemId = '',
 		sectionId = '',
@@ -205,30 +206,17 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		// answer `fallbackToolRegistry` gives.
 		tools = '',
 		contentKind = 'assessment-item',
-		position = 'bottom' as 'top' | 'right' | 'bottom' | 'left' | 'none',
+		position = 'bottom',
 		scopeElement = null,
 		toolRegistry = null,
 		item = null,
-		hostButtons = [] as ToolbarItem[],
+		hostButtons = [],
 		class: className = '',
-		size = 'md' as 'sm' | 'md' | 'lg',
+		size = 'md',
 		language = ''
-	}: {
-		level?: ToolScopeLevel;
-		scopeId?: string;
-		itemId?: string;
-		sectionId?: string;
-		catalogId?: string;
-		tools?: string;
-		contentKind?: string;
-		position?: 'top' | 'right' | 'bottom' | 'left' | 'none';
-		scopeElement?: HTMLElement | null;
-		toolRegistry?: ToolRegistry | null;
-		item?: ItemEntity | null;
-		hostButtons?: ToolbarItem[];
+	}: ItemToolbarElementProps & {
+		/** Svelte-side only; the element has no `class` property. */
 		class?: string;
-		size?: 'sm' | 'md' | 'lg';
-		language?: string;
 	} = $props();
 
 	let toolbarRootElement = $state<HTMLDivElement | null>(null);

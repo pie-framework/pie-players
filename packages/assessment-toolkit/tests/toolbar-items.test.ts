@@ -92,7 +92,11 @@ describe("toolbar-items validation", () => {
 			"const fallbackToolRegistry = new ToolRegistry();",
 		);
 		expect(code).not.toContain("createPackagedToolRegistry");
-		expect(code).not.toContain("@pie-players/pie-default-tool-loaders");
+		// The package name may appear in prose, as the empty-registry warning
+		// names it; an import of it may not.
+		expect(code).not.toMatch(
+			/(?:\bfrom\s*|\bimport\s*\(?\s*)["']@pie-players\/pie-default-tool-loaders/,
+		);
 		expect(code).not.toContain("DEFAULT_TOOL_MODULE_LOADERS");
 	});
 });

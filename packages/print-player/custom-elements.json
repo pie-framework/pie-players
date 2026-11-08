@@ -45,7 +45,7 @@
 							"kind": "field",
 							"name": "sanitizeMarkup",
 							"type": {
-								"text": "ItemMarkupSanitizer | null"
+								"text": "PrintMarkupSanitizer | null"
 							},
 							"description": "Custom sanitizer, used instead of the default one. Ignored when `trustMarkup` is set."
 						},

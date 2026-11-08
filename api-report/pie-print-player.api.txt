@@ -16,9 +16,22 @@
   type MountedAlternates
   type NodeResult
   PiePrint
+  type PiePrintConstructor
+  type PiePrintElement
   type PkgResolution
+  type PrintAccessibilityCatalog
   type PrintAccessibilityConfig
+  type PrintAssessmentSettings
+  type PrintCatalogCard
+  type PrintElementPackagePolicy
+  type PrintEsmCdnProvider
+  type PrintEsmCdnProviderOption
+  type PrintItemSettings
   type PrintLoaderOptions
+  type PrintMarkupSanitizer
+  type PrintPersonalNeedsProfile
+  type PrintToolParameters
+  type PrintToolRegistration
   type ResolverFn
   defaultLoadResolution
   defaultResolve

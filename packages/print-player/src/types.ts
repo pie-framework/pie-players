@@ -2,12 +2,12 @@
  * Type definitions for PIE Print Player
  */
 
-import type {
-	ElementPackagePolicy,
-	EsmCdnProviderOption,
-} from "@pie-players/pie-players-shared/loaders";
-import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
 import type { PrintAccessibilityConfig } from "./accessibility-alternates.js";
+import type {
+	PrintAccessibilityCatalog,
+	PrintElementPackagePolicy,
+	PrintEsmCdnProviderOption,
+} from "./shared-shapes.js";
 
 /**
  * Map of element tag names to package names with versions
@@ -44,9 +44,9 @@ export interface Item {
 	 * so catalogs written onto a model arrive on {@link Model} already and these
 	 * are the entity-root ones a host has to pass explicitly.
 	 */
-	accessibilityCatalogs?: AccessibilityCatalog[];
+	accessibilityCatalogs?: PrintAccessibilityCatalog[];
 	/** Catalogs an extractor generated from the item's own content. */
-	extractedCatalogs?: AccessibilityCatalog[];
+	extractedCatalogs?: PrintAccessibilityCatalog[];
 }
 
 /**
@@ -87,7 +87,7 @@ export interface PkgResolution {
 	/** CDN base used by the browser ESM loader */
 	cdnBaseUrl?: string;
 	/** CDN provider used by the browser ESM loader; inferred from `cdnBaseUrl` when absent */
-	cdnProvider?: EsmCdnProviderOption;
+	cdnProvider?: PrintEsmCdnProviderOption;
 }
 
 /**
@@ -98,9 +98,9 @@ export interface PrintLoaderOptions {
 	/** ESM CDN base, jsDelivr's `https://cdn.jsdelivr.net/npm` by default */
 	esmCdnUrl?: string;
 	/** CDN URL strategy; inferred from `esmCdnUrl` when absent */
-	esmCdnProvider?: EsmCdnProviderOption;
+	esmCdnProvider?: PrintEsmCdnProviderOption;
 	/** Optional host-controlled package allowlist, checked before any resolver. */
-	elementPackagePolicy?: ElementPackagePolicy;
+	elementPackagePolicy?: PrintElementPackagePolicy;
 }
 
 /**

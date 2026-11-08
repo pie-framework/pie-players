@@ -42,7 +42,7 @@
  * @module @pie-players/pie-i18n-generated
  */
 
-import type { MessageCatalog } from "@pie-players/pie-players-shared/i18n/types";
+import type { MessageCatalog } from "./message-catalog.js";
 
 type CatalogLoader = () => Promise<{ default: MessageCatalog }>;
 

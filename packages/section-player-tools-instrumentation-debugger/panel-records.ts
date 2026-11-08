@@ -1,4 +1,4 @@
-import type { InstrumentationDebugRecord } from "@pie-players/pie-players-shared";
+import type { InstrumentationDebugRecord } from "./debug-record.js";
 
 export type RecordKind = InstrumentationDebugRecord["kind"];
 export type RecordLimitOverrides = Partial<Record<RecordKind, number>>;

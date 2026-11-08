@@ -1,6 +1,7 @@
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
 
 const assertNoEvalRequireInOutput = {
 	name: "assert-no-eval-require-in-output",
@@ -21,6 +22,7 @@ const assertNoEvalRequireInOutput = {
 
 export default defineConfig({
 	plugins: [
+		preserveLegalComments(),
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",

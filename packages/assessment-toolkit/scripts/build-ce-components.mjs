@@ -190,6 +190,13 @@ const dropSvelteDevImport = {
 // by every host whether or not it speaks a formula. `minify` matches the
 // Vite-built packages in this repo.
 //
+// Bun keeps `/*! … */` comments through `minify` and drops `@license` JSDoc
+// ones. Every dependency is external here, so the artifacts inline only Svelte
+// and this package's own code and no notice-bearing library is lost;
+// `check:bundle-safety` fails the build if a library that needs its notice
+// (DOMPurify, lit, MathJax, MathLive, Compute Engine, speech-rule-engine) is
+// ever inlined without one.
+//
 // The `NODE_ENV` define and the `production` condition are Bun's production
 // resolution for every module the plugin does not rewrite. The define alone
 // drops the `development` export condition without adding `production`, which

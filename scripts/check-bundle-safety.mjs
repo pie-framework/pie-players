@@ -740,6 +740,10 @@ const SELF_CONTAINED_CDN_PLAYERS = new Set([
 	"@pie-players/pie-print-player",
 ]);
 
+/** A specifier a page resolves only through an import map: no path, no URL. */
+const isBareSpecifier = (specifier) =>
+	!/^(?:\.{0,2}\/|[a-z][a-z0-9+.-]*:)/i.test(specifier);
+
 /**
  * A tool or a player's npm build resolves the toolkit, players-shared and
  * pie-context from the host, so a section host carries one copy of each rather
@@ -748,10 +752,13 @@ const SELF_CONTAINED_CDN_PLAYERS = new Set([
 function checkToolsImportHostSharedPackages(failures) {
 	for (const shared of HOST_SHARED_PACKAGES) {
 		const absDist = path.join(ROOT, shared.dist);
-		if (
-			!existsSync(absDist) ||
-			!readDistFiles(absDist).some((file) => shared.marker.test(file.content))
-		) {
+		if (!existsSync(absDist)) {
+			failures.push(
+				`[bundle-safety] ${shared.dist} is missing, so nothing can tell whether ${shared.name} is inlined elsewhere; build it first`,
+			);
+			continue;
+		}
+		if (!readDistFiles(absDist).some((file) => shared.marker.test(file.content))) {
 			failures.push(
 				`[bundle-safety] ${shared.dist} no longer carries ${shared.marker}, which marks ${shared.name} inlined elsewhere; pick a string only its published code still carries`,
 			);
@@ -784,7 +791,7 @@ function checkToolsImportHostSharedPackages(failures) {
 		}
 		for (const file of readDistFiles(dir)) {
 			for (const { specifier } of scanScriptImports(file.content)) {
-				if (/^@pie-players\//.test(specifier)) {
+				if (isBareSpecifier(specifier)) {
 					failures.push(
 						`[bundle-safety] ${path.relative(ROOT, dir)}/${file.path} imports ${specifier}, but this dist is the CDN entry and imports no bare specifier; bundle it`,
 					);

@@ -190,14 +190,15 @@ Beyond their `@pie-players/*` siblings, the packages install:
 | --- | --- |
 | `speech-rule-engine`, pinned to `5.0.0-rc.4` | the assessment toolkit, the TTS settings panel |
 | `@pie-element/shared-utils`, `@pie-lib/math-rendering-module`, `dompurify`, `ipaddr.js`, `semver` | `@pie-players/pie-players-shared` |
-| `lit` | the print player |
 | `@google-cloud/text-to-speech` | `@pie-players/tts-server-google` |
 | `@aws-sdk/client-polly` | `@pie-players/tts-server-polly` |
 | `jose`, `tldts` | `@pie-players/tts-server-sc` |
 
-The section player's npm build leaves the toolkit, players-shared and
-pie-context external, as every tool does, so a host carries one copy of each
-and of the toolkit's `speech-rule-engine`.
+The section player's and item list's npm builds leave the toolkit,
+players-shared and pie-context external, as every tool does, so they share one
+copy of each, and of the toolkit's `speech-rule-engine`. The item player and the
+print player bundle everything, `lit` included, since each one's `dist` is also
+its CDN file.
 
 ## TypeScript
 

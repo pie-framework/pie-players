@@ -564,19 +564,38 @@ function readAllowedUndeclaredRuntimeImports(packageName) {
  */
 function checkBrowserBuilds(failures) {
 	const dirs = listBrowserBuildDirs();
+	const checked = new Set();
 	for (const dir of dirs) {
 		const packageName = readManifest(path.dirname(path.dirname(dir))).name;
+		checked.add(packageName);
 		const allowed = readAllowedUndeclaredRuntimeImports(packageName);
+		const excused = new Set();
 		for (const file of readDistFiles(dir)) {
-			for (const specifier of findUnresolvableBrowserSpecifiers(
-				file.content,
-				allowed,
-			)) {
+			const unresolvable = findUnresolvableBrowserSpecifiers(file.content);
+			for (const specifier of unresolvable) {
+				if (allowed.includes(specifier)) {
+					excused.add(specifier);
+					continue;
+				}
 				failures.push(
 					`[bundle-safety] ${path.relative(ROOT, dir)}/${file.path} imports ${specifier}, which a page cannot resolve without an import map; the browser build bundles every dependency (external: [])`,
 				);
 			}
 		}
+		for (const specifier of allowed.filter((entry) => !excused.has(entry))) {
+			failures.push(
+				`[bundle-safety] "${specifier}" in allowedUndeclaredRuntimeImports.browser["${packageName}"] excuses nothing in ${path.relative(ROOT, dir)}; remove it from scripts/publish-policy.json`,
+			);
+		}
+	}
+	const policy = readPublishPolicy(ROOT);
+	for (const packageName of Object.keys(
+		policy.allowedUndeclaredRuntimeImports?.browser ?? {},
+	)) {
+		if (checked.has(packageName)) continue;
+		failures.push(
+			`[bundle-safety] allowedUndeclaredRuntimeImports.browser["${packageName}"] names a package with no browser build; remove it from scripts/publish-policy.json`,
+		);
 	}
 	return dirs.length;
 }
@@ -721,6 +740,10 @@ const SELF_CONTAINED_CDN_PLAYERS = new Set([
 	"@pie-players/pie-print-player",
 ]);
 
+/** A specifier a page resolves only through an import map: no path, no URL. */
+const isBareSpecifier = (specifier) =>
+	!/^(?:\.{0,2}\/|[a-z][a-z0-9+.-]*:)/i.test(specifier);
+
 /**
  * A tool or a player's npm build resolves the toolkit, players-shared and
  * pie-context from the host, so a section host carries one copy of each rather
@@ -729,10 +752,13 @@ const SELF_CONTAINED_CDN_PLAYERS = new Set([
 function checkToolsImportHostSharedPackages(failures) {
 	for (const shared of HOST_SHARED_PACKAGES) {
 		const absDist = path.join(ROOT, shared.dist);
-		if (
-			!existsSync(absDist) ||
-			!readDistFiles(absDist).some((file) => shared.marker.test(file.content))
-		) {
+		if (!existsSync(absDist)) {
+			failures.push(
+				`[bundle-safety] ${shared.dist} is missing, so nothing can tell whether ${shared.name} is inlined elsewhere; build it first`,
+			);
+			continue;
+		}
+		if (!readDistFiles(absDist).some((file) => shared.marker.test(file.content))) {
 			failures.push(
 				`[bundle-safety] ${shared.dist} no longer carries ${shared.marker}, which marks ${shared.name} inlined elsewhere; pick a string only its published code still carries`,
 			);
@@ -765,7 +791,7 @@ function checkToolsImportHostSharedPackages(failures) {
 		}
 		for (const file of readDistFiles(dir)) {
 			for (const { specifier } of scanScriptImports(file.content)) {
-				if (/^@pie-players\//.test(specifier)) {
+				if (isBareSpecifier(specifier)) {
 					failures.push(
 						`[bundle-safety] ${path.relative(ROOT, dir)}/${file.path} imports ${specifier}, but this dist is the CDN entry and imports no bare specifier; bundle it`,
 					);

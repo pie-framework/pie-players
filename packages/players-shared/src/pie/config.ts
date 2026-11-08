@@ -91,7 +91,18 @@ export const validatePieConfigContract = (
 	}
 
 	const modelElementTags = new Set<string>();
+	const modelIds = new Set<string>();
 	for (const [index, model] of modelList.entries()) {
+		const modelId = model?.id;
+		if (typeof modelId !== "string" || modelId.trim().length === 0) {
+			errors.push(`Model at index ${index} is missing a valid "id".`);
+		} else if (modelIds.has(modelId)) {
+			errors.push(
+				`Duplicate model id "${modelId}"; ids bind models, markup elements and session entries one-to-one.`,
+			);
+		} else {
+			modelIds.add(modelId);
+		}
 		const modelElement = model?.element;
 		if (typeof modelElement !== "string" || modelElement.trim().length === 0) {
 			errors.push(

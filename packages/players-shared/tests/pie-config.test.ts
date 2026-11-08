@@ -372,6 +372,35 @@ describe("validatePieConfigContract", () => {
 		);
 	});
 
+	test("fails when a model has no id", () => {
+		const result = validatePieConfigContract({
+			markup: '<pie-mc id="m1"></pie-mc>',
+			elements: {
+				"pie-mc": "@pie-element/multiple-choice@1.0.0",
+			},
+			models: [{ element: "pie-mc" }],
+		});
+		expect(result.valid).toBe(false);
+		expect(result.errors.join(" | ")).toContain(
+			'Model at index 0 is missing a valid "id".',
+		);
+	});
+
+	test("fails when two models share an id", () => {
+		const result = validatePieConfigContract({
+			markup: '<pie-mc id="m1"></pie-mc>',
+			elements: {
+				"pie-mc": "@pie-element/multiple-choice@1.0.0",
+			},
+			models: [
+				{ id: "m1", element: "pie-mc" },
+				{ id: "m1", element: "pie-mc" },
+			],
+		});
+		expect(result.valid).toBe(false);
+		expect(result.errors.join(" | ")).toContain('Duplicate model id "m1"');
+	});
+
 	test("fails when custom tags in markup are not declared in elements", () => {
 		const result = validatePieConfigContract({
 			markup: '<pie-missing id="x"></pie-missing>',

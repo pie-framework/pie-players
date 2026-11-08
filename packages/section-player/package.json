@@ -19,31 +19,38 @@
 	"exports": {
 		".": {
 			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
+			"import": "./dist/pie-section-player.js",
+			"default": "./dist/pie-section-player.js"
 		},
 		"./browser": {
 			"types": "./dist/browser.d.ts",
-			"import": "./dist/browser/pie-section-player.js"
+			"import": "./dist/browser/pie-section-player.js",
+			"default": "./dist/browser/pie-section-player.js"
 		},
 		"./components/section-player-splitpane-element": {
 			"types": "./dist/pie-section-player.d.ts",
-			"import": "./dist/pie-section-player.js"
+			"import": "./dist/pie-section-player.js",
+			"default": "./dist/pie-section-player.js"
 		},
 		"./contracts/runtime-host-contract": {
 			"types": "./dist/contracts/runtime-host-contract.d.ts",
-			"import": "./dist/contracts/runtime-host-contract.js"
+			"import": "./dist/contracts/runtime-host-contract.js",
+			"default": "./dist/contracts/runtime-host-contract.js"
 		},
 		"./contracts/host-hooks": {
 			"types": "./dist/contracts/host-hooks.d.ts",
-			"import": "./dist/contracts/host-hooks.js"
+			"import": "./dist/contracts/host-hooks.js",
+			"default": "./dist/contracts/host-hooks.js"
 		},
 		"./policies": {
 			"types": "./dist/policies/index.d.ts",
-			"import": "./dist/policies/index.js"
+			"import": "./dist/policies/index.js",
+			"default": "./dist/policies/index.js"
 		},
 		"./item-section": {
 			"types": "./dist/item-section/index.d.ts",
-			"import": "./dist/item-section/index.js"
+			"import": "./dist/item-section/index.js",
+			"default": "./dist/item-section/index.js"
 		}
 	},
 	"customElements": "custom-elements.json",

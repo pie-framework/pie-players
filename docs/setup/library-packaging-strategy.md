@@ -29,7 +29,12 @@ that recovery part of its contract.
 ## Artifact model
 
 Each package publishes one ESM build, for bundlers and Node.js module
-resolution, behind its `.` export and subpaths.
+resolution, behind its `.` export and subpaths. No package ships CommonJS.
+Every condition object lists `default` straight after `import`, with the same
+target, so a resolver that matches neither `import` nor `types`
+(`require.resolve`, a bundler with custom conditions) lands on the same file.
+`check:package-metadata` enforces the pair and `check:node-consumer-imports`
+runs `require.resolve` over every entry point of the installed tarballs.
 
 The section player adds a second build behind `./browser`, for pages without a
 bundler. `vite.config.browser.ts` builds the npm entry again with nothing
@@ -56,31 +61,38 @@ The section player's complete `exports` map:
   "exports": {
     ".": {
       "types": "./dist/pie-section-player.d.ts",
-      "import": "./dist/pie-section-player.js"
+      "import": "./dist/pie-section-player.js",
+      "default": "./dist/pie-section-player.js"
     },
     "./browser": {
       "types": "./dist/browser.d.ts",
-      "import": "./dist/browser/pie-section-player.js"
+      "import": "./dist/browser/pie-section-player.js",
+      "default": "./dist/browser/pie-section-player.js"
     },
     "./components/section-player-splitpane-element": {
       "types": "./dist/pie-section-player.d.ts",
-      "import": "./dist/pie-section-player.js"
+      "import": "./dist/pie-section-player.js",
+      "default": "./dist/pie-section-player.js"
     },
     "./contracts/runtime-host-contract": {
       "types": "./dist/contracts/runtime-host-contract.d.ts",
-      "import": "./dist/contracts/runtime-host-contract.js"
+      "import": "./dist/contracts/runtime-host-contract.js",
+      "default": "./dist/contracts/runtime-host-contract.js"
     },
     "./contracts/host-hooks": {
       "types": "./dist/contracts/host-hooks.d.ts",
-      "import": "./dist/contracts/host-hooks.js"
+      "import": "./dist/contracts/host-hooks.js",
+      "default": "./dist/contracts/host-hooks.js"
     },
     "./policies": {
       "types": "./dist/policies/index.d.ts",
-      "import": "./dist/policies/index.js"
+      "import": "./dist/policies/index.js",
+      "default": "./dist/policies/index.js"
     },
     "./item-section": {
       "types": "./dist/item-section/index.d.ts",
-      "import": "./dist/item-section/index.js"
+      "import": "./dist/item-section/index.js",
+      "default": "./dist/item-section/index.js"
     }
   }
 }

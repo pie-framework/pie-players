@@ -23,7 +23,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-line-reader.js"
+			"import": "./dist/tool-line-reader.js",
+			"default": "./dist/tool-line-reader.js"
 		}
 	},
 	"customElements": "custom-elements.json",

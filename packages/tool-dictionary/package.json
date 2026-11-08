@@ -22,7 +22,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-dictionary.js"
+			"import": "./dist/tool-dictionary.js",
+			"default": "./dist/tool-dictionary.js"
 		}
 	},
 	"customElements": "custom-elements.json",

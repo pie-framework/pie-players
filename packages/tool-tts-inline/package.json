@@ -18,7 +18,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-tts-inline.js"
+			"import": "./dist/tool-tts-inline.js",
+			"default": "./dist/tool-tts-inline.js"
 		}
 	},
 	"customElements": "custom-elements.json",

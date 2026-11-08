@@ -23,7 +23,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-periodic-table.js"
+			"import": "./dist/tool-periodic-table.js",
+			"default": "./dist/tool-periodic-table.js"
 		}
 	},
 	"customElements": "custom-elements.json",

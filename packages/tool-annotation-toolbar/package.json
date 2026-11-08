@@ -24,7 +24,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-annotation-toolbar.js"
+			"import": "./dist/tool-annotation-toolbar.js",
+			"default": "./dist/tool-annotation-toolbar.js"
 		}
 	},
 	"customElements": "custom-elements.json",

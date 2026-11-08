@@ -280,3 +280,37 @@ export const runPack = async (dir, { destination = dir } = {}) => {
 		cleanup: () => rmSync(tarballPath, { force: true }),
 	};
 };
+
+/**
+ * Every condition object of an `exports` map that names `import` must list
+ * `default` straight after it with the same target. A resolver that matches
+ * neither `import` nor `types` (`require.resolve`, a bundler's custom
+ * conditions) then lands on the same file instead of failing with
+ * ERR_PACKAGE_PATH_NOT_EXPORTED. Returns one message per violation.
+ */
+export const defaultConditionViolations = (exportsMap) => {
+	const violations = [];
+	const walk = (node, at) => {
+		if (!node || typeof node !== "object" || Array.isArray(node)) return;
+		const keys = Object.keys(node);
+		const importAt = keys.indexOf("import");
+		if (importAt !== -1 && typeof node.import === "string") {
+			if (keys[importAt + 1] !== "default") {
+				violations.push(`exports ${at}: "default" must follow "import"`);
+			} else if (node.default !== node.import) {
+				violations.push(
+					`exports ${at}: "default" must equal "import" ("${node.default}" vs "${node.import}")`,
+				);
+			}
+		}
+		for (const [key, value] of Object.entries(node)) {
+			walk(value, `${at}.${key}`);
+		}
+	};
+	if (exportsMap && typeof exportsMap === "object") {
+		for (const [subpath, target] of Object.entries(exportsMap)) {
+			walk(target, `"${subpath}"`);
+		}
+	}
+	return violations;
+};

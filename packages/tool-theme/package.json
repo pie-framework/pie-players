@@ -24,7 +24,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-color-scheme.js"
+			"import": "./dist/tool-color-scheme.js",
+			"default": "./dist/tool-color-scheme.js"
 		}
 	},
 	"customElements": "custom-elements.json",

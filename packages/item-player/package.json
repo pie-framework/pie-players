@@ -19,15 +19,18 @@
 	"exports": {
 		".": {
 			"types": "./dist/pie-item-player.d.ts",
-			"import": "./dist/pie-item-player.js"
+			"import": "./dist/pie-item-player.js",
+			"default": "./dist/pie-item-player.js"
 		},
 		"./preloaded": {
 			"types": "./dist/preloaded.d.ts",
-			"import": "./dist/preloaded.js"
+			"import": "./dist/preloaded.js",
+			"default": "./dist/preloaded.js"
 		},
 		"./components/item-session-debugger-element": {
 			"types": "./dist/components/item-session-debugger-element.d.ts",
-			"import": "./dist/components/item-session-debugger-element.js"
+			"import": "./dist/components/item-session-debugger-element.js",
+			"default": "./dist/components/item-session-debugger-element.js"
 		}
 	},
 	"customElements": "custom-elements.json",

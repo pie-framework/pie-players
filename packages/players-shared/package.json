@@ -19,95 +19,118 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
 		},
 		"./loader-config": {
 			"types": "./dist/loader-config.d.ts",
-			"import": "./dist/loader-config.js"
+			"import": "./dist/loader-config.js",
+			"default": "./dist/loader-config.js"
 		},
 		"./security": {
 			"types": "./dist/security/index.d.ts",
-			"import": "./dist/security/index.js"
+			"import": "./dist/security/index.js",
+			"default": "./dist/security/index.js"
 		},
 		"./security/private-hosts": {
 			"types": "./dist/security/private-hosts.d.ts",
-			"import": "./dist/security/private-hosts.js"
+			"import": "./dist/security/private-hosts.js",
+			"default": "./dist/security/private-hosts.js"
 		},
 		"./object": {
 			"types": "./dist/object/index.d.ts",
-			"import": "./dist/object/index.js"
+			"import": "./dist/object/index.js",
+			"default": "./dist/object/index.js"
 		},
 		"./promise": {
 			"types": "./dist/promise/index.d.ts",
-			"import": "./dist/promise/index.js"
+			"import": "./dist/promise/index.js",
+			"default": "./dist/promise/index.js"
 		},
 		"./types": {
 			"types": "./dist/types/index.d.ts",
-			"import": "./dist/types/index.js"
+			"import": "./dist/types/index.js",
+			"default": "./dist/types/index.js"
 		},
 		"./item-session-control": {
 			"types": "./dist/item-session-control/index.d.ts",
-			"import": "./dist/item-session-control/index.js"
+			"import": "./dist/item-session-control/index.js",
+			"default": "./dist/item-session-control/index.js"
 		},
 		"./timed-media": {
 			"types": "./dist/timed-media/index.d.ts",
-			"import": "./dist/timed-media/index.js"
+			"import": "./dist/timed-media/index.js",
+			"default": "./dist/timed-media/index.js"
 		},
 		"./media": {
 			"types": "./dist/media/index.d.ts",
-			"import": "./dist/media/index.js"
+			"import": "./dist/media/index.js",
+			"default": "./dist/media/index.js"
 		},
 		"./pie": {
 			"types": "./dist/pie/index.d.ts",
-			"import": "./dist/pie/index.js"
+			"import": "./dist/pie/index.js",
+			"default": "./dist/pie/index.js"
 		},
 		"./pie/tag-names": {
 			"types": "./dist/pie/tag-names.d.ts",
-			"import": "./dist/pie/tag-names.js"
+			"import": "./dist/pie/tag-names.js",
+			"default": "./dist/pie/tag-names.js"
 		},
 		"./loaders": {
 			"types": "./dist/loaders/index.d.ts",
-			"import": "./dist/loaders/index.js"
+			"import": "./dist/loaders/index.js",
+			"default": "./dist/loaders/index.js"
 		},
 		"./i18n": {
 			"types": "./dist/i18n/index.d.ts",
-			"import": "./dist/i18n/index.js"
+			"import": "./dist/i18n/index.js",
+			"default": "./dist/i18n/index.js"
 		},
 		"./i18n/types": {
 			"types": "./dist/i18n/types.d.ts",
-			"import": "./dist/i18n/types.js"
+			"import": "./dist/i18n/types.js",
+			"default": "./dist/i18n/types.js"
 		},
 		"./i18n/provider": {
 			"types": "./dist/i18n/provider.d.ts",
-			"import": "./dist/i18n/provider.js"
+			"import": "./dist/i18n/provider.js",
+			"default": "./dist/i18n/provider.js"
 		},
 		"./i18n/catalogs": {
 			"types": "./dist/i18n/catalogs.d.ts",
-			"import": "./dist/i18n/catalogs.js"
+			"import": "./dist/i18n/catalogs.js",
+			"default": "./dist/i18n/catalogs.js"
 		},
 		"./i18n/language-tags": {
 			"types": "./dist/i18n/language-tags.d.ts",
-			"import": "./dist/i18n/language-tags.js"
+			"import": "./dist/i18n/language-tags.js",
+			"default": "./dist/i18n/language-tags.js"
 		},
 		"./nds-icon-button": {
 			"types": "./dist/components/vendor/nds/nds-icon-button.d.ts",
-			"import": "./dist/components/vendor/nds/nds-icon-button.js"
+			"import": "./dist/components/vendor/nds/nds-icon-button.js",
+			"default": "./dist/components/vendor/nds/nds-icon-button.js"
 		},
 		"./ui/attribute-coercion": {
 			"types": "./dist/ui/attribute-coercion.d.ts",
-			"import": "./dist/ui/attribute-coercion.js"
+			"import": "./dist/ui/attribute-coercion.js",
+			"default": "./dist/ui/attribute-coercion.js"
 		},
 		"./ui/content-styles": {
 			"types": "./dist/ui/content-styles.d.ts",
-			"import": "./dist/ui/content-styles.js"
+			"import": "./dist/ui/content-styles.js",
+			"default": "./dist/ui/content-styles.js"
 		},
 		"./ui/fontawesome": {
 			"types": "./dist/ui/fontawesome.d.ts",
-			"import": "./dist/ui/fontawesome.js"
+			"import": "./dist/ui/fontawesome.js",
+			"default": "./dist/ui/fontawesome.js"
 		},
 		"./tools/term-lookup": {
 			"types": "./dist/tools/term-lookup.d.ts",
-			"import": "./dist/tools/term-lookup.js"
+			"import": "./dist/tools/term-lookup.js",
+			"default": "./dist/tools/term-lookup.js"
 		}
 	},
 	"files": [

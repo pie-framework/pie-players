@@ -27,15 +27,18 @@
 	"exports": {
 		".": {
 			"types": "./dist/pie-item-list.d.ts",
-			"import": "./dist/pie-item-list.js"
+			"import": "./dist/pie-item-list.js",
+			"default": "./dist/pie-item-list.js"
 		},
 		"./summarize": {
 			"types": "./dist/summarize.d.ts",
-			"import": "./dist/summarize.js"
+			"import": "./dist/summarize.js",
+			"default": "./dist/summarize.js"
 		},
 		"./browser": {
 			"types": "./dist/pie-item-list.d.ts",
-			"import": "./dist/browser/pie-item-list.js"
+			"import": "./dist/browser/pie-item-list.js",
+			"default": "./dist/browser/pie-item-list.js"
 		}
 	},
 	"customElements": "custom-elements.json",

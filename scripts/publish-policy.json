@@ -4,6 +4,7 @@
 	"requireRepositoryDirectory": true,
 	"requiredRepositoryUrl": "git+https://github.com/pie-framework/pie-players.git",
 	"requireExportsOrMainTypes": true,
+	"requireDefaultExportCondition": true,
 	"requireNodeEngine": true,
 	"defaultNodeEngine": ">=20.0.0",
 	"svelteRuntimeDependencyRange": "^5.57.0",

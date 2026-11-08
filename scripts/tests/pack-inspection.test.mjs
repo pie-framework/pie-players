@@ -5,6 +5,7 @@ import path from "node:path";
 
 import {
 	collectDeclaredTargets,
+	defaultConditionViolations,
 	getImportTarget,
 	getNodeConsumerImportTargets,
 	isPackedMatch,
@@ -221,5 +222,42 @@ describe("mapConcurrent", () => {
 				throw new Error("called");
 			}),
 		).toEqual([]);
+	});
+});
+
+describe("defaultConditionViolations", () => {
+	test("accepts a default that follows import and equals it", () => {
+		expect(
+			defaultConditionViolations({
+				".": {
+					types: "./dist/index.d.ts",
+					import: "./dist/index.js",
+					default: "./dist/index.js",
+				},
+				"./package.json": "./package.json",
+			}),
+		).toEqual([]);
+	});
+
+	test("reports a missing default, a misplaced one and a different target", () => {
+		const violations = defaultConditionViolations({
+			".": { types: "./a.d.ts", import: "./a.js" },
+			"./b": { import: "./b.js", types: "./b.d.ts", default: "./b.js" },
+			"./c": { import: "./c.js", default: "./other.js" },
+		});
+		expect(violations).toHaveLength(3);
+		expect(violations[0]).toContain('"."');
+		expect(violations[1]).toContain('"./b"');
+		expect(violations[2]).toContain("./other.js");
+	});
+
+	test("walks nested condition objects and ignores a string-form entry", () => {
+		expect(
+			defaultConditionViolations({
+				"./x": { node: { import: "./x.js" }, default: "./x.js" },
+				"./y": "./y.js",
+			}),
+		).toHaveLength(1);
+		expect(defaultConditionViolations(undefined)).toEqual([]);
 	});
 });

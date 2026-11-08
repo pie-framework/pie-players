@@ -23,11 +23,13 @@
 	"exports": {
 		".": {
 			"types": "./dist/calculator-element.d.ts",
-			"import": "./dist/calculator-element.js"
+			"import": "./dist/calculator-element.js",
+			"default": "./dist/calculator-element.js"
 		},
 		"./calculator-element": {
 			"types": "./dist/calculator-element.d.ts",
-			"import": "./dist/calculator-element.js"
+			"import": "./dist/calculator-element.js",
+			"default": "./dist/calculator-element.js"
 		}
 	},
 	"customElements": "custom-elements.json",

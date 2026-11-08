@@ -105,7 +105,7 @@ test("packed preloaded output registers authored tags, loads chunks, and records
   expect(browserErrors).toEqual([]);
 });
 
-test("ships every item-player module with its whitespace stripped", async () => {
+test("ships every item-player module as the item player's build minified it", async () => {
   const playerDist = join(workspace, "packages/item-player/dist");
   const shipped = join(built.served, "package/dist");
   const modules = (await readdir(playerDist, { recursive: true })).filter((file) => file.endsWith(".js"));
@@ -115,7 +115,7 @@ test("ships every item-player module with its whitespace stripped", async () => 
       readFile(join(playerDist, file), "utf-8"),
       readFile(join(shipped, file), "utf-8"),
     ]);
-    expect(output.length, file).toBeLessThan(source.length);
+    expect(output, file).toBe(source);
   }
 });
 

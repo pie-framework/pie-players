@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 import {
 	analyzeSpeechRuleEngineBoundary,
@@ -13,6 +16,7 @@ import {
 	hasInlinedSpeechRuleEngine,
 	hasSourceMapCommentText,
 	hasSvelteDevRuntime,
+	hasViteConfig,
 	looksUnminified,
 	newUrlTailLength,
 } from "../check-bundle-safety.mjs";
@@ -43,10 +47,49 @@ describe("looksUnminified", () => {
 		).toBe(false);
 	});
 
+	test("a preserved licence block does not make minified code look unminified", () => {
+		const licence = `/*!\n${" * Copyright holder, SPDX-License-Identifier: MIT\n".repeat(600)} */\n`;
+		const content = `${licence}${"x".repeat(30_000)}`;
+		expect(content.split("\n").length).toBeGreaterThan(500);
+		expect(looksUnminified(content)).toBe(false);
+		expect(looksUnminified(`${licence}${unminifiedLike}`)).toBe(true);
+	});
+
+	test("a multi-line template literal does not make minified code look unminified", () => {
+		const css = `\`${"  .rule {\n    color: red;\n  }\n".repeat(2000)}\``;
+		const content = `${"x".repeat(30_000)};var s=css${css};`;
+		expect(content.split("\n").length).toBeGreaterThan(5000);
+		expect(looksUnminified(content)).toBe(false);
+		const spaced = Array.from(
+			{ length: 600 },
+			(_, i) => `function fn${i}(first, second) {\n\t// adds\n\tconst total = first + second;\n\treturn total;\n}\n`,
+		).join("");
+		expect(looksUnminified(`${spaced}var s=${css};`)).toBe(true);
+	});
+
 	test("a minified bundle with some newlines still passes", () => {
 		// Minifiers keep the odd newline (license banners, template literals).
 		const content = `${"y".repeat(25_000)}\n${"z".repeat(25_000)}`;
 		expect(looksUnminified(content)).toBe(false);
+	});
+});
+
+describe("hasViteConfig", () => {
+	const withFiles = (...names) => {
+		const dir = mkdtempSync(path.join(tmpdir(), "vite-config-"));
+		for (const name of names) writeFileSync(path.join(dir, name), "");
+		return dir;
+	};
+
+	test("finds the shared and the browser configs a package splits its build across", () => {
+		expect(hasViteConfig(withFiles("package.json", "vite.config.ts"))).toBe(true);
+		expect(hasViteConfig(withFiles("vite.config.browser.ts"))).toBe(true);
+		expect(hasViteConfig(withFiles("vite.config.mjs"))).toBe(true);
+	});
+
+	test("a package without one ships tsc output, which is not held to minification", () => {
+		expect(hasViteConfig(withFiles("package.json", "tsconfig.json"))).toBe(false);
+		expect(hasViteConfig(withFiles("vitest.config.ts"))).toBe(false);
 	});
 });
 

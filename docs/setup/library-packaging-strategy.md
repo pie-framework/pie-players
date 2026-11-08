@@ -162,6 +162,12 @@ derives the types entry from that component, and ships an `index.ts` types
 entry instead. `check:svelte-type-imports`, run after a build, checks every
 declaration a type entry reaches and every one the package ships.
 
+A package ships only the declarations a type entry reaches, because `exports`
+blocks every other path and TypeScript loads nothing else. `tsc` and
+`vite-plugin-dts` emit one declaration per source file, so a package's `build`
+ends with `bun ../../scripts/prune-unreachable-declarations.mjs`, which deletes
+the rest, and `check:declaration-reachability` fails a package that ships one.
+
 `speech-rule-engine` is pinned to one exact version (`pinnedRuntimeDependencies`
 in `scripts/publish-policy.json`, enforced by `check:package-metadata`), so
 every PIE bundle a host loads resolves the same copy and the same locale-table
@@ -195,7 +201,7 @@ owning package exports.
 | --- | --- |
 | Every export target exists in the packed tarball and has a stable file name | `check:pack-integrity:real` |
 | Node-safe entry points import in Node.js from installed tarballs; the browser-only roots fail on a browser global | `check:node-consumer-imports` |
-| Dist-only surface | `check:publish-surface`, `check:sourcemaps` |
+| Dist-only surface | `check:publish-surface`, `check:sourcemaps`, `check:declaration-reachability` |
 | No Svelte for hosts | `check:svelte-runtime-deps`, `check:ce-consumer-contract`, `check:svelte-type-imports` |
 | One `speech-rule-engine` version | `check:package-metadata` |
 | Race-safe registration | `check:ce-define-safety` |

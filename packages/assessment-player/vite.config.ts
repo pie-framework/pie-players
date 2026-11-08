@@ -2,6 +2,7 @@ import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
+import { minifyChunks } from "../players-shared/minify-chunks.mjs";
 
 const assertNoEvalRequireInOutput = {
 	name: "assert-no-eval-require-in-output",
@@ -23,6 +24,7 @@ const assertNoEvalRequireInOutput = {
 export default defineConfig({
 	plugins: [
 		preserveLegalComments(),
+		minifyChunks(),
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",
@@ -45,7 +47,7 @@ export default defineConfig({
 		outDir: "dist",
 		emptyOutDir: true,
 		target: "es2020",
-		minify: "esbuild",
+		minify: false,
 		sourcemap: false,
 		rollupOptions: {
 			external: [

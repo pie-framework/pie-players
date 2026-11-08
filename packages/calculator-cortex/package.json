@@ -18,7 +18,7 @@
 		"LICENSE.md"
 	],
 	"scripts": {
-		"build": "vite build",
+		"build": "vite build && bun ../../scripts/prune-unreachable-declarations.mjs",
 		"demo": "bun run build && bunx vite demo",
 		"test": "bun test tests",
 		"test:corpus": "bun scripts/build-expression-corpus.mjs --full --out .corpus/gsm8k-arithmetic.json && CORTEX_CORPUS=.corpus/gsm8k-arithmetic.json bun test tests/calculator-cortex-corpus.test.ts",

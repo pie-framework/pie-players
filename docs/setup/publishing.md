@@ -143,7 +143,7 @@ before opening or merging a release.
 | Version policy | `check:changeset-patch-only`, `check:fixed-versioning` |
 | Manifests and dependencies | `check:package-metadata`, `check:svelte-runtime-deps`, `check:ce-consumer-contract` (Svelte peer policy), `check:deps`, `check:undeclared-subpaths` (cross-package imports name declared exports), `check:math-rendering-version` (one `@pie-lib/math-rendering-module` version) |
 | Custom elements | `check:custom-elements`, `check:custom-elements:dist`, `check:ce-define-safety` |
-| Published surface | `check:publint` (import graph from the manifest, then `publint --strict`), `check:types-publish` (ATTW), `check:svelte-type-imports` (no declaration reaches `svelte`), `check:pack-integrity:real` (real tarballs) |
+| Published surface | `check:publint` (import graph from the manifest, then `publint --strict`), `check:types-publish` (ATTW), `check:svelte-type-imports` (no declaration reaches `svelte`), `check:declaration-reachability` (every shipped declaration is reachable from a type entry), `check:pack-integrity:real` (real tarballs) |
 | Consumer boundaries | `check:consumer-boundaries` (app imports), `check:node-consumer-imports` (Node-safe entry points), `check:bundle-safety` (bundle shape, player and tool boundaries) |
 | Toolkit core | `check:engine-core-purity`, `check:speech-composition-purity`, `check:capability-neutrality` |
 | Scripts | `check:scripts` (unit tests for `scripts/`) |

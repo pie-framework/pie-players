@@ -9,6 +9,7 @@ import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map
 import { deferMathRenderingModuleEvaluation } from "../players-shared/math-rendering-module-deferral.mjs";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
+import { minifyChunks } from "../players-shared/minify-chunks.mjs";
 
 const chunkFileNames = chunkFileNamesFromSource(resolve(__dirname, "../.."));
 
@@ -44,6 +45,7 @@ export default defineConfig({
 	},
 	plugins: [
 		preserveLegalComments(),
+		minifyChunks(),
 		deferMathRenderingModuleEvaluation(),
 		svelte({
 			compilerOptions: {
@@ -79,7 +81,7 @@ export default defineConfig({
 		outDir: "dist",
 		emptyOutDir: true,
 		target: "es2020",
-		minify: "esbuild",
+		minify: false,
 		sourcemap: false,
 		rollupOptions: {
 			external: [],

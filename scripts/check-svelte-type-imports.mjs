@@ -206,6 +206,46 @@ export function collectShippedDeclarations(dir, pkg) {
 }
 
 /**
+ * Visits every declaration file a host's TypeScript loads from `entries`: the
+ * relative imports, re-exports and `/// <reference path>` of each file, and
+ * theirs in turn. `onFile(file, references, chainTo)` receives the parsed
+ * references of each file and `chainTo(file)`, the entry-to-file path as
+ * `relativeTo` names its files. Returns a map of each reached file to the file
+ * that first reached it, which is `null` for an entry.
+ */
+export function walkDeclarationClosure(entries, onFile, relativeTo = (file) => file) {
+	const parents = new Map(entries.map((entry) => [entry, null]));
+	const chainTo = (file) => {
+		const chain = [];
+		for (let current = file; current; current = parents.get(current)) {
+			chain.unshift(relativeTo(current));
+		}
+		return chain;
+	};
+	const queue = [...entries];
+	const enqueue = (file, parent) => {
+		if (!file || parents.has(file)) return;
+		parents.set(file, parent);
+		queue.push(file);
+	};
+	while (queue.length > 0) {
+		const file = queue.shift();
+		const references = findModuleReferences(readFileSync(file, "utf8"), file);
+		onFile(file, references, chainTo);
+		for (const specifier of [...references.specifiers, ...references.typeReferences]) {
+			if (specifier.startsWith(".") || specifier.startsWith("/")) {
+				enqueue(resolveDeclarationFile(file, specifier), file);
+			}
+		}
+		for (const referencedPath of references.referencedPaths) {
+			const target = path.resolve(path.dirname(file), referencedPath);
+			enqueue(existsSync(target) ? target : null, file);
+		}
+	}
+	return parents;
+}
+
+/**
  * One finding per forbidden bare specifier in a package's published
  * declarations, with the chain of files from a type entry to the file that
  * makes it: `svelte`, which no host installs, and any bare specifier outside
@@ -229,26 +269,10 @@ export function findSvelteTypeImports({ dir, pkg }) {
 		chain: [target.replace(/^\.\//, "")],
 		reason: "is a type entry that does not exist; build first",
 	}));
-	const parents = new Map(entries.map((entry) => [entry, null]));
-	const chainTo = (file) => {
-		const chain = [];
-		for (let current = file; current; current = parents.get(current)) {
-			chain.unshift(relative(current));
-		}
-		return chain;
-	};
-	const queue = [...entries];
-	const enqueue = (file, parent) => {
-		if (!file || parents.has(file)) return;
-		parents.set(file, parent);
-		queue.push(file);
-	};
-	const checkSpecifiers = (file, specifiers) => {
-		for (const specifier of specifiers) {
-			if (specifier.startsWith(".") || specifier.startsWith("/")) {
-				enqueue(resolveDeclarationFile(file, specifier), file);
-				continue;
-			}
+	const parents = walkDeclarationClosure(entries, (file, references, chainTo) => {
+		const { specifiers, typeReferences } = references;
+		for (const specifier of [...specifiers, ...typeReferences]) {
+			if (specifier.startsWith(".") || specifier.startsWith("/")) continue;
 			if (isSvelteSpecifier(specifier)) {
 				findings.push({ chain: chainTo(file), reason: `imports "${specifier}"` });
 				continue;
@@ -258,17 +282,7 @@ export function findSvelteTypeImports({ dir, pkg }) {
 				findings.push({ chain: chainTo(file), reason });
 			}
 		}
-	};
-	while (queue.length > 0) {
-		const file = queue.shift();
-		const { specifiers, referencedPaths, typeReferences } =
-			findModuleReferences(readFileSync(file, "utf8"), file);
-		checkSpecifiers(file, [...specifiers, ...typeReferences]);
-		for (const referencedPath of referencedPaths) {
-			const target = path.resolve(path.dirname(file), referencedPath);
-			enqueue(existsSync(target) ? target : null, file);
-		}
-	}
+	}, relative);
 	for (const file of collectShippedDeclarations(dir, pkg)) {
 		if (parents.has(file)) continue;
 		const { specifiers, typeReferences } = findModuleReferences(
@@ -291,7 +305,7 @@ export function findSvelteTypeImports({ dir, pkg }) {
 	return { findings, entriesChecked: entries.length };
 }
 
-const getPublishableWorkspaceDirs = () => {
+export const getPublishableWorkspaceDirs = () => {
 	const rootPkg = readJson(path.join(ROOT, "package.json"));
 	const dirs = [];
 	for (const workspace of rootPkg.workspaces ?? []) {

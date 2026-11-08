@@ -40,7 +40,7 @@
 		"README.md"
 	],
 	"scripts": {
-		"build": "bun run check:generated-css && tsc -p tsconfig.json && cp src/*.css dist/ && cp src/token-registry.json dist/",
+		"build": "bun run check:generated-css && tsc -p tsconfig.json && cp src/*.css dist/ && cp src/token-registry.json dist/ && bun ../../scripts/prune-unreachable-declarations.mjs",
 		"dev": "bun ./scripts/dev-theme.ts",
 		"generate:css": "bun ./scripts/generate-theme-css.ts --write",
 		"check:generated-css": "bun ./scripts/generate-theme-css.ts --check",

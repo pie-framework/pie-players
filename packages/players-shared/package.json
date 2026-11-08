@@ -144,7 +144,7 @@
 		"semver": "^7.8.5"
 	},
 	"scripts": {
-		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && node scripts/bundle-vendored-modules.mjs && mkdir -p dist/components && cp -R src/components/vendor dist/components/vendor",
+		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && node scripts/bundle-vendored-modules.mjs && mkdir -p dist/components && cp -R src/components/vendor dist/components/vendor && bun ../../scripts/prune-unreachable-declarations.mjs",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
 		"lint": "biome lint .",

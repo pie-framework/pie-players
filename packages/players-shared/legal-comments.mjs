@@ -3,7 +3,9 @@
  *
  * Vite 8 strips every legal comment (`@license`, `@preserve`, `/*!`) from a
  * build with `build.minify` set, in the bundler and again in the esbuild
- * minify pass, and the notices of DOMPurify and lit went with them. Their
+ * minify pass, and the notices of DOMPurify and lit went with them. A build
+ * sets `build.minify: false` and lists `minifyChunks()`, which minifies the
+ * chunks with `legalComments: "inline"`. Their
  * licences (BSD-3-Clause, Apache-2.0, MPL-2.0, MIT) require the notice to
  * travel with a redistributed copy.
  *
@@ -88,17 +90,16 @@ export function findLibrariesMissingNotice(code) {
 }
 
 /**
- * Vite plugin with three jobs. The bundler keeps legal comments, the esbuild
- * minify pass leaves them inline, and a chunk that inlines a library with no
- * upstream notice gets one. The `config` hook merges into the build's own
- * options, so an entry that sets `rollupOptions.output` keeps its settings.
+ * Vite plugin with two jobs. The bundler keeps legal comments, and a chunk
+ * that inlines a library with no upstream notice gets one. The `config` hook
+ * merges into the build's own options, so an entry that sets
+ * `rollupOptions.output` keeps its settings.
  */
 export function preserveLegalComments() {
 	return {
 		name: "pie-preserve-legal-comments",
 		config() {
 			return {
-				esbuild: { legalComments: "inline" },
 				build: {
 					rolldownOptions: {
 						output: { comments: { legal: true } },

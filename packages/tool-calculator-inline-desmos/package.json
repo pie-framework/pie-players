@@ -2,7 +2,7 @@
 	"name": "@pie-players/pie-tool-calculator-inline-desmos",
 	"version": "1.0.0-beta.9",
 	"type": "module",
-	"description": "Inline calculator toggle button for PIE assessment player question headers",
+	"description": "Item-header button that opens the assessment toolkit's provider-neutral calculator; the desmos in the name is historical",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/pie-framework/pie-players.git",

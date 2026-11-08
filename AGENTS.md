@@ -433,7 +433,7 @@ also compiles each `.svelte` file that source reaches with the options the packa
 builds use; the root and every package running `bun test` preload it from their
 `bunfig.toml`. A Vitest package with tests and a workspace sibling sets
 `workspaceSourcesVitePlugin()` in its `vitest.config.ts`. A test of a built artifact
-builds its own package in its `test` script, as `tool-color-scheme` and
+builds its own package in its `test` script, as `tool-theme` and
 `tool-calculator-shared` do, so `turbo test` and CI run no build before unit tests.
 
 `scripts/tests/workspace-sources.test.mjs`, run by `bun run check:scripts`, fails on a

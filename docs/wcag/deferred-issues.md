@@ -62,7 +62,7 @@ next. It is not exhaustive.
 ### Theme Picker: Visible Labels and Accessible Names
 
 - **WCAG**: 2.5.3 Label in Name (Level A).
-- **Surface**: `packages/tool-color-scheme` (`@pie-players/pie-tool-theme`).
+- **Surface**: `packages/tool-theme` (`@pie-players/pie-tool-theme`).
 - **Fixed in source**: the trigger and menu options include the visible scheme
   name and description in their accessible names. The decorative letter swatch
   uses CSS and is hidden from assistive technology.

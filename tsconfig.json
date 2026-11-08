@@ -70,7 +70,7 @@
 			"path": "./packages/tool-calculator-shared"
 		},
 		{
-			"path": "./packages/tool-color-scheme"
+			"path": "./packages/tool-theme"
 		},
 		{
 			"path": "./packages/tool-graph"

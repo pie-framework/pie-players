@@ -738,7 +738,7 @@
         "vite-plugin-dts": "^5.1.2",
       },
     },
-    "packages/tool-color-scheme": {
+    "packages/tool-theme": {
       "name": "@pie-players/pie-tool-theme",
       "version": "1.0.0-beta.7",
       "dependencies": {
@@ -1605,7 +1605,7 @@
 
     "@pie-players/pie-tool-sign-language": ["@pie-players/pie-tool-sign-language@workspace:packages/tool-sign-language"],
 
-    "@pie-players/pie-tool-theme": ["@pie-players/pie-tool-theme@workspace:packages/tool-color-scheme"],
+    "@pie-players/pie-tool-theme": ["@pie-players/pie-tool-theme@workspace:packages/tool-theme"],
 
     "@pie-players/pie-tool-tts-inline": ["@pie-players/pie-tool-tts-inline@workspace:packages/tool-tts-inline"],
 

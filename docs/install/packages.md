@@ -79,7 +79,7 @@ configuration and a toolbar placement use.
 | [`@pie-players/pie-tool-protractor`](../../packages/tool-protractor/README.md) | `protractor` | `<pie-tool-protractor>` | Draggable, rotatable protractor |
 | [`@pie-players/pie-tool-ruler`](../../packages/tool-ruler/README.md) | `ruler` | `<pie-tool-ruler>` | Ruler |
 | [`@pie-players/pie-tool-sign-language`](../../packages/tool-sign-language/README.md) | `signLanguage` | `<pie-tool-sign-language>` | Signed translation of an item, docked beside its content |
-| [`@pie-players/pie-tool-theme`](../../packages/tool-color-scheme/README.md) | `theme` | `<pie-tool-theme>` | The color-scheme tool (`theme`): learner-selected color schemes |
+| [`@pie-players/pie-tool-theme`](../../packages/tool-theme/README.md) | `theme` | `<pie-tool-theme>` | The color-scheme tool (`theme`): learner-selected color schemes |
 | [`@pie-players/pie-tool-tts-inline`](../../packages/tool-tts-inline/README.md) | `textToSpeech` | `<pie-tool-tts-inline>` | Read-aloud control in item and passage headers |
 
 ### Calculator providers

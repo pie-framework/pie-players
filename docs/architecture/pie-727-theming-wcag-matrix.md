@@ -243,12 +243,12 @@ threshold rather than inferring a relationship from token names.
 ### Color-scheme tool (`theme`)
 
 The color-scheme tool is the learner-facing scheme picker, published as
-`@pie-players/pie-tool-theme` from `packages/tool-color-scheme`.
+`@pie-players/pie-tool-theme` from `packages/tool-theme`.
 
 - **States:** `default`, `hover`, `focus-visible`, `selected`, `open`, `disabled`, `unavailable`
 - **Theme/scheme set:** default matrix set, every built-in derived preview, late custom registration, forced-colors
 - **WCAG criteria:** 1.4.1, 1.4.3, 1.4.11, 2.4.7, 2.4.11, 2.4.13, 2.5.8, 4.1.3
-- **Coverage:** `packages/tool-color-scheme/tests/built-theme-registry-integration.test.ts`
+- **Coverage:** `packages/tool-theme/tests/built-theme-registry-integration.test.ts`
   asserts the built picker observes the theme-package registry;
   `section-theme-color-scheme.spec.ts` covers every built-in picker state at its
   named threshold, hover text included, selected text through the DaisyUI

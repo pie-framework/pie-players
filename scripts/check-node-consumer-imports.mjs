@@ -363,27 +363,6 @@ selected?.remove();
 		{ types: [], noUncheckedSideEffectImports: true },
 	);
 
-const typecheckToolkitWithoutOptionalPeers = (fixtureDir, optionalPeers) => {
-	for (const specifier of optionalPeers) {
-		rmSync(path.join(fixtureDir, "node_modules", ...specifier.split("/")), {
-			recursive: true,
-			force: true,
-		});
-	}
-
-	return typecheckFixture(
-		fixtureDir,
-		`import type {
-	ToolProviderApi,
-	TTSToolProvider,
-} from "@pie-players/pie-assessment-toolkit/tools/registration";
-
-export type ToolkitToolProviders = [ToolProviderApi, TTSToolProvider];
-`,
-		{ types: [] },
-	);
-};
-
 /**
  * The workspace runtime dependencies of `packageName`, transitively, from the
  * packed fixture set.
@@ -433,8 +412,37 @@ export const toBase64 = (response: SynthesizeResponse): string =>
 	);
 };
 
+/**
+ * The toolkit's declarations compile, with `skipLibCheck` off, against nothing
+ * but what installing the toolkit installs. A published declaration that names
+ * a package the toolkit does not depend on, such as a dev dependency, fails
+ * with TS2307 here, where the shared fixture would supply the package from a
+ * sibling (ADR 0002). The two entries reach the coordinator API and the
+ * tool-provider contract hosts implement.
+ */
+const typecheckToolkit = (fixtureDir) =>
+	typecheckFixture(
+		fixtureDir,
+		`import type { ToolkitCoordinatorApi } from "${TOOLKIT}";
+import type {
+	ToolProviderApi,
+	TTSToolProvider,
+} from "${TOOLKIT}/tools/registration";
+
+export type ToolkitSurface = [ToolkitCoordinatorApi, ToolProviderApi, TTSToolProvider];
+`,
+		{ types: [] },
+	);
+
 /** Type checks that run in one package's isolated fixture, after its imports. */
 const ISOLATED_TYPECHECKS = new Map([
+	[
+		TOOLKIT,
+		{
+			describe: "failed TypeScript consumption from its own install",
+			run: typecheckToolkit,
+		},
+	],
 	[
 		TTS_SERVER_CORE,
 		{
@@ -587,22 +595,6 @@ const run = async () => {
 		failures.push(...isolated.failures);
 		isolatedCount = isolated.packages;
 
-		const toolkitPackage = packageMap.get(TOOLKIT)?.pkg;
-		const optionalToolkitPeers = Object.keys(
-			toolkitPackage?.peerDependenciesMeta || {},
-		).filter(
-			(peerName) =>
-				toolkitPackage.peerDependenciesMeta[peerName]?.optional === true,
-		);
-		const typecheckResult = await typecheckToolkitWithoutOptionalPeers(
-			fixtureDir,
-			optionalToolkitPeers,
-		);
-		if (!typecheckResult.ok) {
-			failures.push(
-				`[node-consumer] ${TOOLKIT}/tools/registration failed TypeScript consumption without optional peers: ${typecheckResult.message}`,
-			);
-		}
 		const nativeElementResult = await typecheckNativeElements(fixtureDir);
 		if (!nativeElementResult.ok) {
 			failures.push(

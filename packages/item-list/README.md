@@ -295,6 +295,6 @@ script runs.
 
 | Entry | Exports |
 | --- | --- |
-| `@pie-players/pie-item-list` | Registers `<pie-item-summary>` and `<pie-item-list>`. Exports the summary and list types, `PieItemSummaryElement` and `PieItemListElement`. Imports `@pie-players/pie-item-player` by bare specifier, on first expand |
+| `@pie-players/pie-item-list` | Registers `<pie-item-summary>` and `<pie-item-list>`. Exports the summary and list types, `PieItemSummaryElement` and `PieItemListElement`. Imports `@pie-players/pie-players-shared` by bare specifier, and `@pie-players/pie-item-player` on first expand |
 | `@pie-players/pie-item-list/summarize` | `summarizeItem`, `isItemSummary`, `convertSummaryMath`, `bundledSummaries`, `pinnedSummaries` and the summary types. Node-safe |
 | `@pie-players/pie-item-list/browser` | The self-contained browser build, with the item player as a chunk ([Loading from a CDN](../../docs/install/cdn.md#item-list-browser-build)) |

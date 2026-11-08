@@ -44,6 +44,21 @@ describe("scanScriptImports", () => {
 		]);
 	});
 
+	test("finds the relative files located with new URL(…, import.meta.url)", () => {
+		expect(
+			scanScriptImports(
+				[
+					'new Worker(new URL("./assets/worker.js", import.meta.url), { type: "module" });',
+					"const wasm = new URL('../engine.wasm', import.meta.url);",
+					'const remote = new URL("https://cdn.example/x.js", import.meta.url);',
+				].join("\n"),
+			),
+		).toEqual([
+			{ specifier: "./assets/worker.js", kind: "asset-url" },
+			{ specifier: "../engine.wasm", kind: "asset-url" },
+		]);
+	});
+
 	test("ignores specifiers in comments, strings and template literals", () => {
 		const specifiers = scanScriptImports(
 			[
@@ -135,6 +150,26 @@ describe("analyzePackage", () => {
 				allowed: { typeOnly: ["types-dep"] },
 			}),
 		).toEqual([]);
+	});
+
+	test("follows a worker located with new URL and checks its imports", () => {
+		const dir = createPackage({
+			...FILES,
+			"dist/chunk.js":
+				'import { x } from "peer-dep";\nexport const worker = () => new Worker(new URL("./assets/worker.js", import.meta.url), { type: "module" });\nexport const y = x;\n',
+			"dist/assets/worker.js": 'import "worker-only-dep";\n',
+		});
+		const findings = analyzePackage({
+			dir,
+			pkg: {
+				...MANIFEST,
+				dependencies: DEPENDENCIES,
+				peerDependencies: { "peer-dep": "^1.0.0" },
+			},
+			allowed: { typeOnly: ["types-dep"] },
+		});
+		expect(codes(findings)).toEqual(["phantom-import"]);
+		expect(findings[0].message).toContain("worker-only-dep");
 	});
 
 	test("catches a phantom import in a chunk and in a dynamic import", () => {

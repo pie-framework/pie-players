@@ -8,7 +8,12 @@ import {
 	MATH_RENDERING_MODULE_FACTORY,
 	MATHJAX_3_SETUP_TEXT,
 } from "../packages/players-shared/math-rendering-module-deferral.mjs";
-import { findLibrariesMissingNotice } from "../packages/players-shared/legal-comments.mjs";
+import {
+	THIRD_PARTY_NOTICES_FILE,
+	builtNoticesFileFor,
+	findLibrariesMissingFromNotices,
+	findLibrariesMissingNotice,
+} from "../packages/players-shared/legal-comments.mjs";
 import { SOURCE_MAP_COMMENT_TEXT } from "../packages/players-shared/source-map-comment-text.mjs";
 import { readPublishPolicy } from "./lib/pack-inspection.mjs";
 import { scanScriptImports } from "./lib/package-import-graph.mjs";
@@ -997,6 +1002,34 @@ function checkLicenseNotices(failures) {
 	}
 }
 
+function checkThirdPartyNotices(failures) {
+	for (const dir of listBundleRoots()) {
+		for (const filePath of collectJsFiles(dir)) {
+			// The browser build is its own root with its own notices file.
+			if (
+				path.basename(dir) !== BROWSER_BUILD_DIRNAME &&
+				filePath.startsWith(path.join(dir, BROWSER_BUILD_DIRNAME) + path.sep)
+			) {
+				continue;
+			}
+			const noticesPath = builtNoticesFileFor(filePath, existsSync);
+			const missing = findLibrariesMissingFromNotices(
+				readFileSync(filePath, "utf8"),
+				noticesPath ? readFileSync(noticesPath, "utf8") : null,
+			).map((library) => library.name);
+			if (missing.length > 0) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, filePath)} inlines ${missing.join(", ")}, which ${
+						noticesPath
+							? path.relative(ROOT, noticesPath)
+							: `no ${THIRD_PARTY_NOTICES_FILE} beside it`
+					} does not list; preserveLegalComments() writes the file for a Vite build`,
+				);
+			}
+		}
+	}
+}
+
 function main() {
 	const failures = [];
 	const filesChecked =
@@ -1014,6 +1047,7 @@ function main() {
 	checkNewUrlTails(failures);
 	checkNoSourceMapCommentText(failures);
 	checkLicenseNotices(failures);
+	checkThirdPartyNotices(failures);
 	checkMathJax3Deferred(failures);
 	checkPromiseStatics(failures);
 	const browserBuilds = checkBrowserBuilds(failures);

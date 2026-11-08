@@ -52,9 +52,12 @@ test("no published entry imports Svelte, so hosts install none", async () => {
 		new URL("../package.json", import.meta.url),
 	).json();
 
-	for (const target of Object.values(packageJson.exports) as {
-		import: string;
-	}[]) {
+	// String-form entries such as `./package.json` load no code.
+	const entries = (
+		Object.values(packageJson.exports) as (string | { import: string })[]
+	).filter((target) => typeof target !== "string");
+	expect(entries.length).toBeGreaterThan(0);
+	for (const target of entries) {
 		const imports = await bareImports(target.import.replace(/^\.\/dist\//, ""));
 		expect([...imports].filter((path) => SVELTE_SPECIFIER.test(path))).toEqual(
 			[],

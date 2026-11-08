@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import {
 	assertPublishablePackagesChecked,
 	collectExportTargetViolations,
+	collectPackTargets,
 } from "../check-pack-integrity.mjs";
 import {
 	collectManifestSurfaceViolations,
@@ -78,6 +79,21 @@ describe("check-pack-integrity rule functions", () => {
 		expect(violations).toContain(
 			"unstable export target (hashed suffix filename): dist/chunk-a1b2c3d4.js",
 		);
+	});
+
+	test("holds the customElements manifest to the tarball like an export target", () => {
+		const targets = collectPackTargets({
+			exports: { ".": { import: "./dist/index.js" } },
+			customElements: "custom-elements.json",
+		});
+
+		expect([...targets].sort()).toEqual([
+			"custom-elements.json",
+			"dist/index.js",
+		]);
+		expect(
+			collectExportTargetViolations(targets, new Set(["dist/index.js"])),
+		).toEqual(["missing: custom-elements.json"]);
 	});
 
 	test("fails closed when no publishable packages were checked", () => {

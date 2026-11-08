@@ -46,11 +46,12 @@ because library mode inlines every asset as a `data:` URL, and Chromium refuses
 a module worker from a large one. Its chunks stay split, so each lazily loaded
 tool downloads on first use.
 
-The section player's npm build leaves the item player, the default tool loaders
-and `speech-rule-engine` external. The host's one item player defines
-`<pie-item-player>` and installs the math renderer for every player on the
-page, and every PIE bundle shares the host's one copy of `speech-rule-engine`
-and its locale tables.
+The section player's npm build leaves the item player, the default tool
+loaders, the toolkit, players-shared and pie-context external, and reaches
+`speech-rule-engine` only through the toolkit. The host's one item player
+defines `<pie-item-player>` and installs the math renderer for every player on
+the page, and every PIE bundle shares the host's one copy of
+`speech-rule-engine` and its locale tables.
 
 ## Export surface
 

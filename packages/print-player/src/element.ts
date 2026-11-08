@@ -16,7 +16,8 @@ import type {
 
 /**
  * `<pie-print>`: properties set before `config` take effect for it. The
- * `trust-markup` attribute reflects {@link PiePrintElement.trustMarkup}.
+ * `trust-markup` attribute sets {@link PiePrintElement.trustMarkup}; setting the
+ * property leaves the attribute as it is.
  */
 export interface PiePrintElement extends HTMLElement {
 	/** Item configuration with elements and models. Assigning it starts a print job. */

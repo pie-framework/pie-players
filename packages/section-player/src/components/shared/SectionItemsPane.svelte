@@ -250,9 +250,14 @@ Items pane of a section player: renders the item cards of the current compositio
 	 * own elements on demand either way.
 	 */
 	let resolvedRenderablesFingerprint = $state<string | null>(null);
+	// Tracks the readiness and the fingerprint, and writes the remembered
+	// fingerprint untracked, so the effect stays wiring-only.
 	$effect(() => {
 		if (readiness.current.status !== "resolved") return;
-		resolvedRenderablesFingerprint = renderablesFingerprint;
+		const fingerprint = renderablesFingerprint;
+		untrack(() => {
+			resolvedRenderablesFingerprint = fingerprint;
+		});
 	});
 	const cardsMountable = $derived(
 		elementsLoaded || resolvedRenderablesFingerprint === renderablesFingerprint,

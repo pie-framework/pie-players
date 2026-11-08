@@ -70,7 +70,7 @@ function readCode(path: string): string {
 }
 
 describe("section-player default tool registry boundary", () => {
-	test("base and layout kernel create a synchronous default-loader-backed registry", () => {
+	test("base and layout kernel create a synchronous default-loader-backed registry only when none is supplied", () => {
 		for (const sourcePath of [BASE_ELEMENT_PATH, KERNEL_PATH]) {
 			const source = readSource(sourcePath);
 
@@ -80,11 +80,13 @@ describe("section-player default tool registry boundary", () => {
 			expect(source).toContain(
 				'import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders"',
 			);
+			// A derived is computed on its first read, and `??` reads this one only
+			// when no registry is supplied, so a supplied registry leaves it unbuilt.
 			expect(source).toContain(
-				"const defaultToolRegistry = createPackagedToolRegistry();",
+				"const packagedToolRegistry = $derived(createPackagedToolRegistry());",
 			);
 			expect(source).toContain(
-				"const effectiveToolRegistry = $derived(toolRegistry ?? defaultToolRegistry);",
+				"const effectiveToolRegistry = $derived(toolRegistry ?? packagedToolRegistry);",
 			);
 			expect(source).not.toContain(
 				'import("@pie-players/pie-default-tool-loaders")',

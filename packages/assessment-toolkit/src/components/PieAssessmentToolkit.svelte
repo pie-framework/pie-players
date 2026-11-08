@@ -9,7 +9,7 @@
 			attemptId: { attribute: "attempt-id", type: "String" },
 			env: { attribute: "env", type: "Object" },
 			// Presentation flag surfaced onto the runtime context. Consumers
-			// render the vendored <nds-icon-button> only when this is
+			// render the vendored <pie-nds-icon-button> only when this is
 			// explicitly `true`; otherwise they use plain <button>s. Defaults
 			// to `false` (opt-in).
 			ndsIcons: { attribute: "nds-icons", type: "Boolean" },

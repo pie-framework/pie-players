@@ -4,7 +4,7 @@ export interface ToolbarItemBase {
 	ariaLabel?: string;
 	icon?: string;
 	/**
-	 * FontAwesome icon name, opting this item into `<nds-icon-button>` rendering
+	 * FontAwesome icon name, opting this item into `<pie-nds-icon-button>` rendering
 	 * where the host enables NDS icons. Set by a tool registration's button
 	 * definition, or by a host contributing its own button.
 	 */

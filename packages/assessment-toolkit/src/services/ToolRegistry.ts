@@ -84,7 +84,7 @@ export interface ToolToolbarButtonDefinition {
 	 */
 	icon?: string;
 	/**
-	 * FontAwesome icon name, opting this button into `<nds-icon-button>` rendering
+	 * FontAwesome icon name, opting this button into `<pie-nds-icon-button>` rendering
 	 * where the host enables NDS icons (`ndsIcons`). Absent means the toolbar keeps
 	 * its own button rendering.
 	 *
@@ -270,7 +270,7 @@ export interface ToolWindowShellConfig {
 	content?: ToolWindowShellContentConfig;
 	actions?: ToolWindowShellAction[];
 	/**
-	 * Render the shell's own header controls as `<nds-icon-button>`s where the host
+	 * Render the shell's own header controls as `<pie-nds-icon-button>`s where the host
 	 * enables NDS icons. Shells without this keep the plain `<button>` controls, and
 	 * an opted-out host gets those either way.
 	 */

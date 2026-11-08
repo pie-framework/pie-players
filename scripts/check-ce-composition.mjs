@@ -98,8 +98,7 @@ for (const entry of ${JSON.stringify(entries)}) {
 }
 if (${inert} && definitions.length) throw Error("Contract imports registered " + definitions.join(", "));
 for (const tag of ${JSON.stringify(forbiddenTags)}) if (customElements.get(tag)) throw Error("Targeted entry registered unrelated " + tag);
-// NDS is a documented, guarded vendor registration shared by the suite.
-const leaked = definitions.filter(tag => !tag.startsWith("pie-") && tag !== "nds-icon-button");
+const leaked = definitions.filter(tag => !tag.startsWith("pie-"));
 if (leaked.length) throw Error("Unexpected implementation registrations: " + leaked.join(", "));
 `;
 	try {

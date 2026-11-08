@@ -34,10 +34,10 @@ The subpaths below are the package's `exports`; nothing else is importable.
 | `/i18n/provider` | `SimpleI18n`, `getDefaultI18n` and `resolveInterfaceI18n`, with the English catalog only |
 | `/i18n/catalogs` | `BUNDLED_LOCALES` and lazy loaders for the bundled locales other than English |
 | `/i18n/language-tags` | BCP 47 language tag normalization and matching |
-| `/nds-icon-button` | `<nds-icon-button>`, an icon button vendored as a prebuilt bundle with Lit inlined; importing it registers the tag. The assessment toolkit, the section player and `@pie-players/pie-tool-tts-inline` render it |
+| `/nds-icon-button` | `<pie-nds-icon-button>`, an icon button vendored as a prebuilt bundle with Lit inlined; importing it registers the tag. The assessment toolkit, the section player and `@pie-players/pie-tool-tts-inline` render it |
 | `/ui/attribute-coercion` | Boolean attribute coercion for custom elements |
 | `/ui/content-styles` | `installContentStyles`, `auditContentStyles` and the opt-out checks behind the item player's content styles |
-| `/ui/fontawesome` | The FontAwesome `<nds-icon-button>` glyphs need: the one FA Free pin, Pro detection, the `<head>` and shadow-root installs, and the glyph weight. The assessment toolkit, the section player and `@pie-players/pie-tool-tts-inline` use it |
+| `/ui/fontawesome` | The FontAwesome `<pie-nds-icon-button>` glyphs need: the one FA Free pin, Pro detection, the `<head>` and shadow-root installs, and the glyph weight. The assessment toolkit, the section player and `@pie-players/pie-tool-tts-inline` use it |
 | `/tools/term-lookup` | Term normalization and the lookup session the dictionary tools share; the host supplies the endpoint or a resolver |
 
 ## Item Session Control

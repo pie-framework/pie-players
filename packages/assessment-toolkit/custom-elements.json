@@ -580,7 +580,7 @@
 								"text": "boolean"
 							},
 							"default": "false",
-							"description": "Presentation flag surfaced onto the runtime context. Consumers render the vendored <nds-icon-button> only when this is explicitly `true`; otherwise they use plain <button>s. Defaults to `false` (opt-in).",
+							"description": "Presentation flag surfaced onto the runtime context. Consumers render the vendored <pie-nds-icon-button> only when this is explicitly `true`; otherwise they use plain <button>s. Defaults to `false` (opt-in).",
 							"attribute": "nds-icons"
 						},
 						{
@@ -887,7 +887,7 @@
 								"text": "boolean"
 							},
 							"default": "false",
-							"description": "Presentation flag surfaced onto the runtime context. Consumers render the vendored <nds-icon-button> only when this is explicitly `true`; otherwise they use plain <button>s. Defaults to `false` (opt-in).",
+							"description": "Presentation flag surfaced onto the runtime context. Consumers render the vendored <pie-nds-icon-button> only when this is explicitly `true`; otherwise they use plain <button>s. Defaults to `false` (opt-in).",
 							"fieldName": "ndsIcons"
 						},
 						{

@@ -197,7 +197,7 @@
 								"text": "boolean"
 							},
 							"default": "false",
-							"description": "Presentation flag: controls render <nds-icon-button> only when this is explicitly true; otherwise they use plain <button>s.",
+							"description": "Presentation flag: controls render <pie-nds-icon-button> only when this is explicitly true; otherwise they use plain <button>s.",
 							"attribute": "nds-icons"
 						},
 						{
@@ -353,7 +353,7 @@
 								"text": "boolean"
 							},
 							"default": "false",
-							"description": "Presentation flag: controls render <nds-icon-button> only when this is explicitly true; otherwise they use plain <button>s.",
+							"description": "Presentation flag: controls render <pie-nds-icon-button> only when this is explicitly true; otherwise they use plain <button>s.",
 							"fieldName": "ndsIcons"
 						},
 						{

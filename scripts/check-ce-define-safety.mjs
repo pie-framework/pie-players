@@ -16,7 +16,7 @@ const ALLOWED_DIRECT_DEFINE_FILES = new Set([
 	"packages/players-shared/svelte-custom-element-guard.ts",
 	// Vendored 3rd-party prebuilt bundle from nextComponentLibrary. We don't own
 	// the source so it can't be routed through defineCustomElementSafely. It is
-	// the single shared source of truth for <nds-icon-button> (consumed via the
+	// the single shared source of truth for <pie-nds-icon-button> (consumed via the
 	// @pie-players/pie-players-shared/nds-icon-button export) and registers the
 	// tag idempotently — its Lit @customElement decorator is patched to guard the
 	// define, so a page that loads more than one nds consumer registers the tag

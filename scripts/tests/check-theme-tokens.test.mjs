@@ -12,9 +12,9 @@ function write(root, relPath, content) {
 }
 
 const NDS_MOUNT_WITH_BRIDGE = [
-	'<nds-icon-button variant="tertiary"></nds-icon-button>',
+	'<pie-nds-icon-button variant="tertiary"></pie-nds-icon-button>',
 	"<style>",
-	"nds-icon-button {",
+	"pie-nds-icon-button {",
 	"  --color-interactive-blue: var(--pie-button-bg, #222);",
 	"  --color-new-gray: var(--pie-background-dark, #f3f5f7);",
 	"  --color-primary-white: var(--pie-white, #ffffff);",
@@ -181,7 +181,7 @@ describe("check-theme-tokens", () => {
 		);
 
 		const ndsFailures = checkThemeTokens(root).filter((failure) =>
-			failure.includes("nds-icon-button"),
+			failure.includes("pie-nds-icon-button"),
 		);
 
 		expect(ndsFailures).toEqual([]);
@@ -192,11 +192,11 @@ describe("check-theme-tokens", () => {
 		write(
 			root,
 			"packages/tool-example/tool-example-nds.svelte",
-			'<nds-icon-button variant="tertiary"></nds-icon-button>\n<style></style>\n',
+			'<pie-nds-icon-button variant="tertiary"></pie-nds-icon-button>\n<style></style>\n',
 		);
 
 		const failures = checkThemeTokens(root)
-			.filter((failure) => failure.includes("nds-icon-button"))
+			.filter((failure) => failure.includes("pie-nds-icon-button"))
 			.join("\n");
 
 		expect(failures).toContain("does not bridge `--color-new-gray`");
@@ -204,16 +204,16 @@ describe("check-theme-tokens", () => {
 		expect(failures).toContain("does not remap --color-interactive-blue");
 	});
 
-	test("ignores files that only name nds-icon-button in prose", () => {
+	test("ignores files that only name pie-nds-icon-button in prose", () => {
 		const root = createFixtureRoot();
 		write(
 			root,
 			"packages/tool-example/tool-example-docs.svelte",
-			"<script>\n// Controls render <nds-icon-button> only when the host opts in.\n</script>\n",
+			"<script>\n// Controls render <pie-nds-icon-button> only when the host opts in.\n</script>\n",
 		);
 
 		const ndsFailures = checkThemeTokens(root).filter((failure) =>
-			failure.includes("nds-icon-button"),
+			failure.includes("pie-nds-icon-button"),
 		);
 
 		expect(ndsFailures).toEqual([]);
@@ -225,11 +225,11 @@ describe("check-theme-tokens", () => {
 			root,
 			"packages/tool-example/tool-example-nds.svelte",
 			"<script>\n// Externalizes @pie-players/*, so this is a bare import.\n</script>\n" +
-				'<nds-icon-button variant="tertiary"></nds-icon-button>\n<style>/* end */</style>\n',
+				'<pie-nds-icon-button variant="tertiary"></pie-nds-icon-button>\n<style>/* end */</style>\n',
 		);
 
 		const failures = checkThemeTokens(root)
-			.filter((failure) => failure.includes("nds-icon-button"))
+			.filter((failure) => failure.includes("pie-nds-icon-button"))
 			.join("\n");
 
 		expect(failures).toContain("does not bridge `--color-new-gray`");

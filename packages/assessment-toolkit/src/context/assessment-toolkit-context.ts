@@ -40,7 +40,7 @@ export interface AssessmentToolkitRuntimeContext {
 	attemptId?: string;
 	itemPlayer: ItemPlayerConfig;
 	/**
-	 * Opt-in flag: context consumers render the vendored `<nds-icon-button>`
+	 * Opt-in flag: context consumers render the vendored `<pie-nds-icon-button>`
 	 * only when this is `true`; otherwise (unset/`false`, the default) they
 	 * render plain `<button>` controls. Sourced from the `nds-icons` attribute
 	 * on the toolkit or section player.

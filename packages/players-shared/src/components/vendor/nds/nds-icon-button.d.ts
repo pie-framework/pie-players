@@ -1,8 +1,8 @@
 /**
- * Type surface for the vendored `<nds-icon-button>` bundle.
+ * Type surface for the vendored NDS icon button bundle.
  *
  * Consumers import this module for its side effect (it registers the
- * `nds-icon-button` custom element on evaluation). The named export is
+ * `pie-nds-icon-button` custom element on evaluation). The named export is
  * provided only so tooling can reference the constructor; the tag is what
  * consumers actually use, via markup or `document.createElement`.
  */

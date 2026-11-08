@@ -525,7 +525,7 @@ Items pane of a section player: renders the item cards of the current compositio
 
 	// Presentation gate from the toolkit runtime context (provided by the
 	// wrapping `<pie-assessment-toolkit>`). The scroll-hint renders as an
-	// <nds-icon-button> only when the host explicitly opts in
+	// <pie-nds-icon-button> only when the host explicitly opts in
 	// (`ndsIcons === true`); otherwise (unset / no provider / false) it is a
 	// plain <button> — the default.
 	let ndsIconsFromContext = $state<boolean | undefined>(undefined);
@@ -782,14 +782,14 @@ Items pane of a section player: renders the item cards of the current compositio
 		{#if useNdsIcons}
 			<!-- The NDS custom element renders the actual labeled <button>; this host only receives its bubbled click. -->
 			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-			<nds-icon-button
+			<pie-nds-icon-button
 				variant="tertiary"
 				size="small"
 				icon-name="chevron-down"
 				button-aria-label={interfaceI18n.t("player.scrollDownA11y")}
 				onclick={scrollDown}
 				use:ndsIconButtonAction
-			></nds-icon-button>
+			></pie-nds-icon-button>
 		{:else}
 			<!-- Non-NDS fallback: plain <button> with a self-contained inline SVG
 			     chevron (no FontAwesome dependency in this package). -->
@@ -839,12 +839,12 @@ Items pane of a section player: renders the item cards of the current compositio
 	}
 
 	/* so the "scroll down" button still works */
-	.pie-section-player-scroll-hint nds-icon-button,
+	.pie-section-player-scroll-hint pie-nds-icon-button,
 	.pie-section-player-scroll-hint__button {
 		pointer-events: auto;
 	}
 
-	.pie-section-player-scroll-hint nds-icon-button {
+	.pie-section-player-scroll-hint pie-nds-icon-button {
 		/* NDS palette bridge — keep in sync with the copies in tool-tts-inline
 		   and assessment-toolkit ItemToolBar (asserted by
 		   scripts/check-theme-tokens.mjs). The vendored button paints its glyph,

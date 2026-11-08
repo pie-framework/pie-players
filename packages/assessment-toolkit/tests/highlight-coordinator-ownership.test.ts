@@ -54,7 +54,7 @@ beforeAll(() => {
 
 afterEach(() => {
 	document.body.replaceChildren();
-	document.getElementById("pie-highlight-styles")?.remove();
+	document.getElementById("pie-highlight-styles-v2")?.remove();
 	document.documentElement.removeAttribute("style");
 	document.documentElement.removeAttribute("data-theme");
 	for (const [name, descriptor] of [

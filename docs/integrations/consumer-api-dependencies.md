@@ -90,7 +90,9 @@ went back inside `[data-pie-content]`; only `kds-*`, `Kds*`, `mjx-*`, `TEX-*` an
 KDS, MathJax and fraction rules and loses the others, which reaches Hosts A and P
 only for a portaled menu whose choices carry one of those classes. Hosts V and M
 are unchanged under `@scope`. Host R's own authored-markup components lose the
-same rules unless their container carries `data-pie-content`. The item player and
+same rules unless their container carries `data-pie-content`. `pie-item-summary`
+marks its prompt, options, answers, stem and figures with it, so the item list's
+summaries keep them. The item player and
 the print player now adopt the stylesheet into a host's ShadowRoot, so content a
 host mounts there is styled where it was not; a root that supplies its own copy,
 and a document with `data-pie-content-styles="host"`, are left alone. The CSS
@@ -99,7 +101,8 @@ and `pie-annotation-<colour>`; no checkout names one in a rule or in
 `CSS.highlights`, and Host A and Host P set only the `--pie-tts-*` properties,
 which are unchanged. The NDS icon button loads on first use under `ndsIcons`, so
 Host A, the one host that sets `nds-icons`, gets its toolbar, inline TTS and
-scroll-hint buttons one import later than before. Row verification dates are
+scroll-hint buttons one import later than before: plain buttons render until the
+tag registers, then the NDS buttons replace them. Row verification dates are
 unchanged.
 
 On 2026-10-06 MathJax's fonts and speech, from

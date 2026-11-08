@@ -260,4 +260,22 @@ describe("defaultConditionViolations", () => {
 		).toHaveLength(1);
 		expect(defaultConditionViolations(undefined)).toEqual([]);
 	});
+
+	test("reads a map without subpath keys as the root entry", () => {
+		const violations = defaultConditionViolations({
+			types: "./dist/index.d.ts",
+			import: "./dist/index.js",
+		});
+		expect(violations).toEqual(['exports ".": "default" must follow "import"']);
+	});
+
+	test("requires a default after an import that is itself a condition object", () => {
+		const nested = { types: "./x.d.ts", node: "./x.node.js" };
+		expect(
+			defaultConditionViolations({ "./x": { import: nested } }),
+		).toHaveLength(1);
+		expect(
+			defaultConditionViolations({ "./x": { import: nested, default: { ...nested } } }),
+		).toEqual([]);
+	});
 });

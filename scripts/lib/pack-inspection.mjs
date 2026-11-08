@@ -294,12 +294,12 @@ export const defaultConditionViolations = (exportsMap) => {
 		if (!node || typeof node !== "object" || Array.isArray(node)) return;
 		const keys = Object.keys(node);
 		const importAt = keys.indexOf("import");
-		if (importAt !== -1 && typeof node.import === "string") {
+		if (importAt !== -1 && node.import !== null) {
 			if (keys[importAt + 1] !== "default") {
 				violations.push(`exports ${at}: "default" must follow "import"`);
-			} else if (node.default !== node.import) {
+			} else if (JSON.stringify(node.default) !== JSON.stringify(node.import)) {
 				violations.push(
-					`exports ${at}: "default" must equal "import" ("${node.default}" vs "${node.import}")`,
+					`exports ${at}: "default" must equal "import" (${JSON.stringify(node.default)} vs ${JSON.stringify(node.import)})`,
 				);
 			}
 		}
@@ -308,7 +308,10 @@ export const defaultConditionViolations = (exportsMap) => {
 		}
 	};
 	if (exportsMap && typeof exportsMap === "object") {
-		for (const [subpath, target] of Object.entries(exportsMap)) {
+		// A map without subpath keys is the "." entry's conditions.
+		const isConditionMap = Object.keys(exportsMap).some((key) => !key.startsWith("."));
+		const entries = isConditionMap ? [[".", exportsMap]] : Object.entries(exportsMap);
+		for (const [subpath, target] of entries) {
 			walk(target, `"${subpath}"`);
 		}
 	}

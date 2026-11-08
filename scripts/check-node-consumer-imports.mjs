@@ -131,7 +131,7 @@ for (const { specifier, file } of JSON.parse(payload)) {
 		problems.push(specifier + ": " + (error.code ?? error.message));
 	}
 }
-process.stdout.write(JSON.stringify({ node: process.versions.node, count: JSON.parse(payload).length, problems }));
+process.stdout.write(JSON.stringify({ node: process.versions.node, bun: process.versions.bun ?? null, count: JSON.parse(payload).length, problems }));
 `;
 	try {
 		const out = execFileSync(
@@ -139,8 +139,11 @@ process.stdout.write(JSON.stringify({ node: process.versions.node, count: JSON.p
 			["-e", script, fixtureDir, JSON.stringify(expected)],
 			{ stdio: ["ignore", "pipe", "pipe"] },
 		);
-		const { node, count, problems } = JSON.parse(out.toString());
-		if (Number.parseInt(node, 10) < 20) {
+		const { node, bun, count, problems } = JSON.parse(out.toString());
+		// Bun's resolver matches `import` and would hide a missing `default`.
+		if (bun) {
+			problems.push(`require.resolve ran on Bun ${bun} through "node" on PATH; it needs Node`);
+		} else if (Number.parseInt(node, 10) < 20) {
 			problems.push(`require.resolve ran on Node ${node}; the packages need >=20`);
 		}
 		return { count, problems };

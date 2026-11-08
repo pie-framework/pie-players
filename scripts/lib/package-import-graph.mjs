@@ -24,7 +24,6 @@ const STYLESHEET_FILE = /\.css$/;
 const BROWSER_BUILD_PREFIX = "./dist/browser/";
 const CSS_IMPORT_PATTERN = /@import\s+(?:url\(\s*)?["']([^"']+)["']/g;
 const CSS_COMMENT_PATTERN = /\/\*[\s\S]*?\*\//g;
-const URL_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 const IGNORED_PROTOCOLS = ["node:", "bun:", "virtual:", "data:", "blob:"];
 const IGNORED_PREFIXES = ["vite/"];
 const BUILTIN_MODULES = new Set(
@@ -40,13 +39,18 @@ const SCRIPT_IMPORT_KINDS = {
 	"require-resolve": "require",
 };
 
+const ASSET_URL_PATTERN =
+	/new\s+URL\(\s*(["'`])(\.{1,2}\/[^"'`$]+)\1\s*,\s*import\.meta\.url\s*\)/g;
+
 /**
- * The module specifiers a script imports, requires or loads with `import()`.
- * A specifier holding `${` is a template literal the code builds, so it names
- * no module.
+ * The module specifiers a script imports, requires or loads with `import()`,
+ * plus the relative files it locates with `new URL("./x", import.meta.url)`,
+ * such as a worker, which the consumer's bundler emits and the browser loads
+ * as its own module graph. A specifier holding `${` is a template literal the
+ * code builds, so it names no module.
  */
 export function scanScriptImports(code) {
-	return scriptScanner
+	const imports = scriptScanner
 		.scanImports(code)
 		.filter((entry) => entry.kind in SCRIPT_IMPORT_KINDS)
 		.filter((entry) => !entry.path.includes("${"))
@@ -54,6 +58,11 @@ export function scanScriptImports(code) {
 			specifier: entry.path,
 			kind: SCRIPT_IMPORT_KINDS[entry.kind],
 		}));
+	const assets = [...code.matchAll(ASSET_URL_PATTERN)].map((match) => ({
+		specifier: match[2],
+		kind: "asset-url",
+	}));
+	return [...imports, ...assets];
 }
 
 /**
@@ -280,7 +289,8 @@ const relativeTo = (root, file) => path.relative(root, file) || file;
  * `allowed` holds the policy's `undeclaredNpm` and `undeclaredBrowser`
  * specifiers and the `typeOnly` and `unreachable` dependencies for this package.
  * Nothing here can tell which `undeclaredBrowser` entry a build needs: the
- * bundle-safety check reads the same list and sees text a scanner skips.
+ * bundle-safety check reads the same list, sees text a scanner skips, and
+ * reports the entries that excuse nothing.
  */
 export function analyzePackage({
 	dir,

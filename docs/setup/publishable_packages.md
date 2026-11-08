@@ -40,7 +40,6 @@ Publishable packages:
 - `@pie-players/pie-section-player-tools-pnp-debugger`
 - `@pie-players/pie-section-player-tools-session-debugger`
 - `@pie-players/pie-section-player-tools-tts-settings`
-- `@pie-players/pie-section-player-tools-shared`
 - `@pie-players/pie-theme`
 - `@pie-players/pie-tool-annotation-toolbar`
 - `@pie-players/pie-tool-answer-eliminator`

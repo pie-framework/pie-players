@@ -113,7 +113,6 @@ These panels inspect a running player during development.
 | [`@pie-players/pie-section-player-tools-pnp-debugger`](../../packages/section-player-tools-pnp-debugger/README.md) | `<pie-section-player-tools-pnp-debugger>` | Personal Needs and Preferences (PNP) inputs and tool visibility decisions |
 | [`@pie-players/pie-section-player-tools-session-debugger`](../../packages/section-player-tools-session-debugger/README.md) | `<pie-section-player-tools-session-debugger>` | Section sessions |
 | [`@pie-players/pie-section-player-tools-tts-settings`](../../packages/section-player-tools-tts-settings/README.md) | `<pie-section-player-tools-tts-settings>` | TTS settings |
-| [`@pie-players/pie-section-player-tools-shared`](../../packages/section-player-tools-shared/README.md) | — | UI and helpers the panels share |
 
 The item player's `./components/item-session-debugger-element` entry registers
 `<pie-item-player-session-debugger>`, the item-level session panel.

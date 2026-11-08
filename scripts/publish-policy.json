@@ -14,16 +14,8 @@
 	"allowedUndeclaredRuntimeImports": {
 		"npm": {},
 		"browser": {
-			"@pie-players/pie-calculator-cortex": [
-				"https://esm.run/@cortex-js/compute-engine",
-				"canvas.js"
-			],
 			"@pie-players/pie-item-list": ["@pie-players/pie-theme/components.css"],
-			"@pie-players/pie-section-player": [
-				"https://esm.run/@cortex-js/compute-engine",
-				"canvas.js",
-				"@pie-players/pie-theme/components.css"
-			]
+			"@pie-players/pie-section-player": ["@pie-players/pie-theme/components.css"]
 		}
 	},
 	"allowedTypeOnlyDependencies": {
@@ -41,9 +33,7 @@
 		"@pie-players/pie-tool-calculator-desmos": ["@pie-players/pie-calculator"],
 		"@pie-players/pie-tool-calculator-shared": ["@pie-players/pie-calculator"]
 	},
-	"allowedUnreachableDependencies": {
-		"@pie-players/pie-item-player": ["@pie-players/pie-context"]
-	},
+	"allowedUnreachableDependencies": {},
 	"workspaceRoots": ["packages"],
 	"forbiddenPublicExports": {
 		"@pie-players/pie-players-shared": [

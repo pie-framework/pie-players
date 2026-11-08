@@ -562,19 +562,38 @@ function readAllowedUndeclaredRuntimeImports(packageName) {
  */
 function checkBrowserBuilds(failures) {
 	const dirs = listBrowserBuildDirs();
+	const checked = new Set();
 	for (const dir of dirs) {
 		const packageName = readManifest(path.dirname(path.dirname(dir))).name;
+		checked.add(packageName);
 		const allowed = readAllowedUndeclaredRuntimeImports(packageName);
+		const excused = new Set();
 		for (const file of readDistFiles(dir)) {
-			for (const specifier of findUnresolvableBrowserSpecifiers(
-				file.content,
-				allowed,
-			)) {
+			const unresolvable = findUnresolvableBrowserSpecifiers(file.content);
+			for (const specifier of unresolvable) {
+				if (allowed.includes(specifier)) {
+					excused.add(specifier);
+					continue;
+				}
 				failures.push(
 					`[bundle-safety] ${path.relative(ROOT, dir)}/${file.path} imports ${specifier}, which a page cannot resolve without an import map; the browser build bundles every dependency (external: [])`,
 				);
 			}
 		}
+		for (const specifier of allowed.filter((entry) => !excused.has(entry))) {
+			failures.push(
+				`[bundle-safety] "${specifier}" in allowedUndeclaredRuntimeImports.browser["${packageName}"] excuses nothing in ${path.relative(ROOT, dir)}; remove it from scripts/publish-policy.json`,
+			);
+		}
+	}
+	const policy = readPublishPolicy(ROOT);
+	for (const packageName of Object.keys(
+		policy.allowedUndeclaredRuntimeImports?.browser ?? {},
+	)) {
+		if (checked.has(packageName)) continue;
+		failures.push(
+			`[bundle-safety] allowedUndeclaredRuntimeImports.browser["${packageName}"] names a package with no browser build; remove it from scripts/publish-policy.json`,
+		);
 	}
 	return dirs.length;
 }

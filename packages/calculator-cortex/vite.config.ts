@@ -23,7 +23,7 @@ export default defineConfig({
 		}),
 	],
 	// The evaluation worker is a separate bundle, so it takes the plugin itself.
-	worker: { plugins: () => [preserveLegalComments()] },
+	worker: { plugins: () => [preserveLegalComments({ notices: false })] },
 	build: {
 		lib: {
 			entry: resolve(import.meta.dirname, "src/index.ts"),

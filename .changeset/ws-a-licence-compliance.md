@@ -44,4 +44,4 @@
 "@pie-players/pie-tts": patch
 ---
 
-Every package now ships a `LICENSE` file, and the published bundles keep the `@license` notices of the libraries they inline (DOMPurify, lit, MathJax, speech-rule-engine, MathLive, Compute Engine); builds used to strip them. `@pie-players/pie-calculator-cortex`'s licence file is now the MIT text plus the third-party notices.
+Every package now ships a `LICENSE` file, the published bundles keep the `@license` notices of the libraries they inline (DOMPurify, lit, MathJax, speech-rule-engine, MathLive, Compute Engine, JSXGraph), and every package that inlines third-party code ships a `THIRD-PARTY-LICENSES.txt` beside its bundles with each inlined package's version and full licence text; builds used to strip the notices. `@pie-players/pie-calculator-cortex`'s licence file is now the MIT text plus the third-party notices.

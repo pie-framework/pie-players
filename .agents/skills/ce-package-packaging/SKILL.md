@@ -56,13 +56,16 @@ For each registration entry, add an `exports` entry pointing at the
 ```json
 "./components/item-toolbar-element": {
   "types": "./dist/components/item-toolbar-element.d.ts",
-  "import": "./dist/components/item-toolbar-element.js"
+  "import": "./dist/components/item-toolbar-element.js",
+  "default": "./dist/components/item-toolbar-element.js"
 }
 ```
 
 Rules:
 
-- Always emit `types` + `import` for each entry.
+- Always emit `types`, `import` and `default` for each entry, `default` straight
+  after `import` with the same target, so `require.resolve` finds the ESM file;
+  `bun run check:package-metadata` fails an entry without it.
 - Runtime path must be `./dist/...`, not `./src/...`.
 - Custom-element declarations must be framework-neutral and typecheck in an
   isolated consumer without Svelte or other workspace dependencies installed.

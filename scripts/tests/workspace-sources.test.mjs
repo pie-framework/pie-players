@@ -344,7 +344,6 @@ describe("test runner wiring", () => {
 			"tool-calculator-desmos",
 			"tool-calculator-inline-desmos",
 			"tool-calculator-shared",
-			"tool-color-scheme",
 			"tool-dictionary",
 			"tool-graph",
 			"tool-line-reader",
@@ -353,6 +352,7 @@ describe("test runner wiring", () => {
 			"tool-protractor",
 			"tool-ruler",
 			"tool-sign-language",
+			"tool-theme",
 			"tool-tts-inline",
 		];
 		const untyped = [];

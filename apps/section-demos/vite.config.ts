@@ -159,7 +159,7 @@ export default (async () => {
 				),
 				"@pie-players/pie-tool-theme": resolve(
 					__dirname,
-					"../../packages/tool-color-scheme/dist/tool-color-scheme.js",
+					"../../packages/tool-theme/dist/tool-color-scheme.js",
 				),
 				"@pie-players/pie-tool-graph": resolve(
 					__dirname,

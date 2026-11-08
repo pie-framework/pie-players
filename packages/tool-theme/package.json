@@ -2,11 +2,11 @@
 	"name": "@pie-players/pie-tool-theme",
 	"version": "1.0.0-beta.9",
 	"type": "module",
-	"description": "Theme tool for PIE assessment player - provides accessible themes and color schemes",
+	"description": "Color-scheme picker tool (theme) for PIE players: learners choose a scheme from the @pie-players/pie-theme catalog",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/pie-framework/pie-players.git",
-		"directory": "packages/tool-color-scheme"
+		"directory": "packages/tool-theme"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -60,7 +60,7 @@
 		"vite": "^8.3.3",
 		"vite-plugin-dts": "^5.1.2"
 	},
-	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-color-scheme#readme",
+	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tool-theme#readme",
 	"bugs": {
 		"url": "https://github.com/pie-framework/pie-players/issues"
 	},

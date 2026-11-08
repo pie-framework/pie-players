@@ -102,6 +102,6 @@ export interface PrintItemSettings {
  */
 export interface PrintToolRegistration {
 	readonly toolId: string;
-	// biome-ignore lint/suspicious/noExplicitAny: the toolkit's ToolRegistration is an interface, and only `any` lets an interface satisfy an index signature
+	// `any`, not `unknown`: only `any` lets the toolkit's interface satisfy an index signature.
 	readonly [member: string]: any;
 }

@@ -9,6 +9,7 @@ import {
 } from "../packages/players-shared/math-rendering-module-deferral.mjs";
 import { SOURCE_MAP_COMMENT_TEXT } from "../packages/players-shared/source-map-comment-text.mjs";
 import { readPublishPolicy } from "./lib/pack-inspection.mjs";
+import { scanScriptImports } from "./lib/package-import-graph.mjs";
 
 const ROOT = process.cwd();
 const EVAL_REQUIRE_PATTERN = /eval\((["'])require\1\)/;
@@ -320,7 +321,8 @@ export function findIdenticalFiles(files) {
 }
 
 /**
- * Packages every tool imports from the host's node_modules, each with a string
+ * Packages every tool, and the section player's and item list's npm builds,
+ * import from the host's node_modules, each with a string
  * only its own published code carries and minifiers keep: a `Symbol.for` key of
  * the toolkit's contexts, pie-context's request event name, and an error of
  * players-shared's i18n provider.
@@ -701,8 +703,28 @@ function checkNoIdenticalFiles(failures) {
 }
 
 /**
- * A tool resolves the toolkit, players-shared and pie-context from the host,
- * so a section host carries one copy of each rather than one per tool.
+ * The players whose npm build resolves the toolkit, players-shared and
+ * pie-context from the host, as the tools do. Each has a self-contained
+ * `dist/browser` build for a page that loads it by URL.
+ */
+const PLAYERS_IMPORTING_HOST_SHARED = new Set([
+	"@pie-players/pie-item-list",
+	"@pie-players/pie-section-player",
+]);
+
+/**
+ * The players whose one `dist` is also the CDN entry, which docs/install/cdn.md
+ * promises imports no bare specifier, so they bundle the host-shared packages.
+ */
+const SELF_CONTAINED_CDN_PLAYERS = new Set([
+	"@pie-players/pie-item-player",
+	"@pie-players/pie-print-player",
+]);
+
+/**
+ * A tool or a player's npm build resolves the toolkit, players-shared and
+ * pie-context from the host, so a section host carries one copy of each rather
+ * than one per bundle.
  */
 function checkToolsImportHostSharedPackages(failures) {
 	for (const shared of HOST_SHARED_PACKAGES) {
@@ -719,14 +741,35 @@ function checkToolsImportHostSharedPackages(failures) {
 
 	for (const dir of listPackageDistDirs()) {
 		const packageDir = path.dirname(dir);
-		if (!/^@pie-players\/pie-tool-/.test(readManifest(packageDir).name)) {
+		const { name: packageName } = readManifest(packageDir);
+		const isTool = /^@pie-players\/pie-tool-/.test(packageName);
+		if (!isTool && !PLAYERS_IMPORTING_HOST_SHARED.has(packageName)) {
 			continue;
 		}
+		const fix = isTool
+			? "list /^@pie-players\\/pie-(?:assessment-toolkit|players-shared|context)(?:\\/|$)/ in the tool's Vite externals"
+			: "list hostSharedExternals() from players-shared/host-shared-externals.ts in the player's Vite external";
 		for (const file of readDistFiles(dir)) {
 			for (const name of findInlinedHostSharedPackages(file.content)) {
 				failures.push(
-					`[bundle-safety] ${path.relative(ROOT, dir)}/${file.path} inlines ${name}; list /^@pie-players\\/pie-(?:assessment-toolkit|players-shared|context)(?:\\/|$)/ in the tool's Vite externals so the host resolves one copy`,
+					`[bundle-safety] ${path.relative(ROOT, dir)}/${file.path} inlines ${name}; ${fix} so the host resolves one copy`,
 				);
+			}
+		}
+	}
+
+	for (const dir of listPackageDistDirs()) {
+		const packageDir = path.dirname(dir);
+		if (!SELF_CONTAINED_CDN_PLAYERS.has(readManifest(packageDir).name)) {
+			continue;
+		}
+		for (const file of readDistFiles(dir)) {
+			for (const { specifier } of scanScriptImports(file.content)) {
+				if (/^@pie-players\//.test(specifier)) {
+					failures.push(
+						`[bundle-safety] ${path.relative(ROOT, dir)}/${file.path} imports ${specifier}, but this dist is the CDN entry and imports no bare specifier; bundle it`,
+					);
+				}
 			}
 		}
 	}

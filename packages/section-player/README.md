@@ -21,11 +21,12 @@ import "@pie-players/pie-section-player";
 ```
 
 Importing the package root registers every section player element. The root
-entry is bundler-only: it imports `@pie-players/pie-item-player`,
-`@pie-players/pie-default-tool-loaders` and `speech-rule-engine`, with the
-engine's JSON locale tables, by bare specifier and without import attributes.
-Items render through the host's one `@pie-players/pie-item-player`, which this
-package depends on at its own version. A host without a bundler loads the
+entry is bundler-only: it imports `@pie-players/pie-assessment-toolkit`,
+`@pie-players/pie-players-shared`, `@pie-players/pie-context`,
+`@pie-players/pie-item-player` and `@pie-players/pie-default-tool-loaders` by
+bare specifier, so a host carries one copy of each. Items render through the
+host's one `@pie-players/pie-item-player`, which this package depends on at its
+own version. A host without a bundler loads the
 self-contained `./browser` build
 ([Loading from a CDN](../../docs/install/cdn.md#section-player-browser-build)).
 

@@ -553,6 +553,19 @@ Items pane of a section player: renders the item cards of the current compositio
 		);
 	});
 
+	// Registers <pie-nds-icon-button> the first time the scroll hint renders as
+	// one, so the pane does not depend on the toolbar or the inline TTS control
+	// having loaded it. The import is idempotent: the bundle guards its define.
+	$effect(() => {
+		if (!useNdsIcons) return;
+		import("@pie-players/pie-players-shared/nds-icon-button").catch((error) => {
+			console.warn(
+				"[pie-section-player] <pie-nds-icon-button> failed to load; the scroll hint stays unstyled",
+				error,
+			);
+		});
+	});
+
 	// The NDS glyph needs FontAwesome, in <head> and in whatever shadow root the
 	// pane renders in: see players-shared `ui/fontawesome`.
 	const ndsIconButtonAction = (node: HTMLElement) => {

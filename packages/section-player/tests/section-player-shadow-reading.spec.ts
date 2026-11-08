@@ -273,7 +273,7 @@ test.describe("read-aloud over open shadow roots", () => {
 			.evaluate((host) =>
 				Array.from(host.shadowRoot?.adoptedStyleSheets ?? []).some((sheet) =>
 					Array.from(sheet.cssRules).some((rule) =>
-						rule.cssText.includes("::highlight(tts-sentence)"),
+						rule.cssText.includes("::highlight(pie-tts-sentence)"),
 					),
 				),
 			);

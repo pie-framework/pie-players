@@ -9,6 +9,7 @@ import {
 } from "bun:test";
 
 import {
+	adoptContentStylesInto,
 	contentStylesOptedOut,
 	contentStylesPresent,
 	installContentStyles,
@@ -318,5 +319,94 @@ describe("auditContentStyles", () => {
 
 		expect(await captureWarnings()).toHaveLength(1);
 		expect(await captureWarnings()).toHaveLength(0);
+	});
+});
+
+const TEXT_SLOT = Symbol.for("@pie-players/pie-players-shared/content-styles-text");
+
+const shadowContent = (): { root: ShadowRoot; inner: HTMLElement } => {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = host.attachShadow({ mode: "open" });
+	const inner = document.createElement("div");
+	root.append(inner);
+	return { root, inner };
+};
+
+describe("adoptContentStylesInto", () => {
+	afterEach(() => {
+		document.body.innerHTML = "";
+		delete (globalThis as unknown as Record<symbol, unknown>)[TEXT_SLOT];
+	});
+
+	test("adopts the sheet first among the root's own adopted sheets, once", () => {
+		installContentStyles(CSS, "pie-item-player");
+		const { root, inner } = shadowContent();
+		const own = new CSSStyleSheet();
+		root.adoptedStyleSheets = [own];
+
+		expect(adoptContentStylesInto(inner)).toBe("adopted");
+		expect(adoptContentStylesInto(inner)).toBe("already-adopted");
+
+		expect(root.adoptedStyleSheets).toHaveLength(2);
+		expect(root.adoptedStyleSheets[1]).toBe(own);
+	});
+
+	test("shares one constructed sheet across roots", () => {
+		installContentStyles(CSS, "pie-item-player");
+		const first = shadowContent();
+		const second = shadowContent();
+
+		adoptContentStylesInto(first.inner);
+		adoptContentStylesInto(second.inner);
+
+		expect(second.root.adoptedStyleSheets[0]).toBe(
+			first.root.adoptedStyleSheets[0],
+		);
+	});
+
+	test("adopts again when the root's owner replaced its sheets", () => {
+		installContentStyles(CSS, "pie-item-player");
+		const { root, inner } = shadowContent();
+		adoptContentStylesInto(inner);
+		root.adoptedStyleSheets = [new CSSStyleSheet()];
+
+		expect(adoptContentStylesInto(inner)).toBe("adopted");
+		expect(root.adoptedStyleSheets).toHaveLength(2);
+	});
+
+	test("leaves light-tree content to the document stylesheet", () => {
+		installContentStyles(CSS, "pie-item-player");
+		const div = document.createElement("div");
+		document.body.append(div);
+
+		expect(adoptContentStylesInto(div)).toBe("not-in-shadow-root");
+	});
+
+	test("adopts nothing before a player has recorded the stylesheet text", () => {
+		const { root, inner } = shadowContent();
+
+		expect(adoptContentStylesInto(inner)).toBe("unsupported");
+		expect(root.adoptedStyleSheets).toHaveLength(0);
+	});
+
+	test("stands down for an opted-out host", () => {
+		document.documentElement.setAttribute("data-pie-content-styles", "host");
+		installContentStyles(CSS, "pie-item-player");
+		const { root, inner } = shadowContent();
+
+		expect(adoptContentStylesInto(inner)).toBe("opted-out");
+		expect(root.adoptedStyleSheets).toHaveLength(0);
+	});
+
+	test("stands down when the root's owner supplies its own copy", () => {
+		installContentStyles(CSS, "pie-item-player");
+		const { root, inner } = shadowContent();
+		const hostCopy = new CSSStyleSheet();
+		hostCopy.replaceSync(CSS);
+		root.adoptedStyleSheets = [hostCopy];
+
+		expect(adoptContentStylesInto(inner)).toBe("host-supplied");
+		expect(root.adoptedStyleSheets).toEqual([hostCopy]);
 	});
 });

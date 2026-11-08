@@ -85,7 +85,7 @@ describe("HighlightCoordinator highlight ownership", () => {
 		first.highlightTTSWord([rangeOver(textIn("first"))]);
 		second.highlightTTSWord([rangeOver(textIn("second"))]);
 
-		expect(painted("tts-word").sort()).toEqual(["first", "second"]);
+		expect(painted("pie-tts-word").sort()).toEqual(["first", "second"]);
 		first.destroy();
 		second.destroy();
 	});
@@ -105,8 +105,8 @@ describe("HighlightCoordinator highlight ownership", () => {
 		first.clearTTS();
 		first.clearAnnotations();
 
-		expect(painted("tts-sentence")).toEqual(["second sentence"]);
-		expect(painted("annotation-yellow")).toEqual(["second note"]);
+		expect(painted("pie-tts-sentence")).toEqual(["second sentence"]);
+		expect(painted("pie-annotation-yellow")).toEqual(["second note"]);
 		second.destroy();
 		first.destroy();
 	});
@@ -121,10 +121,10 @@ describe("HighlightCoordinator word highlight", () => {
 			rangeOver(textIn("Missis")),
 			rangeOver(textIn("sippi")),
 		]);
-		expect(painted("tts-word")).toEqual(["Missis", "sippi"]);
+		expect(painted("pie-tts-word")).toEqual(["Missis", "sippi"]);
 
 		coordinator.highlightTTSWord([rangeOver(textIn("river"))]);
-		expect(painted("tts-word")).toEqual(["river"]);
+		expect(painted("pie-tts-word")).toEqual(["river"]);
 		coordinator.destroy();
 	});
 });

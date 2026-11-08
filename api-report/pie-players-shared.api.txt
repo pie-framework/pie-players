@@ -30,6 +30,7 @@
   type ConfigResource
   ConsoleInstrumentationProvider
   type ConsoleProviderConfig
+  type ContentStylesAdoption
   type ContentStylesResult
   DEFAULT_BUNDLE_HOST
   DEFAULT_CONTAINMENT_GUTTER
@@ -168,6 +169,7 @@
   addMarkupForPackage
   addOrUpdateOverrideInUrl
   addRubricIfNeeded
+  adoptContentStylesInto
   aggregateElements
   alignPreloadedElementVersions
   applyElementOverrides
@@ -819,7 +821,9 @@
   coerceBooleanLike
 
 ./ui/content-styles
+  type ContentStylesAdoption
   type ContentStylesResult
+  adoptContentStylesInto
   auditContentStyles
   contentStylesOptedOut
   contentStylesPresent

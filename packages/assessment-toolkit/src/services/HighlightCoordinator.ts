@@ -67,7 +67,7 @@ export interface Annotation {
  */
 const HIGHLIGHT_STYLES = `
       /* TTS highlights - temporary */
-      ::highlight(tts-word) {
+      ::highlight(pie-tts-word) {
         background-color: var(--pie-tts-word-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 68%, transparent));
         text-decoration: underline 2px solid var(--pie-tts-word-underline, color-mix(in srgb, var(--pie-text, #111827) 70%, transparent));
         text-underline-offset: 2px;
@@ -75,8 +75,8 @@ const HIGHLIGHT_STYLES = `
         color: inherit;
       }
 
-      /* tts-sentence registry id: coarse read-along band (visual line boxes in layout) */
-      ::highlight(tts-sentence) {
+      /* pie-tts-sentence registry id: coarse read-along band (visual line boxes in layout) */
+      ::highlight(pie-tts-sentence) {
         background-color: var(--pie-tts-line-highlight, var(--pie-tts-sentence-highlight, color-mix(in srgb, var(--pie-missing, #ffeb3b) 38%, transparent)));
         color: inherit;
       }
@@ -101,27 +101,27 @@ const HIGHLIGHT_STYLES = `
       }
 
       /* Annotation highlights - persistent */
-      ::highlight(annotation-yellow) {
+      ::highlight(pie-annotation-yellow) {
         background-color: var(--pie-annotation-yellow-highlight, rgba(253, 233, 149, 0.5));
         color: inherit;
       }
 
-      ::highlight(annotation-green) {
+      ::highlight(pie-annotation-green) {
         background-color: var(--pie-annotation-green-highlight, rgba(166, 225, 197, 0.5));
         color: inherit;
       }
 
-      ::highlight(annotation-blue) {
+      ::highlight(pie-annotation-blue) {
         background-color: var(--pie-annotation-blue-highlight, rgba(167, 224, 246, 0.5));
         color: inherit;
       }
 
-      ::highlight(annotation-pink) {
+      ::highlight(pie-annotation-pink) {
         background-color: var(--pie-annotation-pink-highlight, rgba(255, 159, 174, 0.5));
         color: inherit;
       }
 
-      ::highlight(annotation-orange) {
+      ::highlight(pie-annotation-orange) {
         background-color: var(--pie-annotation-orange-highlight, rgba(255, 165, 0, 0.5));
         color: inherit;
       }
@@ -134,7 +134,7 @@ const HIGHLIGHT_STYLES = `
          Each state has its own token so overriding one never silently moves the
          other, and so either can beat a host-set pie-primary: a var() fallback
          can never override a value the host actually set. */
-      ::highlight(annotation-underline) {
+      ::highlight(pie-annotation-underline) {
         background-color: transparent;
         text-decoration: underline 2px solid var(--pie-annotation-underline, #4221d5);
         text-underline-offset: 2px;
@@ -157,22 +157,22 @@ const HIGHLIGHT_STYLES = `
          check. Spell property names in full, or omit the dashes. */
 
       @media (prefers-color-scheme: dark) {
-        ::highlight(annotation-yellow) {
+        ::highlight(pie-annotation-yellow) {
           background-color: var(--pie-annotation-yellow-highlight, rgba(139, 117, 0, 0.6));
         }
-        ::highlight(annotation-green) {
+        ::highlight(pie-annotation-green) {
           background-color: var(--pie-annotation-green-highlight, rgba(45, 92, 63, 0.6));
         }
-        ::highlight(annotation-blue) {
+        ::highlight(pie-annotation-blue) {
           background-color: var(--pie-annotation-blue-highlight, rgba(0, 102, 170, 0.6));
         }
-        ::highlight(annotation-pink) {
+        ::highlight(pie-annotation-pink) {
           background-color: var(--pie-annotation-pink-highlight, rgba(139, 51, 74, 0.6));
         }
-        ::highlight(annotation-orange) {
+        ::highlight(pie-annotation-orange) {
           background-color: var(--pie-annotation-orange-highlight, rgba(154, 99, 0, 0.6));
         }
-        ::highlight(annotation-underline) {
+        ::highlight(pie-annotation-underline) {
           text-decoration-color: var(--pie-annotation-underline-dark, #9c89ec);
         }
       }
@@ -188,17 +188,17 @@ const HIGHLIGHT_STYLES = `
          All carry attribute selectors, which outrank the bare ::highlight() rules
          above -- including the one inside the media query, since a media query
          adds no specificity -- whatever the source order. */
-      [data-theme="light"] ::highlight(annotation-underline) {
+      [data-theme="light"] ::highlight(pie-annotation-underline) {
         text-decoration-color: var(--pie-annotation-underline, #4221d5);
       }
 
-      [data-theme="dark"] ::highlight(annotation-underline) {
+      [data-theme="dark"] ::highlight(pie-annotation-underline) {
         text-decoration-color: var(--pie-annotation-underline-dark, #9c89ec);
       }
 
       /* A host or DaisyUI palette: follow its accent so the mark belongs to that
          theme, falling back to the light default when it declares none. */
-      [data-theme]:not([data-theme="light"]):not([data-theme="dark"]) ::highlight(annotation-underline) {
+      [data-theme]:not([data-theme="light"]):not([data-theme="dark"]) ::highlight(pie-annotation-underline) {
         text-decoration-color: var(--pie-annotation-underline, var(--pie-primary, #4221d5));
       }
 
@@ -213,30 +213,30 @@ const HIGHLIGHT_STYLES = `
          browser even had the file been loaded. Verified with matchMedia under
          emulation: "high" stays false where "more" flips true. */
       @media (prefers-contrast: more) {
-        ::highlight(annotation-yellow) {
+        ::highlight(pie-annotation-yellow) {
           background-color: var(--pie-annotation-yellow-highlight, rgba(255, 255, 0, 0.7));
         }
-        ::highlight(annotation-green) {
+        ::highlight(pie-annotation-green) {
           background-color: var(--pie-annotation-green-highlight, rgba(0, 255, 127, 0.7));
         }
-        ::highlight(annotation-blue) {
+        ::highlight(pie-annotation-blue) {
           background-color: var(--pie-annotation-blue-highlight, rgba(0, 191, 255, 0.7));
         }
-        ::highlight(annotation-pink) {
+        ::highlight(pie-annotation-pink) {
           background-color: var(--pie-annotation-pink-highlight, rgba(255, 105, 180, 0.7));
         }
-        ::highlight(annotation-orange) {
+        ::highlight(pie-annotation-orange) {
           background-color: var(--pie-annotation-orange-highlight, rgba(255, 165, 0, 0.85));
         }
-        ::highlight(annotation-underline) {
+        ::highlight(pie-annotation-underline) {
           text-decoration-thickness: 3px;
         }
       }
 
       @media print {
         /* TTS highlighting is a transient read-along cue, not content. */
-        ::highlight(tts-word),
-        ::highlight(tts-sentence),
+        ::highlight(pie-tts-word),
+        ::highlight(pie-tts-sentence),
         [data-pie-tts-word-element="true"],
         [data-pie-tts-sentence-element="true"] {
           background-color: transparent;
@@ -248,20 +248,20 @@ const HIGHLIGHT_STYLES = `
         /* Annotations are student work and must survive printing, but a fill
            that reads fine on screen can print as an illegible wash, so each
            becomes an underline that keeps its colour coding. */
-        ::highlight(annotation-yellow),
-        ::highlight(annotation-green),
-        ::highlight(annotation-blue),
-        ::highlight(annotation-pink),
-        ::highlight(annotation-orange) {
+        ::highlight(pie-annotation-yellow),
+        ::highlight(pie-annotation-green),
+        ::highlight(pie-annotation-blue),
+        ::highlight(pie-annotation-pink),
+        ::highlight(pie-annotation-orange) {
           background-color: transparent;
           border-bottom: 2px solid currentColor;
         }
-        ::highlight(annotation-yellow) { border-bottom-color: #ffeb3b; }
-        ::highlight(annotation-green) { border-bottom-color: #a6e1c5; }
-        ::highlight(annotation-blue) { border-bottom-color: #a7e0f6; }
-        ::highlight(annotation-pink) { border-bottom-color: #ff9fae; }
-        ::highlight(annotation-orange) { border-bottom-color: #ffa500; }
-        ::highlight(annotation-underline) {
+        ::highlight(pie-annotation-yellow) { border-bottom-color: #ffeb3b; }
+        ::highlight(pie-annotation-green) { border-bottom-color: #a6e1c5; }
+        ::highlight(pie-annotation-blue) { border-bottom-color: #a7e0f6; }
+        ::highlight(pie-annotation-pink) { border-bottom-color: #ff9fae; }
+        ::highlight(pie-annotation-orange) { border-bottom-color: #ffa500; }
+        ::highlight(pie-annotation-underline) {
           text-decoration-color: #000;
           border-bottom: none;
         }
@@ -270,7 +270,7 @@ const HIGHLIGHT_STYLES = `
       /* text-shadow is a direct property rather than a var(), so unlike the
          other TTS rules this one is not overridden by the adaptive path. */
       @media (prefers-reduced-motion: reduce) {
-        ::highlight(tts-word),
+        ::highlight(pie-tts-word),
         [data-pie-tts-word-element="true"] {
           text-shadow: none;
         }
@@ -338,10 +338,10 @@ const adoptHighlightStylesFor = (node: Node | null | undefined): void => {
 	}
 };
 
-const TTS_WORD_HIGHLIGHT = "tts-word";
-const TTS_SENTENCE_HIGHLIGHT = "tts-sentence";
+const TTS_WORD_HIGHLIGHT = "pie-tts-word";
+const TTS_SENTENCE_HIGHLIGHT = "pie-tts-sentence";
 const annotationHighlightName = (color: HighlightColor): string =>
-	`annotation-${color}`;
+	`pie-annotation-${color}`;
 
 /**
  * The page's highlight registered under `name`. Every coordinator on a page

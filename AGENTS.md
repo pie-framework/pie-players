@@ -107,6 +107,11 @@ when one literal tag is defined in two files.
   element depends on no host or global utility class names.
   `bun run check:light-dom-classes` fails on a class outside the `pie-` namespace in
   the markup such an element or any component it renders names.
+- A new DOM event is named `pie-<noun>-<change>`; event names share one flat page
+  namespace. `bun run check:event-names` fails on an event outside the `pie-`
+  namespace in a package's `custom-elements.json` unless `LEGACY_EVENT_NAMES`
+  lists it, and the names that shipped before the rule stay because hosts listen to
+  them.
 - Package `exports` runtime targets point at built `dist` artifacts unless there is
   an explicit documented exception.
 - If a CE registration entry imports `*.svelte?customElement`, ensure the referenced

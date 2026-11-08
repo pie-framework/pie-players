@@ -5,9 +5,15 @@
  * Authored assessment content depends on classes that belong to no single
  * component: passage markup (`.numbered-paragraph`, `.p-number`,
  * `div.passage-title`), the legacy `kds-*` families, the `@media print`
- * `.noprint` rules, and the answer-eliminator classes. Players render into
- * light DOM, so those rules have to exist as a document-level stylesheet —
- * there is no shadow root to scope them to.
+ * `.noprint` rules, and the answer-eliminator classes. Players render that
+ * content into light DOM under a `[data-pie-content]` root, so the rules have to
+ * exist as a document-level stylesheet. The stylesheet confines every
+ * generic-word selector to that root; only `kds-*`, `mjx-*`, `TEX-*` and
+ * `.frac` match page-wide.
+ *
+ * A host that mounts a player inside its own shadow root gets the same
+ * stylesheet through `adoptContentStylesInto`, because a document `<style>`
+ * does not reach into a shadow tree.
  *
  * Players install that stylesheet themselves, which keeps the host contract at
  * "import the player"; a host-side import was unenforced and failed silently,
@@ -138,6 +144,7 @@ export function installContentStyles(
 	source: string,
 ): ContentStylesResult {
 	if (!isBrowser()) return "no-document";
+	if (cssText) recordContentStylesText(cssText);
 	if (contentStylesOptedOut()) return "opted-out";
 	if (document.querySelector(`style[${MARKER_ATTRIBUTE}]`)) {
 		// Another player package, or a second copy of this one, already installed
@@ -153,6 +160,123 @@ export function installContentStyles(
 	document.head.prepend(style);
 	watchForHostOwnership(style);
 	return "installed";
+}
+
+// A ShadowRoot a host mounts a player into is outside the document's style
+// scope, so the `<style>` above never reaches content rendered there. These
+// slots live on `globalThis` so every copy of this module on a page shares one
+// constructed sheet, as the highlight stylesheet does.
+const TEXT_SLOT = Symbol.for("@pie-players/pie-players-shared/content-styles-text");
+const SHEET_SLOT = Symbol.for("@pie-players/pie-players-shared/content-styles-sheet");
+const ADOPTED_MARKER = Symbol.for(
+	"@pie-players/pie-players-shared/content-styles-adopted",
+);
+
+type StyleHolder = { text: string; sheet: CSSStyleSheet };
+type AdoptingRoot = ShadowRoot & Record<symbol, unknown>;
+
+const globalSlots = (): Record<symbol, unknown> =>
+	globalThis as unknown as Record<symbol, unknown>;
+
+const recordContentStylesText = (cssText: string): void => {
+	globalSlots()[TEXT_SLOT] = cssText;
+};
+
+const sharedContentSheet = (): CSSStyleSheet | null => {
+	const text = globalSlots()[TEXT_SLOT];
+	if (typeof text !== "string" || text === "") return null;
+	const held = globalSlots()[SHEET_SLOT] as StyleHolder | undefined;
+	if (held?.text === text) return held.sheet;
+	const Sheet = (globalThis as { CSSStyleSheet?: typeof CSSStyleSheet })
+		.CSSStyleSheet;
+	if (typeof Sheet !== "function") return null;
+	try {
+		const sheet = new Sheet();
+		if (typeof sheet.replaceSync !== "function") return null;
+		sheet.replaceSync(text);
+		globalSlots()[SHEET_SLOT] = { text, sheet } satisfies StyleHolder;
+		return sheet;
+	} catch {
+		return null;
+	}
+};
+
+const asShadowRoot = (node: Node | null | undefined): AdoptingRoot | null => {
+	const found = node?.getRootNode?.();
+	if (!found || found.nodeType !== 11 || !("host" in found)) return null;
+	return found as AdoptingRoot;
+};
+
+/** Whether a stylesheet the root's owner supplied declares the content sentinel. */
+const rootHoldsHostContentStyles = (
+	root: AdoptingRoot,
+	ours: unknown,
+): boolean => {
+	const sheets: unknown[] = [
+		...Array.from(root.adoptedStyleSheets ?? []).filter((sheet) => sheet !== ours),
+		...Array.from(
+			root.querySelectorAll<HTMLStyleElement | HTMLLinkElement>(
+				'style, link[rel~="stylesheet"]',
+			),
+		).map((node) => node.sheet),
+	];
+	for (const sheet of sheets) {
+		let rules: CSSRuleList | undefined;
+		try {
+			rules = (sheet as CSSStyleSheet | null)?.cssRules;
+		} catch {
+			continue;
+		}
+		if (!rules) continue;
+		for (const rule of Array.from(rules)) {
+			if (declaresContentStylesSentinel(rule)) return true;
+		}
+	}
+	return false;
+};
+
+export type ContentStylesAdoption =
+	| "adopted"
+	| "already-adopted"
+	| "host-supplied"
+	| "opted-out"
+	| "not-in-shadow-root"
+	| "unsupported";
+
+/**
+ * Adopts the content stylesheet into the ShadowRoot holding `node`, once per
+ * root, for a player a host mounted inside its own shadow tree. A document
+ * `<style>` does not apply there, so authored content would render unstyled.
+ *
+ * The sheet is the text `installContentStyles` recorded, so a package that has
+ * not called it adopts nothing. A root whose owner already supplied a copy, and
+ * a document that sets the opt-out attribute, are left alone: the host owns the
+ * stylesheet in both. The sheet goes first among the root's adopted sheets;
+ * adopted sheets follow the root's `<style>` and `<link>` elements in the
+ * cascade, so at equal specificity the content rules win over a host's inline
+ * rules inside that root.
+ */
+export function adoptContentStylesInto(
+	node: Node | null | undefined,
+): ContentStylesAdoption {
+	const root = asShadowRoot(node);
+	if (!root) return "not-in-shadow-root";
+	if (contentStylesOptedOut()) return "opted-out";
+	const sheets = root.adoptedStyleSheets;
+	if (!sheets || typeof sheets !== "object") return "unsupported";
+	const current = Array.from(sheets);
+	const ours = root[ADOPTED_MARKER] as CSSStyleSheet | undefined;
+	if (ours && current.includes(ours)) return "already-adopted";
+	if (rootHoldsHostContentStyles(root, ours)) return "host-supplied";
+	const sheet = sharedContentSheet();
+	if (!sheet) return "unsupported";
+	try {
+		root.adoptedStyleSheets = [sheet, ...current];
+		root[ADOPTED_MARKER] = sheet;
+		return "adopted";
+	} catch {
+		return "unsupported";
+	}
 }
 
 let stopWatchingHostOwnership: (() => void) | null = null;

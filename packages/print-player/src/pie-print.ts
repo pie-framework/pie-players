@@ -25,6 +25,7 @@ import {
 	defaultResolve,
 	hashCode,
 } from "./element-resolver.js";
+import { adoptContentStylesInto } from "@pie-players/pie-players-shared/ui/content-styles";
 import {
 	toPrintHashedTag,
 	validateCustomElementTag,
@@ -284,6 +285,12 @@ export class PiePrint extends LitElement {
 			item: this._config.item,
 			accessibility: this._config.accessibility,
 		});
+	}
+
+	connectedCallback() {
+		super.connectedCallback();
+		// Inside a host's shadow root the document stylesheet does not apply.
+		adoptContentStylesInto(this);
 	}
 
 	disconnectedCallback() {

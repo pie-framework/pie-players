@@ -51,11 +51,6 @@ the runtime context supplies a TTS service.
 		reportToolFailure,
 		resolveContentRegion
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
-	// Side-effect import: registers <pie-nds-icon-button>. Single vendored source of
-	// truth lives in players-shared (Lit inlined, self-contained); see
-	// players-shared/src/components/vendor/nds/README.md. players-shared is not
-	// externalized by this package's Vite build, so the bundle is inlined here.
-	import '@pie-players/pie-players-shared/nds-icon-button';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import {
 		applyNdsGlyphVariant,
@@ -165,6 +160,18 @@ the runtime context supplies a TTS service.
 	// <pie-nds-icon-button> only when the host explicitly opts in
 	// (`ndsIcons === true`); otherwise it is a plain <button>.
 	const useNdsIcons = $derived(runtimeContext?.ndsIcons === true);
+	// Registers <pie-nds-icon-button> the first time the trigger renders as one, so
+	// a page that never sets `ndsIcons` does not load the bundle or take its tag.
+	// The vendored source of truth lives in players-shared (Lit inlined,
+	// self-contained); see players-shared/src/components/vendor/nds/README.md.
+	// players-shared is external to this package's Vite build, so the import stays
+	// a bare specifier in the published artifact.
+	$effect(() => {
+		if (!useNdsIcons) return;
+		import('@pie-players/pie-players-shared/nds-icon-button').catch((error) => {
+			logger.warn('<pie-nds-icon-button> failed to load; the trigger stays unstyled', error);
+		});
+	});
 	// Interface locale, re-derived on every context republish.
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);

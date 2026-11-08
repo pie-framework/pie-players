@@ -31,16 +31,46 @@ type CustomSchemeRecord = Readonly<{
 	variables: Readonly<ThemeVariables>;
 }>;
 
-const customSchemes = new Map<string, CustomSchemeRecord>();
-const observers = new Set<PieThemeObserver>();
-const notificationQueue: ColorSchemeSnapshot[] = [];
-const warnedDiagnostics = new Set<string>();
+/**
+ * The page's custom color schemes, shared by every copy of this package.
+ *
+ * Remotes and hosts bundle their own copies, while `<pie-theme>` is defined once
+ * per page, by whichever copy loads first. A registry private to each copy left
+ * a scheme registered through a later copy invisible to that element, and an
+ * observer in one copy deaf to a registration made in another. The shape is a
+ * contract between copies of any version, so it only grows.
+ */
+interface PieThemeColorSchemeState {
+	readonly customSchemes: Map<string, CustomSchemeRecord>;
+	readonly observers: Set<PieThemeObserver>;
+	readonly notificationQueue: ColorSchemeSnapshot[];
+	readonly warnedDiagnostics: Set<string>;
+	generation: number;
+	nextRegistrationKey: number;
+	notifying: boolean;
+}
+
+declare global {
+	var PIE_THEME_COLOR_SCHEMES: PieThemeColorSchemeState | undefined;
+}
+
+globalThis.PIE_THEME_COLOR_SCHEMES ??= {
+	customSchemes: new Map(),
+	observers: new Set(),
+	notificationQueue: [],
+	warnedDiagnostics: new Set(),
+	generation: 0,
+	nextRegistrationKey: 1,
+	notifying: false,
+};
+const registry = globalThis.PIE_THEME_COLOR_SCHEMES;
+const customSchemes = registry.customSchemes;
+const observers = registry.observers;
+const notificationQueue = registry.notificationQueue;
+const warnedDiagnostics = registry.warnedDiagnostics;
 const BUILT_IN_IDS = new Set(
 	listBuiltInColorSchemeDefinitions().map((scheme) => scheme.id),
 );
-let generation = 0;
-let nextRegistrationKey = 1;
-let notifying = false;
 
 const OPAQUE_NAMED_COLORS = new Set(
 	`aliceblue antiquewhite aqua aquamarine azure beige bisque black
@@ -239,7 +269,7 @@ function createCustomDescriptor(
 
 function createSnapshot(): ColorSchemeSnapshot {
 	return Object.freeze({
-		generation,
+		generation: registry.generation,
 		schemes: Object.freeze([
 			getDefaultColorSchemeDescriptor(),
 			...listBuiltInColorSchemeDefinitions().map(
@@ -251,6 +281,14 @@ function createSnapshot(): ColorSchemeSnapshot {
 }
 
 let currentSnapshot = createSnapshot();
+
+/** This copy's snapshot, rebuilt when a registration through any copy moved the page's generation. */
+function catalogSnapshot(): ColorSchemeSnapshot {
+	if (currentSnapshot.generation !== registry.generation) {
+		currentSnapshot = createSnapshot();
+	}
+	return currentSnapshot;
+}
 
 function warnDiagnostic(diagnostic: PieThemeDiagnostic): void {
 	const key = [
@@ -266,8 +304,8 @@ function warnDiagnostic(diagnostic: PieThemeDiagnostic): void {
 
 function notifyObservers(snapshot: ColorSchemeSnapshot): void {
 	notificationQueue.push(snapshot);
-	if (notifying) return;
-	notifying = true;
+	if (registry.notifying) return;
+	registry.notifying = true;
 	try {
 		while (notificationQueue.length > 0) {
 			const next = notificationQueue.shift();
@@ -285,12 +323,12 @@ function notifyObservers(snapshot: ColorSchemeSnapshot): void {
 			}
 		}
 	} finally {
-		notifying = false;
+		registry.notifying = false;
 	}
 }
 
 function publishSnapshot(): void {
-	generation += 1;
+	registry.generation += 1;
 	currentSnapshot = createSnapshot();
 	notifyObservers(currentSnapshot);
 }
@@ -447,7 +485,7 @@ function validateRegistration(
 	return {
 		diagnostics,
 		record: Object.freeze({
-			key: nextRegistrationKey++,
+			key: registry.nextRegistrationKey++,
 			id,
 			name:
 				typeof entry.name === "string" && entry.name.trim()
@@ -464,7 +502,7 @@ function validateRegistration(
 
 /** Returns the current deeply immutable catalog snapshot. */
 export function listPieColorSchemes(): ColorSchemeSnapshot {
-	return currentSnapshot;
+	return catalogSnapshot();
 }
 
 /** Delivers the current snapshot immediately, then once per registry mutation. */
@@ -473,7 +511,7 @@ export function observePieColorSchemes(
 ): Unsubscribe {
 	observers.add(listener);
 	try {
-		listener(currentSnapshot);
+		listener(catalogSnapshot());
 	} catch {
 		warnDiagnostic({
 			code: "observer-error",

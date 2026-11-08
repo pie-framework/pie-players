@@ -60,7 +60,15 @@ export interface Annotation {
 }
 
 /**
- * The highlight stylesheet: the document's copy in `<style id="pie-highlight-styles">`,
+ * The document's highlight `<style>`, and the page-wide keys of the shared
+ * sheet below. They carry the version of the highlight names: the first toolkit
+ * copy on a page installs its rules, so a copy registering `pie-tts-*` beside one
+ * that styled `tts-*` under the same keys would paint unstyled highlights.
+ */
+const HIGHLIGHT_STYLE_ELEMENT_ID = "pie-highlight-styles-v2";
+
+/**
+ * The highlight stylesheet: the document's copy in `<style id="pie-highlight-styles-v2">`,
  * and each shadow root's that holds a highlighted range. `::highlight()` rules
  * paint text in the tree whose styles hold them, so text in a shadow root needs
  * its own copy; Firefox paints none of it from the document's.
@@ -283,10 +291,10 @@ const HIGHLIGHT_STYLES = `
  * rules, as the first to append the document's `<style>` does.
  */
 const SHARED_SHEET_SLOT = Symbol.for(
-	"@pie-players/pie-assessment-toolkit/highlight-stylesheet",
+	"@pie-players/pie-assessment-toolkit/highlight-stylesheet-v2",
 );
 const ADOPTED_SHEET_MARKER = Symbol.for(
-	"@pie-players/pie-assessment-toolkit/highlight-stylesheet-adopted",
+	"@pie-players/pie-assessment-toolkit/highlight-stylesheet-v2-adopted",
 );
 
 type SheetLike = { replaceSync: (text: string) => void };
@@ -704,10 +712,10 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		if (!this.supported) return;
 		if (typeof document === "undefined") return; // SSR guard
 
-		if (document.getElementById("pie-highlight-styles")) return;
+		if (document.getElementById(HIGHLIGHT_STYLE_ELEMENT_ID)) return;
 
 		const style = document.createElement("style");
-		style.id = "pie-highlight-styles";
+		style.id = HIGHLIGHT_STYLE_ELEMENT_ID;
 		style.textContent = HIGHLIGHT_STYLES;
 		document.head.appendChild(style);
 	}
@@ -1104,7 +1112,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		if (!this.supported) return;
 		if (typeof document === "undefined") return;
 
-		const styleEl = document.getElementById("pie-highlight-styles");
+		const styleEl = document.getElementById(HIGHLIGHT_STYLE_ELEMENT_ID);
 		if (!styleEl) return;
 
 		const hexToRgb = (hex: string) => {

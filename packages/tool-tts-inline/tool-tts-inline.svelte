@@ -166,11 +166,25 @@ the runtime context supplies a TTS service.
 	// self-contained); see players-shared/src/components/vendor/nds/README.md.
 	// players-shared is external to this package's Vite build, so the import stays
 	// a bare specifier in the published artifact.
+	//
+	// The trigger renders as one only once the tag is defined. Created before
+	// registration, the element would take `disabled={false}` as the attribute
+	// `disabled="false"`, which upgrades to `disabled === true`, and the button
+	// would swallow every click. Until then, and if the load fails, it is the
+	// plain-button fallback.
+	let ndsIconButtonReady = $state(
+		typeof customElements !== 'undefined' && !!customElements.get('pie-nds-icon-button')
+	);
 	$effect(() => {
-		if (!useNdsIcons) return;
-		import('@pie-players/pie-players-shared/nds-icon-button').catch((error) => {
-			logger.warn('<pie-nds-icon-button> failed to load; the trigger stays unstyled', error);
-		});
+		if (!useNdsIcons || ndsIconButtonReady) return;
+		import('@pie-players/pie-players-shared/nds-icon-button').then(
+			() => {
+				ndsIconButtonReady = true;
+			},
+			(error) => {
+				logger.warn('<pie-nds-icon-button> failed to load; the trigger stays a plain button', error);
+			}
+		);
 	});
 	// Interface locale, re-derived on every context republish.
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
@@ -1010,7 +1024,7 @@ the runtime context supplies a TTS service.
 	>
 		{#snippet triggerButton()}
 			<span class="pie-tool-tts-inline__trigger-zoom">
-				{#if useNdsIcons}
+				{#if useNdsIcons && ndsIconButtonReady}
 				<!-- NDS circular icon button. The native click bubbles out of the
 					     component's inner <button>, so `onclick` still runs
 					     handlePlayPause. `reflectAria` mirrors the disclosure/toggle

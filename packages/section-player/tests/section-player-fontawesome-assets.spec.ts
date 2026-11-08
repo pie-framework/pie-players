@@ -114,6 +114,13 @@ test.describe("FontAwesome assets on a host that links none", () => {
 		const toolbar = page.locator("pie-item-toolbar").first();
 		const calculatorButton = toolbar.locator("pie-nds-icon-button").first();
 		await expect(calculatorButton).toBeVisible();
+		// A button created before the tag is defined upgrades with
+		// `disabled="false"` read as true, and swallows every click.
+		expect(
+			await calculatorButton.evaluate(
+				(element) => (element as HTMLElement & { disabled: boolean }).disabled,
+			),
+		).toBe(false);
 		await expect(
 			page.locator("pie-tool-tts-inline pie-nds-icon-button").first(),
 		).toBeVisible();

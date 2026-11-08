@@ -139,14 +139,27 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	// self-contained); see players-shared/src/components/vendor/nds/README.md. The
 	// CE build externalizes @pie-players/*, so the import stays a bare specifier in
 	// the published artifact like every other players-shared one ItemToolBar emits.
+	//
+	// The toolbar renders its NDS buttons only once the tag is defined. Created
+	// before registration, an element takes `disabled={false}` as the attribute
+	// `disabled="false"`, which upgrades to `disabled === true`, and the button
+	// swallows every click. Until then, and if the load fails, the plain buttons
+	// render.
+	let ndsIconButtonReady = $state(isBrowser && !!customElements.get('pie-nds-icon-button'));
 	const registerNdsIconButton = () => {
-		import('@pie-players/pie-players-shared/nds-icon-button').catch((error) => {
-			warnOncePerDocument(
-				typeof document === 'undefined' ? null : document,
-				'nds-icon-button-load',
-				`[pie-item-toolbar] <pie-nds-icon-button> failed to load, so NDS controls stay unstyled: ${String(error)}`
-			);
-		});
+		if (ndsIconButtonReady) return;
+		import('@pie-players/pie-players-shared/nds-icon-button').then(
+			() => {
+				ndsIconButtonReady = true;
+			},
+			(error) => {
+				warnOncePerDocument(
+					typeof document === 'undefined' ? null : document,
+					'nds-icon-button-load',
+					`[pie-item-toolbar] <pie-nds-icon-button> failed to load, so the toolbar keeps its plain buttons: ${String(error)}`
+				);
+			}
+		);
 	};
 	// The toolbar's own glyphs render inside <pie-item-toolbar>'s shadow root,
 	// which <head> stylesheets don't reach; the calculator shell's controls mount
@@ -2549,7 +2562,9 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 
 			{#each toolbarItems as item (item.id)}
 				{@const faIconName =
-					useNdsIcons && !isToolbarLinkItem(item) ? resolveFaIconName(item) : null}
+					useNdsIcons && ndsIconButtonReady && !isToolbarLinkItem(item)
+						? resolveFaIconName(item)
+						: null}
 				{#if faIconName}
 					<!-- NDS circular icon button. Active tools use the filled `primary`
 					     variant; inactive use `ghost`. The click bubbles out of the

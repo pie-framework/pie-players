@@ -96,7 +96,7 @@ describe("HighlightCoordinator TTS style contrast", () => {
 
 		first.destroy();
 
-		expect(styleStore.has("pie-highlight-styles")).toBe(true);
+		expect(styleStore.has("pie-highlight-styles-v2")).toBe(true);
 		expect(highlights.get("pie-tts-word")).toBe(replacementWordHighlight);
 		replacement.destroy();
 	});
@@ -105,7 +105,7 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		const { styleStore } = setupHighlightDom();
 		new HighlightCoordinator();
 
-		const styleEl = styleStore.get("pie-highlight-styles");
+		const styleEl = styleStore.get("pie-highlight-styles-v2");
 		expect(styleEl).toBeTruthy();
 		expect(styleEl.textContent).toContain("--pie-tts-word-highlight");
 		expect(styleEl.textContent).toContain("--pie-tts-word-underline");
@@ -123,7 +123,7 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		const { styleStore } = setupHighlightDom();
 		new HighlightCoordinator();
 
-		const styleEl = styleStore.get("pie-highlight-styles");
+		const styleEl = styleStore.get("pie-highlight-styles-v2");
 		expect(styleEl).toBeTruthy();
 		const annotationCss =
 			styleEl.textContent.split(
@@ -143,7 +143,7 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		const { styleStore } = setupHighlightDom();
 		new HighlightCoordinator();
 
-		const css = styleStore.get("pie-highlight-styles").textContent as string;
+		const css = styleStore.get("pie-highlight-styles-v2").textContent as string;
 
 		// Light is #4221d5 and ignores the theme accent: an accent is picked
 		// against the app's own background, so inheriting it left the mark

@@ -253,7 +253,7 @@ export function createCalculatorToolRegistration(
 				toolId: this.toolId,
 				label: displayName,
 				icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-				// Routes this button through <nds-icon-button> where the host enables NDS
+				// Routes this button through <pie-nds-icon-button> where the host enables NDS
 				// icons. Declared here because which capabilities render in the host's
 				// design system is a composition decision.
 				faIconName: "calculator",

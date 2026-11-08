@@ -50,7 +50,7 @@ const triggerSnippet = source.slice(
 
 describe("tool-tts-inline trigger styling contract", () => {
 	test("play/pause trigger renders as a circular NDS icon button", () => {
-		expect(triggerSnippet).toContain("<nds-icon-button");
+		expect(triggerSnippet).toContain("<pie-nds-icon-button");
 		expect(triggerSnippet).toContain('type="circle"');
 		expect(triggerSnippet).toContain(
 			"icon-name={speaking && !paused ? 'pause' : 'play'}",

@@ -1,7 +1,8 @@
 # Vendored: `nds-icon-button`
 
 Pre-built bundle of the Renaissance Next Design System (NDS)
-`<nds-icon-button>` custom element. This is the **single source of truth** for
+`nds-icon-button` component, registered here as `<pie-nds-icon-button>`. This is
+the **single source of truth** for
 the button across `@pie-players/*`; consumers import it via the package export
 `@pie-players/pie-players-shared/nds-icon-button` rather than vendoring their
 own copy.
@@ -12,6 +13,7 @@ Known consumers:
   header (chevrons, zoom, close).
 - `@pie-players/pie-tool-tts-inline` — the Text-to-Speech play/pause trigger
   and the "more" overflow control.
+- `@pie-players/pie-section-player` — the items pane's scroll hint.
 
 It ships as a pre-built single-file bundle (Lit inlined) so consumers get the
 button without taking a runtime dependency on Lit or the rest of NDS: the Lit
@@ -35,10 +37,22 @@ would force a `lit` dependency plus a chunk of foundations CSS onto every
 downstream consumer on lockstep release. A pre-built single-file bundle
 sidesteps both: zero new package deps, the bundle inlines what it needs.
 
+## Registered tag
+
+The bundle registers `pie-nds-icon-button`, under PIE's prefix. A host page that
+also loads NDS registers upstream's own `nds-icon-button`, often unguarded and
+at a different version; sharing that name would leave whichever copy defines
+second either skipped (PIE's guarded define) or throwing (the host's). Two
+sites are patched: the `Pt("…")` decorator argument at the class registration,
+and the `nds-icon-button { display: inline-block; }` element selector at the top
+of `render()`'s inline `<style>`. The BEM class names (`.nds-icon-button`,
+`.nds-icon-button__icon`, modifiers) stay upstream's, and so do the export path
+and file names.
+
 ## Idempotent registration (built-in define guard)
 
-A host page can load more than one `nds-icon-button` consumer (e.g. the toolkit
-and the inline TTS tool), and each would otherwise register `nds-icon-button` a
+A host page can load more than one `pie-nds-icon-button` consumer (e.g. the
+toolkit and the inline TTS tool), and each would otherwise register the tag a
 second time and throw `NotSupportedError`. To make registration idempotent
 regardless of load order, the Lit `@customElement` decorator helper (`Pt`) in
 this bundle is patched to guard the define:
@@ -107,8 +121,8 @@ When a newer `nds-icon-button` is needed:
    ```
 
    Then: `bunx vite build --config vite.self-contained.config.js`.
-4. Copy the output over this file, re-apply the define guard above, and update
-   the `Last sync commit` row.
+4. Copy the output over this file, re-apply the define guard and the two tag
+   renames above, and update the `Last sync commit` row.
 5. Rebuild the consumers (`assessment-toolkit`, `tool-tts-inline`) and verify
    the calculator shell and the TTS trigger still mount and register.
 

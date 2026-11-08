@@ -331,7 +331,7 @@ describe("findUnguardedCustomElementDefines", () => {
 	test("passes a define the same tag's customElements.get guards", () => {
 		expect(
 			findUnguardedCustomElementDefines(
-				'customElements.get("nds-icon-button")||customElements.define("nds-icon-button",n);',
+				'customElements.get("pie-nds-icon-button")||customElements.define("pie-nds-icon-button",n);',
 			),
 		).toEqual([]);
 	});

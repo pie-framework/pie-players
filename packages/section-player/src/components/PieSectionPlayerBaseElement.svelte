@@ -4,7 +4,7 @@
 		shadow: "open",
 		props: {
 			runtime: { type: "Object", reflect: false },
-			// Presentation flag: controls render <nds-icon-button> only when this
+			// Presentation flag: controls render <pie-nds-icon-button> only when this
 			// is explicitly true; otherwise they use plain <button>s.
 			ndsIcons: { attribute: "nds-icons", type: "Boolean" },
 			// Interface locale: the language the player renders its own UI in, as a

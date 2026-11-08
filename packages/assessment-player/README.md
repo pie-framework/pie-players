@@ -31,8 +31,8 @@ Importing the package registers `pie-assessment-player-default` and
 registers the section player layouts. The entry is bundler-only and
 browser-only: it imports `@pie-players/pie-section-player` and
 `@pie-players/pie-assessment-toolkit` by bare specifier. The package has no
-browser build, so a CDN cannot serve it; its `unpkg` and `jsdelivr` fields name
-the bundler entry.
+browser build, so a CDN cannot serve it, and it has no `unpkg` or `jsdelivr`
+field.
 
 ## Elements
 

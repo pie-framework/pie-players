@@ -26,7 +26,8 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-answer-eliminator.js",
 			"default": "./dist/tool-answer-eliminator.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -35,8 +36,6 @@
 		"package.json"
 	],
 	"license": "MIT",
-	"unpkg": "./dist/tool-answer-eliminator.js",
-	"jsdelivr": "./dist/tool-answer-eliminator.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"

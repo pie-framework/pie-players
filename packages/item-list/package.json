@@ -20,8 +20,8 @@
 		"web-components",
 		"custom-elements"
 	],
-	"unpkg": "./dist/pie-item-list.js",
-	"jsdelivr": "./dist/pie-item-list.js",
+	"unpkg": "./dist/browser/pie-item-list.js",
+	"jsdelivr": "./dist/browser/pie-item-list.js",
 	"main": "./dist/pie-item-list.js",
 	"types": "./dist/pie-item-list.d.ts",
 	"exports": {
@@ -39,7 +39,8 @@
 			"types": "./dist/pie-item-list.d.ts",
 			"import": "./dist/browser/pie-item-list.js",
 			"default": "./dist/browser/pie-item-list.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [

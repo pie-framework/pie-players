@@ -27,7 +27,8 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-calculator-inline.js",
 			"default": "./dist/tool-calculator-inline.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -35,8 +36,6 @@
 		"custom-elements.json"
 	],
 	"license": "MIT",
-	"unpkg": "./dist/tool-calculator-inline.js",
-	"jsdelivr": "./dist/tool-calculator-inline.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"

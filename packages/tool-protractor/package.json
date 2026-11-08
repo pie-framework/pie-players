@@ -25,7 +25,8 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-protractor.js",
 			"default": "./dist/tool-protractor.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -34,8 +35,6 @@
 		"README.md"
 	],
 	"license": "MIT",
-	"unpkg": "./dist/tool-protractor.js",
-	"jsdelivr": "./dist/tool-protractor.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"

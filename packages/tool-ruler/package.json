@@ -26,7 +26,8 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-ruler.js",
 			"default": "./dist/tool-ruler.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -36,8 +37,6 @@
 		"README.md"
 	],
 	"license": "MIT",
-	"unpkg": "./dist/tool-ruler.js",
-	"jsdelivr": "./dist/tool-ruler.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"

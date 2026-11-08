@@ -21,14 +21,13 @@
 	],
 	"main": "./dist/section-player-tools-session-debugger.js",
 	"module": "./dist/section-player-tools-session-debugger.js",
-	"unpkg": "./dist/section-player-tools-session-debugger.js",
-	"jsdelivr": "./dist/section-player-tools-session-debugger.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
 			"import": "./dist/section-player-tools-session-debugger.js",
 			"default": "./dist/section-player-tools-session-debugger.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [

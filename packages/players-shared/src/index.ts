@@ -1,11 +1,238 @@
-export * from "./config/profile.js";
-export * from "./instrumentation/index.js";
-export * from "./loader-config.js";
-export * from "./player-strategy.js";
-export * from "./security/index.js";
-export * from "./loaders/index.js";
-export * from "./object/index.js";
-export * from "./pie/index.js";
+// The root names its exports one by one, so a module's new export reaches the
+// root only by a deliberate edit here. Helpers with a subpath of their own
+// (`./object`, `./ui/attribute-coercion`, `./ui/content-styles`) are exported
+// only there.
+export {
+	BUILDER_BUNDLE_URL,
+} from "./config/profile.js";
+export {
+	BaseInstrumentationProvider,
+	CompositeInstrumentationProvider,
+	ConsoleInstrumentationProvider,
+	type ConsoleProviderConfig,
+	DebugPanelInstrumentationProvider,
+	type ErrorAttributes,
+	type EventAttributes,
+	INSTRUMENTATION_DEBUG_EVENT_NAME,
+	type InstrumentationConfig,
+	type InstrumentationDebugRecord,
+	type InstrumentationProvider,
+	type MetricAttributes,
+	NewRelicInstrumentationProvider,
+	clearBufferedInstrumentationDebugRecords,
+	getBufferedInstrumentationDebugRecords,
+	isInstrumentationProvider,
+	subscribeInstrumentationDebugRecords,
+} from "./instrumentation/index.js";
+export {
+	DEFAULT_IIFE_BUNDLE_RETRY_CONFIG,
+	DEFAULT_LOADER_CONFIG,
+	type IifeBundleRetryConfig,
+	type LoaderConfig,
+} from "./loader-config.js";
+export {
+	type ItemPlayerStrategy,
+	type ItemPlayerView,
+	normalizeItemPlayerStrategy,
+	resolveItemPlayerView,
+} from "./player-strategy.js";
+export {
+	type ItemMarkupSanitizer,
+	type SanitizeItemMarkupOptions,
+	type StyleUrlValidationError,
+	type StyleUrlValidationOk,
+	type StyleUrlValidationOptions,
+	type StyleUrlValidationResult,
+	buildAuthoringAllowList,
+	createDefaultItemMarkupSanitizer,
+	isOverwideImageWrapMutation,
+	isOverwideTableWrapMutation,
+	parseAllowedStyleOrigins,
+	sanitizeItemMarkup,
+	sanitizeStyleAttribute,
+	sanitizeSvgIcon,
+	validateExternalStyleUrl,
+	wrapOverwideImages,
+	wrapOverwideImagesInElement,
+	wrapOverwideTables,
+	wrapOverwideTablesInElement,
+} from "./security/index.js";
+export {
+	AdapterFailure,
+	BUILT_IN_VIEWS,
+	type BackendContext,
+	type BackendOption,
+	type BuiltInEsmCdnProviderName,
+	DEFAULT_BUNDLE_HOST,
+	DEFAULT_ESM_CDN_URL,
+	ElementAssertionError,
+	type ElementLoaderBackend,
+	ElementLoaderError,
+	type ElementMap,
+	type ElementPackagePolicy,
+	ElementPackagePolicyError,
+	type ElementTag,
+	type EnsureRegisteredOptions,
+	type EsmBackend,
+	type EsmBackendConfig,
+	type EsmCdnProvider,
+	type EsmCdnProviderName,
+	type EsmCdnProviderOption,
+	type IifeBackend,
+	type IifeBackendConfig,
+	type IifeBundleRetryStatus,
+	MATHJAX_NO_ASSET_ROOT_EVENT,
+	MATHJAX_VERSION_CONFLICT_EVENT,
+	type MathAssetOptions,
+	type PreloadedController,
+	type PreloadedElement,
+	type PreloadedElementSpecs,
+	type PreloadedRegistrationOptions,
+	type RegistrationFailureReason,
+	type ViewConfig,
+	aggregateElements,
+	alignPreloadedElementVersions,
+	assertElementPackagesAllowed,
+	assertRegistered,
+	createEsmBackend,
+	createIifeBackend,
+	defineAuthoredPreloadedTags,
+	describeRegistrationFailures,
+	ensureRegistered,
+	forwardMathjaxEvents,
+	isScopedPackageSpec,
+	mapEsmViewElements,
+	registerPreloadedElements,
+	resolveEsmAssetRoot,
+	resolveEsmPackageFileUrl,
+	resolveEsmRuntimeSupportUrl,
+	resolveLoadControllers,
+} from "./loaders/index.js";
+export {
+	ASSESSMENT_INSTRUMENTATION_EVENT_MAP,
+	type AttachInstrumentationEventBridgeArgs,
+	type AttemptCustomElementDefineOptions,
+	type AuthoringMediaHandlers,
+	type AuthoringValidationResult,
+	type BindPageLifecycleCommitOptions,
+	BundleType,
+	type CanonicalItemSessionContainer,
+	type CommitPendingSessionsOptions,
+	type CommitPendingSessionsResult,
+	type ElementOverrides,
+	type Entry,
+	type EventListeners,
+	type EventListenersMap,
+	ITEM_INSTRUMENTATION_EVENT_MAP,
+	type InitializedConfigureModel,
+	type InstrumentationEventMapping,
+	ItemController,
+	type ItemControllerOptions,
+	type ItemSessionContainer,
+	type ItemSessionStorageStrategy,
+	type ItemSessionUpdateIntent,
+	type LoadPieElementsOptions,
+	type LoadingCompleteDetail,
+	type MathRenderingOptions,
+	MemoryItemSessionStorage,
+	type NormalizedItemSessionChange,
+	type PieElement,
+	type PieElementContext,
+	type PieElementContextSource,
+	type PieLogger,
+	type PieRegistry,
+	type PieViewMode,
+	SECTION_INSTRUMENTATION_EVENT_MAP,
+	SESSION_COMMIT_METHOD,
+	STAGES,
+	type SafeDefineAttempt,
+	type SafeDefineOutcome,
+	type SafeDefineResult,
+	type SafeDefineStatus,
+	type SessionCommitReason,
+	type SessionSnapshot,
+	type SessionSnapshotConfig,
+	type SessionSnapshotIdentity,
+	type SessionSnapshotRecord,
+	type SessionSnapshotStore,
+	SessionStorageItemSessionStorage,
+	type Stage,
+	type StageChangeDetail,
+	type StageStatus,
+	Status,
+	TOOLKIT_INSTRUMENTATION_EVENT_MAP,
+	type UpdatePieElementOptions,
+	VIEW_TAG_SUFFIX,
+	addMarkupForPackage,
+	addOrUpdateOverrideInUrl,
+	addRubricIfNeeded,
+	applyElementOverrides,
+	applyElementVersionOverridesPreserveTags,
+	assertPieConfigContract,
+	attachInstrumentationEventBridge,
+	attemptCustomElementDefine,
+	bindPageLifecycleCommit,
+	commitPendingSessions,
+	createAuthoringAssetEventManager,
+	createPieLogger,
+	createSessionSnapshot,
+	defaultPieElementOptions,
+	defineCustomElementSafely,
+	elementForPackage,
+	encodeElementPackageSpecs,
+	ensureHostSessionEntries,
+	extractPackageInfo,
+	findOrAddSession,
+	findPieController,
+	flushPendingSessionNotifications,
+	formatElementOverrideParam,
+	getPackageWithoutVersion,
+	getPieElementBundlesUrl,
+	hasLearnerResponse,
+	hasResponseField,
+	hasResponseValue,
+	initializeAuthoringConfigures,
+	initializeMathRendering,
+	initializePiesFromLoadedBundle,
+	isCustomElementConstructor,
+	isGlobalDebugEnabled,
+	isPieAvailable,
+	isPieRegistryAvailable,
+	isSessionSnapshotEnabled,
+	isSnapshotIdentitySpecific,
+	isTtsDebugEnabled,
+	loadBundleFromString,
+	loadPieModule,
+	loadPieModuleFromString,
+	makeUniqueTags,
+	modelsForPackage,
+	normalizeItemSessionChange,
+	normalizeItemSessionContainer,
+	noteSessionBaseline,
+	noteSessionObserved,
+	observePieElements,
+	parseElementOverridesFromCurrentUrl,
+	parseElementOverridesFromUrl,
+	parsePackageName,
+	pieElementContextsWithin,
+	pieRegistry,
+	projectSessionIntoHostContainer,
+	resolveConfigureConfiguration,
+	resolveInstrumentationProvider,
+	runtimeElementTags,
+	scorePieItem,
+	sessionSnapshotKey,
+	sessionStorageSnapshotStore,
+	setMathRenderer,
+	toPrintHashedTag,
+	toViewTag,
+	updatePieElement,
+	updatePieElementWithRef,
+	updatePieElements,
+	validateAuthoringModels,
+	validateCustomElementTag,
+	validatePieConfigContract,
+} from "./pie/index.js";
 export type {
 	AssessmentEntity,
 	AssessmentItemRef,
@@ -39,15 +266,39 @@ export type {
 	TestPart,
 } from "./types/index.js";
 export { editorPostFix } from "./types/index.js";
-export * from "./ui/attribute-coercion.js";
-export * from "./ui/content-styles.js";
-export * from "./ui/pointer-drag.js";
-export * from "./ui/pointer-gesture.js";
-export * from "./ui/pointer-rotate.js";
-export * from "./ui/overlay-containment.js";
-export * from "./ui/overlay-placement.js";
-export * from "./ui/focus-trap.js";
-export * from "./ui/ime.js";
-export * from "./ui/first-focusable.js";
-export * from "./ui/safe-storage.js";
-export * from "./ui/scope-css.js";
+export {
+	createFocusReturn,
+	createFocusTrap,
+} from "./ui/focus-trap.js";
+export {
+	FOCUSABLE_SELECTOR,
+	collectFocusable,
+	isProgrammaticFocusTarget,
+} from "./ui/first-focusable.js";
+export {
+	isComposingKeyEvent,
+} from "./ui/ime.js";
+export {
+	DEFAULT_CONTAINMENT_GUTTER,
+	clampPointWithinBlock,
+	resolveContainingBlockRect,
+} from "./ui/overlay-containment.js";
+export {
+	OVERLAY_PLACEMENT_NUDGES,
+	OVERLAY_PLACEMENT_ROTATIONS,
+	type OverlayPlacementController,
+	type OverlayPlacementNudge,
+	type OverlaySizeControl,
+	type OverlayTapTarget,
+	createOverlayPlacement,
+	dockUprightControls,
+} from "./ui/overlay-placement.js";
+export {
+	createPointerDragController,
+} from "./ui/pointer-drag.js";
+export {
+	createPointerGesture,
+} from "./ui/pointer-gesture.js";
+export {
+	scopeStylesheetCss,
+} from "./ui/scope-css.js";

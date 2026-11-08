@@ -127,10 +127,10 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		LoaderConfig,
 	} from "@pie-players/pie-players-shared";
 	import {
-		adoptContentStylesInto,
 		parseAllowedStyleOrigins,
 		validateExternalStyleUrl,
 	} from "@pie-players/pie-players-shared";
+	import { adoptContentStylesInto } from "@pie-players/pie-players-shared/ui/content-styles";
 	import type {
 		AuthoringBackendMode,
 		BackendAuthoringReleaseOptions,

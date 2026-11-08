@@ -14,8 +14,6 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
-	"unpkg": "./dist/index.js",
-	"jsdelivr": "./dist/index.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -31,7 +29,8 @@
 		"./tokens.css": "./dist/tokens.css",
 		"./color-schemes.css": "./dist/color-schemes.css",
 		"./font-sizes.css": "./dist/font-sizes.css",
-		"./components.css": "./dist/components.css"
+		"./components.css": "./dist/components.css",
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [

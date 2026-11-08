@@ -1,4 +1,4 @@
-import { coerceBooleanLike } from "@pie-players/pie-players-shared";
+import { coerceBooleanLike } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 
 /**
  * Layout scaffold for a host-composed assessment: host navigation above a body

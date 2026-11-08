@@ -31,7 +31,8 @@
 			"types": "./dist/components/item-session-debugger-element.d.ts",
 			"import": "./dist/components/item-session-debugger-element.js",
 			"default": "./dist/components/item-session-debugger-element.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [

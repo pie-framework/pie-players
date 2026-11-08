@@ -178,7 +178,10 @@ export type ReferencedItemEntity = Omit<
 };
 
 // ============================================================================
-// QTI-aligned assessment model (QTI 2.x compatible shape)
+// QTI-aligned assessment model. Structure and names follow QTI 3.0, the
+// version this format targets (`qtiVersion`, `contextDeclarations`, `testParts`);
+// the shared section and rubric-block shapes remain compatible with their
+// QTI 2.x counterparts.
 // ============================================================================
 
 export type RubricBlockView =
@@ -629,7 +632,12 @@ export interface AssessmentEntity extends BaseEntity {
 	/** QTI 3.0: Integrated APIP accessibility catalogs */
 	accessibilityCatalogs?: AccessibilityCatalog[];
 
-	/** QTI 3.0: Personal Needs Profile (PNP 3.0) */
+	/**
+	 * A learner's Personal Needs Profile in PIE tool ids — the AfA PNP 3.0
+	 * vocabulary, shaped through the adapter in `@pie-players/default-tool-loaders`
+	 * (`createPersonalNeedsProfileFromAfa`). This is not a QTI structure and not
+	 * an AfA record itself.
+	 */
 	personalNeedsProfile?: PersonalNeedsProfile;
 
 	/**

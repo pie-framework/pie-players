@@ -151,7 +151,7 @@ async function main() {
 	try {
 		const packages = collectFixturePackageNames(packageMap, specifiers.map((specifier) => splitPackageSpecifier(specifier).name));
 		const tarballs = await packFixturePackages(fixtureDir, packageMap, packages);
-		installTarballs(fixtureDir, [...tarballs.values()]);
+		await installTarballs(fixtureDir, [...tarballs.values()]);
 		const expectedExports = declarationExports(fixtureDir, specifiers);
 		const entry = (specifier) => ({
 			specifier,

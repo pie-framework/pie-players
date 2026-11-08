@@ -201,7 +201,7 @@ owning package exports.
 | Rule | Gate |
 | --- | --- |
 | Every export target exists in the packed tarball and has a stable file name | `check:pack-integrity:real` |
-| Node-safe entry points import in Node.js from installed tarballs; the browser-only roots fail on a browser global | `check:node-consumer-imports` |
+| Node-safe entry points import in Node.js, and the browser-only roots fail on a browser global, each package from an install of its own tarball and its workspace dependencies' | `check:node-consumer-imports` |
 | Dist-only surface, including sourcemap sources | `check:pack-integrity:real`, `check:declaration-reachability` |
 | No Svelte for hosts | `check:svelte-runtime-deps`, `check:ce-consumer-contract`, `check:svelte-type-imports` |
 | One `speech-rule-engine` version | `check:package-metadata` |

@@ -437,7 +437,26 @@ it and its writing direction — and republish on a locale change and again once
 a lazily loaded catalog is resident. Element bundles are third-party and
 release independently, so they get the key and the value shape rather than the
 players' provider, resolve the tag against their own catalogs, and treat an
-unanswered request as `en-US`. The value only grows, per ADR 0003's protocol.
+unanswered request as "no locale chosen". The value only grows, per ADR 0003's
+protocol.
+
+**Invariant: a player answers `interfaceLocaleContext` only once a host chose a
+locale.** A host chooses by setting `locale`, or by supplying a provider that
+resolves a locale other than `en-US`; a supplied provider resolving `en-US` is
+not a choice, because hosts supply one to add catalogs or messages. Before the
+choice the toolkit and the item player leave the request unanswered, and an
+element labels its chrome in the language its item declares, else `en-US`.
+That fallback is what keeps an item declaring Spanish in Spanish chrome under a
+host that sets no locale. One live installation's multiple-choice models
+declare `es_ES` and render Spanish chrome that way on pie-elements today; a
+default `en-US` answer would turn them English on the move to pie-players. Once answering, a player keeps answering, so
+clearing `locale` republishes `en-US` to subscribers. A host that wants English
+chrome over the item's language sets `locale="en-US"`.
+`hostChoseInterfaceLocale` in `@pie-players/pie-players-shared/i18n` is the one
+definition of the rule. An item player a section mounts receives the toolkit's
+provider and decides by the same rule, so it never answers what the toolkit
+above it leaves unanswered. The item-player, toolkit and section-player
+interface-locale tests hold each case, the unanswered one included.
 pie-elements-ng's
 [interface-i18n PRD](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/prds/interface-i18n/PRD.md)
 is the subscriber half: an element subscribes in `connectedCallback`, re-renders

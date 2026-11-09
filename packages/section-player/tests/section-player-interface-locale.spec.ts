@@ -370,6 +370,42 @@ test.describe("section player interface locale", () => {
 		await expect(page.getByTestId("demo-locale-select")).toHaveCount(0);
 	});
 
+	test("with no locale, neither the item players nor the toolkit answer interfaceLocaleContext", async ({
+		page,
+	}) => {
+		// Unanswered, a PIE element labels its chrome in the language its item
+		// declares. A default `en-US` answer from the section, or from an item
+		// player handed the section's provider, would override that declaration.
+		// The demo supplies a provider resolving `en-US` and no locale, which is
+		// not a choice.
+		await page.setViewportSize(WIDE);
+		await page.goto("/question-passage", { waitUntil: "networkidle" });
+		await expect(
+			page.getByRole("heading", { name: "Passage", level: 2 }),
+		).toBeVisible();
+
+		const content = page.locator("pie-item-player .pie-item-player").first();
+		const seen = await content.evaluate(async (node) => {
+			const values: unknown[] = [];
+			const from = node.firstElementChild ?? node;
+			from.dispatchEvent(
+				Object.assign(
+					new Event("context-request", { bubbles: true, composed: true }),
+					{
+						context: Symbol.for("pie.interfaceLocale"),
+						contextTarget: from,
+						subscribe: false,
+						callback: (value: unknown) => values.push(value),
+					},
+				),
+			);
+			await new Promise((resolve) => setTimeout(resolve, 250));
+			return values;
+		});
+
+		expect(seen).toEqual([]);
+	});
+
 	test("the item players answer interfaceLocaleContext with the section's locale", async ({
 		page,
 	}) => {

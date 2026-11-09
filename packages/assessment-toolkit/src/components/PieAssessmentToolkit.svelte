@@ -99,6 +99,7 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 		createPieI18n,
 		DEFAULT_LOCALE,
 		defaultContentLanguage,
+		hostChoseInterfaceLocale,
 		stampInterfaceLocale,
 	} from "@pie-players/pie-players-shared/i18n";
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
@@ -1330,6 +1331,18 @@ const DEFAULT_ENV = {
 			};
 		},
 	);
+	// Answered only once a host chose the locale (`hostChoseInterfaceLocale`
+	// has the invariant): until then an element labels its chrome in the
+	// language its item declares. The item players a section mounts take this
+	// toolkit's provider and decide by the same rule, so they answer only what
+	// this toolkit would.
+	let answersInterfaceLocale = $state(false);
+	$effect(() => {
+		void interfaceI18nVersion;
+		if (hostChoseInterfaceLocale({ locale, i18n })) {
+			answersInterfaceLocale = true;
+		}
+	});
 	// `lang` and `dir` go on the host, not on an element in the shadow tree:
 	// what a host composes inside this element is slotted light DOM, and both
 	// `lang` resolution and CSS `direction` reach it only from a light-tree
@@ -2076,7 +2089,7 @@ const DEFAULT_ENV = {
 	$effect(() => {
 		const currentHost = host;
 		const value = interfaceLocaleContextValue;
-		if (!currentHost) return;
+		if (!currentHost || !answersInterfaceLocale) return;
 		untrack(() => {
 			if (interfaceLocaleProvider) {
 				interfaceLocaleProvider.setValue(value);

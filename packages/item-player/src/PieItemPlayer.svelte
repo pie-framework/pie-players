@@ -239,6 +239,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		createPieI18n,
 		DEFAULT_LOCALE,
 		defaultContentLanguage,
+		hostChoseInterfaceLocale,
 		resolveInterfaceI18n,
 		reportInterfaceLocaleLoadError,
 		stampContentLanguage,
@@ -1836,13 +1837,24 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			};
 		},
 	);
+	// Answered only once a host chose the locale (`hostChoseInterfaceLocale`
+	// has the invariant): until then an element labels its chrome in the
+	// language its item declares. Inside a section `i18n` is the toolkit's
+	// provider, so this player answers only what the toolkit above it would.
+	let answersInterfaceLocale = $state(false);
+	$effect(() => {
+		void interfaceI18nVersion;
+		if (hostChoseInterfaceLocale({ locale, i18n })) {
+			answersInterfaceLocale = true;
+		}
+	});
 	let interfaceLocaleContextProvider: ReturnType<
 		typeof provideInterfaceLocaleContext
 	> | null = null;
 	$effect(() => {
 		if (!isBrowser) return;
 		const localHost = hostElement;
-		if (!localHost) return;
+		if (!localHost || !answersInterfaceLocale) return;
 		const provider = untrack(() =>
 			provideInterfaceLocaleContext(localHost, interfaceLocaleContextValue),
 		);

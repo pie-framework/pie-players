@@ -20,6 +20,7 @@ import {
 	DEFAULT_LOCALE,
 	dynamicMessageKey,
 	getDefaultI18n,
+	hostChoseInterfaceLocale,
 	localeDirection,
 	resolveInterfaceI18n,
 	SimpleI18n,
@@ -630,5 +631,27 @@ describe("canonical lang values", () => {
 		// speak something, and nothing is invented about what.
 		stampInterfaceLocale(target, { getLocale: () => "Spanish" });
 		expect(target.getAttribute("lang")).toBe("Spanish");
+	});
+});
+
+describe("hostChoseInterfaceLocale", () => {
+	// The players answer `interfaceLocaleContext` only once this holds; an
+	// element left unanswered labels its chrome in its item's declared language.
+	const providerAt = (locale: string) => ({ getLocale: () => locale });
+
+	test("no locale and no provider is not a choice", () => {
+		expect(hostChoseInterfaceLocale({})).toBe(false);
+		expect(hostChoseInterfaceLocale({ locale: "  ", i18n: null })).toBe(false);
+	});
+
+	test("a supplied provider resolving en-US is not a choice", () => {
+		expect(hostChoseInterfaceLocale({ i18n: providerAt("en-US") })).toBe(false);
+		expect(hostChoseInterfaceLocale({ i18n: providerAt("en_US") })).toBe(false);
+	});
+
+	test("a set locale, en-US included, or a provider at another locale is", () => {
+		expect(hostChoseInterfaceLocale({ locale: "en-US" })).toBe(true);
+		expect(hostChoseInterfaceLocale({ locale: "es" })).toBe(true);
+		expect(hostChoseInterfaceLocale({ i18n: providerAt("es-MX") })).toBe(true);
 	});
 });

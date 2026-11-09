@@ -3,6 +3,7 @@ import { resolve } from "path";
 import type { PluginOption } from "vite";
 import { chunkFileNamesFromSource } from "../players-shared/chunk-file-names.js";
 import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
+import { minifyChunks } from "../players-shared/minify-chunks.mjs";
 import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map-comment-text.mjs";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
@@ -34,6 +35,7 @@ export const sharedSveltePlugins = (): PluginOption[] => [
 	guardSvelteCustomElementDefines(),
 	escapeSourceMapCommentTextInOutput(),
 	preserveLegalComments(),
+	minifyChunks(),
 ];
 
 export const sharedChunkFileNames = chunkFileNamesFromSource(

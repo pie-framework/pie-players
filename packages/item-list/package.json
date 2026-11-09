@@ -47,7 +47,7 @@
 		"custom-elements.json"
 	],
 	"scripts": {
-		"build": "vite build && vite build --config vite.config.browser.ts",
+		"build": "vite build && vite build --config vite.config.browser.ts && bun ../../scripts/prune-unreachable-declarations.mjs",
 		"dev": "vite build --watch",
 		"test": "bun test",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",

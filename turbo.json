@@ -16,7 +16,12 @@
 			"inputs": [
 				"$TURBO_DEFAULT$",
 				"$TURBO_ROOT$/tsconfig.json",
-				"$TURBO_ROOT$/tsconfig.base.json"
+				"$TURBO_ROOT$/tsconfig.base.json",
+				"$TURBO_ROOT$/packages/players-shared/*.mjs",
+				"$TURBO_ROOT$/packages/players-shared/*.js",
+				"$TURBO_ROOT$/packages/players-shared/*.ts",
+				"$TURBO_ROOT$/scripts/prune-unreachable-declarations.mjs",
+				"$TURBO_ROOT$/scripts/check-svelte-type-imports.mjs"
 			]
 		},
 		"test": {

@@ -3,6 +3,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { transformSync } from "esbuild";
 import {
 	MATH_RENDERING_MODULE_FACTORY,
 	MATHJAX_3_SETUP_TEXT,
@@ -96,23 +97,41 @@ const collectJsFiles = (dir) =>
 /**
  * True when a bundle looks like it skipped minification.
  *
- * Uses average bytes-per-line rather than any minifier-specific marker, because
- * that gap is enormous and stable: the unminified toolkit artifact averaged
- * about 40 bytes per line (30,106 lines for 1.19 MB), while minified output runs
- * to thousands. The 200-byte threshold therefore sits nowhere near either case.
- * Small files are skipped because a short artifact can legitimately be one or
- * two lines regardless of minification.
+ * Average bytes-per-line selects the candidates, because that gap is enormous
+ * and stable: the unminified toolkit artifact averaged about 40 bytes per line
+ * (30,106 lines for 1.19 MB), while minified output runs to thousands. Small
+ * files are skipped because a short artifact can legitimately be one or two
+ * lines regardless of minification.
+ *
+ * A dense-lined file is then minified once more and counts as unminified only
+ * when that shrinks it by `minShrink`. Minified code with a preserved licence
+ * block, or a stylesheet or SVG path data in a template literal, spans many
+ * short lines yet is already at its minimum, so the density alone cannot tell
+ * it from a bundle that skipped the pass. A file that does not parse is judged
+ * on density.
  */
 export function looksUnminified(
 	content,
-	{ minBytes = 20_000, minBytesPerLine = 200 } = {},
+	{ minBytes = 20_000, minBytesPerLine = 200, minShrink = 0.1 } = {},
 ) {
 	const bytes = Buffer.byteLength(content, "utf8");
 	if (bytes < minBytes) return false;
 	// Count lines the way `wc -l` would, then add one for a trailing partial line
 	// so a single-line file is 1 rather than 0.
 	const lines = content.split("\n").length;
-	return bytes / lines < minBytesPerLine;
+	if (bytes / lines >= minBytesPerLine) return false;
+	try {
+		const { code } = transformSync(content, {
+			minify: true,
+			legalComments: "inline",
+			charset: "utf8",
+			loader: "js",
+			supported: { "dynamic-import": true, "import-meta": true },
+		});
+		return Buffer.byteLength(code, "utf8") < bytes * (1 - minShrink);
+	} catch {
+		return true;
+	}
 }
 
 /**
@@ -487,6 +506,41 @@ function checkEvalRequire(failures) {
 		}
 	}
 
+	return filesChecked;
+}
+
+/**
+ * True when `directory` holds a package whose `dist` Vite builds: a
+ * `vite.config*` sits beside its `package.json`. The other `dist`s are `tsc`
+ * output, which is not a bundle and ships its whitespace.
+ */
+export function hasViteConfig(directory) {
+	return readdirSync(directory).some((name) => /^vite\.config[\w.]*\.[cm]?[jt]s$/.test(name));
+}
+
+/**
+ * Fails a Vite-built bundle that skipped minification. Vite 8 keeps the
+ * whitespace of a library ES build, so a build lists `minifyChunks()`
+ * (packages/players-shared/minify-chunks.mjs) and sets `build.minify` to false.
+ * Returns how many files it read, so a run that reached none is visible.
+ */
+function checkViteBundlesMinified(failures) {
+	let filesChecked = 0;
+	for (const dir of listBundleRoots()) {
+		const packageDir =
+			path.basename(dir) === BROWSER_BUILD_DIRNAME
+				? path.dirname(path.dirname(dir))
+				: path.dirname(dir);
+		if (!hasViteConfig(packageDir)) continue;
+		for (const filePath of collectJsFiles(dir)) {
+			filesChecked += 1;
+			if (looksUnminified(readFileSync(filePath, "utf8"))) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, filePath)} looks unminified; list minifyChunks() from packages/players-shared/minify-chunks.mjs in the package's Vite build and set build.minify to false`,
+				);
+			}
+		}
+	}
 	return filesChecked;
 }
 
@@ -981,6 +1035,7 @@ function main() {
 	const filesChecked =
 		checkEvalRequire(failures) + checkToolkitCustomElements(failures);
 	const mathSpeechPackages = checkSpeechRuleEngineBoundaries(failures);
+	const minifiedBundles = checkViteBundlesMinified(failures);
 	checkNoPublishedSourcemaps(failures);
 	checkNoSvelteDevRuntime(failures);
 	checkNoIdenticalFiles(failures);
@@ -1008,7 +1063,7 @@ function main() {
 	}
 
 	console.log(
-		`[check-bundle-safety] OK: validated ${filesChecked} JS bundle file(s) the speech-rule-engine boundary in ${mathSpeechPackages} package(s) and ${browserBuilds} browser build(s)`,
+		`[check-bundle-safety] OK: validated ${filesChecked} JS bundle file(s), ${minifiedBundles} Vite bundle file(s) for minification, the speech-rule-engine boundary in ${mathSpeechPackages} package(s) and ${browserBuilds} browser build(s)`,
 	);
 }
 

@@ -3,7 +3,9 @@
  *
  * Vite 8 strips every legal comment (`@license`, `@preserve`, `/*!`) from a
  * build with `build.minify` set, in the bundler and again in the esbuild
- * minify pass, and the notices of DOMPurify and lit went with them. Their
+ * minify pass, and the notices of DOMPurify and lit went with them. A build
+ * sets `build.minify: false` and lists `minifyChunks()`, which minifies the
+ * chunks with `legalComments: "inline"`. Their
  * licences (BSD-3-Clause, Apache-2.0, MPL-2.0, MIT) require the notice to
  * travel with a redistributed copy.
  *
@@ -352,20 +354,17 @@ export const nodeFileReader = {
 };
 
 /**
- * Vite plugin with four jobs. The bundler keeps legal comments, the esbuild
- * minify pass leaves them inline, a chunk with modules from a library that has
- * no upstream notice gets one, and the build writes `THIRD-PARTY-LICENSES.txt`
- * for everything it inlines from `node_modules`. The `config` hook merges into
- * the build's own options, so an entry that sets `rollupOptions.output` keeps
- * its settings. `{ notices: false }` skips the notices file, for a worker build
- * whose modules the main build inlines as well.
+ * Vite plugin with three jobs. The bundler keeps legal comments, a chunk with
+ * modules from a library that has no upstream notice gets one, and the build
+ * writes `THIRD-PARTY-LICENSES.txt` for the third-party code it inlines. The
+ * `config` hook merges into the build's own options, so an entry that sets
+ * `rollupOptions.output` keeps its settings.
  */
-export function preserveLegalComments({ notices = true } = {}) {
+export function preserveLegalComments() {
 	return {
 		name: "pie-preserve-legal-comments",
 		config() {
 			return {
-				esbuild: { legalComments: "inline" },
 				build: {
 					rolldownOptions: {
 						output: { comments: { legal: true } },
@@ -381,7 +380,6 @@ export function preserveLegalComments({ notices = true } = {}) {
 			return { code: `${banners.join("\n")}\n${code}`, map: null };
 		},
 		generateBundle(_options, bundle) {
-			if (!notices) return;
 			const files = Object.values(bundle)
 				.filter((output) => output.type === "chunk")
 				.flatMap((chunk) => (chunk.moduleIds ?? []).map(moduleFile));

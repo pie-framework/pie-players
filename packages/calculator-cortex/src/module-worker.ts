@@ -35,9 +35,12 @@ function startFromBlob(url: URL, options: WorkerOptions): Worker {
  * Builds a module worker with the page-origin handling above.
  *
  * `construct` receives the constructor as a parameter named `Worker`, and
- * the name has to stay: Vite finds a worker to bundle by the text
- * `new Worker(new URL("./file", import.meta.url)`, so renaming it ships the
- * worker's TypeScript source as an asset.
+ * the name has to stay: the dev server finds a worker to bundle by the text
+ * `new Worker(new URL("./file", import.meta.url)`, so renaming it serves the
+ * worker's TypeScript source as an asset. The build finds the worker by the
+ * `new URL("./evaluation-worker.ts", import.meta.url)` text instead
+ * (`evaluationWorkerEntry` in `vite.config.ts`), which keeps the argument's
+ * shape stable too.
  */
 export function startModuleWorker(
 	construct: (Worker: ModuleWorkerConstructor) => Worker,

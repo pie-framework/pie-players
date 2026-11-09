@@ -4,6 +4,7 @@ import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
+import { minifyChunks } from "../players-shared/minify-chunks.mjs";
 
 /**
  * Builds `./calculator-element`, the one published entry. Hosts resolve it at
@@ -16,6 +17,7 @@ import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
 export default defineConfig({
 	plugins: [
 		preserveLegalComments(),
+		minifyChunks(),
 		svelte({
 			compilerOptions: {
 				customElement: true,
@@ -43,7 +45,7 @@ export default defineConfig({
 		outDir: "dist",
 		emptyOutDir: true,
 		target: "es2022",
-		minify: "esbuild",
+		minify: false,
 		sourcemap: false,
 		rollupOptions: {
 			// The toolkit, players-shared and pie-context resolve from the

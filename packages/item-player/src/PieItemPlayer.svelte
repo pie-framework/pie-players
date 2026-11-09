@@ -489,6 +489,23 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		}),
 	);
 
+	// Load failures and config binding problems arise before the inner player,
+	// which reports its own runtime errors, exists. Without this the host's
+	// `player-error` listener is their only witness.
+	function trackItemPlayerError(
+		message: string,
+		attributes: { errorType: string } & Record<string, unknown>,
+	): void {
+		try {
+			resolvedInstrumentationProvider?.trackError(new Error(message), {
+				component: "pie-item-player",
+				...attributes,
+			});
+		} catch (trackError) {
+			logger.warn("[pie-item-player] error report to instrumentation failed:", trackError);
+		}
+	}
+
 	let loading = $state(true);
 	let error: string | null = $state(null);
 	let bundleRetryStatus: IifeBundleRetryStatus | null = $state(null);
@@ -1243,8 +1260,20 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			] as const) {
 				if (!cfg) continue;
 				assertPieConfigContract(cfg);
-				for (const warning of validatePieConfigContract(cfg).warnings) {
+				const { warnings, bindingWarnings } = validatePieConfigContract(cfg);
+				for (const warning of warnings) {
 					logger.warn(`[pie-item-player] ${label}: ${warning}`);
+				}
+				if (bindingWarnings.length > 0) {
+					const message = `${label} config: ${bindingWarnings.join(" | ")}`;
+					logger.error(`[pie-item-player] ${message}`);
+					trackItemPlayerError(message, {
+						errorType: "ITEM_PLAYER_CONFIG_BINDING",
+						recoverable: true,
+						stage,
+						configRole: label,
+						...(typeof cfg.id === "string" ? { itemId: cfg.id } : {}),
+					});
 				}
 			}
 
@@ -1366,18 +1395,18 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			});
 			logger.error("[pie-item-player] failed loading:", err);
 			const cause = describeRegistrationFailures(err);
+			const detail = {
+				code: "ITEM_PLAYER_LOAD_ERROR",
+				message,
+				recoverable: false,
+				stage,
+				strategy: normalizedStrategy,
+				mode: resolvedMode,
+				...(cause ? { cause } : {}),
+			} satisfies PieItemPlayerErrorDetail;
+			trackItemPlayerError(message, { ...detail, errorType: detail.code });
 			handlePlayerEvent(
-				new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, {
-					detail: {
-						code: "ITEM_PLAYER_LOAD_ERROR",
-						message,
-						recoverable: false,
-						stage,
-						strategy: normalizedStrategy,
-						mode: resolvedMode,
-						...(cause ? { cause } : {}),
-					} satisfies PieItemPlayerErrorDetail,
-				}),
+				new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, { detail }),
 			);
 			return false;
 		}

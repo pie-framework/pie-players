@@ -939,6 +939,18 @@ sanitizer's forbid-list. A targeted lookup in the same checkouts found no host
 listening for the event and none setting `trust-markup` or `sanitizeMarkup` outside
 vendored player bundles, so no recorded host is affected.
 
+On 2026-11-09, before any release carried the stricter check, a model with no `id`,
+two models sharing one and two markup elements sharing one became binding warnings
+instead of config-contract errors, so no host sees a load fail on them. The same
+change made `pie-item-player` report to its instrumentation provider each failed
+load (`errorType` `ITEM_PLAYER_LOAD_ERROR`, with the `player-error` detail) and each
+config carrying binding warnings (`ITEM_PLAYER_CONFIG_BINDING`, `recoverable: true`,
+with no `player-error`). Host P, the one consumer of the implicit default, receives
+both in its New Relic account; a full scan of two installations and samples of the
+other two found no content carrying a binding warning, so the volume is its failed
+loads. Host R receives them through the provider it hands the section player in
+`runtime.player.loaderConfig`. Row verification dates are unchanged.
+
 ## Consumer profiles
 
 The control-sizing repair removes automatic zoom compensation from section

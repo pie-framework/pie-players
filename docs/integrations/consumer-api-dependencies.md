@@ -756,6 +756,15 @@ Host R, whose committed source scores through `pie-item-player` alone and sets
 no `backend` on it. Host R's Browse in a section renders the correct responses
 without saving them. Row verification dates are unchanged.
 
+Also on 2026-11-08 `pie-section-player-tools-shared` became private, so no
+version after `1.0.0-beta.9` is published. The four panel packages bundle it and
+declare it as a development dependency, so none of them installs it. Only Host R
+declares it (`^1.0.0-beta.9`) and imports nothing from it, so its range keeps
+resolving to `1.0.0-beta.9`; Host A's lockfile holds `0.3.70` of it as a
+transitive dependency of the `0.3.x` panels, which this does not touch. A scan of
+every recorded checkout, and of Hosts P and S on their preloaded-player branches,
+finds no other mention. Row verification dates are unchanged.
+
 Also on 2026-10-24 language variants landed as additive surfaces: optional
 `language` and `isAdaptationOf` on `ItemEntity` and `PassageEntity`, optional
 `languagePolicy` on `AssessmentEntity`, optional `requestedLanguages` on the

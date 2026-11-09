@@ -6,6 +6,10 @@ debugger packages build on it, and the demo apps (`apps/section-demos`,
 `apps/assessment-demos`) use its toggles and session database panel directly.
 Like the panels, it is development tooling, outside learner-facing delivery.
 
+The package is private. Each debugger bundles it into its own `dist`, so it
+reaches a host only inside those panels, and the demo apps import it from the
+workspace.
+
 ## Usage
 
 ```ts

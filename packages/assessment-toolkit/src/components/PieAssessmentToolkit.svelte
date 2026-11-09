@@ -100,6 +100,7 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 		DEFAULT_LOCALE,
 		defaultContentLanguage,
 		hostChoseInterfaceLocale,
+		isLocaleRequested,
 		localeDirection,
 		requestedInterfaceLocale,
 		stampInterfaceLocale,
@@ -1304,6 +1305,14 @@ const DEFAULT_ENV = {
 		// locale its owner gave it — the toolkit never auto-drives what it does
 		// not own.
 		if (!requested && provider !== ownedInterfaceI18n) return;
+		// A supplied provider its owner already asked for this locale is left
+		// alone, so a failed load reports once.
+		if (
+			requested &&
+			provider !== ownedInterfaceI18n &&
+			isLocaleRequested(provider, requested)
+		)
+			return;
 		untrack(() => {
 			// Rejecting the promise here would take a player down over a missing
 			// locale chunk; every key still resolves through the English fallback.

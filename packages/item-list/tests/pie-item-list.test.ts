@@ -209,6 +209,31 @@ describe("<pie-item-list>", () => {
 		]);
 	});
 
+	test("loads and reports a failing locale once for the list and all its rows", async () => {
+		let loads = 0;
+		const i18n = createPieI18n({
+			availableLocales: ["en-US", "nl-NL"],
+			loadCatalog: async (locale) => {
+				if (locale !== "nl-NL") return loadBundledCatalog(locale);
+				loads += 1;
+				throw new Error("chunk failed");
+			},
+		});
+		const first = { id: "a", config: item("a"), passages: [passage] };
+		const { list, events } = await mount({ items: [first], i18n, locale: "nl-NL" });
+		await settle(60);
+		// Rows that mount after the failure take the list's request as it stands.
+		list.items = [first, { id: "b", config: item("b") }];
+		await settle(60);
+		expect(rows(list).flatMap((row) => summaries(row).map((summary) => summary.locale))).toEqual([
+			"nl-NL",
+			"nl-NL",
+			"nl-NL",
+		]);
+		expect(loads).toBe(1);
+		expect(events.filter((event) => event.type === "framework-error")).toHaveLength(1);
+	});
+
 	test("ends a row's busy state once its player loads", async () => {
 		const { list } = await mount({ items: [{ id: "a", config: item("a") }], expanded: true });
 		const [row] = rows(list);

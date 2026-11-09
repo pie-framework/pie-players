@@ -57,6 +57,7 @@ export {
 	dynamicMessageKey,
 	getDefaultI18n,
 	hostChoseInterfaceLocale,
+	isLocaleRequested,
 	localeDirection,
 	requestedInterfaceLocale,
 	resolveInterfaceI18n,

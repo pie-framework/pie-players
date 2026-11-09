@@ -12,6 +12,7 @@ import {
 	createPieI18n,
 	DEFAULT_LOCALE,
 	type I18nProvider,
+	isLocaleRequested,
 	reportInterfaceLocaleLoadError,
 	resolveInterfaceI18n,
 } from "@pie-players/pie-players-shared/i18n";
@@ -43,6 +44,8 @@ export function useInterfaceI18n(
 		const requested = typeof locale === "string" ? locale.trim() : "";
 		const target = provider;
 		if (!requested && target !== owned) return;
+		// A supplied provider its owner already asked for this locale is left alone.
+		if (requested && target !== owned && isLocaleRequested(target, requested)) return;
 		untrack(() => {
 			// Every key still resolves through the English fallback chain, so a failed load is reported, not fatal.
 			void Promise.resolve(target.setLocale(requested || DEFAULT_LOCALE)).catch((error) => {

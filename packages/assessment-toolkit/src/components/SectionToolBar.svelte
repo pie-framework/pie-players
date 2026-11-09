@@ -21,20 +21,18 @@ A section-level toolbar: a `<pie-item-toolbar>` at level `section`, scoped to th
 -->
 <script lang="ts">
 	import "./item-toolbar-element.js";
-	import type { ToolRegistry } from "../services/ToolRegistry.js";
-	import type { ItemEntity } from "@pie-players/pie-players-shared/types";
-	import type { ToolbarItem } from "../services/toolbar-items.js";
+	import type { SectionToolbarElementProps } from "./element-contracts.js";
 
 	let {
 		enabledTools = "",
 		position = "bottom",
 		sectionId = "",
-		size = "md" as "sm" | "md" | "lg",
+		size = "md",
 		language = "",
-		toolRegistry = null as ToolRegistry | null,
-		item = null as ItemEntity | null,
-		hostButtons = [] as ToolbarItem[],
-	} = $props();
+		toolRegistry = null,
+		item = null,
+		hostButtons = [],
+	}: SectionToolbarElementProps = $props();
 </script>
 
 <pie-item-toolbar

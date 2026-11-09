@@ -70,7 +70,7 @@
 							"kind": "field",
 							"name": "item",
 							"type": {
-								"text": "object"
+								"text": "unknown"
 							},
 							"default": "null",
 							"attribute": "item"
@@ -137,7 +137,7 @@
 						{
 							"name": "item",
 							"type": {
-								"text": "object"
+								"text": "unknown"
 							},
 							"default": "null",
 							"fieldName": "item"
@@ -302,7 +302,7 @@
 							"kind": "field",
 							"name": "position",
 							"type": {
-								"text": "'top' | 'right' | 'bottom' | 'left' | 'none'"
+								"text": "\"top\" | \"right\" | \"bottom\" | \"left\" | \"none\""
 							},
 							"default": "'bottom'",
 							"attribute": "position"
@@ -351,13 +351,14 @@
 								"text": "string"
 							},
 							"default": "''",
+							"description": "Svelte-side only; the element has no `class` property.",
 							"attribute": "class"
 						},
 						{
 							"kind": "field",
 							"name": "size",
 							"type": {
-								"text": "'sm' | 'md' | 'lg'"
+								"text": "\"sm\" | \"md\" | \"lg\""
 							},
 							"default": "'md'",
 							"attribute": "size"
@@ -477,6 +478,7 @@
 								"text": "string"
 							},
 							"default": "''",
+							"description": "Svelte-side only; the element has no `class` property.",
 							"fieldName": "class"
 						},
 						{
@@ -541,7 +543,7 @@
 							"kind": "field",
 							"name": "section",
 							"type": {
-								"text": "object"
+								"text": "AssessmentSection | null"
 							},
 							"default": "null",
 							"attribute": "section"
@@ -568,7 +570,7 @@
 							"kind": "field",
 							"name": "env",
 							"type": {
-								"text": "object"
+								"text": "{ mode?: string; role?: string } & Record<string, unknown>"
 							},
 							"default": "{}",
 							"attribute": "env"
@@ -635,7 +637,7 @@
 							"kind": "field",
 							"name": "tools",
 							"type": {
-								"text": "object"
+								"text": "ToolkitCoordinatorConfig[\"tools\"]"
 							},
 							"default": "{}",
 							"attribute": "tools"
@@ -644,7 +646,7 @@
 							"kind": "field",
 							"name": "toolContextResolvers",
 							"type": {
-								"text": "Record<string, unknown> | null"
+								"text": "ToolkitCoordinatorConfig[\"toolContextResolvers\"] | null"
 							},
 							"default": "null",
 							"attribute": "toolcontextresolvers"
@@ -671,7 +673,7 @@
 							"kind": "field",
 							"name": "accessibility",
 							"type": {
-								"text": "object"
+								"text": "ToolkitCoordinatorConfig[\"accessibility\"]"
 							},
 							"default": "{}",
 							"attribute": "accessibility"
@@ -707,7 +709,7 @@
 							"kind": "field",
 							"name": "createSectionController",
 							"type": {
-								"text": "null | (() => unknown)"
+								"text": "(() => unknown) | null"
 							},
 							"default": "null",
 							"attribute": "createsectioncontroller"
@@ -716,7 +718,7 @@
 							"kind": "field",
 							"name": "onFrameworkError",
 							"type": {
-								"text": "null | ((errorModel: FrameworkErrorModel) => void)"
+								"text": "((errorModel: FrameworkErrorModel) => void) | null"
 							},
 							"default": "null",
 							"attribute": "onframeworkerror"
@@ -725,7 +727,7 @@
 							"kind": "field",
 							"name": "errorRenderer",
 							"type": {
-								"text": "null | ((errorModel: FrameworkErrorModel) => { title?: string; details?: string[]; })"
+								"text": "((errorModel: FrameworkErrorModel) => { title?: string; details?: string[] }) | null"
 							},
 							"default": "null",
 							"attribute": "errorrenderer"
@@ -744,7 +746,7 @@
 							"kind": "field",
 							"name": "isolation",
 							"type": {
-								"text": "string"
+								"text": "\"inherit\" | \"force\""
 							},
 							"default": "\"inherit\"",
 							"description": "`\"inherit\"` (the default) or `\"force\"`, as an attribute or a property; section-player layouts set the property from `runtime.isolation`. `type: \"String\"` because an observed attribute of type `Object` is JSON-parsed, and `isolation=\"force\"` would throw.",
@@ -852,7 +854,7 @@
 						{
 							"name": "section",
 							"type": {
-								"text": "object"
+								"text": "AssessmentSection | null"
 							},
 							"default": "null",
 							"fieldName": "section"
@@ -876,7 +878,7 @@
 						{
 							"name": "env",
 							"type": {
-								"text": "object"
+								"text": "{ mode?: string; role?: string } & Record<string, unknown>"
 							},
 							"default": "{}",
 							"fieldName": "env"
@@ -936,7 +938,7 @@
 						{
 							"name": "tools",
 							"type": {
-								"text": "object"
+								"text": "ToolkitCoordinatorConfig[\"tools\"]"
 							},
 							"default": "{}",
 							"fieldName": "tools"
@@ -944,7 +946,7 @@
 						{
 							"name": "toolcontextresolvers",
 							"type": {
-								"text": "Record<string, unknown> | null"
+								"text": "ToolkitCoordinatorConfig[\"toolContextResolvers\"] | null"
 							},
 							"default": "null",
 							"fieldName": "toolContextResolvers"
@@ -968,7 +970,7 @@
 						{
 							"name": "accessibility",
 							"type": {
-								"text": "object"
+								"text": "ToolkitCoordinatorConfig[\"accessibility\"]"
 							},
 							"default": "{}",
 							"fieldName": "accessibility"
@@ -1000,7 +1002,7 @@
 						{
 							"name": "createsectioncontroller",
 							"type": {
-								"text": "null | (() => unknown)"
+								"text": "(() => unknown) | null"
 							},
 							"default": "null",
 							"fieldName": "createSectionController"
@@ -1008,7 +1010,7 @@
 						{
 							"name": "onframeworkerror",
 							"type": {
-								"text": "null | ((errorModel: FrameworkErrorModel) => void)"
+								"text": "((errorModel: FrameworkErrorModel) => void) | null"
 							},
 							"default": "null",
 							"fieldName": "onFrameworkError"
@@ -1016,7 +1018,7 @@
 						{
 							"name": "errorrenderer",
 							"type": {
-								"text": "null | ((errorModel: FrameworkErrorModel) => { title?: string; details?: string[]; })"
+								"text": "((errorModel: FrameworkErrorModel) => { title?: string; details?: string[] }) | null"
 							},
 							"default": "null",
 							"fieldName": "errorRenderer"

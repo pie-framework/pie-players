@@ -9,6 +9,12 @@
 
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import {
+	declaredTagNames,
+	manifestTagNames,
+	typesEntryFiles,
+	undeclaredElementTags,
+} from "./lib/element-declarations.mjs";
 
 const ROOT = process.cwd();
 const PACKAGES_DIR = path.join(ROOT, "packages");
@@ -205,6 +211,43 @@ const validatePackageDist = (pkgInfo) => {
 	return { failures, filesChecked: distJsFiles.length };
 };
 
+// A tag in the package's `customElements` manifest needs an `HTMLElementTagNameMap`
+// entry that a consumer reaches from the package's type entries, or
+// `document.createElement(tag)` and `querySelector(tag)` return `HTMLElement`.
+const validateTagDeclarations = () => {
+	const failures = [];
+	let tagsChecked = 0;
+	for (const pkgName of readdirSync(PACKAGES_DIR).sort()) {
+		const pkgDir = path.join(PACKAGES_DIR, pkgName);
+		const packageJsonPath = path.join(pkgDir, "package.json");
+		if (!existsSync(packageJsonPath)) continue;
+		const pkg = readJson(packageJsonPath);
+		if (pkg.private) continue;
+		const tags = manifestTagNames(pkgDir, pkg);
+		if (tags.length === 0) continue;
+		tagsChecked += tags.length;
+		if (typesEntryFiles(pkgDir, pkg).length === 0) {
+			failures.push({
+				pkg,
+				pkgDir,
+				issues: [`no built declaration entries under ${rel(pkgDir)}; run "bun run build" first`],
+			});
+			continue;
+		}
+		const missing = undeclaredElementTags({ tags, declared: declaredTagNames(pkgDir, pkg) });
+		if (missing.length > 0) {
+			failures.push({
+				pkg,
+				pkgDir,
+				issues: [
+					`no HTMLElementTagNameMap entry reachable from the type entries for ${missing.map((tag) => `<${tag}>`).join(", ")}`,
+				],
+			});
+		}
+	}
+	return { failures, tagsChecked };
+};
+
 const writeInventory = (entries) => {
 	const lines = [
 		"# Custom Elements Inventory",
@@ -278,6 +321,17 @@ const run = () => {
 		);
 	}
 
+	const declarations = distMode
+		? validateTagDeclarations()
+		: { failures: [], tagsChecked: 0 };
+	for (const failure of declarations.failures) {
+		results.push({
+			pkgInfo: { pkgDir: failure.pkgDir },
+			pkg: failure.pkg,
+			failures: failure.issues,
+		});
+	}
+
 	const failing = results.filter((r) => r.failures.length > 0);
 	if (failing.length > 0) {
 		console.error(
@@ -296,7 +350,7 @@ const run = () => {
 
 	console.log(
 		distMode
-			? `[check-custom-elements] OK: validated ${distFilesChecked} dist JS file(s) across ${results.length} custom-element package(s)`
+			? `[check-custom-elements] OK: validated ${distFilesChecked} dist JS file(s) across ${results.length} custom-element package(s) and ${declarations.tagsChecked} tag declaration(s)`
 			: `[check-custom-elements] OK: validated ${results.length} custom-element package(s)`,
 	);
 };

@@ -49,11 +49,7 @@ Section player core that renders `<pie-assessment-toolkit>` for its `runtime`, `
 <script lang="ts">
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import "@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element";
-	import {
-		type ToolConfigStrictness,
-		type ToolkitCoordinatorApi,
-		type ToolRegistry,
-	} from "@pie-players/pie-assessment-toolkit";
+	import { type ToolkitCoordinatorApi } from "@pie-players/pie-assessment-toolkit";
 	import { createPackagedToolRegistry } from "@pie-players/pie-default-tool-loaders";
 	import type { SectionControllerHandle } from "@pie-players/pie-assessment-toolkit";
 	import {
@@ -68,35 +64,33 @@ Section player core that renders `<pie-assessment-toolkit>` for its `runtime`, `
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import { onDestroy, untrack } from "svelte";
 	import { SectionController } from "../controllers/SectionController.js";
+	import type {
+		SectionPlayerBaseElementProps,
+		SectionPlayerBaseNavigationState,
+	} from "../contracts/elements.js";
 	import { watchMissingToolProviders } from "./shared/missing-tool-providers.js";
 	import { waitForToolkitReady } from "./shared/toolkit-ready-wait.js";
-	import type {
-		AssessmentEntity,
-		AssessmentSection,
-		SectionControllerSessionState,
-	} from "@pie-players/pie-players-shared/types";
 	import { createToolSurfaceHost } from "@pie-players/pie-assessment-toolkit/tools/registration";
 	import {
 		DEFAULT_ENV,
 		DEFAULT_ISOLATION,
 		resolveSectionId,
-		type RuntimeConfig,
 	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
 
 	const logger = createPieLogger("pie-section-player", () => false);
 
 	let {
-		runtime = null as RuntimeConfig | null,
+		runtime = null,
 		ndsIcons = false,
 		locale = "",
-		section = null as AssessmentSection | null,
-		session = null as SectionControllerSessionState | null,
-		assessment = null as AssessmentEntity | null,
+		section = null,
+		session = null,
+		assessment = null,
 		sectionId = "",
 		attemptId = "",
-		toolRegistry = null as ToolRegistry | null,
-		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
-	} = $props();
+		toolRegistry = null,
+		toolConfigStrictness = undefined,
+	}: SectionPlayerBaseElementProps = $props();
 
 	let toolkitElement = $state<any>(null);
 	let activeToolkitCoordinator = $state<ToolkitCoordinatorApi | null>(null);
@@ -346,14 +340,6 @@ Section player core that renders `<pie-assessment-toolkit>` for its `runtime`, `
 		};
 	});
 
-	type BaseNavigationState = {
-		currentIndex: number;
-		totalItems: number;
-		canNext: boolean;
-		canPrevious: boolean;
-		currentItemId?: string;
-	};
-
 	export function navigateToItem(index: number): unknown {
 		if (!toolkitElement?.navigateToItem) return null;
 		return toolkitElement.navigateToItem(index);
@@ -364,7 +350,7 @@ Section player core that renders `<pie-assessment-toolkit>` for its `runtime`, `
 		return toolkitElement.getCompositionModel();
 	}
 
-	export function getNavigationStateSnapshot(): BaseNavigationState {
+	export function getNavigationStateSnapshot(): SectionPlayerBaseNavigationState {
 		const compositionModel = getCompositionModelSnapshot() as
 			| {
 					currentItemIndex?: number;

@@ -8,4 +8,5 @@
   type PictureLookupRequest
   type PictureLookupResult
   type PictureResult
+  type PieToolPictureDictionaryElement
   default

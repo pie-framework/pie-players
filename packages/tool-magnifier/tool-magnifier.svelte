@@ -51,6 +51,7 @@ Escape closes it, wherever on the page it is pressed.
 	import { OverlayPlacementControls } from '@pie-players/pie-players-shared/components/overlay-placement';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import { onMount, untrack } from 'svelte';
+	import type { MagnifierElementProps } from './element-props.js';
 	import { lensFocus } from './src/lens-focus.js';
 	import { createMirrorFrame, type MirrorFrame } from './src/mirror.js';
 
@@ -58,7 +59,7 @@ Escape closes it, wherever on the page it is pressed.
 		visible = false,
 		toolId = 'magnification',
 		zoom = undefined
-	}: { visible?: boolean; toolId?: string; zoom?: number } = $props();
+	}: MagnifierElementProps = $props();
 
 	const lensTag = $host().localName;
 	const isBrowser = typeof window !== 'undefined';

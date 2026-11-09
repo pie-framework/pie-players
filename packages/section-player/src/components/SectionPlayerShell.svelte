@@ -21,10 +21,7 @@ Section toolbar shell that renders `<pie-section-toolbar>` at the `toolbar-posit
 
 <script lang="ts">
 	import "@pie-players/pie-assessment-toolkit/components/section-toolbar-element";
-	import type {
-		ToolRegistry,
-		ToolbarItem,
-	} from "@pie-players/pie-assessment-toolkit";
+	import type { SectionPlayerShellElementProps } from "../contracts/elements.js";
 	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
 	import { stampInterfaceLocale } from "@pie-players/pie-players-shared/i18n/provider";
 	import { useInterfaceI18n } from "./shared/use-interface-i18n.svelte.js";
@@ -32,18 +29,12 @@ Section toolbar shell that renders `<pie-section-toolbar>` at the `toolbar-posit
 	const DEFAULT_COLLAPSED_BREAKPOINT_PX = 1100;
 
 	let {
-		showToolbar = "false" as boolean | string | null | undefined,
+		showToolbar = "false",
 		toolbarPosition = "right",
 		enabledTools = "",
-		toolRegistry = null as ToolRegistry | null,
-		sectionHostButtons = [] as ToolbarItem[],
-	} = $props<{
-		showToolbar?: boolean | string | null | undefined;
-		toolbarPosition?: string;
-		enabledTools?: string;
-		toolRegistry?: ToolRegistry | null;
-		sectionHostButtons?: ToolbarItem[];
-	}>();
+		toolRegistry = null,
+		sectionHostButtons = [],
+	}: SectionPlayerShellElementProps = $props();
 
 	let layoutBody = $state<HTMLDivElement | null>(null);
 	const interfaceI18n = useInterfaceI18n(() => layoutBody);

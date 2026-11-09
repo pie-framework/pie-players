@@ -72,11 +72,6 @@ Section player for a host that lays out the section itself: it runs the toolkit,
 <script lang="ts">
 	import { mount, unmount } from "svelte";
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
-	import type {
-		ToolConfigStrictness,
-		ToolRegistry,
-		ToolbarItem,
-	} from "@pie-players/pie-assessment-toolkit";
 	import {
 		attachInstrumentationEventBridge,
 		resolveInstrumentationProvider,
@@ -96,18 +91,14 @@ Section player for a host that lays out the section itself: it runs the toolkit,
 		SectionPlayerRuntimeHostContract,
 		SectionPlayerSnapshot,
 	} from "../contracts/runtime-host-contract.js";
-	import type { SectionPlayerHostHooks } from "../contracts/host-hooks.js";
-	import {
-		resolveSectionId,
-		type RuntimeConfig,
-	} from "@pie-players/pie-assessment-toolkit/runtime/engine";
-	import type { SectionPlayerPolicies } from "../policies/types.js";
+	import type { SectionPlayerKernelHostElementProps } from "../contracts/elements.js";
+	import { resolveSectionId } from "@pie-players/pie-assessment-toolkit/runtime/engine";
 	import { resolveSectionPlayerPolicies } from "../policies/index.js";
 	import { getHostElementFromAnchor } from "./shared/host-element.js";
 
 	let {
-		runtime = null as RuntimeConfig | null,
-		ndsIcons = undefined as boolean | undefined,
+		runtime = null,
+		ndsIcons = undefined,
 		locale = "",
 		section = null,
 		session = null,
@@ -115,18 +106,18 @@ Section player for a host that lays out the section itself: it runs the toolkit,
 		sectionId = "",
 		attemptId = "",
 		iifeBundleHost,
-		debug = undefined as string | boolean | undefined,
-		baseHeadingLevel = undefined as number | undefined,
+		debug = undefined,
+		baseHeadingLevel = undefined,
 		showToolbar = "false",
 		toolbarPosition = "right",
-		toolRegistry = null as ToolRegistry | null,
-		sectionHostButtons = [] as ToolbarItem[],
-		itemHostButtons = [] as ToolbarItem[],
-		passageHostButtons = [] as ToolbarItem[],
-		policies = undefined as Partial<SectionPlayerPolicies> | undefined,
-		hooks = undefined as SectionPlayerHostHooks | undefined,
-		toolConfigStrictness = undefined as ToolConfigStrictness | undefined,
-	} = $props();
+		toolRegistry = null,
+		sectionHostButtons = [],
+		itemHostButtons = [],
+		passageHostButtons = [],
+		policies = undefined,
+		hooks = undefined,
+		toolConfigStrictness = undefined,
+	}: SectionPlayerKernelHostElementProps = $props();
 
 	let anchor = $state<HTMLDivElement | null>(null);
 	let kernelRef = $state<SectionPlayerRuntimeHostContract | null>(null);

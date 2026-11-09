@@ -29,8 +29,10 @@ export default defineConfig({
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",
-			insertTypesEntry: true,
-			include: ["index.ts"],
+			// No `insertTypesEntry`: it derives the types entry from the bundle
+			// entry, which is a `.svelte` file with no declarations, and writes a
+			// stub over the `index.d.ts` emitted from `index.ts`.
+			include: ["index.ts", "element-props.ts"],
 		}),
 	],
 	build: {

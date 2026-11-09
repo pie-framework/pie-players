@@ -4,11 +4,11 @@ import {
 	createContext,
 } from "@pie-players/pie-context";
 import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
-import type { PlayerElementParams } from "./player-action.js";
+import type { PlayerElementAction } from "./player-action.js";
 
 export type SectionPlayerCardRenderContext = {
 	resolvedPlayerTag: string;
-	playerAction: (node: HTMLElement, params: PlayerElementParams) => unknown;
+	playerAction: PlayerElementAction;
 	cardTitleFormatter?: SectionPlayerCardTitleFormatter;
 };
 

@@ -44,11 +44,9 @@ TTS service pause each other.
 	import type { MediaSource } from "@pie-players/pie-players-shared/types";
 	import { describeSignLanguage } from "./sign-language-cards.js";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
-	import type { ResolvedSignLanguageAlternate } from "./sign-language-content.js";
+	import type { SignLanguageElementProps } from "./element-props.js";
 
-	let { media = null as ResolvedSignLanguageAlternate | null } = $props<{
-		media?: ResolvedSignLanguageAlternate | null;
-	}>();
+	let { media = null }: SignLanguageElementProps = $props();
 
 	let videoElement = $state<HTMLVideoElement | null>(null);
 	let contextHostElement = $state<HTMLElement | null>(null);

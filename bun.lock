@@ -458,11 +458,9 @@
     "packages/pie-i18n-generated": {
       "name": "@pie-players/pie-i18n-generated",
       "version": "1.0.0-beta.7",
-      "dependencies": {
-        "@pie-players/pie-players-shared": "workspace:*",
-      },
       "devDependencies": {
         "@biomejs/biome": "^2.6.4",
+        "@pie-players/pie-players-shared": "workspace:*",
         "typescript": "^5.9.3",
       },
     },
@@ -493,18 +491,16 @@
     "packages/print-player": {
       "name": "@pie-players/pie-print-player",
       "version": "1.0.0-beta.7",
-      "dependencies": {
-        "@pie-players/pie-assessment-toolkit": "workspace:*",
-        "@pie-players/pie-players-shared": "workspace:*",
-        "lit": "^3.3.3",
-      },
       "devDependencies": {
         "@happy-dom/global-registrator": "^21.0.4",
+        "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-default-tool-loaders": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/pie-theme": "workspace:*",
         "@playwright/test": "^1.64.1",
         "@types/node": "^26.6.6",
         "esbuild": "^0.28.2",
+        "lit": "^3.3.3",
         "typescript": "^5.9.3",
         "vite": "^8.3.3",
       },
@@ -554,12 +550,10 @@
     "packages/section-player-tools-instrumentation-debugger": {
       "name": "@pie-players/pie-section-player-tools-instrumentation-debugger",
       "version": "1.0.0-beta.7",
-      "dependencies": {
-        "@pie-players/pie-players-shared": "workspace:*",
-      },
       "devDependencies": {
         "@biomejs/biome": "^2.6.4",
         "@pie-players/pie-assessment-toolkit": "workspace:*",
+        "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/pie-section-player-tools-shared": "workspace:*",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "svelte": "^5.57.3",

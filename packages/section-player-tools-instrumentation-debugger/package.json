@@ -44,12 +44,10 @@
 		"test": "bun test tests",
 		"lint": "biome lint ."
 	},
-	"dependencies": {
-		"@pie-players/pie-players-shared": "workspace:*"
-	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.6.4",
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
+		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-section-player-tools-shared": "workspace:*",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"svelte": "^5.57.3",

@@ -52,12 +52,29 @@ export {
 	printItemAndFloaters,
 	processMarkup,
 } from "./markup-processor.js";
-export { PiePrint } from "./pie-print.js";
+export { PiePrint } from "./pie-print-class.js";
 
+export type {
+	PiePrintConstructor,
+	PiePrintElement,
+} from "./element.js";
 export type {
 	MountedAlternates,
 	PrintAccessibilityConfig,
 } from "./accessibility-alternates.js";
+export type {
+	PrintAccessibilityCatalog,
+	PrintAssessmentSettings,
+	PrintCatalogCard,
+	PrintElementPackagePolicy,
+	PrintEsmCdnProvider,
+	PrintEsmCdnProviderOption,
+	PrintItemSettings,
+	PrintMarkupSanitizer,
+	PrintPersonalNeedsProfile,
+	PrintToolParameters,
+	PrintToolRegistration,
+} from "./shared-shapes.js";
 export type {
 	Config,
 	Elements,

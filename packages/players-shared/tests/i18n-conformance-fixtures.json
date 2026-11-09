@@ -88,5 +88,92 @@
 		"shipped": { "a": "Á" },
 		"hostMessages": { "a": "Ä" },
 		"expected": { "a": "Ä", "b": "B", "nope.key": "nope.key" }
-	}
+	},
+	"scenarios": [
+		{
+			"name": "a host plural override of one category leaves the others to the catalog",
+			"locale": "en-US",
+			"source": { "max": { "one": "{count} answer", "other": "{count} answers" } },
+			"shipped": {},
+			"hostMessages": { "en-US": { "max": { "one": "Just {count} answer" } } },
+			"expected": {
+				"locale": "en-US",
+				"direction": "ltr",
+				"t": { "max": "{count} answers" },
+				"plural": [
+					{ "key": "max", "count": 1, "expected": "Just 1 answer" },
+					{ "key": "max", "count": 2, "expected": "2 answers" }
+				]
+			}
+		},
+		{
+			"name": "a host plural override in a shipped locale falls through to that locale's catalog per category",
+			"locale": "es",
+			"source": { "max": { "one": "{count} answer", "other": "{count} answers" } },
+			"shipped": { "es": { "max": { "one": "{count} respuesta", "other": "{count} respuestas" } } },
+			"hostMessages": { "es": { "max": { "one": "Solo {count} respuesta" } } },
+			"expected": {
+				"locale": "es",
+				"direction": "ltr",
+				"t": { "max": "{count} respuestas" },
+				"plural": [
+					{ "key": "max", "count": 1, "expected": "Solo 1 respuesta" },
+					{ "key": "max", "count": 2, "expected": "2 respuestas" }
+				]
+			}
+		},
+		{
+			"name": "a locale's own other form wins over the fallback's category",
+			"locale": "es",
+			"source": { "max": { "one": "{count} answer", "other": "{count} answers" } },
+			"shipped": { "es": { "max": { "other": "{count} respuestas" } } },
+			"hostMessages": {},
+			"expected": {
+				"locale": "es",
+				"direction": "ltr",
+				"t": { "max": "{count} respuestas" },
+				"plural": [{ "key": "max", "count": 1, "expected": "1 respuestas" }]
+			}
+		},
+		{
+			"name": "a regional host override layers over the shipped parent catalog",
+			"locale": "es-MX",
+			"source": { "a": "A", "b": "B", "c": "C" },
+			"shipped": { "es": { "a": "Á", "b": "Bé" } },
+			"hostMessages": { "es-MX": { "a": "Ä" } },
+			"expected": { "locale": "es", "direction": "ltr", "t": { "a": "Ä", "b": "Bé", "c": "C" }, "plural": [] }
+		},
+		{
+			"name": "a parent host override reaches a regional request",
+			"locale": "es-MX",
+			"source": { "a": "A", "b": "B" },
+			"shipped": { "es": { "a": "Á", "b": "Bé" } },
+			"hostMessages": { "es": { "a": "Ä" } },
+			"expected": { "locale": "es", "direction": "ltr", "t": { "a": "Ä", "b": "Bé" }, "plural": [] }
+		},
+		{
+			"name": "host messages match the request whatever their tag's casing",
+			"locale": "es",
+			"source": { "a": "A", "b": "B" },
+			"shipped": { "es": { "a": "Á", "b": "Bé" } },
+			"hostMessages": { "ES": { "a": "Ä" } },
+			"expected": { "locale": "es", "direction": "ltr", "t": { "a": "Ä", "b": "Bé" }, "plural": [] }
+		},
+		{
+			"name": "a locale nothing serves reports the fallback it is served in",
+			"locale": "he",
+			"source": { "a": "A" },
+			"shipped": { "es": { "a": "Á" } },
+			"hostMessages": {},
+			"expected": { "locale": "en-US", "direction": "ltr", "t": { "a": "A" }, "plural": [] }
+		},
+		{
+			"name": "a locale served by host messages alone reports the host-message locale",
+			"locale": "he-IL",
+			"source": { "a": "A", "b": "B" },
+			"shipped": {},
+			"hostMessages": { "he": { "a": "א" } },
+			"expected": { "locale": "he", "direction": "rtl", "t": { "a": "א", "b": "B" }, "plural": [] }
+		}
+	]
 }

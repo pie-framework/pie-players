@@ -191,9 +191,22 @@ describe("<pie-item-list>", () => {
 		list.locale = "nl-NL";
 		await settle(60);
 		expect(itemRow.i18n?.getLocale()).toBe("nl-NL");
+		expect(itemRow.locale).toBe("nl-NL");
+		expect(passageRow.locale).toBe("nl-NL");
 		expect(rows(list)[0].querySelector(".pie-item-list__toggle")?.getAttribute("aria-label")).toBe(
 			"Volledige vraag tonen",
 		);
+	});
+
+	test("forwards an explicit en-US to every row, which the rows' players answer as a host's choice", async () => {
+		const { list } = await mount({
+			items: [{ id: "a", config: item("a"), passages: [passage] }],
+			locale: "en-US",
+		});
+		expect(summaries(rows(list)[0]).map((row) => row.locale)).toEqual([
+			"en-US",
+			"en-US",
+		]);
 	});
 
 	test("ends a row's busy state once its player loads", async () => {

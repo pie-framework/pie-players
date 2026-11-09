@@ -76,7 +76,9 @@ describe("pseudoLocalize", () => {
 			customMessages: { [PSEUDO_LOCALE_EXPANDED]: pseudoLocalize(enUS) },
 		});
 		await i18n.setLocale(PSEUDO_LOCALE_EXPANDED);
-		expect(i18n.getLocale()).toBe(PSEUDO_LOCALE_EXPANDED);
+		// `en-XA` widens to the resident English catalog, which is the locale it
+		// is served in; its host messages still win every lookup.
+		expect(i18n.getLocale()).toBe("en-US");
 		const rendered = i18n.t("common.close");
 		expect(rendered.startsWith("[")).toBe(true);
 		expect(rendered.endsWith("]")).toBe(true);

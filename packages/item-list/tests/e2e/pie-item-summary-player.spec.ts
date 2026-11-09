@@ -15,15 +15,19 @@ import {
 test.beforeAll(() => assertBrowserBuild("pie-item-summary-player.spec"));
 
 /** Appends an expanded row and records the events it dispatches. */
-async function appendRow(page: Page, { top = 0 }: { top?: number } = {}): Promise<void> {
+async function appendRow(
+	page: Page,
+	{ top = 0, locale }: { top?: number; locale?: string } = {},
+): Promise<void> {
 	await page.evaluate(
-		({ top, config }) => {
+		({ top, config, locale }) => {
 			const row = document.createElement("pie-item-summary") as HTMLElement & Record<string, unknown>;
 			row.style.display = "block";
 			row.style.marginTop = `${top}px`;
 			row.config = config;
 			row.strategy = "preloaded";
 			row.expanded = true;
+			if (locale !== undefined) row.locale = locale;
 			const events: unknown[] = [];
 			(window as unknown as { rowEvents: unknown[] }).rowEvents = events;
 			document.body.addEventListener("load-complete", (event) =>
@@ -34,7 +38,7 @@ async function appendRow(page: Page, { top = 0 }: { top?: number } = {}): Promis
 			);
 			document.body.append(row);
 		},
-		{ top, config: itemConfig("item", "<p>Pick one</p>") },
+		{ top, locale, config: itemConfig("item", "<p>Pick one</p>") },
 	);
 }
 
@@ -64,6 +68,36 @@ test.describe("<pie-item-summary> player view", () => {
 		});
 		await expect(player).toHaveCount(0);
 		await expect(page.locator(".pie-item-summary__prompt")).toHaveText("Pick one");
+	});
+
+	test("an explicit en-US reaches the player's elements as a host's choice; no locale leaves them unanswered", async ({
+		page,
+	}) => {
+		// The player answers `interfaceLocaleContext` only once a host chose a
+		// locale, and the row's provider reads `en-US` either way, so only the
+		// forwarded `locale` tells the two apart.
+		const answers = async (locale?: string) => {
+			await openPage(page);
+			await preloadStubElement(page);
+			await appendRow(page, { locale });
+			const element = page.locator(`pie-item-summary ${STUB_TAG}`);
+			await expect(element).toHaveText("Rendered: <p>Pick one</p>");
+			return element.evaluate(async (node) => {
+				const values: unknown[] = [];
+				node.dispatchEvent(
+					Object.assign(new Event("context-request", { bubbles: true, composed: true }), {
+						context: Symbol.for("pie.interfaceLocale"),
+						contextTarget: node,
+						subscribe: false,
+						callback: (value: unknown) => values.push(value),
+					}),
+				);
+				await new Promise((resolve) => setTimeout(resolve, 100));
+				return values;
+			});
+		};
+		expect(await answers("en-US")).toEqual([{ locale: "en-US", direction: "ltr" }]);
+		expect(await answers()).toEqual([]);
 	});
 
 	test("keeps the loaded player when an equal config is set again", async ({ page }) => {

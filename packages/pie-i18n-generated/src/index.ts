@@ -18,8 +18,9 @@
  * 	loadGeneratedCatalog,
  * } from "@pie-players/pie-i18n-generated";
  *
+ * // Built without `locale`: the factory names a tag without loading its
+ * // catalog. The element's `locale` attribute drives the provider.
  * const i18n = createPieI18n({
- * 	locale: "th-TH",
  * 	availableLocales: [...BUNDLED_LOCALES, ...GENERATED_LOCALES],
  * 	// Bundled first: a reviewed catalog silently wins over a generated one
  * 	// for the same tag, which is what makes promotion from generated to
@@ -27,6 +28,7 @@
  * 	loadCatalog: (locale) =>
  * 		loadBundledCatalog(locale).catch(() => loadGeneratedCatalog(locale)),
  * });
+ * // <pie-item-player locale="th-TH"> with `player.i18n = i18n`
  * ```
  *
  * Nothing here loads unless a host asks for a generated locale: the loaders

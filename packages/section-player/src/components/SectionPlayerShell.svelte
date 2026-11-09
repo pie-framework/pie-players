@@ -43,12 +43,24 @@ Section toolbar shell that renders `<pie-section-toolbar>` at the `toolbar-posit
 	// this element's light DOM, slotted through the layout body, and `lang`
 	// resolves along the light tree. The host is the one element that is an
 	// ancestor of all of it there and of the toolbar in the shadow tree, so the
-	// stamp goes on the host and not on the shell div.
+	// stamp goes on the host and not on the shell div. Stamped only while a
+	// host chose a locale, as the toolkit stamps its own host, and a stamp
+	// written here is removed when the choice is withdrawn.
+	let stamped: HTMLElement | null = null;
 	$effect(() => {
 		const host = $host();
+		const provider = interfaceI18n.provider;
 		// Undefined when mounted as a plain component rather than as the element.
-		if (!host) return;
-		stampInterfaceLocale(host, interfaceI18n.provider);
+		if (!host || !interfaceI18n.interfaceLocaleChosen) {
+			if (stamped) {
+				stamped.removeAttribute("lang");
+				stamped.removeAttribute("dir");
+				stamped = null;
+			}
+			return;
+		}
+		stampInterfaceLocale(host, provider);
+		stamped = host;
 	});
 
 	let isNarrow = $state(false);

@@ -74,6 +74,12 @@ export interface AssessmentToolkitRuntimeContext {
 	 */
 	i18n?: I18nProvider;
 	/**
+	 * Whether a host chose the interface locale (`hostChoseInterfaceLocale`):
+	 * the chrome stamps {@link locale}'s `lang` and `dir` only while this holds,
+	 * so a host that chooses none leaves the page's language in effect.
+	 */
+	interfaceLocaleChosen?: boolean;
+	/**
 	 * Content language: the language the authored content is written in, which
 	 * read-aloud speaks it in and catalog lookups select alternates by. Sourced
 	 * from the host's `content-language` attribute on the toolkit (or

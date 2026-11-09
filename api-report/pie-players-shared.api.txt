@@ -313,6 +313,7 @@
   normalizeLanguageTag
   pseudoLocalize
   reportInterfaceLocaleLoadError
+  requestedInterfaceLocale
   resolveInterfaceI18n
   stampContentLanguage
   stampInterfaceLocale
@@ -347,6 +348,7 @@
   getDefaultI18n
   hostChoseInterfaceLocale
   localeDirection
+  requestedInterfaceLocale
   resolveInterfaceI18n
   stampInterfaceLocale
 

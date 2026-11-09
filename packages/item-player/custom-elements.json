@@ -868,7 +868,7 @@
 							"type": {
 								"text": "CustomEvent<{ kind: \"i18n-locale-load\"; source: string; message: string; details: string[]; recoverable: true; scope: \"runtime\"; cause?: unknown }>"
 							},
-							"description": "When a requested interface-locale catalog fails to load; the player keeps rendering through the English fallback chain, and re-setting `locale` retries the load."
+							"description": "When a requested interface-locale catalog fails to load; the player keeps rendering through the English fallback chain. Failed loads are not cached, so a later change of `locale` back to that locale retries the load."
 						}
 					],
 					"x-pie": {

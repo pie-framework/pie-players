@@ -22,7 +22,7 @@ Section toolbar shell that renders `<pie-section-toolbar>` at the `toolbar-posit
 <script lang="ts">
 	import "@pie-players/pie-assessment-toolkit/components/section-toolbar-element";
 	import type { SectionPlayerShellElementProps } from "../contracts/elements.js";
-	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
+	import { coerceBooleanLike } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { stampInterfaceLocale } from "@pie-players/pie-players-shared/i18n/provider";
 	import { useInterfaceI18n } from "./shared/use-interface-i18n.svelte.js";
 

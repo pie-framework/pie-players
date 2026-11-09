@@ -1,8 +1,6 @@
 import "@pie-players/pie-section-player";
-import {
-	coerceBooleanLike,
-	type InstrumentationProvider,
-} from "@pie-players/pie-players-shared";
+import type { InstrumentationProvider } from "@pie-players/pie-players-shared";
+import { coerceBooleanLike } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 import { reportInterfaceLocaleLoadError } from "@pie-players/pie-players-shared/i18n";
 import { cloneDeep } from "@pie-players/pie-players-shared/object";
 import {

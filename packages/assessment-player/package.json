@@ -12,8 +12,6 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"unpkg": "./dist/pie-assessment-player.js",
-	"jsdelivr": "./dist/pie-assessment-player.js",
 	"main": "./dist/pie-assessment-player.js",
 	"types": "./dist/pie-assessment-player.d.ts",
 	"exports": {
@@ -26,7 +24,8 @@
 			"types": "./dist/pie-assessment-player.d.ts",
 			"import": "./dist/pie-assessment-player.js",
 			"default": "./dist/pie-assessment-player.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [

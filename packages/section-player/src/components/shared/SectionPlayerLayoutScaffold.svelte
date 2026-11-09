@@ -24,7 +24,7 @@
 		ToolConfigStrictness,
 		ToolkitCoordinatorApi,
 	} from "@pie-players/pie-assessment-toolkit";
-	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
+	import { coerceBooleanLike } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { onDestroy, untrack } from "svelte";
 	import { useInterfaceI18n } from "./use-interface-i18n.svelte.js";
 

@@ -25,7 +25,8 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-line-reader.js",
 			"default": "./dist/tool-line-reader.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -34,8 +35,6 @@
 		"package.json"
 	],
 	"license": "MIT",
-	"unpkg": "./dist/tool-line-reader.js",
-	"jsdelivr": "./dist/tool-line-reader.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"

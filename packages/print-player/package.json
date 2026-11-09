@@ -13,7 +13,8 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/print-player.js",
 			"default": "./dist/print-player.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [

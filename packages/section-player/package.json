@@ -12,8 +12,8 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"unpkg": "./dist/pie-section-player.js",
-	"jsdelivr": "./dist/pie-section-player.js",
+	"unpkg": "./dist/browser/pie-section-player.js",
+	"jsdelivr": "./dist/browser/pie-section-player.js",
 	"main": "./dist/pie-section-player.js",
 	"types": "./dist/pie-section-player.d.ts",
 	"exports": {
@@ -51,7 +51,8 @@
 			"types": "./dist/item-section/index.d.ts",
 			"import": "./dist/item-section/index.js",
 			"default": "./dist/item-section/index.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [

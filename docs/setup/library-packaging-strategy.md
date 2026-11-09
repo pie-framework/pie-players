@@ -134,7 +134,9 @@ a chunk.
 Packages publish generated `dist` files as their public API. `exports`, `main`,
 `module`, `types`, `unpkg` and `jsdelivr` point inside `dist/`, never at `src`,
 a non-declaration `.ts` or `.tsx` file, or a `.svelte` or `.svelte.ts` file, and
-no export carries a `development` or `svelte` condition. `check:publish-surface`
+no export carries a `development` or `svelte` condition. The one export outside
+`dist/` is `./package.json`, which every package maps to its manifest so a tool
+can read the installed version through the `exports` map. `check:publish-surface`
 checks each manifest and its `npm pack` file list for:
 
 - no `development` or `svelte` export condition;
@@ -142,7 +144,7 @@ checks each manifest and its `npm pack` file list for:
   lists for the package;
 - no `src`, `.svelte` or non-declaration TypeScript path in `files`;
 - no package-level `svelte` field, and no Svelte peer or optional dependency;
-- every target inside `dist/`;
+- every target inside `dist/`, the manifest aside;
 - packed files limited to `dist/`, declared `bin` files, `package.json`,
   README, LICENSE and CHANGELOG, an oclif manifest, and static assets.
 

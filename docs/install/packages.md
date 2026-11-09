@@ -182,9 +182,12 @@ The release gate confirms that the item player's and section player's roots
 fail to import in Node.js on a browser global.
 
 A CDN URL without a file path serves the file a package's `unpkg` and
-`jsdelivr` fields name. For the section player that file is the npm build, so
-a page names `dist/browser/pie-section-player.js` in full, and the item list
-`dist/browser/pie-item-list.js`.
+`jsdelivr` fields name. Only the four [CDN entry points](./cdn.md) carry them:
+the item player's and the print player's name their built file, the section
+player's and the item list's their browser build. Those two builds import
+chunks by relative path, which a short URL breaks, so a page names
+`dist/browser/pie-section-player.js` or `dist/browser/pie-item-list.js` in
+full.
 
 ## Third-party dependencies
 

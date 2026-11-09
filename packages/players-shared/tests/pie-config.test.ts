@@ -326,7 +326,12 @@ describe("validatePieConfigContract", () => {
 			models: [{ id: "m1", element: "pie-mc" }],
 		});
 
-		expect(result).toEqual({ valid: true, errors: [], warnings: [] });
+		expect(result).toEqual({
+			valid: true,
+			errors: [],
+			warnings: [],
+			bindingWarnings: [],
+		});
 	});
 
 	test("accepts a stale full tag for runtime-copy normalization", () => {
@@ -338,7 +343,12 @@ describe("validatePieConfigContract", () => {
 			models: [{ id: "m1", element: "pie-mc--version-1-2-3" }],
 		});
 
-		expect(result).toEqual({ valid: true, errors: [], warnings: [] });
+		expect(result).toEqual({
+			valid: true,
+			errors: [],
+			warnings: [],
+			bindingWarnings: [],
+		});
 	});
 
 	test("recognizes legal dot and underscore characters in markup tags", () => {
@@ -355,7 +365,12 @@ describe("validatePieConfigContract", () => {
 			],
 		});
 
-		expect(result).toEqual({ valid: true, errors: [], warnings: [] });
+		expect(result).toEqual({
+			valid: true,
+			errors: [],
+			warnings: [],
+			bindingWarnings: [],
+		});
 	});
 
 	test("fails when model.element is not declared in elements", () => {
@@ -372,21 +387,23 @@ describe("validatePieConfigContract", () => {
 		);
 	});
 
-	test("fails when a model has no id", () => {
+	test("reports a model without an id as a binding warning", () => {
 		const result = validatePieConfigContract({
 			markup: '<pie-mc id="m1"></pie-mc>',
 			elements: {
 				"pie-mc": "@pie-element/multiple-choice@1.0.0",
 			},
-			models: [{ element: "pie-mc" }],
+			models: [{ id: "m1", element: "pie-mc" }, { element: "pie-mc" }],
 		});
-		expect(result.valid).toBe(false);
-		expect(result.errors.join(" | ")).toContain(
-			'Model at index 0 is missing a valid "id".',
-		);
+		expect(result.valid).toBe(true);
+		expect(result.errors).toEqual([]);
+		expect(result.warnings).toEqual([]);
+		expect(result.bindingWarnings).toEqual([
+			'Model at index 1 has no valid "id", so no markup element binds to it.',
+		]);
 	});
 
-	test("fails when two models share an id", () => {
+	test("reports two models sharing an id as a binding warning", () => {
 		const result = validatePieConfigContract({
 			markup: '<pie-mc id="m1"></pie-mc>',
 			elements: {
@@ -397,8 +414,42 @@ describe("validatePieConfigContract", () => {
 				{ id: "m1", element: "pie-mc" },
 			],
 		});
-		expect(result.valid).toBe(false);
-		expect(result.errors.join(" | ")).toContain('Duplicate model id "m1"');
+		expect(result.valid).toBe(true);
+		expect(result.bindingWarnings).toEqual([
+			'Duplicate model id "m1"; the markup element binds to the first model with it.',
+		]);
+	});
+
+	test("reports markup elements sharing an id as a binding warning", () => {
+		const result = validatePieConfigContract({
+			markup:
+				'<div id="m1"><pie-mc id="m1"></pie-mc><pie-mc class="x" id=\'m1\'></pie-mc><pie-mc data-id="m1" id="m2"></pie-mc></div>',
+			elements: {
+				"pie-mc": "@pie-element/multiple-choice@1.0.0",
+			},
+			models: [
+				{ id: "m1", element: "pie-mc" },
+				{ id: "m2", element: "pie-mc" },
+			],
+		});
+		expect(result.valid).toBe(true);
+		expect(result.bindingWarnings).toEqual([
+			'2 markup elements share id "m1"; they bind to one model and one session entry.',
+		]);
+	});
+
+	test("reports no binding warnings for one-to-one ids", () => {
+		const result = validatePieConfigContract({
+			markup: '<pie-mc id="m1"></pie-mc><pie-mc id="m2"></pie-mc>',
+			elements: {
+				"pie-mc": "@pie-element/multiple-choice@1.0.0",
+			},
+			models: [
+				{ id: "m1", element: "pie-mc" },
+				{ id: "m2", element: "pie-mc" },
+			],
+		});
+		expect(result.bindingWarnings).toEqual([]);
 	});
 
 	test("fails when custom tags in markup are not declared in elements", () => {

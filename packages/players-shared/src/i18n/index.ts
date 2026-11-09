@@ -56,6 +56,7 @@ export {
 	detectBrowserLocale,
 	dynamicMessageKey,
 	getDefaultI18n,
+	hostChoseInterfaceLocale,
 	localeDirection,
 	resolveInterfaceI18n,
 	SimpleI18n,

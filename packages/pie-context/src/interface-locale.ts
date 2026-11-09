@@ -8,8 +8,15 @@ import { createContext } from "./types.js";
  * it supplies), which answers for every element inside it. An element
  * requests it with `subscribe: true`, re-renders on each republish — the value
  * moves on a locale change, and again once a lazily loaded catalog is
- * resident — and resolves the tag against its own catalogs. An unanswered
- * request means `en-US`, left to right.
+ * resident — and resolves the tag against its own catalogs.
+ *
+ * Invariant: a player answers only once a host chose a locale, and stays
+ * silent before that, so an unanswered request means "no locale chosen". The
+ * element then falls back to the language its item declares, else `en-US`
+ * left to right; that fallback is how items declaring Spanish keep Spanish
+ * labels under hosts that set no locale. A player answering `en-US` by
+ * default would override it, which is why the rule lives in one function,
+ * `hostChoseInterfaceLocale` in `@pie-players/pie-players-shared/i18n`.
  *
  * Content language never travels here: a model's `language`, or `Env.locale`,
  * says what the item says, not what the chrome around it says it in.

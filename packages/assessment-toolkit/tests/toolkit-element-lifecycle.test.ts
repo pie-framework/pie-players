@@ -529,17 +529,47 @@ describe("<pie-assessment-toolkit> interface locale context", () => {
 		return seen;
 	}
 
-	test("answers an element inside it, and republishes once the catalog is resident", async () => {
+	test("leaves an element unanswered until a host sets a locale, then answers and keeps answering", async () => {
+		// Unanswered, a PIE element labels its chrome in the language its item
+		// declares; a default `en-US` answer would override that declaration.
 		const { element } = await mount({});
 		const child = document.createElement("div");
 		element.append(child);
-		const seen = subscribe(child);
+		const unanswered = subscribe(child);
 		await settle();
-		expect(seen).toEqual([{ locale: "en-US", direction: "ltr" }]);
+		expect(unanswered).toEqual([]);
 
 		element.setAttribute("locale", "nl-NL");
 		await settle();
+		const seen = subscribe(child);
+		await settle();
 		expect(seen.at(-1)).toEqual({ locale: "nl-NL", direction: "ltr" });
+
+		element.removeAttribute("locale");
+		await settle();
+		expect(seen.at(-1)).toEqual({ locale: "en-US", direction: "ltr" });
+	});
+
+	test("a supplied provider resolving en-US is not a choice; one resolving another locale is", async () => {
+		const provider = (locale: string): I18nProvider => ({
+			getLocale: () => locale,
+			getDirection: () => "ltr",
+			setLocale: async () => {},
+			t: (key) => String(key),
+		});
+		const english = await mount({ i18n: provider("en-US") });
+		const englishChild = document.createElement("div");
+		english.element.append(englishChild);
+		const unanswered = subscribe(englishChild);
+		await settle();
+		expect(unanswered).toEqual([]);
+
+		const dutch = await mount({ i18n: provider("nl-NL") });
+		const dutchChild = document.createElement("div");
+		dutch.element.append(dutchChild);
+		const seen = subscribe(dutchChild);
+		await settle();
+		expect(seen).toEqual([{ locale: "nl-NL", direction: "ltr" }]);
 	});
 
 	test("a supplied right-to-left provider publishes its locale and direction as given", async () => {

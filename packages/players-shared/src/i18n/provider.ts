@@ -600,3 +600,36 @@ export function stampInterfaceLocale(
 	target.setAttribute("lang", canonicalLanguageTag(locale) ?? locale);
 	target.setAttribute("dir", provider.getDirection?.() ?? "ltr");
 }
+
+/**
+ * Whether a host chose a player's interface locale: it set the player's
+ * `locale`, or supplied a provider that resolves a locale other than
+ * `en-US`.
+ *
+ * A player answers `interfaceLocaleContext` from the first time this holds,
+ * and never before it. An element left unanswered labels its chrome in the
+ * language its item declares, which is how an item declaring Spanish keeps
+ * Spanish labels under a host that sets no locale; a default `en-US` answer
+ * would override that declaration. A supplied provider resolving `en-US` is
+ * not a choice, because hosts supply one to add catalogs or messages; a host
+ * that wants `en-US` chrome over the item's language sets `locale="en-US"`.
+ * Once answering, a player keeps answering, so clearing `locale` republishes
+ * `en-US` to the elements that subscribed.
+ *
+ * The toolkit and the item player both decide through this rule. An item
+ * player a section mounts receives the toolkit's provider, so it answers only
+ * when the toolkit above it would. Callers re-evaluate it on the provider's
+ * change signal, since a supplied provider's locale moves without a property
+ * change.
+ */
+export function hostChoseInterfaceLocale(player: {
+	locale?: unknown;
+	i18n?: Pick<I18nProvider, "getLocale"> | null;
+}): boolean {
+	if (typeof player.locale === "string" && player.locale.trim() !== "") {
+		return true;
+	}
+	if (!player.i18n) return false;
+	const resolved = player.i18n.getLocale();
+	return (canonicalLanguageTag(resolved) ?? resolved) !== DEFAULT_LOCALE;
+}

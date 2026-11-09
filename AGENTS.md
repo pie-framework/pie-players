@@ -164,6 +164,12 @@ build.
 - After adding a locale, build the package and confirm `dist` holds it as its own
   chunk. The design is in
   [`docs/architecture/internationalization.md`](docs/architecture/internationalization.md#packaging).
+- Players answer `interfaceLocaleContext` only once a host chose a locale, decided
+  by `hostChoseInterfaceLocale` alone. Never answer it, or forward a provider that
+  makes a nested player answer it, with a default `en-US`: unanswered, a PIE
+  element labels its chrome in the language its item declares, and Spanish content
+  relies on that. The rule is in
+  [`docs/architecture/internationalization.md`](docs/architecture/internationalization.md#interface-locale).
 
 ### Decision Records
 

@@ -825,6 +825,14 @@ this writing); no host provides or consumes a `pie.*` context of its own, so
 no listed host is affected. The key is now a cross-repository contract: it is
 not renamed, and the value only grows.
 
+On 2026-11-09 both players stopped answering it until a host chooses a locale
+(`locale` set, or a supplied provider resolving a locale other than `en-US`).
+Before that they answered `en-US`/`ltr`, which made a pie-elements-ng element
+ignore the language its item declares. It protects the hosts delivering the
+one installation whose multiple-choice models declare `es_ES`: on their move to
+pie-players those items keep Spanish labels with no host change. Hosts that set
+a locale see no change; no listed host reads `pie.interfaceLocale` itself.
+
 The interface-locale machinery is an ES-module graph by construction: every
 locale but `en-US` is a dynamic `import()` of its own chunk in each player's
 `dist`. The hosts in this record load `dist/index.js` as a module script or

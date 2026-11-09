@@ -303,6 +303,7 @@
   findClosestLanguageMatch
   firstStrongDirection
   getDefaultI18n
+  hostChoseInterfaceLocale
   languageTagLookupSequence
   languageTagScriptLookupSequence
   languageTagsEqual
@@ -344,6 +345,7 @@
   detectBrowserLocale
   dynamicMessageKey
   getDefaultI18n
+  hostChoseInterfaceLocale
   localeDirection
   resolveInterfaceI18n
   stampInterfaceLocale

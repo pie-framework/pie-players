@@ -304,6 +304,7 @@
   firstStrongDirection
   getDefaultI18n
   hostChoseInterfaceLocale
+  isLocaleRequested
   languageTagLookupSequence
   languageTagScriptLookupSequence
   languageTagsEqual
@@ -347,6 +348,7 @@
   dynamicMessageKey
   getDefaultI18n
   hostChoseInterfaceLocale
+  isLocaleRequested
   localeDirection
   requestedInterfaceLocale
   resolveInterfaceI18n

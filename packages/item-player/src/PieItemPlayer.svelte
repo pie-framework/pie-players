@@ -240,6 +240,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		DEFAULT_LOCALE,
 		defaultContentLanguage,
 		hostChoseInterfaceLocale,
+		isLocaleRequested,
 		localeDirection,
 		requestedInterfaceLocale,
 		resolveInterfaceI18n,
@@ -1001,6 +1002,14 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		// provider built here resolves `en-US`; one that was supplied keeps the
 		// locale its owner set — the section's shared provider, above all.
 		if (!requested && provider !== ownedInterfaceI18n) return;
+		// A supplied provider its owner already asked for this locale (a list
+		// row's, a section's) is left alone, so a failed load reports once.
+		if (
+			requested &&
+			provider !== ownedInterfaceI18n &&
+			isLocaleRequested(provider, requested)
+		)
+			return;
 		untrack(() => {
 			// A failed catalog load must not take the player down: every key still
 			// resolves through the English fallback chain. It is reported, like

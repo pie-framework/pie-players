@@ -22,6 +22,7 @@ import {
 	getDefaultI18n,
 	hostChoseInterfaceLocale,
 	localeDirection,
+	isLocaleRequested,
 	requestedInterfaceLocale,
 	resolveInterfaceI18n,
 	SimpleI18n,
@@ -777,6 +778,16 @@ describe("hostChoseInterfaceLocale", () => {
 		expect(hostChoseInterfaceLocale({ i18n })).toBe(true);
 		await i18n.setLocale("en-US");
 		expect(hostChoseInterfaceLocale({ i18n })).toBe(false);
+	});
+});
+
+describe("isLocaleRequested", () => {
+	test("compares the provider's request canonically, and is false without request tracking", async () => {
+		const i18n = createPieI18n();
+		await i18n.setLocale("nl_nl");
+		expect(isLocaleRequested(i18n, "nl-NL")).toBe(true);
+		expect(isLocaleRequested(i18n, "fr")).toBe(false);
+		expect(isLocaleRequested({}, "en-US")).toBe(false);
 	});
 });
 

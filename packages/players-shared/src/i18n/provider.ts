@@ -713,6 +713,24 @@ function requestedLocaleOf(
 }
 
 /**
+ * Whether `provider` was already asked for `locale`. An element handed its
+ * owner's provider together with the owner's `locale` skips asking again, so a
+ * catalog that fails to load is fetched and reported once, by the owner, and
+ * not again by every row and player under it.
+ */
+export function isLocaleRequested(
+	provider: Pick<I18nProvider, "getRequestedLocale">,
+	locale: string,
+): boolean {
+	const requested = provider.getRequestedLocale?.();
+	if (!requested) return false;
+	return (
+		(canonicalLanguageTag(requested) ?? requested) ===
+		(canonicalLanguageTag(locale) ?? locale)
+	);
+}
+
+/**
  * Whether a host chose a player's interface locale: it set the player's
  * `locale`, or supplied a provider that was asked for a locale other than
  * `en-US`.

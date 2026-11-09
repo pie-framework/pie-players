@@ -841,6 +841,12 @@ locale, so their section chrome now inherits the page's language and direction w
 `lang="en-US" dir="ltr"`; read-aloud is unaffected, since its `lang` climb ends
 at the item shell.
 
+`pie-item-player`, `pie-assessment-toolkit` and the item-list rows then stopped
+re-requesting a supplied provider's locale when its owner already asked for the
+same tag, so a failed catalog is fetched and reported once. It acts only where a
+`locale` arrives together with a supplied provider; no host passes `locale`, so
+no host's behaviour changes.
+
 The interface-locale machinery is an ES-module graph by construction: every
 locale but `en-US` is a dynamic `import()` of its own chunk in each player's
 `dist`. The hosts in this record load `dist/index.js` as a module script or

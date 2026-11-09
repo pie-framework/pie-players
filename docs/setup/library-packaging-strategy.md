@@ -149,8 +149,8 @@ checks each manifest and its `npm pack` file list for:
   README, LICENSE and CHANGELOG, an oclif manifest, and static assets.
 
 Debugging needs no importable source. No package ships sourcemaps today, and
-`check:sourcemaps` rejects a packed map that references a source file missing
-from the tarball unless the map embeds that source's content.
+`check:pack-integrity` rejects a packed map that references a source file
+missing from the tarball unless the map embeds that source's content.
 
 Hosts install no Svelte. A package that uses Svelte lists it as a dev
 dependency and bundles it into each browser entry point: `check:svelte-runtime-deps` rejects `svelte` in `dependencies` or
@@ -203,8 +203,8 @@ owning package exports.
 | Rule | Gate |
 | --- | --- |
 | Every export target exists in the packed tarball and has a stable file name | `check:pack-integrity:real` |
-| Node-safe entry points import in Node.js from installed tarballs; the browser-only roots fail on a browser global | `check:node-consumer-imports` |
-| Dist-only surface | `check:publish-surface`, `check:sourcemaps`, `check:declaration-reachability` |
+| Node-safe entry points import in Node.js, and the browser-only roots fail on a browser global, each package from an install of its own tarball and its workspace dependencies' | `check:node-consumer-imports` |
+| Dist-only surface, including sourcemap sources | `check:pack-integrity:real`, `check:declaration-reachability` |
 | No Svelte for hosts | `check:svelte-runtime-deps`, `check:ce-consumer-contract`, `check:svelte-type-imports` |
 | One `speech-rule-engine` version | `check:package-metadata` |
 | Race-safe registration | `check:ce-define-safety` |

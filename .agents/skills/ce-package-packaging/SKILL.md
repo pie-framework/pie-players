@@ -159,7 +159,7 @@ bun run check:svelte-type-imports
 bun run check:declaration-reachability
 bun run check:ce-define-safety
 bun run check:ce-consumer-contract
-bun run check:runtime-compat
+bun run check:node-consumer-imports
 bun run check:bundle-safety
 bun run check:locale-lazy-loading
 ```
@@ -176,8 +176,6 @@ bun run check:fixed-versioning
 bun run check:package-metadata
 bun run check:publint
 bun run check:types-publish
-bun run check:pack-exports
-bun run check:pack-smoke
 bun run check:pack-integrity:real
 ```
 

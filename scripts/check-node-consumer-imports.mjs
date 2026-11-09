@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 
-import { execFileSync } from "node:child_process";
-import {
-	existsSync,
-	rmSync,
-	writeFileSync,
-} from "node:fs";
+import { execFile, execFileSync } from "node:child_process";
+import { existsSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { promisify } from "node:util";
 import {
 	getImportTarget,
 	getNodeConsumerImportTargets,
+	mapConcurrent,
 	readPublishPolicy,
 	splitPackageSpecifier,
 } from "./lib/pack-inspection.mjs";
@@ -23,12 +21,14 @@ import {
 } from "./lib/packed-consumer-fixture.mjs";
 
 const ROOT = process.cwd();
+const execFileAsync = promisify(execFile);
 
 const policy = readPublishPolicy(ROOT);
 const { nodeSafe: NODE_IMPORT_TARGETS, browserOnly: BROWSER_ONLY_TARGETS } =
 	getNodeConsumerImportTargets(policy);
 const ALL_TARGETS = [...NODE_IMPORT_TARGETS, ...BROWSER_ONLY_TARGETS];
 const TTS_SERVER_CORE = "@pie-players/tts-server-core";
+const TOOLKIT = "@pie-players/pie-assessment-toolkit";
 const NATIVE_ELEMENT_PACKAGES = [
 	"@pie-players/pie-tool-annotation-toolbar",
 	"@pie-players/pie-tool-graph",
@@ -63,7 +63,13 @@ const isLikelyBrowserGlobalError = (error) => {
 	);
 };
 
-const importSpecifierFromFixture = (fixtureDir, specifier) => {
+/**
+ * Imports `specifier` from `fixtureDir` in the real Node on PATH, which
+ * `requireResolveFromFixture` has confirmed is not Bun: Bun's resolver accepts
+ * extensionless relative imports and the `bun` condition, so it would pass an
+ * entry point Node cannot load.
+ */
+const importSpecifierFromFixture = async (fixtureDir, specifier) => {
 	const script = `
 const target = ${JSON.stringify(specifier)};
 try {
@@ -74,9 +80,8 @@ try {
 }
 `;
 	try {
-		execFileSync(process.execPath, ["--input-type=module", "-e", script], {
+		await execFileAsync("node", ["--input-type=module", "-e", script], {
 			cwd: fixtureDir,
-			stdio: ["ignore", "pipe", "pipe"],
 		});
 		return { ok: true, message: "" };
 	} catch (error) {
@@ -155,7 +160,7 @@ process.stdout.write(JSON.stringify({ node: process.versions.node, bun: process.
 	}
 };
 
-const typecheckFixture = (fixtureDir, source, compilerOptions) => {
+const typecheckFixture = async (fixtureDir, source, compilerOptions) => {
 	writeFileSync(path.join(fixtureDir, "index.ts"), source);
 	writeFileSync(
 		path.join(fixtureDir, "tsconfig.json"),
@@ -179,13 +184,10 @@ const typecheckFixture = (fixtureDir, source, compilerOptions) => {
 	);
 
 	try {
-		execFileSync(
+		await execFileAsync(
 			path.join(ROOT, "node_modules", ".bin", "tsc"),
 			["-p", "tsconfig.json"],
-			{
-				cwd: fixtureDir,
-				stdio: ["ignore", "pipe", "pipe"],
-			},
+			{ cwd: fixtureDir },
 		);
 		return { ok: true, message: "" };
 	} catch (error) {
@@ -361,27 +363,6 @@ selected?.remove();
 		{ types: [], noUncheckedSideEffectImports: true },
 	);
 
-const typecheckToolkitWithoutOptionalPeers = (fixtureDir, optionalPeers) => {
-	for (const specifier of optionalPeers) {
-		rmSync(path.join(fixtureDir, "node_modules", ...specifier.split("/")), {
-			recursive: true,
-			force: true,
-		});
-	}
-
-	return typecheckFixture(
-		fixtureDir,
-		`import type {
-	ToolProviderApi,
-	TTSToolProvider,
-} from "@pie-players/pie-assessment-toolkit/tools/registration";
-
-export type ToolkitToolProviders = [ToolProviderApi, TTSToolProvider];
-`,
-		{ types: [] },
-	);
-};
-
 /**
  * The workspace runtime dependencies of `packageName`, transitively, from the
  * packed fixture set.
@@ -408,35 +389,139 @@ const packedDependencyClosure = (packageName, packageMap, tarballs) => {
 /**
  * The server TTS declarations use no Node types, and the package installs none:
  * `@types/node` is included in every compilation that can see it, so one pulled
- * in by a dependency breaks a consumer on an older TypeScript. The package
- * installs into a fixture of its own, since other fixture packages bring
- * `@types/node` in transitively. Its workspace dependencies install from their
- * own packed tarballs — a host installing the package alone resolves them the
- * same way — and none of them brings `@types/node`. The snippet encodes the
- * bytes the way a route handler does, which the audio type has to keep
- * compiling without Node types.
+ * in by a dependency breaks a consumer on an older TypeScript. This runs in the
+ * package's isolated fixture, since other fixture packages bring `@types/node`
+ * in transitively, and none of its workspace dependencies does. The snippet
+ * encodes the bytes the way a route handler does, which the audio type has to
+ * keep compiling without Node types.
  */
-const typecheckTtsServerCore = (tarballPath, dependencyTarballs) => {
-	const fixtureDir = createFixtureProject();
-	try {
-		installTarballs(fixtureDir, [tarballPath, ...dependencyTarballs]);
-		if (existsSync(path.join(fixtureDir, "node_modules", "@types", "node"))) {
-			return { ok: false, message: "installing it installs @types/node" };
-		}
-		return typecheckFixture(
-			fixtureDir,
-			`import type { SynthesizeResponse } from "${TTS_SERVER_CORE}";
+const typecheckTtsServerCore = async (fixtureDir) => {
+	if (existsSync(path.join(fixtureDir, "node_modules", "@types", "node"))) {
+		return { ok: false, message: "installing it installs @types/node" };
+	}
+	return typecheckFixture(
+		fixtureDir,
+		`import type { SynthesizeResponse } from "${TTS_SERVER_CORE}";
 
 export const toBase64 = (response: SynthesizeResponse): string =>
 	typeof response.audio === "string"
 		? response.audio
 		: response.audio.toString("base64");
 `,
-			{ types: [] },
-		);
-	} finally {
-		rmSync(fixtureDir, { recursive: true, force: true });
+		{ types: [] },
+	);
+};
+
+/**
+ * The toolkit's declarations compile, with `skipLibCheck` off, against nothing
+ * but what installing the toolkit installs. A published declaration that names
+ * a package the toolkit does not depend on, such as a dev dependency, fails
+ * with TS2307 here, where the shared fixture would supply the package from a
+ * sibling (ADR 0002). The two entries reach the coordinator API and the
+ * tool-provider contract hosts implement.
+ */
+const typecheckToolkit = (fixtureDir) =>
+	typecheckFixture(
+		fixtureDir,
+		`import type { ToolkitCoordinatorApi } from "${TOOLKIT}";
+import type {
+	ToolProviderApi,
+	TTSToolProvider,
+} from "${TOOLKIT}/tools/registration";
+
+export type ToolkitSurface = [ToolkitCoordinatorApi, ToolProviderApi, TTSToolProvider];
+`,
+		{ types: [] },
+	);
+
+/** Type checks that run in one package's isolated fixture, after its imports. */
+const ISOLATED_TYPECHECKS = new Map([
+	[
+		TOOLKIT,
+		{
+			describe: "failed TypeScript consumption from its own install",
+			run: typecheckToolkit,
+		},
+	],
+	[
+		TTS_SERVER_CORE,
+		{
+			describe: "failed TypeScript consumption without Node types",
+			run: typecheckTtsServerCore,
+		},
+	],
+]);
+
+/**
+ * Each package a Node-safe or browser-only target names installs into a
+ * fixture of its own, holding its tarball and its packed workspace-dependency
+ * closure: what a host installing that package alone resolves. In the shared
+ * fixture every packed package sits in one `node_modules`, so a dependency a
+ * package imports without declaring resolves through whichever sibling
+ * declares it. A browser-only root is held to the same install: Node links its
+ * static imports before evaluating it, so a missing one fails as a resolution
+ * error, never as the browser global the target is expected to stop at.
+ */
+const checkIsolatedTargets = async (packageMap, tarballs) => {
+	const targetsByPackage = new Map();
+	for (const specifier of ALL_TARGETS) {
+		const { name } = splitPackageSpecifier(specifier);
+		targetsByPackage.set(name, [
+			...(targetsByPackage.get(name) ?? []),
+			specifier,
+		]);
 	}
+	const results = await mapConcurrent(
+		[...targetsByPackage],
+		async ([name, specifiers]) => {
+			const failures = [];
+			const fixtureDir = createFixtureProject();
+			try {
+				await installTarballs(fixtureDir, [
+					tarballs.get(name),
+					...packedDependencyClosure(name, packageMap, tarballs),
+				]);
+				for (const specifier of specifiers) {
+					const result = await importSpecifierFromFixture(
+						fixtureDir,
+						specifier,
+					);
+					if (NODE_IMPORT_TARGETS.includes(specifier)) {
+						if (!result.ok) {
+							failures.push(
+								`[node-consumer] ${specifier} failed Node import from its own install: ${result.message}`,
+							);
+						}
+					} else if (result.ok) {
+						failures.push(
+							`[node-consumer] ${specifier} unexpectedly imported in plain Node from its own install`,
+						);
+					} else if (!isLikelyBrowserGlobalError(result.message)) {
+						failures.push(
+							`[node-consumer] ${specifier} failed with unexpected Node error from its own install: ${result.message}`,
+						);
+					}
+				}
+				const typecheck = ISOLATED_TYPECHECKS.get(name);
+				if (typecheck) {
+					const result = await typecheck.run(fixtureDir);
+					if (!result.ok) {
+						failures.push(
+							`[node-consumer] ${name} ${typecheck.describe}: ${result.message}`,
+						);
+					}
+				}
+			} catch (error) {
+				failures.push(
+					`[node-consumer] ${name} isolated install failed: ${String(error?.stderr || error?.message || error).trim()}`,
+				);
+			} finally {
+				rmSync(fixtureDir, { recursive: true, force: true });
+			}
+			return failures;
+		},
+	);
+	return { packages: targetsByPackage.size, failures: results.flat() };
 };
 
 const run = async () => {
@@ -482,17 +567,19 @@ const run = async () => {
 	const fixturePackageNames = collectFixturePackageNames(packageMap, [
 		...ALL_TARGETS.map((specifier) => splitPackageSpecifier(specifier).name),
 		...NATIVE_ELEMENT_PACKAGES,
-		TTS_SERVER_CORE,
 	]);
-	let ttsServerCoreTarball = "";
 	let fixtureDir = "";
 	let resolvedCount = 0;
+	let isolatedCount = 0;
 
 	try {
 		fixtureDir = createFixtureProject();
-		const tarballs = await packFixturePackages(fixtureDir, packageMap, fixturePackageNames);
-		ttsServerCoreTarball = tarballs.get(TTS_SERVER_CORE);
-		installTarballs(fixtureDir, [...tarballs.values()]);
+		const tarballs = await packFixturePackages(
+			fixtureDir,
+			packageMap,
+			fixturePackageNames,
+		);
+		await installTarballs(fixtureDir, [...tarballs.values()]);
 
 		const resolved = requireResolveFromFixture(
 			fixtureDir,
@@ -504,58 +591,11 @@ const run = async () => {
 		}
 		resolvedCount = resolved.count;
 
-		for (const specifier of NODE_IMPORT_TARGETS) {
-			const result = importSpecifierFromFixture(fixtureDir, specifier);
-			if (!result.ok) {
-				failures.push(
-					`[node-consumer] ${specifier} failed Node import from node_modules: ${result.message}`,
-				);
-			}
-		}
+		const isolated = await checkIsolatedTargets(packageMap, tarballs);
+		failures.push(...isolated.failures);
+		isolatedCount = isolated.packages;
 
-		for (const specifier of BROWSER_ONLY_TARGETS) {
-			const result = importSpecifierFromFixture(fixtureDir, specifier);
-			if (result.ok) {
-				failures.push(
-					`[node-consumer] ${specifier} unexpectedly imported in plain Node from node_modules`,
-				);
-				continue;
-			}
-			if (!isLikelyBrowserGlobalError(result.message)) {
-				failures.push(
-					`[node-consumer] ${specifier} failed with unexpected Node error from node_modules: ${result.message}`,
-				);
-			}
-		}
-
-		const ttsTypecheckResult = typecheckTtsServerCore(
-			ttsServerCoreTarball,
-			packedDependencyClosure(TTS_SERVER_CORE, packageMap, tarballs),
-		);
-		if (!ttsTypecheckResult.ok) {
-			failures.push(
-				`[node-consumer] ${TTS_SERVER_CORE} failed TypeScript consumption without Node types: ${ttsTypecheckResult.message}`,
-			);
-		}
-
-		const toolkitPackageName = "@pie-players/pie-assessment-toolkit";
-		const toolkitPackage = packageMap.get(toolkitPackageName)?.pkg;
-		const optionalToolkitPeers = Object.keys(
-			toolkitPackage?.peerDependenciesMeta || {},
-		).filter(
-			(peerName) =>
-				toolkitPackage.peerDependenciesMeta[peerName]?.optional === true,
-		);
-		const typecheckResult = typecheckToolkitWithoutOptionalPeers(
-			fixtureDir,
-			optionalToolkitPeers,
-		);
-		if (!typecheckResult.ok) {
-			failures.push(
-				`[node-consumer] ${toolkitPackageName}/tools/registration failed TypeScript consumption without optional peers: ${typecheckResult.message}`,
-			);
-		}
-		const nativeElementResult = typecheckNativeElements(fixtureDir);
+		const nativeElementResult = await typecheckNativeElements(fixtureDir);
 		if (!nativeElementResult.ok) {
 			failures.push(
 				`[node-consumer] native custom elements failed TypeScript consumption: ${nativeElementResult.message}`,
@@ -582,7 +622,7 @@ const run = async () => {
 	}
 
 	console.log(
-		`[check-node-consumer-imports] OK: validated ${NODE_IMPORT_TARGETS.length} Node-import targets, ${resolvedCount} require.resolve entry points and ${BROWSER_ONLY_TARGETS.length} browser-only boundaries and native element typings from installed node_modules packages`,
+		`[check-node-consumer-imports] OK: validated ${NODE_IMPORT_TARGETS.length} Node-import targets and ${BROWSER_ONLY_TARGETS.length} browser-only boundaries from ${isolatedCount} isolated package installs, and ${resolvedCount} require.resolve entry points and native element typings from the shared install`,
 	);
 };
 

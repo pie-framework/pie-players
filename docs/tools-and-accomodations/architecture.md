@@ -551,7 +551,7 @@ TTS Service
   ↓ triggers
 HighlightCoordinator.highlightTTSWord()
   ↓ creates
-CSS.highlights.set('tts-word', highlight)
+CSS.highlights.set('pie-tts-word', highlight)
   ↓ renders
 Yellow highlight with underline (::highlight CSS)
 ```
@@ -790,7 +790,7 @@ Highlights are drawn through the CSS Custom Highlight API. The alternative is wr
 **PIE's approach:**
 ```typescript
 const highlight = new Highlight(range);
-CSS.highlights.set('annotation-yellow', highlight);
+CSS.highlights.set('pie-annotation-yellow', highlight);
 ```
 
 **Benefits:**

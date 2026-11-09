@@ -127,6 +127,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		LoaderConfig,
 	} from "@pie-players/pie-players-shared";
 	import {
+		adoptContentStylesInto,
 		parseAllowedStyleOrigins,
 		validateExternalStyleUrl,
 	} from "@pie-players/pie-players-shared";
@@ -542,6 +543,12 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	$effect(() => {
 		if (!hostElement || customElementHost) return;
 		customElementHost = resolveCustomElementHost(hostElement);
+	});
+
+	// A host that mounts the player inside its own shadow root gets no document
+	// stylesheet there, so the content rules are adopted into that root.
+	$effect(() => {
+		if (hostElement) adoptContentStylesInto(hostElement);
 	});
 
 	/**

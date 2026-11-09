@@ -250,7 +250,7 @@ function sentenceHighlightText(page: Page): Promise<string> {
 				highlights?: { get: (name: string) => Iterable<Range> | undefined };
 			}
 		).highlights;
-		const highlight = registry?.get("tts-sentence");
+		const highlight = registry?.get("pie-tts-sentence");
 		return highlight
 			? Array.from(highlight, (range) => range.toString()).join(" ")
 			: "";

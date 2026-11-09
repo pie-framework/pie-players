@@ -95,10 +95,12 @@ that renders authored markup itself, outside a player, puts `data-pie-content` o
 that container to give it the same styles.
 
 Rules whose selector requires a `kds-*` or `Kds*` class, MathJax output
-(`mjx-*`, `TEX-*`) or a legacy content class such as `.frac` or `.noprint` stay
-document-wide. Elements portal menus and popovers holding authored markup to
-`<body>`, outside the player, and an inline-dropdown's choices keep their
-`kds-fraction` and MathJax glyph fixes there.
+(`mjx-*`, `TEX-*`) or the legacy `.frac` fraction stay document-wide. Elements
+portal menus and popovers holding authored markup to `<body>`, outside the
+player, and an inline-dropdown's choices keep their `kds-fraction`, `.frac` and
+MathJax glyph fixes there. The other legacy content classes (`.variable`,
+`.whole`, `.noprint` and the rest) are common words, so they apply inside
+`[data-pie-content]` only.
 
 ### Upgrading from a manual import
 

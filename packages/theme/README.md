@@ -143,6 +143,11 @@ Every copy of this package on a page shares one provider registry, held on
 register into it alike, and `<pie-theme>` sees each provider whichever copy
 defined the element.
 
+The custom color schemes `registerPieColorSchemes` installs live in a page-wide
+registry the same way, held on `window.PIE_THEME_COLOR_SCHEMES`: a scheme
+registered through any copy appears in every copy's `listPieColorSchemes()`, and
+`observePieColorSchemes` listeners hear registrations made through any copy.
+
 ## DaisyUI Integration
 
 - With `provider="auto"`, `pie-theme` uses the built-in `daisyui` provider adapter when DaisyUI tokens are present on the target scope.
@@ -429,8 +434,9 @@ host already loads a copy; see
 [content styles](../item-player/README.md#content-styles) for host ownership.
 Its rules apply inside a `[data-pie-content]` element only, the root each player
 renders content into, except rules keyed on `kds-*` or MathJax (`mjx-*`) class
-names or legacy content classes, which stay document-wide so authored markup an element portals
-to `<body>` keeps them.
+names or the legacy `.frac` fraction, which stay document-wide so authored markup an element portals
+to `<body>` keeps them. The other legacy content classes (`.variable`, `.whole`,
+`.noprint` and the rest) apply inside `[data-pie-content]` only.
 
 Players adding this import the text with `?raw` and hand it to
 `installContentStyles` from `@pie-players/pie-players-shared`. In these packages'

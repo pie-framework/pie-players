@@ -82,6 +82,29 @@ outside the sheet. Hosts V and M are unchanged: their copies sit inside `@scope`
 which still bounds every rule to the scope root. Row verification dates are
 unchanged.
 
+On 2026-11-08 the legacy content classes that are common words (`.abs`,
+`.variable`, `.whole`, `.noprint`, `.passage-title`, `.numbered-paragraph` and the
+rest of the list in `packages/theme/tests/content-styles-confinement.test.ts`)
+went back inside `[data-pie-content]`; only `kds-*`, `Kds*`, `mjx-*`, `TEX-*` and
+`.frac` match page-wide. Authored markup an element portals to `<body>` keeps the
+KDS, MathJax and fraction rules and loses the others, which reaches Hosts A and P
+only for a portaled menu whose choices carry one of those classes. Hosts V and M
+are unchanged under `@scope`. Host R's own authored-markup components lose the
+same rules unless their container carries `data-pie-content`. `pie-item-summary`
+marks its prompt, options, answers, stem and figures with it, so the item list's
+summaries keep them. The item player and
+the print player now adopt the stylesheet into a host's ShadowRoot, so content a
+host mounts there is styled where it was not; a root that supplies its own copy,
+and a document with `data-pie-content-styles="host"`, are left alone. The CSS
+highlight names the toolkit registers became `pie-tts-word`, `pie-tts-sentence`
+and `pie-annotation-<colour>`; no checkout names one in a rule or in
+`CSS.highlights`, and Host A and Host P set only the `--pie-tts-*` properties,
+which are unchanged. The NDS icon button loads on first use under `ndsIcons`, so
+Host A, the one host that sets `nds-icons`, gets its toolbar, inline TTS and
+scroll-hint buttons one import later than before: plain buttons render until the
+tag registers, then the NDS buttons replace them. Row verification dates are
+unchanged.
+
 On 2026-10-06 MathJax's fonts and speech, from
 `@pie-element/shared-math-rendering-mathjax` 0.1.3, load from the file URLs or the
 asset root `registerPreloadedElements` takes as `math.assetUrls` and

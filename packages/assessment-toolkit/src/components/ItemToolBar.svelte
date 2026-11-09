@@ -112,12 +112,6 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	import type { ToolPolicyDecision } from '../policy/engine.js';
 	import type { ItemToolbarElementProps } from './element-contracts.js';
 	import { createDecidedToolsTracker } from '../services/toolbar-decided-tools.js';
-	// Side-effect import: registers <pie-nds-icon-button>. Single vendored source of
-	// truth lives in players-shared (Lit inlined, self-contained); see
-	// players-shared/src/components/vendor/nds/README.md. The CE build externalizes
-	// @pie-players/*, so this resolves as a bare import in the published artifact
-	// like every other players-shared specifier ItemToolBar already emits.
-	import '@pie-players/pie-players-shared/nds-icon-button';
 
 	const isBrowser = typeof window !== 'undefined';
 	// Turns the glyph and leaves the button upright: a turned button's box grows
@@ -135,8 +129,38 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	};
 	// FontAwesome for the NDS glyphs, and where it comes from: see
 	// players-shared `ui/fontawesome`.
-	const ensureNdsAssets = () =>
+	const ensureNdsAssets = () => {
+		registerNdsIconButton();
 		ensureFontAwesome(runtimeContext?.itemPlayer?.loaderOptions);
+	};
+	// Registers <pie-nds-icon-button> the first time an NDS control is about to
+	// render, so a page that never sets `ndsIcons` does not load the bundle or take
+	// its tag. The vendored source of truth lives in players-shared (Lit inlined,
+	// self-contained); see players-shared/src/components/vendor/nds/README.md. The
+	// CE build externalizes @pie-players/*, so the import stays a bare specifier in
+	// the published artifact like every other players-shared one ItemToolBar emits.
+	//
+	// The toolbar renders its NDS buttons only once the tag is defined. Created
+	// before registration, an element takes `disabled={false}` as the attribute
+	// `disabled="false"`, which upgrades to `disabled === true`, and the button
+	// swallows every click. Until then, and if the load fails, the plain buttons
+	// render.
+	let ndsIconButtonReady = $state(isBrowser && !!customElements.get('pie-nds-icon-button'));
+	const registerNdsIconButton = () => {
+		if (ndsIconButtonReady) return;
+		import('@pie-players/pie-players-shared/nds-icon-button').then(
+			() => {
+				ndsIconButtonReady = true;
+			},
+			(error) => {
+				warnOncePerDocument(
+					typeof document === 'undefined' ? null : document,
+					'nds-icon-button-load',
+					`[pie-item-toolbar] <pie-nds-icon-button> failed to load, so the toolbar keeps its plain buttons: ${String(error)}`
+				);
+			}
+		);
+	};
 	// The toolbar's own glyphs render inside <pie-item-toolbar>'s shadow root,
 	// which <head> stylesheets don't reach; the calculator shell's controls mount
 	// on document.body, where they do.
@@ -2538,7 +2562,9 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 
 			{#each toolbarItems as item (item.id)}
 				{@const faIconName =
-					useNdsIcons && !isToolbarLinkItem(item) ? resolveFaIconName(item) : null}
+					useNdsIcons && ndsIconButtonReady && !isToolbarLinkItem(item)
+						? resolveFaIconName(item)
+						: null}
 				{#if faIconName}
 					<!-- NDS circular icon button. Active tools use the filled `primary`
 					     variant; inactive use `ghost`. The click bubbles out of the

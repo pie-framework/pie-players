@@ -80,6 +80,18 @@ Re-apply this guard after any refresh from upstream. Because the guard still
 contains the literal `customElements.define(` token, this file is allow-listed
 in `scripts/check-ce-define-safety.mjs` (which would otherwise flag it).
 
+## One registration per page
+
+The tag is registered at most once per page, by whichever consumer reaches it
+first, and that copy serves every consumer. Consumers load the bundle with a
+dynamic `import()` the first time an NDS control is about to render, which is
+only when the host sets `ndsIcons: true`; a page that never opts in neither
+fetches the bundle nor takes the `pie-nds-icon-button` tag. A second copy of the
+bundle at a different version loads without error and is skipped by the define
+guard, so the first copy to register decides the markup and styles every
+consumer sees. A host that loads its own NDS registers upstream's
+`nds-icon-button`, a different tag, and is unaffected.
+
 ## How this is built and shipped
 
 `players-shared` builds with `tsc`, which does not emit static `.js`/`.d.ts`
@@ -94,6 +106,7 @@ Consuming bundlers treat this module per their own externals config:
 - `tool-tts-inline` (Vite lib build) externalizes `players-shared` and its
   subpaths, so its published output imports
   `@pie-players/pie-players-shared/nds-icon-button` from the host.
+- `section-player` externalizes the same specifier for the scroll hint.
 - `assessment-toolkit` builds its CE artifacts with every dependency and peer
   dependency, plus each one's subpaths, as esbuild externals, so this module
   stays a bare external import in those artifacts — resolved by the

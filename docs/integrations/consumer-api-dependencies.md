@@ -1093,8 +1093,8 @@ per launch. Two `1.0.0` prereleases therefore run in its delivery at once, and a
 section-player bundle of one version can share a page with a preloaded build of
 another. It reads the installed section player's `package.json` by file path
 at build time for its `version` field, which names the bundle, so that field and
-the manifest's place in the package root are API to it even though the package
-exports no `./package.json`.
+the manifest's place in the package root are API to it whatever the `exports`
+map says.
 
 Host R is not client-facing and is ours to fix, so its rows are not a reason to
 avoid a change. They are a reason to expect the change to show up there first,

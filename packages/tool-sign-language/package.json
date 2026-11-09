@@ -25,7 +25,8 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-sign-language.js",
 			"default": "./dist/tool-sign-language.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -35,8 +36,6 @@
 		"README.md"
 	],
 	"license": "MIT",
-	"unpkg": "./dist/tool-sign-language.js",
-	"jsdelivr": "./dist/tool-sign-language.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"

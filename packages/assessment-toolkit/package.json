@@ -14,8 +14,6 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
-	"unpkg": "./dist/index.js",
-	"jsdelivr": "./dist/index.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -61,7 +59,8 @@
 			"types": "./dist/policy/engine.d.ts",
 			"import": "./dist/policy/engine.js",
 			"default": "./dist/policy/engine.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [

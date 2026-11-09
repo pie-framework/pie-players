@@ -20,14 +20,13 @@
 	],
 	"main": "./dist/section-player-tools-instrumentation-debugger.js",
 	"module": "./dist/section-player-tools-instrumentation-debugger.js",
-	"unpkg": "./dist/section-player-tools-instrumentation-debugger.js",
-	"jsdelivr": "./dist/section-player-tools-instrumentation-debugger.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
 			"import": "./dist/section-player-tools-instrumentation-debugger.js",
 			"default": "./dist/section-player-tools-instrumentation-debugger.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [

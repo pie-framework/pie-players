@@ -25,7 +25,8 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-picture-dictionary.js",
 			"default": "./dist/tool-picture-dictionary.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -34,8 +35,6 @@
 		"package.json"
 	],
 	"license": "MIT",
-	"unpkg": "./dist/tool-picture-dictionary.js",
-	"jsdelivr": "./dist/tool-picture-dictionary.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"

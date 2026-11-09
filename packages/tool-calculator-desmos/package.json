@@ -24,7 +24,8 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/pie-tool-calculator.js",
 			"default": "./dist/pie-tool-calculator.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -41,8 +42,6 @@
 		"lint": "biome lint ."
 	},
 	"license": "MIT",
-	"unpkg": "./dist/pie-tool-calculator.js",
-	"jsdelivr": "./dist/pie-tool-calculator.js",
 	"dependencies": {
 		"@pie-players/pie-calculator": "workspace:*",
 		"@pie-players/pie-tool-calculator-shared": "workspace:*"

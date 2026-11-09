@@ -25,7 +25,8 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-periodic-table.js",
 			"default": "./dist/tool-periodic-table.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -34,8 +35,6 @@
 		"package.json"
 	],
 	"license": "MIT",
-	"unpkg": "./dist/tool-periodic-table.js",
-	"jsdelivr": "./dist/tool-periodic-table.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"

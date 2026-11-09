@@ -22,14 +22,13 @@
 	],
 	"main": "./dist/section-player-tools-event-debugger.js",
 	"module": "./dist/section-player-tools-event-debugger.js",
-	"unpkg": "./dist/section-player-tools-event-debugger.js",
-	"jsdelivr": "./dist/section-player-tools-event-debugger.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
 			"import": "./dist/section-player-tools-event-debugger.js",
 			"default": "./dist/section-player-tools-event-debugger.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [

@@ -1,9 +1,9 @@
 <script lang="ts">
 	import {
-		coerceBooleanLike,
 		createPieLogger,
 		isGlobalDebugEnabled,
 	} from "@pie-players/pie-players-shared";
+	import { coerceBooleanLike } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import {
 		dispatchCrossBoundaryEvent,
 		toFrameworkErrorModel,

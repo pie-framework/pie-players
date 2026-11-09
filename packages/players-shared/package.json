@@ -14,8 +14,6 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
-	"unpkg": "./dist/index.js",
-	"jsdelivr": "./dist/index.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -118,9 +116,9 @@
 			"default": "./dist/ui/attribute-coercion.js"
 		},
 		"./ui/content-styles": {
-			"types": "./dist/ui/content-styles.d.ts",
-			"import": "./dist/ui/content-styles.js",
-			"default": "./dist/ui/content-styles.js"
+			"types": "./dist/ui/content-styles-entry.d.ts",
+			"import": "./dist/ui/content-styles-entry.js",
+			"default": "./dist/ui/content-styles-entry.js"
 		},
 		"./ui/fontawesome": {
 			"types": "./dist/ui/fontawesome.d.ts",
@@ -131,7 +129,8 @@
 			"types": "./dist/tools/term-lookup.d.ts",
 			"import": "./dist/tools/term-lookup.js",
 			"default": "./dist/tools/term-lookup.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"files": [
 		"dist"

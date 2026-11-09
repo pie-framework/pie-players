@@ -26,7 +26,8 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/tool-annotation-toolbar.js",
 			"default": "./dist/tool-annotation-toolbar.js"
-		}
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -36,8 +37,6 @@
 		"README.md"
 	],
 	"license": "MIT",
-	"unpkg": "./dist/tool-annotation-toolbar.js",
-	"jsdelivr": "./dist/tool-annotation-toolbar.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"

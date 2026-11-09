@@ -1,6 +1,7 @@
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 
@@ -13,6 +14,7 @@ export default defineConfig({
 			},
 		}),
 		guardSvelteCustomElementDefines(),
+		preserveLegalComments(),
 		// The build entry is the component, whose declaration is a stub that
 		// imports `svelte`, which hosts do not install; `index.ts` is the type
 		// entry instead.

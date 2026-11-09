@@ -8,6 +8,7 @@ import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom
 import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map-comment-text.mjs";
 import { deferMathRenderingModuleEvaluation } from "../players-shared/math-rendering-module-deferral.mjs";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
 
 const chunkFileNames = chunkFileNamesFromSource(resolve(__dirname, "../.."));
 
@@ -42,6 +43,7 @@ export default defineConfig({
 		},
 	},
 	plugins: [
+		preserveLegalComments(),
 		deferMathRenderingModuleEvaluation(),
 		svelte({
 			compilerOptions: {

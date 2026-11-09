@@ -4,6 +4,11 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { compile } from "svelte/compiler";
+import {
+	THIRD_PARTY_NOTICES_FILE,
+	nodeFileReader,
+	renderThirdPartyNotices,
+} from "../../players-shared/legal-comments.mjs";
 import { svelteRootDir } from "../../players-shared/svelte-root-dir.ts";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -153,12 +158,21 @@ for (const entry of entries) {
 const ESM_ENV_BINDINGS = new Set(["BROWSER", "DEV", "NODE"]);
 const ESM_ENV_IMPORT = /import\s*\{([^}]*)\}\s*from\s*["']esm-env["'];?/g;
 
+// Bun reports no module list per output, so this hook also records every
+// `node_modules` file the build loads, which is the set it inlines: every
+// dependency of this package is external and never loaded. Returning nothing
+// leaves a module to Bun's own loader.
+const inlinedModuleFiles = [];
+const SVELTE_SOURCE = /[\\/]svelte[\\/]src[\\/].*\.js$/;
+
 const dropSvelteDevImport = {
 	name: "drop-svelte-dev-import",
 	setup(build) {
 		build.onLoad(
-			{ filter: /[\\/]svelte[\\/]src[\\/].*\.js$/ },
+			{ filter: /[\\/]node_modules[\\/]/ },
 			async ({ path: modulePath }) => {
+				inlinedModuleFiles.push(modulePath);
+				if (!SVELTE_SOURCE.test(modulePath)) return undefined;
 				const source = await Bun.file(modulePath).text();
 				const contents = source.replace(ESM_ENV_IMPORT, (_, specifiers) => {
 					const kept = specifiers
@@ -189,6 +203,13 @@ const dropSvelteDevImport = {
 // flattened into the eager bundle, roughly half of the toolkit artifact, loaded
 // by every host whether or not it speaks a formula. `minify` matches the
 // Vite-built packages in this repo.
+//
+// Bun keeps `/*! … */` comments through `minify` and drops `@license` JSDoc
+// ones. Every dependency is external here, so the artifacts inline only Svelte
+// and this package's own code and no notice-bearing library is lost;
+// `check:bundle-safety` fails the build if a library that needs its notice
+// (DOMPurify, lit, MathJax, MathLive, Compute Engine, speech-rule-engine) is
+// ever inlined without one. Svelte's notice is the notices file written below.
 //
 // The `NODE_ENV` define and the `production` condition are Bun's production
 // resolution for every module the plugin does not rewrite. The define alone
@@ -230,6 +251,13 @@ for (const entry of entries) {
 		"export {};\n",
 		"utf8",
 	);
+}
+
+// Svelte's runtime ships no legal comment, so its MIT notice travels in this
+// file beside the bundles, as the Vite-built packages' does.
+const notices = renderThirdPartyNotices(inlinedModuleFiles, nodeFileReader);
+if (notices) {
+	writeFileSync(path.join(distComponents, THIRD_PARTY_NOTICES_FILE), notices, "utf8");
 }
 
 console.log(

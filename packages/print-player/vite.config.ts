@@ -1,9 +1,10 @@
 import { resolve } from "path";
 import { defineConfig } from "vite";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
 import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map-comment-text.mjs";
 
 export default defineConfig({
-	plugins: [escapeSourceMapCommentTextInOutput()],
+	plugins: [escapeSourceMapCommentTextInOutput(), preserveLegalComments()],
 	build: {
 		lib: {
 			entry: resolve(__dirname, "src/index.ts"),

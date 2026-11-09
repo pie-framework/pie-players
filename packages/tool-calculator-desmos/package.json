@@ -22,7 +22,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/pie-tool-calculator.js"
+			"import": "./dist/pie-tool-calculator.js",
+			"default": "./dist/pie-tool-calculator.js"
 		}
 	},
 	"customElements": "custom-elements.json",

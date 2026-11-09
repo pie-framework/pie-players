@@ -11,7 +11,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/print-player.js"
+			"import": "./dist/print-player.js",
+			"default": "./dist/print-player.js"
 		}
 	},
 	"customElements": "custom-elements.json",

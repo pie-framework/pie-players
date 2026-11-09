@@ -24,7 +24,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-answer-eliminator.js"
+			"import": "./dist/tool-answer-eliminator.js",
+			"default": "./dist/tool-answer-eliminator.js"
 		}
 	},
 	"customElements": "custom-elements.json",

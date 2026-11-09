@@ -27,7 +27,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/section-player-tools-event-debugger.js"
+			"import": "./dist/section-player-tools-event-debugger.js",
+			"default": "./dist/section-player-tools-event-debugger.js"
 		}
 	},
 	"customElements": "custom-elements.json",

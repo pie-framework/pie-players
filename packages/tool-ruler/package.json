@@ -24,7 +24,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-ruler.js"
+			"import": "./dist/tool-ruler.js",
+			"default": "./dist/tool-ruler.js"
 		}
 	},
 	"customElements": "custom-elements.json",

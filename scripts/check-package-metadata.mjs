@@ -3,7 +3,11 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
-import { getWorkspaceDirs, readPublishPolicy } from "./lib/pack-inspection.mjs";
+import {
+	defaultConditionViolations,
+	getWorkspaceDirs,
+	readPublishPolicy,
+} from "./lib/pack-inspection.mjs";
 
 const ROOT = process.cwd();
 const ROOT_PACKAGE_JSON = path.join(ROOT, "package.json");
@@ -98,6 +102,10 @@ const run = () => {
 			if (!hasExports && !hasMainAndTypes) {
 				missing.push('must define "exports" or both "main" and "types"');
 			}
+		}
+
+		if (policy.requireDefaultExportCondition) {
+			missing.push(...defaultConditionViolations(pkg.exports));
 		}
 
 		if (!isValidBugs(pkg.bugs)) {

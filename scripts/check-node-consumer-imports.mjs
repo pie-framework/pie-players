@@ -92,6 +92,69 @@ try {
 	}
 };
 
+/**
+ * `require.resolve` every published entry point of every installed package, from
+ * a CommonJS context, with the real Node on PATH (this script runs under Bun,
+ * whose resolver accepts the `import` condition and would hide the failure). A
+ * CommonJS resolver matches `require`, `node` and `default`, never `import`, so
+ * an export map without a `default` condition throws ERR_PACKAGE_PATH_NOT_EXPORTED.
+ * Each specifier must also land on its `import` target: the packages are
+ * ESM-only, with no second CommonJS build behind a `require` condition.
+ */
+const requireResolveFromFixture = (fixtureDir, packageNames, packageMap) => {
+	const expected = [];
+	for (const name of packageNames) {
+		const pkg = packageMap.get(name)?.pkg;
+		for (const subpath of Object.keys(pkg?.exports ?? {})) {
+			if (subpath.includes("*")) continue;
+			const target = getImportTarget(pkg, subpath);
+			if (!target) continue;
+			expected.push({
+				specifier: subpath === "." ? name : `${name}/${subpath.slice(2)}`,
+				file: path.join(fixtureDir, "node_modules", name, target),
+			});
+		}
+	}
+	const script = `
+const { createRequire } = require("node:module");
+const { realpathSync } = require("node:fs");
+const [fixtureDir, payload] = process.argv.slice(1);
+const requireFromFixture = createRequire(fixtureDir + "/package.json");
+const problems = [];
+for (const { specifier, file } of JSON.parse(payload)) {
+	try {
+		const resolved = realpathSync(requireFromFixture.resolve(specifier));
+		if (resolved !== realpathSync(file)) {
+			problems.push(specifier + " resolved to " + resolved + ", not its import target " + file);
+		}
+	} catch (error) {
+		problems.push(specifier + ": " + (error.code ?? error.message));
+	}
+}
+process.stdout.write(JSON.stringify({ node: process.versions.node, bun: process.versions.bun ?? null, count: JSON.parse(payload).length, problems }));
+`;
+	try {
+		const out = execFileSync(
+			"node",
+			["-e", script, fixtureDir, JSON.stringify(expected)],
+			{ stdio: ["ignore", "pipe", "pipe"] },
+		);
+		const { node, bun, count, problems } = JSON.parse(out.toString());
+		// Bun's resolver matches `import` and would hide a missing `default`.
+		if (bun) {
+			problems.push(`require.resolve ran on Bun ${bun} through "node" on PATH; it needs Node`);
+		} else if (Number.parseInt(node, 10) < 20) {
+			problems.push(`require.resolve ran on Node ${node}; the packages need >=20`);
+		}
+		return { count, problems };
+	} catch (error) {
+		return {
+			count: expected.length,
+			problems: [String(error?.stderr || error?.message || error).trim()],
+		};
+	}
+};
+
 const typecheckFixture = (fixtureDir, source, compilerOptions) => {
 	writeFileSync(path.join(fixtureDir, "index.ts"), source);
 	writeFileSync(
@@ -423,12 +486,23 @@ const run = async () => {
 	]);
 	let ttsServerCoreTarball = "";
 	let fixtureDir = "";
+	let resolvedCount = 0;
 
 	try {
 		fixtureDir = createFixtureProject();
 		const tarballs = await packFixturePackages(fixtureDir, packageMap, fixturePackageNames);
 		ttsServerCoreTarball = tarballs.get(TTS_SERVER_CORE);
 		installTarballs(fixtureDir, [...tarballs.values()]);
+
+		const resolved = requireResolveFromFixture(
+			fixtureDir,
+			[...tarballs.keys()],
+			packageMap,
+		);
+		for (const problem of resolved.problems) {
+			failures.push(`[node-consumer] require.resolve ${problem}`);
+		}
+		resolvedCount = resolved.count;
 
 		for (const specifier of NODE_IMPORT_TARGETS) {
 			const result = importSpecifierFromFixture(fixtureDir, specifier);
@@ -508,7 +582,7 @@ const run = async () => {
 	}
 
 	console.log(
-		`[check-node-consumer-imports] OK: validated ${NODE_IMPORT_TARGETS.length} Node-import targets and ${BROWSER_ONLY_TARGETS.length} browser-only boundaries and native element typings from installed node_modules packages`,
+		`[check-node-consumer-imports] OK: validated ${NODE_IMPORT_TARGETS.length} Node-import targets, ${resolvedCount} require.resolve entry points and ${BROWSER_ONLY_TARGETS.length} browser-only boundaries and native element typings from installed node_modules packages`,
 	);
 };
 

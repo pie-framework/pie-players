@@ -25,7 +25,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/section-player-tools-instrumentation-debugger.js"
+			"import": "./dist/section-player-tools-instrumentation-debugger.js",
+			"default": "./dist/section-player-tools-instrumentation-debugger.js"
 		}
 	},
 	"customElements": "custom-elements.json",

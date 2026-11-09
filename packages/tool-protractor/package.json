@@ -23,7 +23,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-protractor.js"
+			"import": "./dist/tool-protractor.js",
+			"default": "./dist/tool-protractor.js"
 		}
 	},
 	"customElements": "custom-elements.json",

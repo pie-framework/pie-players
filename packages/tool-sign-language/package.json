@@ -23,7 +23,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-sign-language.js"
+			"import": "./dist/tool-sign-language.js",
+			"default": "./dist/tool-sign-language.js"
 		}
 	},
 	"customElements": "custom-elements.json",

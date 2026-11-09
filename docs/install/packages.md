@@ -123,6 +123,11 @@ A package's entry points are the subpaths in its `exports` map
 ([public surface](./versioning.md#public-surface)). Each falls in one of three
 classes.
 
+Every package is ESM-only: none ships CommonJS. Each entry lists a `default`
+condition equal to `import`, so `require.resolve` and bundler resolvers that do
+not match `import` find the same file. A host loads an entry point with
+`import`.
+
 ### Node-safe
 
 These import in Node.js without a DOM, for example in a server or during

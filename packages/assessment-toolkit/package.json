@@ -19,39 +19,48 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
 		},
 		"./tools/registration": {
 			"types": "./dist/tools/registration.d.ts",
-			"import": "./dist/tools/registration.js"
+			"import": "./dist/tools/registration.js",
+			"default": "./dist/tools/registration.js"
 		},
 		"./components/item-scope-element": {
 			"types": "./dist/components/item-scope-element.d.ts",
-			"import": "./dist/components/item-scope-element.js"
+			"import": "./dist/components/item-scope-element.js",
+			"default": "./dist/components/item-scope-element.js"
 		},
 		"./components/item-toolbar-element": {
 			"types": "./dist/components/item-toolbar-element.d.ts",
-			"import": "./dist/components/item-toolbar-element.js"
+			"import": "./dist/components/item-toolbar-element.js",
+			"default": "./dist/components/item-toolbar-element.js"
 		},
 		"./components/pie-assessment-toolkit-element": {
 			"types": "./dist/components/pie-assessment-toolkit-element.d.ts",
-			"import": "./dist/components/pie-assessment-toolkit-element.js"
+			"import": "./dist/components/pie-assessment-toolkit-element.js",
+			"default": "./dist/components/pie-assessment-toolkit-element.js"
 		},
 		"./components/section-toolbar-element": {
 			"types": "./dist/components/section-toolbar-element.d.ts",
-			"import": "./dist/components/section-toolbar-element.js"
+			"import": "./dist/components/section-toolbar-element.js",
+			"default": "./dist/components/section-toolbar-element.js"
 		},
 		"./services/AccessibilityCatalogResolver": {
 			"types": "./dist/services/AccessibilityCatalogResolver.d.ts",
-			"import": "./dist/services/AccessibilityCatalogResolver.js"
+			"import": "./dist/services/AccessibilityCatalogResolver.js",
+			"default": "./dist/services/AccessibilityCatalogResolver.js"
 		},
 		"./runtime/engine": {
 			"types": "./dist/runtime/engine.d.ts",
-			"import": "./dist/runtime/engine.js"
+			"import": "./dist/runtime/engine.js",
+			"default": "./dist/runtime/engine.js"
 		},
 		"./policy/engine": {
 			"types": "./dist/policy/engine.d.ts",
-			"import": "./dist/policy/engine.js"
+			"import": "./dist/policy/engine.js",
+			"default": "./dist/policy/engine.js"
 		}
 	},
 	"customElements": "custom-elements.json",

@@ -24,7 +24,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-magnifier.js"
+			"import": "./dist/tool-magnifier.js",
+			"default": "./dist/tool-magnifier.js"
 		}
 	},
 	"customElements": "custom-elements.json",

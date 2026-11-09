@@ -19,11 +19,13 @@
 	"exports": {
 		".": {
 			"types": "./dist/pie-assessment-player.d.ts",
-			"import": "./dist/pie-assessment-player.js"
+			"import": "./dist/pie-assessment-player.js",
+			"default": "./dist/pie-assessment-player.js"
 		},
 		"./components/assessment-player-default-element": {
 			"types": "./dist/pie-assessment-player.d.ts",
-			"import": "./dist/pie-assessment-player.js"
+			"import": "./dist/pie-assessment-player.js",
+			"default": "./dist/pie-assessment-player.js"
 		}
 	},
 	"customElements": "custom-elements.json",

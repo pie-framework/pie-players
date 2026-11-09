@@ -25,7 +25,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-calculator-inline.js"
+			"import": "./dist/tool-calculator-inline.js",
+			"default": "./dist/tool-calculator-inline.js"
 		}
 	},
 	"customElements": "custom-elements.json",

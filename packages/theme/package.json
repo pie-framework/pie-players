@@ -19,11 +19,13 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
 		},
 		"./theme-element": {
 			"types": "./dist/theme-element.d.ts",
-			"import": "./dist/theme-element.js"
+			"import": "./dist/theme-element.js",
+			"default": "./dist/theme-element.js"
 		},
 		"./token-registry.json": "./dist/token-registry.json",
 		"./tokens.css": "./dist/tokens.css",

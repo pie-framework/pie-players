@@ -26,7 +26,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/section-player-tools-pnp-debugger.js"
+			"import": "./dist/section-player-tools-pnp-debugger.js",
+			"default": "./dist/section-player-tools-pnp-debugger.js"
 		}
 	},
 	"customElements": "custom-elements.json",

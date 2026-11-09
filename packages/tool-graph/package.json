@@ -24,7 +24,8 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-graph.js"
+			"import": "./dist/tool-graph.js",
+			"default": "./dist/tool-graph.js"
 		}
 	},
 	"customElements": "custom-elements.json",

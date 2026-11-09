@@ -178,8 +178,19 @@ export interface I18nConfig {
  * i18next, ICU MessageFormat or its own catalog rather than take ours.
  */
 export interface I18nProvider {
-	/** Active locale tag, canonicalized to the resolved catalog's tag. */
+	/**
+	 * The locale whose strings are served: the resolved catalog's tag once
+	 * resident, else the most specific tag on the request's truncation chain
+	 * the host supplied messages for, else the fallback locale.
+	 */
 	getLocale(): string;
+	/**
+	 * The tag last requested through `setLocale` or the configured locale, as
+	 * soon as it is requested. Players answer `interfaceLocaleContext` with it,
+	 * since elements resolve the tag against their own catalogs. A provider
+	 * that omits it is read through `getLocale`.
+	 */
+	getRequestedLocale?(): string;
 
 	/**
 	 * Switch locale, loading its catalog if a loader is configured.

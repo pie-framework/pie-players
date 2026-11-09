@@ -58,6 +58,7 @@ export {
 	getDefaultI18n,
 	hostChoseInterfaceLocale,
 	localeDirection,
+	requestedInterfaceLocale,
 	resolveInterfaceI18n,
 	SimpleI18n,
 	stampInterfaceLocale,

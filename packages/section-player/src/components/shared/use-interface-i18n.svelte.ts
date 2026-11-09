@@ -43,6 +43,11 @@ export interface InterfaceI18n {
 	 * players it mounts. Undefined with no publisher.
 	 */
 	readonly contentLanguageDefault: string | undefined;
+	/**
+	 * Whether a host chose the interface locale, which gates the chrome's
+	 * `lang`/`dir` stamp. False with no publisher.
+	 */
+	readonly interfaceLocaleChosen: boolean;
 	t(key: MessageKeyInput, values?: InterpolationValues): string;
 	plural(key: MessageKeyInput, options: PluralOptions): string;
 	/** Locale-aware number formatting, at the resolved locale. */
@@ -100,6 +105,9 @@ export function useInterfaceI18n(
 		},
 		get contentLanguageDefault() {
 			return runtimeContext?.contentLanguageDefault;
+		},
+		get interfaceLocaleChosen() {
+			return runtimeContext?.interfaceLocaleChosen === true;
 		},
 		t(key, values) {
 			return provider.t(key, values);

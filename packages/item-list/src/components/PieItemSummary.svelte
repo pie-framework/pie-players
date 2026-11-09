@@ -28,7 +28,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 
 @fires {CustomEvent<{ view: "summary" | "player" }>} load-complete - `summary` once per rendered summary, after math conversion; a new `env` with the same role does not re-render. `player` once the expanded row's player has loaded and replaced the summary.
 @fires {CustomEvent<{ code: string; message: string; recoverable: boolean }>} player-error - The expanded row's player failed to load, re-dispatched with the player's detail, or did not load in time (`recoverable: true`). The summary keeps showing; collapsing and expanding again retries.
-@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - A requested interface-locale catalog failed to load; the row's labels fall back to English, and re-setting `locale` retries.
+@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - A requested interface-locale catalog failed to load; the row's labels fall back to English. Failed loads are not cached, so a later change of `locale` back to that locale retries.
 -->
 
 <script lang="ts">
@@ -311,6 +311,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 			loaderOptions={playerOptions}
 			loaderConfig={playerConfig}
 			i18n={interfaceI18n.provider}
+			{locale}
 			addCorrectResponse={role === "instructor"}
 		></pie-item-player>
 	</div>

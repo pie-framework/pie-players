@@ -151,10 +151,13 @@ string and boolean attributes are `assessment-id`, `section-id`, `attempt-id`,
 - Runtime config on section-player custom elements: `runtime`
 - Toolkit-only object properties: `tools`, `toolRegistry`, `coordinator`,
   `accessibility`
-- Interface: `nds-icons`, `locale`. The toolkit stamps `lang` and `dir` from
-  the interface locale on its own host element, never on the document, and it
-  answers `interfaceLocaleContext` (`@pie-players/pie-context`) from the same
-  locale for the PIE elements inside it, as `{ locale, direction }`
+- Interface: `nds-icons`, `locale`. Once a host chose a locale — set
+  `locale`, or supplied an `i18n` provider asked for a locale other than
+  `en-US` — the toolkit stamps the served locale's `lang` and `dir` on its own
+  host element, never on the document, and answers `interfaceLocaleContext`
+  (`@pie-players/pie-context`) for the PIE elements inside it, as
+  `{ locale, direction }` with the requested tag. Until then it stamps
+  nothing and leaves the request unanswered
 - Diagnostics: `tool-config-strictness`, and `debug` on the section-player layouts. Framework-error
   delivery is via the `onFrameworkError` callback (a toolkit property,
   `runtime.onFrameworkError` on a section player) and the

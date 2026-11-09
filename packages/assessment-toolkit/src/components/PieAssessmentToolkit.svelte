@@ -100,6 +100,8 @@ The toolkit's runtime element: it holds a `ToolkitCoordinator` and provides its 
 		DEFAULT_LOCALE,
 		defaultContentLanguage,
 		hostChoseInterfaceLocale,
+		localeDirection,
+		requestedInterfaceLocale,
 		stampInterfaceLocale,
 	} from "@pie-players/pie-players-shared/i18n";
 	import type { I18nProvider } from "@pie-players/pie-players-shared/i18n";
@@ -1319,40 +1321,62 @@ const DEFAULT_ENV = {
 	});
 	// The same locale on the host-neutral channel the PIE elements inside this
 	// toolkit read, `interfaceLocaleContext`; the runtime context carries the
-	// provider itself, for the tools. A fresh object per version bump, so the
-	// context republishes once a lazily loaded catalog is resident and
-	// `getLocale()` names it.
-	const interfaceLocaleContextValue = $derived.by(
-		(): InterfaceLocaleContextValue => {
-			void interfaceI18nVersion;
-			return {
-				locale: interfaceI18n.getLocale(),
-				direction: interfaceI18n.getDirection?.() ?? "ltr",
-			};
-		},
-	);
-	// Answered only once a host chose the locale (`hostChoseInterfaceLocale`
-	// has the invariant): until then an element labels its chrome in the
-	// language its item declares. The item players a section mounts take this
-	// toolkit's provider and decide by the same rule, so they answer only what
-	// this toolkit would.
+	// provider itself, for the tools. The value is the host's requested tag,
+	// which elements resolve against their own catalogs, from the moment
+	// `locale` is set and whatever this toolkit's catalog load does. A new
+	// object only when the tag changes, so a catalog load re-fires no
+	// subscriber.
+	const interfaceLocaleTag = $derived.by(() => {
+		void interfaceI18nVersion;
+		return requestedInterfaceLocale({ locale, i18n: interfaceI18n });
+	});
+	const interfaceLocaleContextValue = $derived<InterfaceLocaleContextValue>({
+		locale: interfaceLocaleTag,
+		direction: localeDirection(interfaceLocaleTag),
+	});
+	// Whether a host chose the locale (`hostChoseInterfaceLocale` has the
+	// invariant). Re-read on the version bump, since a supplied provider's
+	// request moves without a property change.
+	const interfaceLocaleChosen = $derived.by(() => {
+		void interfaceI18nVersion;
+		return hostChoseInterfaceLocale({ locale, i18n });
+	});
+	// Answered only once a host chose the locale: until then an element labels
+	// its chrome in the language its item declares. The item players a section
+	// mounts take this toolkit's provider and decide by the same rule, so they
+	// answer only what this toolkit would.
 	let answersInterfaceLocale = $state(false);
 	$effect(() => {
-		void interfaceI18nVersion;
-		if (hostChoseInterfaceLocale({ locale, i18n })) {
-			answersInterfaceLocale = true;
-		}
+		if (interfaceLocaleChosen) answersInterfaceLocale = true;
 	});
 	// `lang` and `dir` go on the host, not on an element in the shadow tree:
 	// what a host composes inside this element is slotted light DOM, and both
 	// `lang` resolution and CSS `direction` reach it only from a light-tree
-	// ancestor. The version bump re-runs the stamp once the catalog is
-	// resident, because `getLocale()` moves only then.
+	// ancestor. Stamped only while a host chose a locale, so a host that sets
+	// none leaves undeclared content inheriting the page's language and keeps
+	// any `lang`/`dir` of its own on this element; a stamp this effect wrote is
+	// removed when the choice is withdrawn. The version bump re-runs the stamp once the
+	// catalog is resident, because `getLocale()` moves only then.
+	let interfaceStampTarget: HTMLElement | null = null;
 	$effect(() => {
 		void interfaceI18nVersion;
 		const target = host;
-		if (!target) return;
-		stampInterfaceLocale(target, interfaceI18n);
+		const provider = interfaceI18n;
+		if (!interfaceLocaleChosen || !target) {
+			if (interfaceStampTarget) {
+				const stamped = interfaceStampTarget;
+				interfaceStampTarget = null;
+				untrack(() => {
+					stamped.removeAttribute("lang");
+					stamped.removeAttribute("dir");
+				});
+			}
+			return;
+		}
+		untrack(() => {
+			stampInterfaceLocale(target, provider);
+			interfaceStampTarget = target;
+		});
 	});
 
 	const effectiveAssessmentId = $derived(
@@ -1398,6 +1422,7 @@ const DEFAULT_ENV = {
 			// load re-publish this object; see `interfaceI18nVersion`.
 			locale: (void interfaceI18nVersion, interfaceI18n.getLocale()),
 			i18n: interfaceI18n,
+			interfaceLocaleChosen,
 			contentLanguage: contentLanguage?.trim() || undefined,
 			contentLanguageDefault: defaultContentLanguage({
 				contentLanguage,

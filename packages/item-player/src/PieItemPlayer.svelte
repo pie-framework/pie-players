@@ -102,7 +102,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 @fires {CustomEvent<{ scope: "authoring"; operation: "saveContent"; contentId: string }>} backend-content-saved - After the authoring backend saves the item's content.
 @fires {CustomEvent<{ scope: "authoring"; operation: "releaseContent"; contentId: string }>} backend-content-released - After the authoring backend releases the item's content.
 @fires {CustomEvent<{ scope: "delivery"; operation: "load" | "model" | "saveSession"; message: string; error: unknown }>} backend-error - When a delivery load, model refresh or autosave the player started itself fails; a host's own `saveSession()` or `score()` call rejects instead.
-@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - When a requested interface-locale catalog fails to load; the player keeps rendering through the English fallback chain, and re-setting `locale` retries the load.
+@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - When a requested interface-locale catalog fails to load; the player keeps rendering through the English fallback chain. Failed loads are not cached, so a later change of `locale` back to that locale retries the load.
 -->
 
 <script lang="ts">
@@ -240,6 +240,8 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		DEFAULT_LOCALE,
 		defaultContentLanguage,
 		hostChoseInterfaceLocale,
+		localeDirection,
+		requestedInterfaceLocale,
 		resolveInterfaceI18n,
 		reportInterfaceLocaleLoadError,
 		stampContentLanguage,
@@ -1004,7 +1006,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			// resolves through the English fallback chain. It is reported, like
 			// the toolkit reports its own, so a host can tell English-because-
 			// requested from English-because-failed; failed loads are not cached,
-			// so re-setting `locale` retries.
+			// so a later change of `locale` back to it retries.
 			void Promise.resolve(
 				provider.setLocale(requested || DEFAULT_LOCALE),
 			).catch((error) => {
@@ -1825,18 +1827,19 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	});
 
 	// The interface locale, on the host-neutral channel the elements read
-	// (`interfaceLocaleContext`). A fresh object per version bump, so the
-	// context republishes once a lazily loaded catalog is resident and
-	// `getLocale()` names it.
-	const interfaceLocaleContextValue = $derived.by(
-		(): InterfaceLocaleContextValue => {
-			void interfaceI18nVersion;
-			return {
-				locale: interfaceI18n.getLocale(),
-				direction: interfaceI18n.getDirection?.() ?? "ltr",
-			};
-		},
-	);
+	// (`interfaceLocaleContext`): the host's requested tag, which elements
+	// resolve against their own catalogs, from the moment `locale` is set and
+	// whatever the players' own catalog load does. The version counter
+	// covers a supplied provider's request moving. A new object only when the
+	// tag changes, so subscribers are not re-fired by every catalog load.
+	const interfaceLocaleTag = $derived.by(() => {
+		void interfaceI18nVersion;
+		return requestedInterfaceLocale({ locale, i18n: interfaceI18n });
+	});
+	const interfaceLocaleContextValue = $derived<InterfaceLocaleContextValue>({
+		locale: interfaceLocaleTag,
+		direction: localeDirection(interfaceLocaleTag),
+	});
 	// Answered only once a host chose the locale (`hostChoseInterfaceLocale`
 	// has the invariant): until then an element labels its chrome in the
 	// language its item declares. Inside a section `i18n` is the toolkit's

@@ -22,6 +22,7 @@ import {
 	getDefaultI18n,
 	hostChoseInterfaceLocale,
 	localeDirection,
+	requestedInterfaceLocale,
 	resolveInterfaceI18n,
 	SimpleI18n,
 	stampInterfaceLocale,
@@ -99,14 +100,38 @@ describe("locale resolution", () => {
 		expect(i18n.getLocale()).toBe(expected);
 	});
 
-	test("a locale with no shipped catalog is honoured, not rejected", async () => {
-		// A host may supply its own messages for a locale we do not ship. Refusing
-		// the tag would make that impossible.
+	test("a locale with no shipped catalog is requested, and served in English", async () => {
+		// The request stands, so host messages added for it later apply, but
+		// `getLocale` names what is served: a `lang="he" dir="rtl"` stamp over
+		// English strings would misdescribe them.
 		const i18n = createProvider();
-		await i18n.setLocale("cy-GB");
-		expect(i18n.getLocale()).toBe("cy-GB");
-		// Every key still resolves, through English.
+		await i18n.setLocale("he");
+		expect(i18n.getRequestedLocale()).toBe("he");
+		expect(i18n.getLocale()).toBe(DEFAULT_LOCALE);
+		expect(i18n.getDirection()).toBe("ltr");
 		expect(i18n.t("common.close")).toBe("Close");
+
+		i18n.addCustomMessages("he", { common: { close: "סגור" } });
+		expect(i18n.getLocale()).toBe("he");
+		expect(i18n.getDirection()).toBe("rtl");
+		expect(i18n.t("common.close")).toBe("סגור");
+	});
+
+	test("the request moves at once; the served locale once its catalog is resident", async () => {
+		let release: (catalog: MessageCatalog) => void = () => {};
+		const i18n = new SimpleI18n({
+			availableLocales: ["en-US", "nl-NL"],
+			loadCatalog: () =>
+				new Promise<MessageCatalog>((done) => {
+					release = done;
+				}),
+		});
+		const pending = i18n.setLocale("nl_nl");
+		expect(i18n.getRequestedLocale()).toBe("nl-NL");
+		expect(i18n.getLocale()).toBe(DEFAULT_LOCALE);
+		release(nlNLFixture);
+		await pending;
+		expect(i18n.getLocale()).toBe("nl-NL");
 	});
 
 	test("a locale only host messages cover is honoured with a loader configured", async () => {
@@ -151,6 +176,38 @@ describe("fallback chain", () => {
 		// Returning the branch would put an object where a string is expected, and
 		// interpolating one throws.
 		expect(i18n.t("common")).toBe("common");
+	});
+
+	test("a regional or differently-cased host override keeps the shipped parent catalog", async () => {
+		// Host messages resolve apart from catalogs: an `es-MX` override must not
+		// become the catalog match and hide the shipped `es`.
+		for (const tag of ["es-MX", "ES-mx"]) {
+			const i18n = new SimpleI18n({
+				availableLocales: ["en-US", "es"],
+				loadCatalog: async () => ({
+					common: { close: "Cerrar", cancel: "Cancelar" },
+				}),
+				customMessages: { [tag]: { common: { close: "Cerrar (MX)" } } },
+			});
+			await i18n.setLocale("es-MX");
+			expect(i18n.t("common.close"), tag).toBe("Cerrar (MX)");
+			expect(i18n.t("common.cancel"), tag).toBe("Cancelar");
+			expect(i18n.t("common.ok"), tag).toBe("OK");
+			expect(i18n.isLocaleLoaded("es"), tag).toBe(true);
+		}
+	});
+
+	test("host messages follow the request's truncation chain", async () => {
+		const i18n = new SimpleI18n({
+			customMessages: {
+				"es-MX": { common: { close: "Cerrar (MX)" } },
+				es: { common: { close: "Cerrar", cancel: "Cancelar" } },
+			},
+		});
+		await i18n.setLocale("es-MX");
+		expect(i18n.getLocale()).toBe("es-MX");
+		expect(i18n.t("common.close")).toBe("Cerrar (MX)");
+		expect(i18n.t("common.cancel")).toBe("Cancelar");
 	});
 
 	test("host messages override the shipped catalog for the same locale", async () => {
@@ -199,6 +256,34 @@ describe("interpolation and plurals", () => {
 		).toBe("٢ محاولات");
 	});
 
+	test("a partial host plural override resolves each category on its own", async () => {
+		const missing: string[] = [];
+		const i18n = new SimpleI18n({
+			customMessages: {
+				"en-US": {
+					player: { check: { triesLeft: { one: "Last try!" } } },
+					partial: { only: { few: "{count} few" } },
+				},
+			},
+			onMissingKey: (key) => missing.push(key),
+		});
+		expect(i18n.plural("player.check.triesLeft", { count: 1 })).toBe(
+			"Last try!",
+		);
+		// `other` is the catalog's, not a crash on the override's absent form.
+		expect(i18n.plural("player.check.triesLeft", { count: 2 })).toBe(
+			"2 tries left.",
+		);
+		expect(i18n.t("player.check.triesLeft", { count: 2 })).toBe(
+			"2 tries left.",
+		);
+		// No source carries the selected category or `other`: the key, reported.
+		expect(i18n.plural(dynamicMessageKey("partial.only"), { count: 2 })).toBe(
+			"partial.only",
+		);
+		expect(missing).toEqual(["partial.only"]);
+	});
+
 	test("plural falls back to t() for a key that is not a plural group", () => {
 		const i18n = new SimpleI18n();
 		expect(i18n.plural("common.close", { count: 2 })).toBe("Close");
@@ -239,8 +324,8 @@ describe("direction", () => {
 		expect(localeDirection(locale)).toBe(expected);
 	});
 
-	test("the provider reports its active locale's direction", async () => {
-		const i18n = createProvider();
+	test("the provider reports its served locale's direction", async () => {
+		const i18n = createPartialProvider("ar-SA", { common: { close: "إغلاق" } });
 		expect(i18n.getDirection()).toBe("ltr");
 		await i18n.setLocale("ar-SA");
 		expect(i18n.getDirection()).toBe("rtl");
@@ -264,7 +349,7 @@ describe("direction", () => {
 describe("stampInterfaceLocale", () => {
 	test("writes the provider's locale and direction on the element given", async () => {
 		const target = document.createElement("div");
-		const i18n = createProvider();
+		const i18n = createPartialProvider("ar-SA", { common: { close: "إغلاق" } });
 		stampInterfaceLocale(target, i18n);
 		expect(target.getAttribute("lang")).toBe(DEFAULT_LOCALE);
 		expect(target.getAttribute("dir")).toBe("ltr");
@@ -397,6 +482,33 @@ describe("packaging", () => {
 			const catalog: MessageCatalog = await loadBundledCatalog(locale);
 			expect(Object.keys(catalog).length).toBeGreaterThan(0);
 		}
+	});
+
+	test("a superseded load failure stays silent; the current one notifies and rejects", async () => {
+		const failures: ((error: Error) => void)[] = [];
+		const i18n = new SimpleI18n({
+			availableLocales: ["en-US", "nl-NL", "fr"],
+			loadCatalog: () =>
+				new Promise<MessageCatalog>((_, fail) => {
+					failures.push(fail);
+				}),
+		});
+		let notified = 0;
+		i18n.subscribe(() => {
+			notified += 1;
+		});
+		const superseded = i18n.setLocale("nl-NL");
+		const current = i18n.setLocale("fr");
+		failures[0]?.(new Error("chunk 404"));
+		await expect(superseded).resolves.toBeUndefined();
+		expect(notified).toBe(0);
+		failures[1]?.(new Error("chunk 404"));
+		await expect(current).rejects.toThrow(
+			"Failed to load i18n catalog for locale: fr",
+		);
+		expect(notified).toBe(1);
+		expect(i18n.getRequestedLocale()).toBe("fr");
+		expect(i18n.getLocale()).toBe(DEFAULT_LOCALE);
 	});
 
 	test("a catalog load failure is reported, not swallowed", async () => {
@@ -565,8 +677,11 @@ describe("direction mismatch", () => {
 });
 
 describe("resolveInterfaceI18n formatting", () => {
-	test("the bundled provider's formatters come through the facade at the active locale", async () => {
-		const i18n = createPieI18n();
+	test("the bundled provider's formatters come through the facade at the served locale", async () => {
+		const i18n = createPieI18n({
+			availableLocales: ["nl-NL"],
+			loadCatalog: async () => ({}),
+		});
 		await i18n.setLocale("nl-NL");
 		const resolved = resolveInterfaceI18n({ i18n });
 		expect(resolved.formatNumber(1234.5)).toBe(
@@ -653,5 +768,32 @@ describe("hostChoseInterfaceLocale", () => {
 		expect(hostChoseInterfaceLocale({ locale: "en-US" })).toBe(true);
 		expect(hostChoseInterfaceLocale({ locale: "es" })).toBe(true);
 		expect(hostChoseInterfaceLocale({ i18n: providerAt("es-MX") })).toBe(true);
+	});
+
+	test("a provider asked for a tag nothing ships is a choice, though it serves en-US", async () => {
+		const i18n = createPieI18n();
+		await i18n.setLocale("es");
+		expect(i18n.getLocale()).toBe(DEFAULT_LOCALE);
+		expect(hostChoseInterfaceLocale({ i18n })).toBe(true);
+		await i18n.setLocale("en-US");
+		expect(hostChoseInterfaceLocale({ i18n })).toBe(false);
+	});
+});
+
+describe("requestedInterfaceLocale", () => {
+	test("a set locale wins, canonical, over what the provider serves", async () => {
+		const i18n = createPieI18n();
+		expect(requestedInterfaceLocale({ locale: "en_gb", i18n })).toBe("en-GB");
+		expect(requestedInterfaceLocale({ locale: " fr-CA ", i18n })).toBe("fr-CA");
+	});
+
+	test("without one, the provider's request, else its served locale", async () => {
+		const i18n = createPieI18n();
+		expect(requestedInterfaceLocale({ locale: "", i18n })).toBe(DEFAULT_LOCALE);
+		void i18n.setLocale("he");
+		expect(requestedInterfaceLocale({ i18n })).toBe("he");
+		expect(
+			requestedInterfaceLocale({ i18n: { getLocale: () => "nl_NL" } }),
+		).toBe("nl-NL");
 	});
 });

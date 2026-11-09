@@ -297,7 +297,7 @@
 							"type": {
 								"text": "CustomEvent<{ kind: \"i18n-locale-load\"; source: string; message: string; details: string[]; recoverable: true; scope: \"runtime\"; cause?: unknown }>"
 							},
-							"description": "When a requested interface-locale catalog fails to load for the assembly's own navigation chrome; the assembly keeps rendering through the English fallback chain, and re-setting `locale` retries the load. When the visited-section count changes."
+							"description": "When a requested interface-locale catalog fails to load for the assembly's own navigation chrome; the assembly keeps rendering through the English fallback chain. Failed loads are not cached, so a later change of `locale` back to that locale retries the load. When the visited-section count changes."
 						},
 						{
 							"name": "assessment-submission-state-changed",

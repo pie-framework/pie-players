@@ -713,8 +713,8 @@ On 2026-10-19 failed interface-locale catalog loads became observable:
 section player already report) on their host when a requested catalog fails to
 load, where the item player previously swallowed the rejection. Additive: a
 host listening for the toolkit's event sees the same shape; a host that never
-listens sees nothing. Failed loads are not cached, so re-setting `locale`
-retries. `@pie-players/pie-players-shared/i18n` gained
+listens sees nothing. Failed loads are not cached, so a later change of
+`locale` back to that locale retries. `@pie-players/pie-players-shared/i18n` gained
 `reportInterfaceLocaleLoadError` and the `InterfaceLocaleLoadErrorModel` type,
 additive.
 
@@ -832,6 +832,14 @@ ignore the language its item declares. It protects the hosts delivering the
 one installation whose multiple-choice models declare `es_ES`: on their move to
 pie-players those items keep Spanish labels with no host change. Hosts that set
 a locale see no change; no listed host reads `pie.interfaceLocale` itself.
+Later the same day the answer became the host's requested tag, canonical, in
+place of the players' own catalog match, so an element resolves `en-GB` or
+`fr-CA` against its own catalogs; and `pie-assessment-toolkit` and the section
+shell stopped stamping `lang`/`dir` on their hosts until a host chooses a
+locale. Hosts A, C, R and S mount the section-player layouts and set no
+locale, so their section chrome now inherits the page's language and direction where it carried
+`lang="en-US" dir="ltr"`; read-aloud is unaffected, since its `lang` climb ends
+at the item shell.
 
 The interface-locale machinery is an ES-module graph by construction: every
 locale but `en-US` is a dynamic `import()` of its own chunk in each player's

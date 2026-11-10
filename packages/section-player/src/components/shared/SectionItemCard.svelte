@@ -84,6 +84,9 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		item,
 		itemIndex = 0,
 		itemCount = 1,
+		// Whether this is the section's current item. Reflected as the
+		// `is-current` attribute, which is where hosts read it; the card sets no
+		// `aria-current`.
 		isCurrent = false,
 		canonicalItemId,
 		itemSettings = null,
@@ -385,13 +388,20 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 	<!-- `tabindex="-1"` is exactly what a programmatic focus target takes, and the
 	     pane sends focus here when a gate pauses playback. The card is never in the
 	     tab order: the value is negative, and it is absent unless this item is what
-	     the gate is waiting for. -->
+	     the gate is waiting for.
+
+	     No `aria-current` here, even on the current item. It marks the current
+	     control in a set of navigation controls, and on a wrapper with no role
+	     screen readers repeat it inside the card: JAWS said "current" each time its
+	     cursor entered or left an element, so every formula in an answer choice
+	     ended with "current current". The host's reflected `is-current` attribute
+	     carries the state; the navigation status region and the item heading tell
+	     a screen-reader user where they are. -->
 	<div
 		class="pie-section-player-content-card"
 		data-section-item-card
 		data-canonical-item-id={canonicalItemId}
 		data-pie-tool-overlay-boundary
-		aria-current={isCurrent ? "true" : undefined}
 		data-pie-timed-media-gate={timedMediaView?.isGateTarget ? "holding" : undefined}
 		tabindex={timedMediaView?.isGateTarget ? -1 : undefined}
 	>

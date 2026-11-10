@@ -51,6 +51,10 @@
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"
 		},
+		"@pie-players/pie-language-tags": {
+			"repository": "pie-framework/pie-players",
+			"workflow": "release.yml"
+		},
 		"@pie-players/pie-players-shared": {
 			"repository": "pie-framework/pie-players",
 			"workflow": "release.yml"

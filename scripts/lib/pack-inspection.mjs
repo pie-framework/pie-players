@@ -82,12 +82,34 @@ export const getNodeConsumerImportTargets = (policy) => ({
 	]),
 });
 
+/** An `exports` target, which Node only accepts as a `./`-relative path. */
 export const normalizeDeclaredPath = (value) => {
 	if (typeof value !== "string") return null;
 	if (!value.startsWith("./")) return null;
 	const normalized = value.slice(2);
 	return normalized.length > 0 ? normalized : null;
 };
+
+/**
+ * A top-level entry field (`main`, `types`, `customElements`, ...), which npm and
+ * Node resolve against the package root with or without a leading `./`, so
+ * `"dist/index.js"` names the same file as `"./dist/index.js"`. Reading these
+ * like `exports` targets would drop every bare path, and with it the checks.
+ */
+export const normalizeEntryFieldPath = (value) => {
+	if (typeof value !== "string") return null;
+	const normalized = value.replace(/^\.\//, "");
+	return normalized.length > 0 ? normalized : null;
+};
+
+export const ENTRY_FIELDS = [
+	"main",
+	"module",
+	"types",
+	"unpkg",
+	"jsdelivr",
+	"svelte",
+];
 
 export const collectTargets = (value, out) => {
 	const normalized = normalizeDeclaredPath(value);
@@ -104,16 +126,26 @@ export const collectTargets = (value, out) => {
 	}
 };
 
-export const collectDeclaredTargets = (
-	pkg,
-	fields = ["main", "module", "types", "unpkg", "jsdelivr", "svelte"],
-) => {
+/** The files `fields` and every `exports` target name, relative to the package root. */
+export const collectDeclaredTargets = (pkg, fields = ENTRY_FIELDS) => {
 	const targets = new Set();
 	for (const field of fields) {
-		collectTargets(pkg?.[field], targets);
+		const target = normalizeEntryFieldPath(pkg?.[field]);
+		if (target) targets.add(target);
 	}
 	collectTargets(pkg?.exports, targets);
 	return targets;
+};
+
+/**
+ * Throws when discovery found no publishable package. A mistyped
+ * `workspaceRoots` otherwise checks nothing and reports success.
+ */
+export const assertPublishablePackagesChecked = (checked) => {
+	if (checked > 0) return;
+	throw new Error(
+		"no publishable packages discovered; check scripts/publish-policy.json workspaceRoots",
+	);
 };
 
 export const isPackedMatch = (declaredPath, packedFiles) => {

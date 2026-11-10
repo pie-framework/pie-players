@@ -1165,10 +1165,14 @@ trust model.
 ## Development
 
 ```bash
+bun run --cwd packages/section-player vite build --watch
 bun run build:watch:section-tools
 bun run --cwd packages/section-player check
 bun run --cwd packages/section-player build
 ```
 
-`build:watch:section-tools` rebuilds the section player, the toolkit, every
-tool package and the section-player debug tools as their sources change.
+`vite build --watch` rebuilds the section player's Node build incrementally on
+each save. `build:watch:section-tools` rebuilds the section player, the
+toolkit, every tool package and the section-player debug tools as their
+sources change, rerunning each changed package's full `build`, so use it when
+an edit spans packages.

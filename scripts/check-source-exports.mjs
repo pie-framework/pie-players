@@ -9,6 +9,7 @@
 import path from "node:path";
 
 import {
+	assertPublishablePackagesChecked,
 	getPublishablePackages,
 	mapConcurrent,
 	readPublishPolicy,
@@ -31,6 +32,12 @@ const packages = getPublishablePackages({
 	root: ROOT,
 	workspaceRoots: policy.workspaceRoots ?? ["packages"],
 });
+try {
+	assertPublishablePackagesChecked(packages.length);
+} catch (error) {
+	console.error(`[check-source-exports] ${error.message}`);
+	process.exit(1);
+}
 
 const checkPackage = async ({ dir, pkg }) => {
 	const violations = collectManifestSurfaceViolations(

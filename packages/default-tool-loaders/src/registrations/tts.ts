@@ -5,6 +5,7 @@
  */
 
 import type {
+	ToolProviderConfig,
 	ToolRegistration,
 	ToolToolbarRenderResult,
 	ToolbarContext,
@@ -34,149 +35,206 @@ const loadServerTTSProvider = async () =>
 const numberOrUndefined = (value: unknown): number | undefined =>
 	typeof value === "number" ? value : undefined;
 
+type TTSToolProviderOptions = NonNullable<
+	ConstructorParameters<typeof TTSToolProvider>[1]
+>;
+
+/** A host's own text-to-speech provider, selected by `provider.id`. */
+export interface TTSHostProviderDescriptor {
+	/** Resolves the host's `ITTSProvider` class; imported only when selected. */
+	load: NonNullable<TTSToolProviderOptions["loadHostProvider"]>;
+	/** Wait on `provider.runtime.authFetcher` before initializing. Default `false`. */
+	requiresAuth?: boolean;
+}
+
+export interface TTSRegistrationOptions {
+	/**
+	 * Host providers by `provider.id`. A `textToSpeech` config whose
+	 * `provider.id` names none of them, or names none at all, keeps the browser
+	 * or server backend its settings select.
+	 */
+	providers?: Readonly<Record<string, TTSHostProviderDescriptor>>;
+}
+
+/** The host-provider path, with the descriptor's auth requirement. */
+class HostTTSToolProvider extends TTSToolProvider {
+	declare readonly requiresAuth: boolean;
+
+	constructor(descriptor: TTSHostProviderDescriptor) {
+		super("browser", { loadHostProvider: descriptor.load });
+		this.requiresAuth = descriptor.requiresAuth === true;
+	}
+}
+
+const selectHostProvider = (
+	config: ToolProviderConfig | undefined,
+	providers: Readonly<Record<string, TTSHostProviderDescriptor>>,
+): TTSHostProviderDescriptor | undefined => {
+	const id = config?.provider?.id;
+	return typeof id === "string" && Object.hasOwn(providers, id)
+		? providers[id]
+		: undefined;
+};
+
 /**
- * Text-to-Speech tool registration
+ * Builds the text-to-speech registration over the browser and server backends
+ * plus any host providers, so a host bundles its provider only by naming it.
  *
  * Supports:
- * - Reading content aloud using browser TTS or external providers
+ * - Reading content aloud using browser TTS, a TTS server or a host provider
  * - Context-aware visibility (shows when readable text is available)
  * - Item and passage levels
  */
-export const ttsToolRegistration: ToolRegistration = {
-	toolId: "textToSpeech",
-	name: "Text to Speech",
-	description: "Read content aloud",
-	nameKey: "tools.textToSpeech.name",
-	descriptionKey: "tools.textToSpeech.description",
-	icon: "volume-up",
-	provider: {
-		createProvider: (config) => {
-			return new TTSToolProvider(resolveTTSRuntimeSettings(config).backend, {
-				loadServerProvider: loadServerTTSProvider,
-			});
+export function createTTSToolRegistration(
+	options: TTSRegistrationOptions = {},
+): ToolRegistration {
+	const providers = { ...options.providers };
+	return {
+		toolId: "textToSpeech",
+		name: "Text to Speech",
+		description: "Read content aloud",
+		nameKey: "tools.textToSpeech.name",
+		descriptionKey: "tools.textToSpeech.description",
+		icon: "volume-up",
+		provider: {
+			createProvider: (config) => {
+				const hostProvider = selectHostProvider(config, providers);
+				if (hostProvider) return new HostTTSToolProvider(hostProvider);
+				return new TTSToolProvider(resolveTTSRuntimeSettings(config).backend, {
+					loadServerProvider: loadServerTTSProvider,
+				});
+			},
+			getInitConfig: (config) =>
+				buildRuntimeTTSConfig(resolveTTSRuntimeSettings(config)),
+			getAuthFetcher: (config) => {
+				const runtimeAuthFetcher = config?.provider?.runtime?.authFetcher;
+				return typeof runtimeAuthFetcher === "function"
+					? runtimeAuthFetcher
+					: undefined;
+			},
+			lazy: true,
 		},
-		getInitConfig: (config) =>
-			buildRuntimeTTSConfig(resolveTTSRuntimeSettings(config)),
-		getAuthFetcher: (config) => {
-			const runtimeAuthFetcher = config?.provider?.runtime?.authFetcher;
-			return typeof runtimeAuthFetcher === "function"
-				? runtimeAuthFetcher
-				: undefined;
+
+		sanitizeConfig: (config) => {
+			const normalizedConfig: Record<string, unknown> = {
+				...(config as Record<string, unknown>),
+			};
+			if ("speedOptions" in normalizedConfig) {
+				normalizedConfig.speedOptions = normalizeTTSSpeedControlOptions(
+					normalizedConfig.speedOptions,
+				);
+			}
+			return normalizedConfig as typeof config;
 		},
-		lazy: true,
-	},
 
-	sanitizeConfig: (config) => {
-		const normalizedConfig: Record<string, unknown> = {
-			...(config as Record<string, unknown>),
-		};
-		if ("speedOptions" in normalizedConfig) {
-			normalizedConfig.speedOptions = normalizeTTSSpeedControlOptions(
-				normalizedConfig.speedOptions,
+		// TTS is inline-only and scoped to item/passage contexts.
+		supportedLevels: ["item", "passage"],
+
+		/**
+		 * Pass 2: Determine if TTS is relevant in this context
+		 *
+		 * TTS is relevant when the context holds readable text or a catalog idref.
+		 */
+		isVisibleInContext(context: ToolContext): boolean {
+			return hasSpokenContent(context);
+		},
+
+		renderToolbar(
+			context: ToolContext,
+			toolbarContext: ToolbarContext,
+		): ToolToolbarRenderResult {
+			const resolveRuntimeSettings = () =>
+				resolveTTSRuntimeSettings(
+					toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) ||
+						undefined,
+				);
+			const resolveElementSpeedOptions = (): NormalizedTTSSpeedOption[] => {
+				const runtimeSettings = resolveRuntimeSettings();
+				return normalizeTTSSpeedControlOptions(runtimeSettings.speedOptions);
+			};
+			const fullToolId = createScopedToolId(
+				this.toolId,
+				toolbarContext.scope.level,
+				toolbarContext.scope.scopeId,
 			);
-		}
-		return normalizedConfig as typeof config;
-	},
-
-	// TTS is inline-only and scoped to item/passage contexts.
-	supportedLevels: ["item", "passage"],
-
-	/**
-	 * Pass 2: Determine if TTS is relevant in this context
-	 *
-	 * TTS is relevant when the context holds readable text or a catalog idref.
-	 */
-	isVisibleInContext(context: ToolContext): boolean {
-		return hasSpokenContent(context);
-	},
-
-	renderToolbar(
-		context: ToolContext,
-		toolbarContext: ToolbarContext,
-	): ToolToolbarRenderResult {
-		const resolveRuntimeSettings = () =>
-			resolveTTSRuntimeSettings(
-				toolbarContext.toolkitCoordinator?.getToolConfig(this.toolId) ||
-					undefined,
+			const resolveControlSize = (): "sm" | "md" | "lg" => {
+				const raw = toolbarContext.ui?.size;
+				return raw === "sm" || raw === "lg" ? raw : "md";
+			};
+			const element = resolveOverlayElement(
+				toolbarContext,
+				fullToolId,
+				() =>
+					createToolElement(
+						this.toolId,
+						context,
+						toolbarContext,
+						toolbarContext.componentOverrides,
+					) as HTMLElement & {
+						speedOptions?: NormalizedTTSSpeedOption[];
+						showSingleSpeedOption?: boolean;
+						baseRate?: number;
+						pitch?: number;
+						volume?: number;
+					},
 			);
-		const resolveElementSpeedOptions = (): NormalizedTTSSpeedOption[] => {
-			const runtimeSettings = resolveRuntimeSettings();
-			return normalizeTTSSpeedControlOptions(runtimeSettings.speedOptions);
-		};
-		const fullToolId = createScopedToolId(
-			this.toolId,
-			toolbarContext.scope.level,
-			toolbarContext.scope.scopeId,
-		);
-		const resolveControlSize = (): "sm" | "md" | "lg" => {
-			const raw = toolbarContext.ui?.size;
-			return raw === "sm" || raw === "lg" ? raw : "md";
-		};
-		const element = resolveOverlayElement(
-			toolbarContext,
-			fullToolId,
-			() =>
-				createToolElement(
-					this.toolId,
-					context,
-					toolbarContext,
-					toolbarContext.componentOverrides,
-				) as HTMLElement & {
-					speedOptions?: NormalizedTTSSpeedOption[];
-					showSingleSpeedOption?: boolean;
-					baseRate?: number;
-					pitch?: number;
-					volume?: number;
-				},
-		);
-		const applyAttributes = () => {
-			element.setAttribute(
-				"catalog-id",
-				toolbarContext.catalogId || toolbarContext.itemId,
-			);
-			element.setAttribute("size", resolveControlSize());
-			element.setAttribute("layout-mode", resolveRuntimeSettings().layoutMode);
-			element.speedOptions = resolveElementSpeedOptions();
-			element.showSingleSpeedOption =
-				resolveRuntimeSettings().showSingleSpeedOption === true;
-			// The element range-checks these; a non-number means the default.
-			const speech = toolbarContext.getToolParameters?.("textToSpeech");
-			element.baseRate = numberOrUndefined(speech?.rate);
-			element.pitch = numberOrUndefined(speech?.pitch);
-			element.volume = numberOrUndefined(speech?.volume);
-		};
-		applyAttributes();
-		const hostLayout = resolveTTSHostToolbarLayout(resolveRuntimeSettings());
+			const applyAttributes = () => {
+				element.setAttribute(
+					"catalog-id",
+					toolbarContext.catalogId || toolbarContext.itemId,
+				);
+				element.setAttribute("size", resolveControlSize());
+				element.setAttribute(
+					"layout-mode",
+					resolveRuntimeSettings().layoutMode,
+				);
+				element.speedOptions = resolveElementSpeedOptions();
+				element.showSingleSpeedOption =
+					resolveRuntimeSettings().showSingleSpeedOption === true;
+				// The element range-checks these; a non-number means the default.
+				const speech = toolbarContext.getToolParameters?.("textToSpeech");
+				element.baseRate = numberOrUndefined(speech?.rate);
+				element.pitch = numberOrUndefined(speech?.pitch);
+				element.volume = numberOrUndefined(speech?.volume);
+			};
+			applyAttributes();
+			const hostLayout = resolveTTSHostToolbarLayout(resolveRuntimeSettings());
 
-		return {
-			toolId: this.toolId,
-			button: null,
-			elements: [
-				{
-					element,
-					mount: "before-buttons",
-					layoutHints: {
-						controlsRow: {
-							reserveSpace: hostLayout.controlsRow.reserveSpace,
-							showWhenToolActive: hostLayout.controlsRow.expandWhenToolActive,
-						},
-						headerOverlay: {
-							showWhenToolActive: hostLayout.headerOverlay.expandWhenToolActive,
+			return {
+				toolId: this.toolId,
+				button: null,
+				elements: [
+					{
+						element,
+						mount: "before-buttons",
+						layoutHints: {
+							controlsRow: {
+								reserveSpace: hostLayout.controlsRow.reserveSpace,
+								showWhenToolActive: hostLayout.controlsRow.expandWhenToolActive,
+							},
+							headerOverlay: {
+								showWhenToolActive:
+									hostLayout.headerOverlay.expandWhenToolActive,
+							},
 						},
 					},
+				],
+				subscribeActive: (callback) => {
+					const handler = (event: Event) => {
+						const detail = (event as CustomEvent<{ active?: boolean }>).detail;
+						callback(detail?.active === true);
+					};
+					element.addEventListener(TOOL_ACTIVE_CHANGE_EVENT, handler);
+					return () => {
+						element.removeEventListener(TOOL_ACTIVE_CHANGE_EVENT, handler);
+					};
 				},
-			],
-			subscribeActive: (callback) => {
-				const handler = (event: Event) => {
-					const detail = (event as CustomEvent<{ active?: boolean }>).detail;
-					callback(detail?.active === true);
-				};
-				element.addEventListener(TOOL_ACTIVE_CHANGE_EVENT, handler);
-				return () => {
-					element.removeEventListener(TOOL_ACTIVE_CHANGE_EVENT, handler);
-				};
-			},
-			sync: applyAttributes,
-		};
-	},
-};
+				sync: applyAttributes,
+			};
+		},
+	};
+}
+
+/** The text-to-speech registration with the browser and server backends only. */
+export const ttsToolRegistration: ToolRegistration =
+	createTTSToolRegistration();

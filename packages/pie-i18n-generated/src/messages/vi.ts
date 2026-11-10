@@ -94,15 +94,15 @@ const vi = {
 			restoreFailed: "Không thể khôi phục câu trả lời đã lưu cho phần này. Vui lòng thử lại.",
 		},
 
-		formative: {
-			checkAnswer: "Kiểm tra câu trả lời",
+		check: {
+			answer: "Kiểm tra câu trả lời",
 			tryAgain: "Thử lại",
 			answerRecorded: "Đã ghi nhận câu trả lời.",
 			correct: "Đúng.",
 			partlyCorrect: "Đúng một phần.",
 			notCorrect: "Chưa đúng.",
 			notAutoScored: "Đã ghi nhận câu trả lời. Câu hỏi này không được chấm điểm tự động.",
-			checkFailed: "Không thể kiểm tra câu hỏi này. Vui lòng thử lại.",
+			failed: "Không thể kiểm tra câu hỏi này. Vui lòng thử lại.",
 			triesLeft: {
 				other: "Còn {count} lượt thử.",
 			},

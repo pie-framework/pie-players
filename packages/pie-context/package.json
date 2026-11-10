@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-context",
-	"version": "1.0.0-beta.8",
+	"version": "1.0.0-beta.9",
 	"type": "module",
 	"description": "Framework-agnostic Context Protocol helpers for PIE web components",
 	"repository": {
@@ -17,8 +17,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"files": [
 		"dist",

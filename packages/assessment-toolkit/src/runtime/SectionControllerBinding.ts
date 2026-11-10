@@ -108,8 +108,8 @@ export interface SectionRuntimeMediaTimeSourceAction {
 	origin?: "native-adapter" | "host";
 }
 
-/** What a formative action reaching the binding has to say. */
-export interface SectionRuntimeFormativeAction {
+/** What a Try action reaching the binding has to say. */
+export interface SectionRuntimeTryAction {
 	itemId: string;
 	canonicalItemId?: string;
 	action: "check" | "retry";
@@ -582,26 +582,26 @@ export class SectionControllerBinding {
 	}
 
 	/**
-	 * Route a learner's formative action to the controller.
+	 * Route a learner's Try action to the controller.
 	 *
 	 * Canonicalized here for the same reason `updateItemSession` is: the runtime
 	 * id a card dispatches with is not necessarily the identifier the controller
 	 * keys state by. Both ids are kept, since the composition's renderables are
 	 * keyed by the runtime one.
 	 */
-	handleFormativeAction(action: SectionRuntimeFormativeAction): void {
+	handleTryAction(action: SectionRuntimeTryAction): void {
 		if (!action?.itemId) return;
 		const canonicalId =
 			action.canonicalItemId || this.getCanonicalItemId(action.itemId);
 		const controller = this.requireControllerFor(
 			{ itemId: action.itemId, canonicalItemId: canonicalId },
-			"a formative action",
+			"a Try action",
 		);
 		if (action.action === "retry") {
-			controller?.retryFormativeItem?.({ itemId: canonicalId });
+			controller?.retryItem?.({ itemId: canonicalId });
 			return;
 		}
-		controller?.recordFormativeTry?.({
+		controller?.recordTry?.({
 			itemId: canonicalId,
 			outcomes: action.outcomes,
 		});
@@ -610,7 +610,7 @@ export class SectionControllerBinding {
 	/**
 	 * Bind or release the section's Media Time Source.
 	 *
-	 * A pass-through, like `handleFormativeAction`: the binding routes, the
+	 * A pass-through, like `handleTryAction`: the binding routes, the
 	 * controller decides. `renderableId` travels with the attach because whether the
 	 * registering renderable is the one `stimulusRef` names is the controller's call
 	 * — it validated `stimulusRef` in the first place.

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player-tools-pnp-debugger",
-	"version": "1.0.0-beta.8",
+	"version": "1.0.0-beta.9",
 	"type": "module",
 	"description": "PNP debugger panel for PIE section-player flows",
 	"repository": {
@@ -21,13 +21,13 @@
 	],
 	"main": "./dist/section-player-tools-pnp-debugger.js",
 	"module": "./dist/section-player-tools-pnp-debugger.js",
-	"unpkg": "./dist/section-player-tools-pnp-debugger.js",
-	"jsdelivr": "./dist/section-player-tools-pnp-debugger.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/section-player-tools-pnp-debugger.js"
-		}
+			"import": "./dist/section-player-tools-pnp-debugger.js",
+			"default": "./dist/section-player-tools-pnp-debugger.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [

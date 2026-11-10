@@ -1,8 +1,6 @@
 import "@pie-players/pie-section-player";
-import {
-	coerceBooleanLike,
-	type InstrumentationProvider,
-} from "@pie-players/pie-players-shared";
+import type { InstrumentationProvider } from "@pie-players/pie-players-shared";
+import { coerceBooleanLike } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 import { reportInterfaceLocaleLoadError } from "@pie-players/pie-players-shared/i18n";
 import { cloneDeep } from "@pie-players/pie-players-shared/object";
 import {
@@ -106,7 +104,7 @@ const VERTICAL_SECTION_TAG = "pie-section-player-vertical";
  *   When navigation or a section snapshot changes the assessment session.
  * @fires {CustomEvent<AssessmentProgressChangedDetail>} assessment-progress-changed -
  *
- * @fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - When a requested interface-locale catalog fails to load for the assembly's own navigation chrome; the assembly keeps rendering through the English fallback chain, and re-setting `locale` retries the load.
+ * @fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - When a requested interface-locale catalog fails to load for the assembly's own navigation chrome; the assembly keeps rendering through the English fallback chain. Failed loads are not cached, so a later change of `locale` back to that locale retries the load.
  *   When the visited-section count changes.
  * @fires {CustomEvent<AssessmentSubmissionStateChangedDetail>} assessment-submission-state-changed -
  *   When `submit()` records the submission state.
@@ -338,7 +336,7 @@ export class AssessmentPlayerDefaultElement
 		// `sectionPlayerRuntime.i18n` keeps the locale its owner gave it. A
 		// failed catalog load is reported, not swallowed: every key still
 		// resolves through the English fallback chain, and failed loads are not
-		// cached, so re-setting `locale` retries.
+		// cached, so a later change of `locale` back to it retries.
 		if (this.locale || provider === this.ownedI18n) {
 			void Promise.resolve(
 				provider.setLocale(this.locale || DEFAULT_LOCALE),

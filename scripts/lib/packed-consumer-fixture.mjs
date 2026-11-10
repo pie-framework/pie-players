@@ -1,5 +1,5 @@
 /** Shared tarball fixture for the Node and browser custom-element consumer checks. */
-import { execFile, execFileSync } from "node:child_process";
+import { execFile } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -144,14 +144,11 @@ export const createFixtureProject = () => {
 	return fixtureDir;
 };
 
-export const installTarballs = (fixtureDir, tarballs) => {
-	execFileSync(
+export const installTarballs = async (fixtureDir, tarballs) => {
+	await execFileAsync(
 		"npm",
 		["install", "--no-package-lock", "--legacy-peer-deps", ...tarballs],
-		{
-			cwd: fixtureDir,
-			stdio: ["ignore", "pipe", "pipe"],
-		},
+		{ cwd: fixtureDir, maxBuffer: 16 * 1024 * 1024 },
 	);
 };
 

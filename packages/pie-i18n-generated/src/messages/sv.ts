@@ -112,8 +112,8 @@ const sv = {
 				"Dina sparade svar för det här avsnittet kunde inte återställas. Försök igen.",
 		},
 
-		formative: {
-			checkAnswer: "Kontrollera svar",
+		check: {
+			answer: "Kontrollera svar",
 			tryAgain: "Försök igen",
 			answerRecorded: "Svaret har sparats.",
 			correct: "Rätt.",
@@ -121,7 +121,7 @@ const sv = {
 			notCorrect: "Fel.",
 			notAutoScored:
 				"Svaret har sparats. Den här frågan bedöms inte automatiskt.",
-			checkFailed: "Frågan kunde inte kontrolleras. Försök igen.",
+			failed: "Frågan kunde inte kontrolleras. Försök igen.",
 			triesLeft: {
 				one: "{count} försök kvar.",
 				other: "{count} försök kvar.",

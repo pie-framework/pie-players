@@ -138,9 +138,9 @@ export function normalizeTimedMediaSectionData(args: {
 	itemIdentifiers: readonly string[];
 	resolveStimulusRenderableId: (stimulusRef: string) => string | undefined;
 	/**
-	 * The Try budget each item's resolved formative policy leaves, so a gate on
+	 * The Try budget each item's resolved item session control policy leaves, so a gate on
 	 * correctness can be refused where it would strand the learner. Supplied by the
-	 * caller because formative policy resolution is that contract's, not this one's.
+	 * caller because item session control policy resolution is that contract's, not this one's.
 	 */
 	resolveItemTryBudget: (itemIdentifier: string) => TimedMediaItemTryBudget;
 }): TimedMediaValidationResult {
@@ -296,7 +296,7 @@ export function normalizeTimedMediaSectionData(args: {
 				// A correctness gate is only passable while the learner still has a Try
 				// to spend. Over an item with a finite budget the gate becomes
 				// unpassable the moment the budget runs out, and over an item that does
-				// not deliver formatively there is never a Try at all — in both cases
+				// not enable item session control there is never a Try at all — in both cases
 				// nothing the learner can do releases playback, and no host action
 				// releases it either, because a forced reveal is not a correct answer.
 				// Refused here rather than released at runtime: releasing would deliver
@@ -308,7 +308,7 @@ export function normalizeTimedMediaSectionData(args: {
 				if (unpassable.length > 0) {
 					errors.push({
 						code: "gate-requires-unlimited-tries",
-						message: `Gate cue "${identifier}" releases on correctness, so every item it names needs formative delivery with maxTries: "unlimited" — otherwise a learner who runs out of Tries can never release playback. Offending item refs: ${unpassable.join(", ")}.`,
+						message: `Gate cue "${identifier}" releases on correctness, so every item it names needs item session control with maxTries: "unlimited" — otherwise a learner who runs out of Tries can never release playback. Offending item refs: ${unpassable.join(", ")}.`,
 						cueIdentifier: identifier,
 					});
 					continue;

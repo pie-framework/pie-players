@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-protractor",
-	"version": "1.0.0-beta.8",
+	"version": "1.0.0-beta.9",
 	"type": "module",
 	"description": "Draggable and rotatable protractor tool for PIE assessment player",
 	"repository": {
@@ -23,8 +23,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-protractor.js"
-		}
+			"import": "./dist/tool-protractor.js",
+			"default": "./dist/tool-protractor.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -33,8 +35,6 @@
 		"README.md"
 	],
 	"license": "MIT",
-	"unpkg": "./dist/tool-protractor.js",
-	"jsdelivr": "./dist/tool-protractor.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"

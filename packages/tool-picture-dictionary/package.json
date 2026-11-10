@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-picture-dictionary",
-	"version": "1.0.0-beta.8",
+	"version": "1.0.0-beta.9",
 	"type": "module",
 	"description": "Picture dictionary lookup tool for PIE assessment player",
 	"repository": {
@@ -23,8 +23,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-picture-dictionary.js"
-		}
+			"import": "./dist/tool-picture-dictionary.js",
+			"default": "./dist/tool-picture-dictionary.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -33,8 +35,6 @@
 		"package.json"
 	],
 	"license": "MIT",
-	"unpkg": "./dist/tool-picture-dictionary.js",
-	"jsdelivr": "./dist/tool-picture-dictionary.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"

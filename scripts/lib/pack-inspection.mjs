@@ -113,11 +113,6 @@ export const collectDeclaredTargets = (
 		collectTargets(pkg?.[field], targets);
 	}
 	collectTargets(pkg?.exports, targets);
-	// The custom elements manifest convention writes this path without `./`
-	// (`"custom-elements.json"`), which `normalizeDeclaredPath` reads as no target.
-	if (typeof pkg?.customElements === "string" && pkg.customElements) {
-		targets.add(pkg.customElements.replace(/^\.\//, ""));
-	}
 	return targets;
 };
 
@@ -284,4 +279,41 @@ export const runPack = async (dir, { destination = dir } = {}) => {
 		tarballPath,
 		cleanup: () => rmSync(tarballPath, { force: true }),
 	};
+};
+
+/**
+ * Every condition object of an `exports` map that names `import` must list
+ * `default` straight after it with the same target. A resolver that matches
+ * neither `import` nor `types` (`require.resolve`, a bundler's custom
+ * conditions) then lands on the same file instead of failing with
+ * ERR_PACKAGE_PATH_NOT_EXPORTED. Returns one message per violation.
+ */
+export const defaultConditionViolations = (exportsMap) => {
+	const violations = [];
+	const walk = (node, at) => {
+		if (!node || typeof node !== "object" || Array.isArray(node)) return;
+		const keys = Object.keys(node);
+		const importAt = keys.indexOf("import");
+		if (importAt !== -1 && node.import !== null) {
+			if (keys[importAt + 1] !== "default") {
+				violations.push(`exports ${at}: "default" must follow "import"`);
+			} else if (JSON.stringify(node.default) !== JSON.stringify(node.import)) {
+				violations.push(
+					`exports ${at}: "default" must equal "import" (${JSON.stringify(node.default)} vs ${JSON.stringify(node.import)})`,
+				);
+			}
+		}
+		for (const [key, value] of Object.entries(node)) {
+			walk(value, `${at}.${key}`);
+		}
+	};
+	if (exportsMap && typeof exportsMap === "object") {
+		// A map without subpath keys is the "." entry's conditions.
+		const isConditionMap = Object.keys(exportsMap).some((key) => !key.startsWith("."));
+		const entries = isConditionMap ? [[".", exportsMap]] : Object.entries(exportsMap);
+		for (const [subpath, target] of entries) {
+			walk(target, `"${subpath}"`);
+		}
+	}
+	return violations;
 };

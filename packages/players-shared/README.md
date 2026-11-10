@@ -2,13 +2,12 @@
 
 Shared runtime utilities for the `@pie-players/*` player suite: the element
 loader, PIE config and session helpers, markup security, i18n, and the
-formative, timed-media and media contracts. For framework code and host
+item session control, timed-media and media contracts. For framework code and host
 integrations that need the helpers the player packages use.
 
 ## Public Exports
 
 ```ts
-import { safeLocalStorageGet } from "@pie-players/pie-players-shared";
 import { makeUniqueTags } from "@pie-players/pie-players-shared/pie";
 import { normalizeItemPlayerStrategy } from "@pie-players/pie-players-shared";
 ```
@@ -17,13 +16,13 @@ The subpaths below are the package's `exports`; nothing else is importable.
 
 | Subpath | Contents |
 | --- | --- |
-| `@pie-players/pie-players-shared` | The root: the loader, PIE, security and object helpers, loader config, instrumentation providers, the item-player strategy helpers, the default bundle host URL (`BUILDER_BUNDLE_URL`), a subset of the shared types, and the UI helpers (attribute coercion, content styles, pointer gestures, overlay placement, focus trap, safe storage, scoped CSS) |
+| `@pie-players/pie-players-shared` | The root: the loader, PIE and security helpers, loader config, instrumentation providers, the item-player strategy helpers, the default bundle host URL (`BUILDER_BUNDLE_URL`), a subset of the shared types, and the UI helpers the tools share (focus trap and focusable lookup, IME composition, overlay containment and placement, pointer drag and gestures, scoped CSS). Attribute coercion, content styles and the object helpers are on their own subpaths only |
 | `/loader-config` | `LoaderConfig` and its defaults: instrumentation (`trackPageActions`, `instrumentationProvider`), resource retry, and IIFE bundle retry |
 | `/security` | The item-markup sanitizer (`sanitizeItemMarkup`, `createDefaultItemMarkupSanitizer`, `buildAuthoringAllowList`), external-stylesheet URL validation, the SVG icon and `style` attribute sanitizers, and the wrappers that put overwide images and tables in a scrollable region |
 | `/security/private-hosts` | `isPrivateHostname` and `isCloudMetadataHostname`, the host classification for a URL a server fetches on someone else's behalf. Node-safe: it loads none of the markup sanitizers |
 | `/object` | `mergeObjectsIgnoringNullUndefined`, `cloneDeep`, `isPlainRecord` |
 | `/types` | The shared types: item, passage, section and session entities, PIE models and controllers, accessibility catalogs, and the [media vocabulary](#media-validation) |
-| `/formative` | [Formative delivery](#formative-delivery) |
+| `/item-session-control` | [Item session control](#item-session-control) |
 | `/timed-media` | [Timed media](#timed-media) |
 | `/media` | [Media validation](#media-validation) |
 | `/pie` | PIE runtime utilities: config helpers, bundle initialization, `ItemController` and the item session contract, session commit and snapshots, authoring helpers, math renderer setup, instrumentation event maps ([PIE utilities](src/pie/README.md)) |
@@ -34,15 +33,15 @@ The subpaths below are the package's `exports`; nothing else is importable.
 | `/i18n/provider` | `SimpleI18n`, `getDefaultI18n` and `resolveInterfaceI18n`, with the English catalog only |
 | `/i18n/catalogs` | `BUNDLED_LOCALES` and lazy loaders for the bundled locales other than English |
 | `/i18n/language-tags` | BCP 47 language tag normalization and matching |
-| `/nds-icon-button` | `<nds-icon-button>`, an icon button vendored as a prebuilt bundle with Lit inlined; importing it registers the tag. The assessment toolkit, the section player and `@pie-players/pie-tool-tts-inline` render it |
+| `/nds-icon-button` | `<pie-nds-icon-button>`, an icon button vendored as a prebuilt bundle with Lit inlined; importing it registers the tag. The assessment toolkit, the section player and `@pie-players/pie-tool-tts-inline` render it |
 | `/ui/attribute-coercion` | Boolean attribute coercion for custom elements |
 | `/ui/content-styles` | `installContentStyles`, `auditContentStyles` and the opt-out checks behind the item player's content styles |
-| `/ui/fontawesome` | The FontAwesome `<nds-icon-button>` glyphs need: the one FA Free pin, Pro detection, the `<head>` and shadow-root installs, and the glyph weight. The assessment toolkit, the section player and `@pie-players/pie-tool-tts-inline` use it |
+| `/ui/fontawesome` | The FontAwesome `<pie-nds-icon-button>` glyphs need: the one FA Free pin, Pro detection, the `<head>` and shadow-root installs, and the glyph weight. The assessment toolkit, the section player and `@pie-players/pie-tool-tts-inline` use it |
 | `/tools/term-lookup` | Term normalization and the lookup session the dictionary tools share; the host supplies the endpoint or a resolver |
 
-## Formative Delivery
+## Item Session Control
 
-`@pie-players/pie-players-shared/formative` holds the policy resolution, outcome
+`@pie-players/pie-players-shared/item-session-control` holds the policy resolution, outcome
 aggregation, Try-state reducer, item view, and mastery rollup that
 `pie-section-player` drives. It is pure (no DOM, no timers, no element
 registry), so it is testable without a browser and importable by an adapter that
@@ -50,18 +49,18 @@ has no player.
 
 ```ts
 import {
-  aggregateFormativeOutcome,
-  resolveFormativePolicy,
-  resolveFormativeItemView,
-  rollupFormativeMastery,
-} from "@pie-players/pie-players-shared/formative";
+  aggregateTryOutcome,
+  resolveItemSessionControl,
+  resolveItemTryView,
+  rollupMastery,
+} from "@pie-players/pie-players-shared/item-session-control";
 ```
 
-The authored half, `FormativeDeliveryPolicy` on `AssessmentSection` and
-`FormativeItemPolicy` on `AssessmentItemRef`, is re-exported from the package
+The authored half, `ItemSessionControlPolicy` on `AssessmentSection` and
+`AssessmentItemRef`, is re-exported from the package
 root and from `/types`, beside the section types it annotates.
 
-The contract is [`docs/prds/formative-delivery-contract.md`](../../docs/prds/formative-delivery-contract.md),
+The contract is [`docs/prds/item-session-control-contract.md`](../../docs/prds/item-session-control-contract.md),
 including the QTI 3 mapping and why PIE says **Try** rather than "attempt".
 
 ## Timed Media
@@ -94,7 +93,7 @@ re-exported from the package root and from `/types`, beside the section types it
 annotates.
 
 The contract is [`docs/prds/timed-media-section-contract.md`](../../docs/prds/timed-media-section-contract.md),
-including why cue gate conditions name the formative vocabulary and why an
+including why cue gate conditions name the Try vocabulary and why an
 unenforceable policy degrades to advisory rather than failing closed.
 
 ## Media Validation

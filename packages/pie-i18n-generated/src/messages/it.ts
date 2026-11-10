@@ -106,8 +106,8 @@ const it = {
 				"Non è stato possibile ripristinare le risposte salvate di questa sezione. Riprovare.",
 		},
 
-		formative: {
-			checkAnswer: "Verificare la risposta",
+		check: {
+			answer: "Verificare la risposta",
 			tryAgain: "Provare di nuovo",
 			answerRecorded: "La risposta è stata registrata.",
 			correct: "Corretta.",
@@ -115,7 +115,7 @@ const it = {
 			notCorrect: "Non corretta.",
 			notAutoScored:
 				"La risposta è stata registrata. Questa domanda non è valutata automaticamente.",
-			checkFailed:
+			failed:
 				"Non è stato possibile verificare questa domanda. Riprovare.",
 			// Appended after the outcome, so the announcement reads
 			// "Non corretta. Rimangono ancora 2 tentativi." Kept a separate

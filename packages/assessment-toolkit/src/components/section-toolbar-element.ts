@@ -1,3 +1,3 @@
 import "./SectionToolBar.custom-element.js";
 
-export {};
+export type { PieSectionToolbarElement } from "./element-contracts.js";

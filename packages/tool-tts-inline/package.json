@@ -1,12 +1,10 @@
 {
 	"name": "@pie-players/pie-tool-tts-inline",
-	"version": "1.0.0-beta.8",
+	"version": "1.0.0-beta.9",
 	"type": "module",
 	"license": "MIT",
 	"main": "./dist/tool-tts-inline.js",
 	"types": "./dist/index.d.ts",
-	"unpkg": "./dist/tool-tts-inline.js",
-	"jsdelivr": "./dist/tool-tts-inline.js",
 	"publishConfig": {
 		"access": "public"
 	},
@@ -18,8 +16,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-tts-inline.js"
-		}
+			"import": "./dist/tool-tts-inline.js",
+			"default": "./dist/tool-tts-inline.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [

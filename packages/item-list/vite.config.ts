@@ -1,7 +1,20 @@
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { hostSharedExternals } from "../players-shared/host-shared-externals.js";
 import { sharedChunkFileNames, sharedResolve, sharedSveltePlugins } from "./vite.config.shared.js";
+
+const isHostShared = hostSharedExternals(resolve(__dirname, ".."));
+
+/**
+ * Imports the npm build leaves to the host: the packages a host page shares
+ * (toolkit, players-shared, pie-context) and the item player, which renders
+ * expanded rows and is imported on the first expansion. `./browser` bundles
+ * all of them.
+ */
+const external = (specifier: string): boolean =>
+	isHostShared(specifier) ||
+	/^@pie-players\/pie-item-player(?:\/|$)/.test(specifier);
 
 export default defineConfig({
 	resolve: sharedResolve(),
@@ -28,11 +41,10 @@ export default defineConfig({
 		outDir: "dist",
 		emptyOutDir: true,
 		target: "es2020",
-		minify: "esbuild",
+		minify: false,
 		sourcemap: false,
 		rollupOptions: {
-			// The host's one item player renders expanded rows, imported on the first expansion.
-			external: [/^@pie-players\/pie-item-player(?:\/|$)/],
+			external,
 			output: {
 				format: "es",
 				entryFileNames: "[name].js",

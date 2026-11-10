@@ -179,7 +179,7 @@ integers ending in 0, 1 (except 1 itself), 5–9, and the teens 12–14
 decimal separator). `Intl.PluralRules("pl")` resolves exactly these four
 categories, and every group carries all four, each with `{count}`:
 
-- `player.formative.triesLeft`: `Pozostała {count} próba.` / `Pozostały
+- `player.check.triesLeft`: `Pozostała {count} próba.` / `Pozostały
   {count} próby.` / `Pozostało {count} prób.` / `Pozostało {count} próby.`
 - `tools.dictionary.entriesCount`: `{count} hasło` / `{count} hasła` /
   `{count} haseł` / `{count} hasła`

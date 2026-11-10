@@ -602,7 +602,7 @@ let p = class extends C {
   render() {
     return yt`
       <style>
-        nds-icon-button {
+        pie-nds-icon-button {
           display: inline-block;
         }
 
@@ -819,7 +819,7 @@ b([
   _()
 ], p.prototype, "shape", 1);
 p = b([
-  Pt("nds-icon-button")
+  Pt("pie-nds-icon-button")
 ], p);
 export {
   p as NdsIconButton

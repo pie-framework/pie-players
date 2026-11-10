@@ -79,7 +79,7 @@ configuration and a toolbar placement use.
 | [`@pie-players/pie-tool-protractor`](../../packages/tool-protractor/README.md) | `protractor` | `<pie-tool-protractor>` | Draggable, rotatable protractor |
 | [`@pie-players/pie-tool-ruler`](../../packages/tool-ruler/README.md) | `ruler` | `<pie-tool-ruler>` | Ruler |
 | [`@pie-players/pie-tool-sign-language`](../../packages/tool-sign-language/README.md) | `signLanguage` | `<pie-tool-sign-language>` | Signed translation of an item, docked beside its content |
-| [`@pie-players/pie-tool-theme`](../../packages/tool-color-scheme/README.md) | `theme` | `<pie-tool-theme>` | The color-scheme tool (`theme`): learner-selected color schemes |
+| [`@pie-players/pie-tool-theme`](../../packages/tool-theme/README.md) | `theme` | `<pie-tool-theme>` | The color-scheme tool (`theme`): learner-selected color schemes |
 | [`@pie-players/pie-tool-tts-inline`](../../packages/tool-tts-inline/README.md) | `textToSpeech` | `<pie-tool-tts-inline>` | Read-aloud control in item and passage headers |
 
 ### Calculator providers
@@ -113,7 +113,6 @@ These panels inspect a running player during development.
 | [`@pie-players/pie-section-player-tools-pnp-debugger`](../../packages/section-player-tools-pnp-debugger/README.md) | `<pie-section-player-tools-pnp-debugger>` | Personal Needs and Preferences (PNP) inputs and tool visibility decisions |
 | [`@pie-players/pie-section-player-tools-session-debugger`](../../packages/section-player-tools-session-debugger/README.md) | `<pie-section-player-tools-session-debugger>` | Section sessions |
 | [`@pie-players/pie-section-player-tools-tts-settings`](../../packages/section-player-tools-tts-settings/README.md) | `<pie-section-player-tools-tts-settings>` | TTS settings |
-| [`@pie-players/pie-section-player-tools-shared`](../../packages/section-player-tools-shared/README.md) | — | UI and helpers the panels share |
 
 The item player's `./components/item-session-debugger-element` entry registers
 `<pie-item-player-session-debugger>`, the item-level session panel.
@@ -123,6 +122,11 @@ The item player's `./components/item-session-debugger-element` entry registers
 A package's entry points are the subpaths in its `exports` map
 ([public surface](./versioning.md#public-surface)). Each falls in one of three
 classes.
+
+Every package is ESM-only: none ships CommonJS. Each entry lists a `default`
+condition equal to `import`, so `require.resolve` and bundler resolvers that do
+not match `import` find the same file. A host loads an entry point with
+`import`.
 
 ### Node-safe
 
@@ -178,9 +182,12 @@ The release gate confirms that the item player's and section player's roots
 fail to import in Node.js on a browser global.
 
 A CDN URL without a file path serves the file a package's `unpkg` and
-`jsdelivr` fields name. For the section player that file is the npm build, so
-a page names `dist/browser/pie-section-player.js` in full, and the item list
-`dist/browser/pie-item-list.js`.
+`jsdelivr` fields name. Only the four [CDN entry points](./cdn.md) carry them:
+the item player's and the print player's name their built file, the section
+player's and the item list's their browser build. Those two builds import
+chunks by relative path, which a short URL breaks, so a page names
+`dist/browser/pie-section-player.js` or `dist/browser/pie-item-list.js` in
+full.
 
 ## Third-party dependencies
 
@@ -188,15 +195,17 @@ Beyond their `@pie-players/*` siblings, the packages install:
 
 | Dependency | Installed by |
 | --- | --- |
-| `speech-rule-engine`, pinned to `5.0.0-rc.4` | the assessment toolkit, the section player, the TTS settings panel |
+| `speech-rule-engine`, pinned to `5.0.0-rc.4` | the assessment toolkit, the TTS settings panel |
 | `@pie-element/shared-utils`, `@pie-lib/math-rendering-module`, `dompurify`, `ipaddr.js`, `semver` | `@pie-players/pie-players-shared` |
-| `lit` | the print player |
 | `@google-cloud/text-to-speech` | `@pie-players/tts-server-google` |
 | `@aws-sdk/client-polly` | `@pie-players/tts-server-polly` |
 | `jose`, `tldts` | `@pie-players/tts-server-sc` |
 
-The section player's npm build leaves `speech-rule-engine` external, so every
-PIE bundle a host loads shares the one copy in the host's `node_modules`.
+The section player's and item list's npm builds leave the toolkit,
+players-shared and pie-context external, as every tool does, so they share one
+copy of each, and of the toolkit's `speech-rule-engine`. The item player and the
+print player bundle everything, `lit` included, since each one's `dist` is also
+its CDN file.
 
 ## TypeScript
 

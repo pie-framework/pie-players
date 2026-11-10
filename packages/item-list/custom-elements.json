@@ -252,7 +252,7 @@
 							"type": {
 								"text": "CustomEvent<{ kind: \"i18n-locale-load\"; source: string; message: string; details: string[]; recoverable: true; scope: \"runtime\"; cause?: unknown }>"
 							},
-							"description": "A requested interface-locale catalog failed to load; the labels fall back to English, and re-setting `locale` retries."
+							"description": "A requested interface-locale catalog failed to load; the labels fall back to English. Failed loads are not cached, so a later change of `locale` back to that locale retries."
 						}
 					],
 					"cssProperties": [
@@ -481,7 +481,7 @@
 							"type": {
 								"text": "CustomEvent<{ kind: \"i18n-locale-load\"; source: string; message: string; details: string[]; recoverable: true; scope: \"runtime\"; cause?: unknown }>"
 							},
-							"description": "A requested interface-locale catalog failed to load; the row's labels fall back to English, and re-setting `locale` retries."
+							"description": "A requested interface-locale catalog failed to load; the row's labels fall back to English. Failed loads are not cached, so a later change of `locale` back to that locale retries."
 						}
 					],
 					"x-pie": {

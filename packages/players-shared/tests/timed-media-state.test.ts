@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { FormativeCorrectness } from "../src/formative/index.js";
+import type { TryCorrectness } from "../src/item-session-control/index.js";
 import {
 	createTimedMediaState,
 	normalizeTimedMediaSectionData,
@@ -40,7 +40,7 @@ const delivery = (
 });
 
 const correctness = (
-	entries: Record<string, FormativeCorrectness>,
+	entries: Record<string, TryCorrectness>,
 ): TimedMediaDeliveryState => delivery({ correctnessByItemId: entries });
 
 function run(

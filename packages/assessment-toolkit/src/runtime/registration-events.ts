@@ -35,7 +35,7 @@ export type RelayedItemPlayerEventType =
 export const PIE_INTERNAL_CONTENT_LOADED_EVENT = "pie-content-loaded";
 export const PIE_INTERNAL_CONTENT_IDENTITY_EVENT = "pie-content-identity";
 export const PIE_INTERNAL_ITEM_PLAYER_ERROR_EVENT = "pie-item-player-error";
-export const PIE_INTERNAL_FORMATIVE_ACTION_EVENT = "pie-formative-action";
+export const PIE_INTERNAL_TRY_ACTION_EVENT = "pie-try-action";
 export const PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT = "pie-media-time-source";
 
 export type RuntimeRegistrationKind = "item" | "passage";
@@ -108,7 +108,7 @@ export interface InternalItemPlayerErrorDetail {
 }
 
 /**
- * A learner's formative action, dispatched by the component that owns the
+ * A learner's Try action, dispatched by the component that owns the
  * control and the item player node — the only place that can call
  * `provideScore()`. It reports outcomes rather than interpreting them; the
  * section controller derives correctness and owns the state.
@@ -117,7 +117,7 @@ export interface InternalItemPlayerErrorDetail {
  * including the `undefined` slots it leaves for models with no element or
  * controller.
  */
-export interface InternalFormativeActionDetail {
+export interface InternalTryActionDetail {
 	itemId: string;
 	canonicalItemId?: string;
 	action: "check" | "retry";

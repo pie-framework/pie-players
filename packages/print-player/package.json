@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-print-player",
-	"version": "1.0.0-beta.8",
+	"version": "1.0.0-beta.9",
 	"description": "Print player for PIE elements - dynamically loads and renders print-friendly versions of PIE elements",
 	"type": "module",
 	"main": "./dist/print-player.js",
@@ -11,8 +11,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/print-player.js"
-		}
+			"import": "./dist/print-player.js",
+			"default": "./dist/print-player.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -20,22 +22,20 @@
 		"custom-elements.json"
 	],
 	"scripts": {
-		"build": "bun x vite build && bun x tsc --emitDeclarationOnly",
+		"build": "bun x vite build && bun x tsc --emitDeclarationOnly && bun ../../scripts/prune-unreachable-declarations.mjs",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
 		"test": "bun test"
 	},
-	"dependencies": {
-		"@pie-players/pie-assessment-toolkit": "workspace:*",
-		"@pie-players/pie-players-shared": "workspace:*",
-		"lit": "^3.3.3"
-	},
 	"devDependencies": {
 		"@happy-dom/global-registrator": "^21.0.4",
+		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-default-tool-loaders": "workspace:*",
+		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*",
 		"@playwright/test": "^1.64.1",
 		"@types/node": "^26.6.6",
 		"esbuild": "^0.28.2",
+		"lit": "^3.3.3",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.3"
 	},

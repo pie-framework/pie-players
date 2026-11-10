@@ -1,9 +1,9 @@
 import PieItemPlayer from "./PieItemPlayer.svelte";
+import { attemptCustomElementDefine } from "@pie-players/pie-players-shared";
 import {
-	attemptCustomElementDefine,
-	installContentStyles,
 	auditContentStyles,
-} from "@pie-players/pie-players-shared";
+	installContentStyles,
+} from "@pie-players/pie-players-shared/ui/content-styles";
 // Inlined as text at build time, so the stylesheet travels with the bundle and
 // hosts do not have to import it. See installContentStyles for why the player
 // owns this.

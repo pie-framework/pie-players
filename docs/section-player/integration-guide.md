@@ -445,7 +445,7 @@ playerEl.addEventListener("pie-stage-change", (event) => {
 ```ts
 // The serialization-safe snapshot: the persistence payload.
 const session = controller.getSession();
-// { currentItemIndex, visitedItemIdentifiers, itemSessions, formative?, timedMedia? }
+// { currentItemIndex, visitedItemIdentifiers, itemSessions, tries?, timedMedia? }
 
 // Introspection only: derived, ephemeral fields with no stability guarantee.
 const runtime = controller.getRuntimeState();
@@ -453,7 +453,7 @@ const runtime = controller.getRuntimeState();
 //   itemIdentifiers, itemSessions, itemsComplete, completedCount, totalItems, ... }
 ```
 
-`getSession()` is the only payload to persist; `formative` and `timedMedia`
+`getSession()` is the only payload to persist; `tries` and `timedMedia`
 appear when the section uses them. `getRuntimeState()` serves diagnostics.
 
 ```ts
@@ -755,7 +755,7 @@ const unsubscribe = coordinator.subscribeSectionLifecycleEvents({
 
 The listener follows navigation the same way, and each move replays the new
 cohort's `section-loading-complete` when it has fired. The defaults of both
-helpers leave out the formative events and `timed-media-audio-started`;
+helpers leave out the Try events and `timed-media-audio-started`;
 `subscribeSectionEvents({ listener, eventTypes, itemIds })` names any event type.
 
 ### Controller subscription

@@ -67,7 +67,7 @@ export const demoTimedMediaSection: AssessmentSection = {
 	// Unlimited Tries is not a stylistic choice here: a gate that releases on
 	// correctness over an item with a finite Try budget is refused by validation,
 	// because a learner who runs out of Tries could never release playback again.
-	formative: {
+	itemSessionControl: {
 		enabled: true,
 		maxTries: "unlimited",
 		feedback: "correctness",

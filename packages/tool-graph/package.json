@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-graph",
-	"version": "1.0.0-beta.8",
+	"version": "1.0.0-beta.9",
 	"type": "module",
 	"description": "Interactive coordinate grid graphing tool for PIE assessment player",
 	"repository": {
@@ -24,8 +24,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-graph.js"
-		}
+			"import": "./dist/tool-graph.js",
+			"default": "./dist/tool-graph.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -34,8 +36,6 @@
 		"package.json"
 	],
 	"license": "MIT",
-	"unpkg": "./dist/tool-graph.js",
-	"jsdelivr": "./dist/tool-graph.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"

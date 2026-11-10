@@ -30,13 +30,13 @@ export {
 	type CatalogSourceEntity,
 } from "./services/catalog-owner.js";
 export {
-	PIE_INTERNAL_FORMATIVE_ACTION_EVENT,
+	PIE_INTERNAL_TRY_ACTION_EVENT,
 	PIE_INTERNAL_ITEM_SESSION_CHANGED_EVENT,
 	PIE_INTERNAL_MEDIA_TIME_SOURCE_EVENT,
 	PIE_ITEM_PLAYER_EVENT,
 	PIE_ITEM_SESSION_CHANGED_EVENT,
 	RELAYED_ITEM_PLAYER_EVENTS,
-	type InternalFormativeActionDetail,
+	type InternalTryActionDetail,
 	type InternalMediaTimeSourceDetail,
 	type ItemPlayerEventDetail,
 	type RelayedItemPlayerEventType,
@@ -288,6 +288,7 @@ export type {
 } from "./attempt/AssessmentSession.js";
 export {
 	createNewAssessmentSession,
+	markAssessmentSessionSubmitted,
 	setCurrentSectionPosition,
 	upsertSectionSession,
 } from "./attempt/AssessmentSession.js";

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-sign-language",
-	"version": "1.0.0-beta.8",
+	"version": "1.0.0-beta.9",
 	"type": "module",
 	"description": "Sign-language accommodation for PIE assessment players: registration, catalog-card resolution and the docked media region",
 	"repository": {
@@ -23,8 +23,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-sign-language.js"
-		}
+			"import": "./dist/tool-sign-language.js",
+			"default": "./dist/tool-sign-language.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -34,15 +36,13 @@
 		"README.md"
 	],
 	"license": "MIT",
-	"unpkg": "./dist/tool-sign-language.js",
-	"jsdelivr": "./dist/tool-sign-language.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"types": "./dist/index.d.ts",
 	"scripts": {
-		"build": "vite build",
+		"build": "vite build && bun ../../scripts/prune-unreachable-declarations.mjs",
 		"typecheck": "tsc --noEmit",
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore",
 		"test": "bun test"

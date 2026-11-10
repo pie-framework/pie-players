@@ -20,10 +20,11 @@ import type {
  *
  * `SectionControllerSessionState` is the full section snapshot both
  * `upsertSectionSession` implementations pass through, so the assessment layer
- * reads its `formative` and `timedMedia` slices without a cast.
+ * reads its `tries` and `timedMedia` slices without a cast.
  */
 export type {
 	AssessmentSession,
+	AssessmentSection,
 	AssessmentSectionSessionState,
 	AssessmentSessionNavigationState,
 	AssessmentSessionRealization,

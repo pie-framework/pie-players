@@ -5,6 +5,8 @@ import dts from "vite-plugin-dts";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
+import { minifyChunks } from "../players-shared/minify-chunks.mjs";
 
 export default defineConfig({
 	// The rotate handle and tap controls compile into this bundle from
@@ -16,6 +18,8 @@ export default defineConfig({
 		),
 	},
 	plugins: [
+		preserveLegalComments(),
+		minifyChunks(),
 		svelte({
 			compilerOptions: {
 				customElement: true,
@@ -41,7 +45,7 @@ export default defineConfig({
 		outDir: "dist",
 		emptyOutDir: true,
 		target: "es2020",
-		minify: "esbuild",
+		minify: false,
 		sourcemap: false,
 		rollupOptions: {
 			// The toolkit, players-shared, pie-context and speech-rule-engine

@@ -30,7 +30,7 @@ export const EMPTY_COMPOSITION: SectionCompositionModel = {
 	itemSessionsByItemId: {},
 	testAttemptSession: null,
 	itemViewModels: [],
-	formative: null,
+	tries: null,
 };
 
 export function getCanonicalItemIdForItem(

@@ -63,7 +63,7 @@ Every required half-space (U+200C) is present, consistently:
 | assessment / test | آزمون | |
 | submit | تحویل | exam-delivery register |
 | check answer | بررسی پاسخ | |
-| try (formative) | فرصت | a remaining chance |
+| try (check and retry) | فرصت | a remaining chance |
 | settings | تنظیمات | |
 | tools | ابزارها | toolkit = مجموعه ابزارها |
 | calculator | ماشین‌حساب | ساده، علمی، نموداری |
@@ -164,7 +164,7 @@ TTS, Web Speech API, HTTP, JSON, API, MP3, OGG, PCM, Hz, `/api/tts`,
 
 `Intl.PluralRules("fa")` yields `one` (n = 0 or 1 — Persian zero takes
 the singular form) and `other`. All six count groups
-(`player.formative.triesLeft`, `tools.dictionary.entriesCount`,
+(`player.check.triesLeft`, `tools.dictionary.entriesCount`,
 `tools.pictureDictionary.entriesCount`, `debug.tts.browserAvailable`,
 `debug.tts.pollyAvailable`, `debug.tts.googleAvailable`) carry exactly
 `one`/`other`, each category holding `{count}` (and `{engine}` on

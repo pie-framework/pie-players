@@ -102,7 +102,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 @fires {CustomEvent<{ scope: "authoring"; operation: "saveContent"; contentId: string }>} backend-content-saved - After the authoring backend saves the item's content.
 @fires {CustomEvent<{ scope: "authoring"; operation: "releaseContent"; contentId: string }>} backend-content-released - After the authoring backend releases the item's content.
 @fires {CustomEvent<{ scope: "delivery"; operation: "load" | "model" | "saveSession"; message: string; error: unknown }>} backend-error - When a delivery load, model refresh or autosave the player started itself fails; a host's own `saveSession()` or `score()` call rejects instead.
-@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - When a requested interface-locale catalog fails to load; the player keeps rendering through the English fallback chain, and re-setting `locale` retries the load.
+@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - When a requested interface-locale catalog fails to load; the player keeps rendering through the English fallback chain. Failed loads are not cached, so a later change of `locale` back to that locale retries the load.
 -->
 
 <script lang="ts">
@@ -130,6 +130,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		parseAllowedStyleOrigins,
 		validateExternalStyleUrl,
 	} from "@pie-players/pie-players-shared";
+	import { adoptContentStylesInto } from "@pie-players/pie-players-shared/ui/content-styles";
 	import type {
 		AuthoringBackendMode,
 		BackendAuthoringReleaseOptions,
@@ -238,6 +239,10 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		createPieI18n,
 		DEFAULT_LOCALE,
 		defaultContentLanguage,
+		hostChoseInterfaceLocale,
+		isLocaleRequested,
+		localeDirection,
+		requestedInterfaceLocale,
 		resolveInterfaceI18n,
 		reportInterfaceLocaleLoadError,
 		stampContentLanguage,
@@ -489,6 +494,23 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		}),
 	);
 
+	// Load failures and config binding problems arise before the inner player,
+	// which reports its own runtime errors, exists. Without this the host's
+	// `player-error` listener is their only witness.
+	function trackItemPlayerError(
+		message: string,
+		attributes: { errorType: string } & Record<string, unknown>,
+	): void {
+		try {
+			resolvedInstrumentationProvider?.trackError(new Error(message), {
+				component: "pie-item-player",
+				...attributes,
+			});
+		} catch (trackError) {
+			logger.warn("[pie-item-player] error report to instrumentation failed:", trackError);
+		}
+	}
+
 	let loading = $state(true);
 	let error: string | null = $state(null);
 	let bundleRetryStatus: IifeBundleRetryStatus | null = $state(null);
@@ -542,6 +564,12 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	$effect(() => {
 		if (!hostElement || customElementHost) return;
 		customElementHost = resolveCustomElementHost(hostElement);
+	});
+
+	// A host that mounts the player inside its own shadow root gets no document
+	// stylesheet there, so the content rules are adopted into that root.
+	$effect(() => {
+		if (hostElement) adoptContentStylesInto(hostElement);
 	});
 
 	/**
@@ -974,12 +1002,20 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		// provider built here resolves `en-US`; one that was supplied keeps the
 		// locale its owner set — the section's shared provider, above all.
 		if (!requested && provider !== ownedInterfaceI18n) return;
+		// A supplied provider its owner already asked for this locale (a list
+		// row's, a section's) is left alone, so a failed load reports once.
+		if (
+			requested &&
+			provider !== ownedInterfaceI18n &&
+			isLocaleRequested(provider, requested)
+		)
+			return;
 		untrack(() => {
 			// A failed catalog load must not take the player down: every key still
 			// resolves through the English fallback chain. It is reported, like
 			// the toolkit reports its own, so a host can tell English-because-
 			// requested from English-because-failed; failed loads are not cached,
-			// so re-setting `locale` retries.
+			// so a later change of `locale` back to it retries.
 			void Promise.resolve(
 				provider.setLocale(requested || DEFAULT_LOCALE),
 			).catch((error) => {
@@ -1243,8 +1279,20 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			] as const) {
 				if (!cfg) continue;
 				assertPieConfigContract(cfg);
-				for (const warning of validatePieConfigContract(cfg).warnings) {
+				const { warnings, bindingWarnings } = validatePieConfigContract(cfg);
+				for (const warning of warnings) {
 					logger.warn(`[pie-item-player] ${label}: ${warning}`);
+				}
+				if (bindingWarnings.length > 0) {
+					const message = `${label} config: ${bindingWarnings.join(" | ")}`;
+					logger.error(`[pie-item-player] ${message}`);
+					trackItemPlayerError(message, {
+						errorType: "ITEM_PLAYER_CONFIG_BINDING",
+						recoverable: true,
+						stage,
+						configRole: label,
+						...(typeof cfg.id === "string" ? { itemId: cfg.id } : {}),
+					});
 				}
 			}
 
@@ -1366,18 +1414,18 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			});
 			logger.error("[pie-item-player] failed loading:", err);
 			const cause = describeRegistrationFailures(err);
+			const detail = {
+				code: "ITEM_PLAYER_LOAD_ERROR",
+				message,
+				recoverable: false,
+				stage,
+				strategy: normalizedStrategy,
+				mode: resolvedMode,
+				...(cause ? { cause } : {}),
+			} satisfies PieItemPlayerErrorDetail;
+			trackItemPlayerError(message, { ...detail, errorType: detail.code });
 			handlePlayerEvent(
-				new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, {
-					detail: {
-						code: "ITEM_PLAYER_LOAD_ERROR",
-						message,
-						recoverable: false,
-						stage,
-						strategy: normalizedStrategy,
-						mode: resolvedMode,
-						...(cause ? { cause } : {}),
-					} satisfies PieItemPlayerErrorDetail,
-				}),
+				new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, { detail }),
 			);
 			return false;
 		}
@@ -1788,25 +1836,37 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	});
 
 	// The interface locale, on the host-neutral channel the elements read
-	// (`interfaceLocaleContext`). A fresh object per version bump, so the
-	// context republishes once a lazily loaded catalog is resident and
-	// `getLocale()` names it.
-	const interfaceLocaleContextValue = $derived.by(
-		(): InterfaceLocaleContextValue => {
-			void interfaceI18nVersion;
-			return {
-				locale: interfaceI18n.getLocale(),
-				direction: interfaceI18n.getDirection?.() ?? "ltr",
-			};
-		},
-	);
+	// (`interfaceLocaleContext`): the host's requested tag, which elements
+	// resolve against their own catalogs, from the moment `locale` is set and
+	// whatever the players' own catalog load does. The version counter
+	// covers a supplied provider's request moving. A new object only when the
+	// tag changes, so subscribers are not re-fired by every catalog load.
+	const interfaceLocaleTag = $derived.by(() => {
+		void interfaceI18nVersion;
+		return requestedInterfaceLocale({ locale, i18n: interfaceI18n });
+	});
+	const interfaceLocaleContextValue = $derived<InterfaceLocaleContextValue>({
+		locale: interfaceLocaleTag,
+		direction: localeDirection(interfaceLocaleTag),
+	});
+	// Answered only once a host chose the locale (`hostChoseInterfaceLocale`
+	// has the invariant): until then an element labels its chrome in the
+	// language its item declares. Inside a section `i18n` is the toolkit's
+	// provider, so this player answers only what the toolkit above it would.
+	let answersInterfaceLocale = $state(false);
+	$effect(() => {
+		void interfaceI18nVersion;
+		if (hostChoseInterfaceLocale({ locale, i18n })) {
+			answersInterfaceLocale = true;
+		}
+	});
 	let interfaceLocaleContextProvider: ReturnType<
 		typeof provideInterfaceLocaleContext
 	> | null = null;
 	$effect(() => {
 		if (!isBrowser) return;
 		const localHost = hostElement;
-		if (!localHost) return;
+		if (!localHost || !answersInterfaceLocale) return;
 		const provider = untrack(() =>
 			provideInterfaceLocaleContext(localHost, interfaceLocaleContextValue),
 		);

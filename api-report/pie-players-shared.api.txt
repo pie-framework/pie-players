@@ -30,7 +30,6 @@
   type ConfigResource
   ConsoleInstrumentationProvider
   type ConsoleProviderConfig
-  type ContentStylesResult
   DEFAULT_BUNDLE_HOST
   DEFAULT_CONTAINMENT_GUTTER
   DEFAULT_ESM_CDN_URL
@@ -58,8 +57,6 @@
   type EventListeners
   type EventListenersMap
   FOCUSABLE_SELECTOR
-  type FormativeDeliveryPolicy
-  type FormativeItemPolicy
   INSTRUMENTATION_DEBUG_EVENT_NAME
   ITEM_INSTRUMENTATION_EVENT_MAP
   type IifeBackend
@@ -80,6 +77,7 @@
   type ItemPlayerView
   type ItemSession
   type ItemSessionContainer
+  type ItemSessionControlPolicy
   type ItemSessionStorageStrategy
   type ItemSessionUpdateIntent
   type LoadPieElementsOptions
@@ -93,17 +91,11 @@
   type MetricAttributes
   NewRelicInstrumentationProvider
   type NormalizedItemSessionChange
-  OVERLAY_PLACEMENT_FINE_ROTATE_STEP
-  OVERLAY_PLACEMENT_MOVE_STEP
   OVERLAY_PLACEMENT_NUDGES
-  OVERLAY_PLACEMENT_ROTATE_STEP
   OVERLAY_PLACEMENT_ROTATIONS
   type OutcomeResponse
-  type OverlayPlacement
-  type OverlayPlacementAnnouncement
   type OverlayPlacementController
   type OverlayPlacementNudge
-  type OverlayPlacementOptions
   type OverlaySizeControl
   type OverlayTapTarget
   type PassageEntity
@@ -119,14 +111,6 @@
   type PieRegistry
   type PieUpdateSession
   type PieViewMode
-  type Point
-  type PointerDragController
-  type PointerDragControllerArgs
-  type PointerDragPosition
-  type PointerGesture
-  type PointerGestureArgs
-  type PointerRotateController
-  type PointerRotateControllerArgs
   type PreloadedController
   type PreloadedElement
   type PreloadedElementSpecs
@@ -143,7 +127,6 @@
   type SafeDefineResult
   type SafeDefineStatus
   type SanitizeItemMarkupOptions
-  type ScreenBox
   type SessionCommitReason
   type SessionSnapshot
   type SessionSnapshotConfig
@@ -151,7 +134,6 @@
   type SessionSnapshotRecord
   type SessionSnapshotStore
   SessionStorageItemSessionStorage
-  type Size
   type Stage
   type StageChangeDetail
   type StageStatus
@@ -178,21 +160,12 @@
   assertRegistered
   attachInstrumentationEventBridge
   attemptCustomElementDefine
-  auditContentStyles
   bindPageLifecycleCommit
   buildAuthoringAllowList
-  clampOffsetOverlappingBlock
-  clampOffsetWithinBlock
   clampPointWithinBlock
   clearBufferedInstrumentationDebugRecords
-  cloneDeep
-  coerceBooleanAttribute
-  coerceBooleanAttributes
-  coerceBooleanLike
   collectFocusable
   commitPendingSessions
-  contentStylesOptedOut
-  contentStylesPresent
   createAuthoringAssetEventManager
   createDefaultItemMarkupSanitizer
   createEsmBackend
@@ -203,7 +176,6 @@
   createPieLogger
   createPointerDragController
   createPointerGesture
-  createPointerRotateController
   createSessionSnapshot
   defaultPieElementOptions
   defineAuthoredPreloadedTags
@@ -230,7 +202,6 @@
   initializeAuthoringConfigures
   initializeMathRendering
   initializePiesFromLoadedBundle
-  installContentStyles
   isComposingKeyEvent
   isCustomElementConstructor
   isGlobalDebugEnabled
@@ -239,21 +210,17 @@
   isOverwideTableWrapMutation
   isPieAvailable
   isPieRegistryAvailable
-  isPlainRecord
   isProgrammaticFocusTarget
   isScopedPackageSpec
   isSessionSnapshotEnabled
   isSnapshotIdentitySpecific
-  isTabbable
   isTtsDebugEnabled
   loadBundleFromString
   loadPieModule
   loadPieModuleFromString
   makeUniqueTags
   mapEsmViewElements
-  mergeObjectsIgnoringNullUndefined
   modelsForPackage
-  normalizeDegrees
   normalizeItemPlayerStrategy
   normalizeItemSessionChange
   normalizeItemSessionContainer
@@ -268,7 +235,6 @@
   pieRegistry
   projectSessionIntoHostContainer
   registerPreloadedElements
-  resetContentStylesWarningForTesting
   resolveConfigureConfiguration
   resolveContainingBlockRect
   resolveEsmAssetRoot
@@ -277,15 +243,10 @@
   resolveInstrumentationProvider
   resolveItemPlayerView
   resolveLoadControllers
-  rotatedExtent
-  rotationCentreShift
   runtimeElementTags
-  safeLocalStorageGet
-  safeLocalStorageSet
   sanitizeItemMarkup
   sanitizeStyleAttribute
   sanitizeSvgIcon
-  scopeSelector
   scopeStylesheetCss
   scorePieItem
   sessionSnapshotKey
@@ -297,8 +258,6 @@
   updatePieElement
   updatePieElementWithRef
   updatePieElements
-  uprightDockCentre
-  uprightDockCorner
   validateAuthoringModels
   validateCustomElementTag
   validateExternalStyleUrl
@@ -307,41 +266,6 @@
   wrapOverwideImagesInElement
   wrapOverwideTables
   wrapOverwideTablesInElement
-
-./formative
-  FORMATIVE_ITEM_STATE_VERSION
-  FORMATIVE_MASTERY_VERSION
-  FORMATIVE_POLICY_DEFAULTS
-  FORMATIVE_SLICE_VERSION
-  type FormativeAction
-  type FormativeCorrectness
-  type FormativeDeliveryPolicy
-  type FormativeEnvOverride
-  type FormativeFeedbackReveal
-  type FormativeItemPolicy
-  type FormativeItemState
-  type FormativeItemView
-  type FormativeMasteryRollup
-  type FormativeRevealTiming
-  type FormativeScoredOutcome
-  type FormativeSectionProjection
-  type FormativeSectionSlice
-  type FormativeTryLimit
-  type FormativeTryOutcome
-  type ResolvedFormativePolicy
-  aggregateFormativeOutcome
-  createFormativeItemState
-  hideFormativeItem
-  isFormativeSectionEnabled
-  normalizeFormativeSectionSlice
-  recordFormativeTry
-  resolveFormativeItemView
-  resolveFormativePolicies
-  resolveFormativePolicy
-  retryFormativeItem
-  revealFormativeItem
-  rollupFormativeMastery
-  toFormativeSectionSlice
 
 ./i18n
   BUNDLED_LOCALES
@@ -379,6 +303,8 @@
   findClosestLanguageMatch
   firstStrongDirection
   getDefaultI18n
+  hostChoseInterfaceLocale
+  isLocaleRequested
   languageTagLookupSequence
   languageTagScriptLookupSequence
   languageTagsEqual
@@ -388,6 +314,7 @@
   normalizeLanguageTag
   pseudoLocalize
   reportInterfaceLocaleLoadError
+  requestedInterfaceLocale
   resolveInterfaceI18n
   stampContentLanguage
   stampInterfaceLocale
@@ -420,7 +347,10 @@
   detectBrowserLocale
   dynamicMessageKey
   getDefaultI18n
+  hostChoseInterfaceLocale
+  isLocaleRequested
   localeDirection
+  requestedInterfaceLocale
   resolveInterfaceI18n
   stampInterfaceLocale
 
@@ -440,6 +370,40 @@
   type PluralTranslation
   type TextDirection
   type TranslationBundle
+
+./item-session-control
+  type FeedbackEnvOverride
+  type FeedbackReveal
+  type FeedbackRevealTiming
+  ITEM_SESSION_CONTROL_DEFAULTS
+  ITEM_TRY_STATE_VERSION
+  type ItemSessionControlPolicy
+  type ItemTryState
+  type ItemTryView
+  MASTERY_ROLLUP_VERSION
+  type MasteryRollup
+  type ResolvedItemSessionControlPolicy
+  type ScoredElementOutcome
+  TRY_SLICE_VERSION
+  type TryAction
+  type TryCorrectness
+  type TryLimit
+  type TryOutcome
+  type TrySectionProjection
+  type TrySectionSlice
+  aggregateTryOutcome
+  createItemTryState
+  hideItemFeedback
+  isItemSessionControlEnabledInSection
+  normalizeTrySectionSlice
+  recordTry
+  resolveItemSessionControl
+  resolveItemSessionControls
+  resolveItemTryView
+  retryItem
+  revealItemFeedback
+  rollupMastery
+  toTrySectionSlice
 
 ./loader-config
   DEFAULT_IIFE_BUNDLE_RETRY_CONFIG
@@ -765,14 +729,13 @@
   type DeleteSoundDetail
   DeleteSoundEvent
   type Env
-  type FormativeDeliveryPolicy
-  type FormativeItemPolicy
   type ImageHandler
   InsertImageEvent
   InsertSoundEvent
   type ItemConfig
   type ItemEntity
   type ItemSession
+  type ItemSessionControlPolicy
   type ItemSettings
   type LanguagePolicy
   type MediaAssetRef
@@ -822,12 +785,13 @@
   coerceBooleanLike
 
 ./ui/content-styles
+  type ContentStylesAdoption
   type ContentStylesResult
+  adoptContentStylesInto
   auditContentStyles
   contentStylesOptedOut
   contentStylesPresent
   installContentStyles
-  resetContentStylesWarningForTesting
 
 ./ui/fontawesome
   type NdsGlyphVariant

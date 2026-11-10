@@ -56,13 +56,16 @@ For each registration entry, add an `exports` entry pointing at the
 ```json
 "./components/item-toolbar-element": {
   "types": "./dist/components/item-toolbar-element.d.ts",
-  "import": "./dist/components/item-toolbar-element.js"
+  "import": "./dist/components/item-toolbar-element.js",
+  "default": "./dist/components/item-toolbar-element.js"
 }
 ```
 
 Rules:
 
-- Always emit `types` + `import` for each entry.
+- Always emit `types`, `import` and `default` for each entry, `default` straight
+  after `import` with the same target, so `require.resolve` finds the ESM file;
+  `bun run check:package-metadata` fails an entry without it.
 - Runtime path must be `./dist/...`, not `./src/...`.
 - Custom-element declarations must be framework-neutral and typecheck in an
   isolated consumer without Svelte or other workspace dependencies installed.
@@ -81,6 +84,11 @@ Rules:
   the one `index.ts` emits, and where `index.ts` exports nothing it declares
   `export type {}`. `bun run check:svelte-type-imports` fails on any published
   declaration that imports `svelte`.
+- A package ships only the declarations a type entry reaches. End a package's
+  `build` script with `bun ../../scripts/prune-unreachable-declarations.mjs`
+  (it deletes the per-file declarations `tsc` and `vite-plugin-dts` emit beyond
+  that closure); `bun run check:declaration-reachability` fails a package that
+  ships one.
 - Contract and policy-only subpaths must stay inert when imported.
 - Do **not** add a top-level `*.svelte` export. Cross-package
   `?customElement` imports are rejected by
@@ -148,6 +156,7 @@ bun run check:custom-elements:dist
 bun run check:custom-elements-manifest
 bun run check:svelte-runtime-deps
 bun run check:svelte-type-imports
+bun run check:declaration-reachability
 bun run check:ce-define-safety
 bun run check:ce-consumer-contract
 bun run check:node-consumer-imports

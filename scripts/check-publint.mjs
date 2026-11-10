@@ -1,297 +1,86 @@
 #!/usr/bin/env node
 
+/**
+ * Lints every publishable package: the import graph from its manifest
+ * (`scripts/lib/package-import-graph.mjs`), then `publint --strict`.
+ *
+ * `scripts/publish-policy.json` holds the exceptions, each keyed by package
+ * name. An entry in the first three that excuses nothing fails as a
+ * `stale-allowance`, so fixing the cause means deleting the entry.
+ *
+ * - `allowedUndeclaredRuntimeImports.npm` names a specifier the npm build may
+ *   import without declaring it.
+ * - `allowedTypeOnlyDependencies` names a dependency that only the package's
+ *   published declarations use, because they expose its types.
+ * - `allowedUnreachableDependencies` names a dependency that no shipped file
+ *   imports, such as one the build inlines.
+ * - `allowedUndeclaredRuntimeImports.browser` names a bare specifier the browser
+ *   build may keep. `check-bundle-safety.mjs` reads it too.
+ */
+
 import { execSync } from "node:child_process";
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { builtinModules } from "node:module";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
-import { getWorkspaceDirs, readPublishPolicy } from "./lib/pack-inspection.mjs";
+import {
+	collectDeclaredTargets,
+	getWorkspaceDirs,
+	readPublishPolicy,
+} from "./lib/pack-inspection.mjs";
+import { analyzePackage } from "./lib/package-import-graph.mjs";
 
 const ROOT = process.cwd();
-const BUNDLED_IMPORT_PROTOCOLS = ["node:", "bun:", "virtual:", "vite/"];
-const BUILTIN_SPECIFIERS = new Set(
-	builtinModules
-		.flatMap((mod) => [
-			mod,
-			mod.replace(/^node:/, ""),
-			`node:${mod.replace(/^node:/, "")}`,
-		])
-		.filter(Boolean),
-);
 const policy = readPublishPolicy(ROOT);
-const allowedUndeclaredRuntimeImportsByPackage = new Map(
-	Object.entries(policy.allowedUndeclaredRuntimeImports || {}).map(
-		([packageName, imports]) => [
-			packageName,
-			new Set(Array.isArray(imports) ? imports : []),
-		],
-	),
-);
 
 const readJson = (filePath) => JSON.parse(readFileSync(filePath, "utf8"));
 
-const collectTargets = (value, out) => {
-	if (!value) return;
-	if (typeof value === "string") {
-		out.add(value);
-		return;
-	}
-	if (Array.isArray(value)) {
-		for (const entry of value) collectTargets(entry, out);
-		return;
-	}
-	if (typeof value === "object") {
-		for (const entry of Object.values(value)) collectTargets(entry, out);
-	}
-};
+const allowedFor = (packageName) => ({
+	undeclaredNpm: policy.allowedUndeclaredRuntimeImports?.npm?.[packageName],
+	undeclaredBrowser:
+		policy.allowedUndeclaredRuntimeImports?.browser?.[packageName],
+	typeOnly: policy.allowedTypeOnlyDependencies?.[packageName],
+	unreachable: policy.allowedUnreachableDependencies?.[packageName],
+});
 
-const toPackageName = (specifier) => {
-	if (specifier.startsWith("@")) {
-		const [scope, name] = specifier.split("/");
-		return scope && name ? `${scope}/${name}` : specifier;
-	}
-	return specifier.split("/")[0];
-};
-
-const isExternalSpecifier = (specifier) =>
-	typeof specifier === "string" &&
-	specifier.length > 0 &&
-	!specifier.startsWith(".") &&
-	!specifier.startsWith("/");
-
-const isIgnoredSpecifier = (specifier) => {
-	if (BUILTIN_SPECIFIERS.has(specifier)) return true;
-	return BUNDLED_IMPORT_PROTOCOLS.some(
-		(prefix) => specifier === prefix || specifier.startsWith(prefix),
-	);
-};
-
-// A match holding `${` lies in a template literal the code builds, such as the
-// module source es-module-shims generates, so it is text and not an import.
-export const collectRuntimeImportSpecifiers = (content) => {
-	const out = new Set();
-	const patterns = [
-		/import\s+[^'"`]*?\sfrom\s*['"]([^'"]+)['"]/g,
-		/(?:^|[;\n])\s*import\s*['"]([^'"]+)['"]/gm,
-		/import\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
-		/export\s+[^'"`]*?\sfrom\s*['"]([^'"]+)['"]/g,
-		/require\(\s*['"]([^'"]+)['"]\s*\)/g,
-	];
-	for (const pattern of patterns) {
-		let match;
-		while ((match = pattern.exec(content))) {
-			if (!match[1].includes("${")) out.add(match[1]);
-		}
-	}
-	return out;
-};
-
-const resolveRelativeImport = (fromFile, specifier) => {
-	const fromDir = path.dirname(fromFile);
-	const base = path.resolve(fromDir, specifier);
-	const candidates = [base, `${base}.js`, path.join(base, "index.js")];
-	for (const candidate of candidates) {
-		if (existsSync(candidate)) return candidate;
-	}
-	return null;
-};
-
-const getPublishedRuntimeEntryTargets = (pkg) => {
-	const targets = new Set();
-	collectTargets(pkg.exports, targets);
-	collectTargets(pkg.main, targets);
-	collectTargets(pkg.module, targets);
-	collectTargets(pkg.unpkg, targets);
-	collectTargets(pkg.jsdelivr, targets);
-	return [...targets]
-		.filter((target) => typeof target === "string" && target.startsWith("./"))
+const hasMissingTargets = (dir, pkg) =>
+	[...collectDeclaredTargets(pkg, ["main", "module", "types"])]
 		.filter((target) => !target.includes("*"))
-		.filter((target) => target.endsWith(".js"));
-};
-
-const validateRuntimeImportClosure = (dir, pkg) => {
-	const entryTargets = getPublishedRuntimeEntryTargets(pkg);
-	const startFiles = entryTargets
-		.map((target) => path.join(dir, target))
-		.filter((target) => existsSync(target));
-	if (startFiles.length === 0) return [];
-
-	const declaredRuntimePackages = new Set([
-		...Object.keys(pkg.dependencies || {}),
-		...Object.keys(pkg.peerDependencies || {}),
-		...Object.keys(pkg.optionalDependencies || {}),
-	]);
-	const allowedUndeclaredImports =
-		allowedUndeclaredRuntimeImportsByPackage.get(pkg.name) || new Set();
-	const visited = new Set();
-	const queue = [...startFiles];
-	const failures = [];
-	while (queue.length > 0) {
-		const jsFile = queue.shift();
-		if (!jsFile || visited.has(jsFile)) continue;
-		visited.add(jsFile);
-
-		const content = readFileSync(jsFile, "utf8");
-		const specifiers = collectRuntimeImportSpecifiers(content);
-		for (const specifier of specifiers) {
-			if (!isExternalSpecifier(specifier)) {
-				const relativeTarget = resolveRelativeImport(jsFile, specifier);
-				if (relativeTarget && !visited.has(relativeTarget)) {
-					queue.push(relativeTarget);
-				}
-				continue;
-			}
-			if (isIgnoredSpecifier(specifier)) continue;
-			const packageName = toPackageName(specifier);
-			if (packageName === pkg.name) continue;
-			if (declaredRuntimePackages.has(packageName)) continue;
-			if (
-				allowedUndeclaredImports.has(specifier) ||
-				allowedUndeclaredImports.has(packageName)
-			) {
-				continue;
-			}
-			failures.push(
-				`${path.relative(ROOT, jsFile)} imports "${specifier}" but "${packageName}" is not declared in dependencies/peerDependencies/optionalDependencies`,
-			);
-		}
-	}
-	return failures;
-};
-
-const TYPE_REFERENCE_PATTERN =
-	/\/\/\/\s*<reference\s+types\s*=\s*["']([^"']+)["']/g;
-const CSS_IMPORT_PATTERN = /@import\s+(?:url\(\s*)?["']([^"']+)["']/g;
-const SHIPPED_SOURCE_PATTERN = /\.(?:[cm]?js|[cm]?ts|css)$/;
-
-const listFiles = (entry) => {
-	if (!existsSync(entry)) return [];
-	if (!statSync(entry).isDirectory()) return [entry];
-	return readdirSync(entry, { withFileTypes: true }).flatMap((child) =>
-		listFiles(path.join(entry, child.name)),
-	);
-};
-
-/**
- * The `dependencies` no shipped script, declaration or stylesheet names. A
- * consumer installs every one, so a package the build inlines, or that nothing
- * uses, belongs in `devDependencies`.
- */
-export const findUnusedRuntimeDependencies = (dir, pkg) => {
-	const declared = Object.keys(pkg.dependencies || {});
-	if (declared.length === 0) return [];
-	const referenced = new Set();
-	const shippedFiles = (pkg.files || ["dist"]).flatMap((entry) =>
-		listFiles(path.join(dir, entry)),
-	);
-	for (const file of shippedFiles) {
-		if (!SHIPPED_SOURCE_PATTERN.test(file)) continue;
-		const content = readFileSync(file, "utf8");
-		const specifiers = [
-			...collectRuntimeImportSpecifiers(content),
-			...[...content.matchAll(CSS_IMPORT_PATTERN)].map((match) => match[1]),
-		];
-		for (const specifier of specifiers) {
-			if (isExternalSpecifier(specifier)) {
-				referenced.add(toPackageName(specifier));
-			}
-		}
-		for (const [, types] of content.matchAll(TYPE_REFERENCE_PATTERN)) {
-			referenced.add(`@types/${types}`);
-		}
-	}
-	return declared.filter((name) => !referenced.has(name));
-};
-
-const getPublishedEntryTargets = (pkg) => {
-	const targets = new Set();
-	collectTargets(pkg.exports, targets);
-	collectTargets(pkg.main, targets);
-	collectTargets(pkg.module, targets);
-	collectTargets(pkg.types, targets);
-	return [...targets]
-		.filter((target) => typeof target === "string" && target.startsWith("./"))
-		.filter((target) => !target.includes("*"));
-};
+		.some((target) => !existsSync(path.join(dir, target)));
 
 const run = () => {
-	const packageDirs = getWorkspaceDirs();
+	const packages = getWorkspaceDirs()
+		.map((dir) => ({ dir, pkg: readJson(path.join(dir, "package.json")) }))
+		.filter(({ pkg }) => !pkg.private);
+
+	// A fresh CI checkout has no dist; build once from the root so package-level
+	// builds do not fail on missing workspace outputs.
+	if (packages.some(({ dir, pkg }) => hasMissingTargets(dir, pkg))) {
+		execSync("bun run build", { cwd: ROOT, stdio: "pipe" });
+	}
+
 	const failures = [];
-	let checked = 0;
-	const targets = [];
-
-	for (const dir of packageDirs) {
-		const pkg = readJson(path.join(dir, "package.json"));
-		if (pkg.private) continue;
-		const relativeDir = path.relative(ROOT, dir);
-		const isToolWorkspace = relativeDir.startsWith("tools/");
-		const publishedTargets = getPublishedEntryTargets(pkg);
-		const missingTargets = publishedTargets.filter(
-			(target) => !existsSync(path.join(dir, target)),
-		);
-		targets.push({
-			dir,
-			relativeDir,
-			pkg,
-			isToolWorkspace,
-			publishedTargets,
-			missingTargets,
-		});
-	}
-
-	// In fresh CI checkouts, package dist outputs are often absent.
-	// Build non-tool workspaces once from root so package-level builds don't fail
-	// due to missing local workspace outputs.
-	const needsRootBuild = targets.some(
-		(target) => !target.isToolWorkspace && target.missingTargets.length > 0,
-	);
-	if (needsRootBuild) {
-		execSync("bun run build", {
-			cwd: ROOT,
-			stdio: "pipe",
-		});
-	}
-
-	for (const target of targets) {
-		const { dir, isToolWorkspace, pkg } = target;
-		checked += 1;
+	for (const { dir, pkg } of packages) {
 		try {
-			const publishedTargets = getPublishedEntryTargets(pkg);
-			const missingTargets = publishedTargets.filter(
-				(target) => !existsSync(path.join(dir, target)),
-			);
-			if (
-				(missingTargets.length > 0 || isToolWorkspace) &&
-				pkg.scripts?.build
-			) {
+			if (hasMissingTargets(dir, pkg) && pkg.scripts?.build) {
 				execSync("rm -rf dist tsconfig.tsbuildinfo && bun run build", {
 					cwd: dir,
 					stdio: "pipe",
 				});
 			}
-
-			const runtimeImportFailures = validateRuntimeImportClosure(dir, pkg);
-			if (runtimeImportFailures.length > 0) {
-				throw new Error(
-					`Runtime import closure check failed:\n${runtimeImportFailures
-						.map((entry) => `- ${entry}`)
-						.join("\n")}`,
-				);
-			}
-
-			const unusedDependencies = findUnusedRuntimeDependencies(dir, pkg);
-			if (unusedDependencies.length > 0) {
-				throw new Error(
-					`No shipped file imports these dependencies; move each to devDependencies if the build inlines it, or remove it:\n${unusedDependencies
-						.map((name) => `- ${name}`)
-						.join("\n")}`,
-				);
-			}
-
-			execSync("bunx publint .", {
-				cwd: dir,
-				stdio: "pipe",
+			const findings = analyzePackage({
+				dir,
+				pkg,
+				root: ROOT,
+				allowed: allowedFor(pkg.name),
 			});
+			if (findings.length > 0) {
+				throw new Error(
+					findings
+						.map((finding) => `- [${finding.code}] ${finding.message}`)
+						.join("\n"),
+				);
+			}
+			execSync("bunx publint . --strict", { cwd: dir, stdio: "pipe" });
 		} catch (error) {
 			failures.push({
 				name: pkg.name || path.basename(dir),
@@ -309,7 +98,7 @@ const run = () => {
 
 	if (failures.length > 0) {
 		console.error(
-			`[check-publint] Found ${failures.length} package(s) with publint issues`,
+			`[check-publint] Found ${failures.length} package(s) with publint or import-graph issues`,
 		);
 		for (const failure of failures) {
 			console.error(`\n- ${failure.name} (${failure.dir})`);
@@ -319,7 +108,7 @@ const run = () => {
 	}
 
 	console.log(
-		`[check-publint] OK: validated ${checked} publishable package(s)`,
+		`[check-publint] OK: validated ${packages.length} publishable package(s)`,
 	);
 };
 

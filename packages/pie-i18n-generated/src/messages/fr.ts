@@ -115,8 +115,8 @@ const fr = {
 				"Vos réponses enregistrées pour cette partie n'ont pas pu être restaurées. Réessayez.",
 		},
 
-		formative: {
-			checkAnswer: "Vérifier la réponse",
+		check: {
+			answer: "Vérifier la réponse",
 			tryAgain: "Réessayer",
 			answerRecorded: "Réponse enregistrée.",
 			correct: "Correct.",
@@ -124,7 +124,7 @@ const fr = {
 			notCorrect: "Incorrect.",
 			notAutoScored:
 				"Réponse enregistrée. Cette question n'est pas notée automatiquement.",
-			checkFailed:
+			failed:
 				"Cette question n'a pas pu être vérifiée. Réessayez.",
 			triesLeft: {
 				one: "Il reste {count} tentative.",

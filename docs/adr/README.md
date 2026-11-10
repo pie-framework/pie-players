@@ -57,8 +57,9 @@ no record of their own.
 
 ## Records
 
-- [`0001-formative-delivery-before-timed-media.md`](./0001-formative-delivery-before-timed-media.md) — formative delivery ships before timed media, so cue policy composes with Try state instead of inventing a weaker gate
+- [`0001-formative-delivery-before-timed-media.md`](./0001-formative-delivery-before-timed-media.md) — item session control ships before timed media, so cue policy composes with Try state instead of inventing a weaker gate
 - [`0002-provider-contracts-are-not-parameterized-by-config.md`](./0002-provider-contracts-are-not-parameterized-by-config.md) — a config type parameter in argument position is neutralized by method bivariance, so provider contracts take none and adapters narrow in their own method signatures
 - [`0003-elements-read-accessibility-settings-from-a-host-neutral-context.md`](./0003-elements-read-accessibility-settings-from-a-host-neutral-context.md) — elements request the student's accessibility settings through a `context-request` context any host can provide, so no element depends on the toolkit
 - [`0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md`](./0004-screen-reader-use-is-a-profile-support-that-withholds-read-aloud.md) — screen-reader use comes from the profile as `screenReader`, never from detection, and withholds PIE's read-aloud and self-starting audio while markup stays the same for every student
 - [`0005-the-player-sets-the-idle-save-delay-through-a-host-neutral-context.md`](./0005-the-player-sets-the-idle-save-delay-through-a-host-neutral-context.md) — a response editor takes its idle-save delay from `sessionCommitContext`, which the player provides, so the delay is delivery policy the host sets once and the item model carries none
+- [`0006-players-shared-supports-more-than-one-copy-per-page.md`](./0006-players-shared-supports-more-than-one-copy-per-page.md) — a page may carry several `players-shared` copies at different versions; state they must agree on is keyed on the page by `Symbol.for` or kept on the element, module state stays per copy, and no copy warns about another

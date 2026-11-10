@@ -369,7 +369,7 @@ below.
 
 The shells' events for their runtime (`pie-register`, `pie-unregister`,
 `pie-item-session-changed`, `pie-content-loaded`, `pie-item-player-error`,
-`pie-formative-action`, `pie-media-time-source`) stop at the toolkit that
+`pie-try-action`, `pie-media-time-source`) stop at the toolkit that
 handles them. A raw item player `session-changed` stops at its
 `<pie-item-scope>`, which drops it when it repeats the last event that shell
 forwarded, and otherwise forwards it to the runtime and, unless it carries only

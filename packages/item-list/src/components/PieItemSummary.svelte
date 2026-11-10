@@ -28,7 +28,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 
 @fires {CustomEvent<{ view: "summary" | "player" }>} load-complete - `summary` once per rendered summary, after math conversion; a new `env` with the same role does not re-render. `player` once the expanded row's player has loaded and replaced the summary.
 @fires {CustomEvent<{ code: string; message: string; recoverable: boolean }>} player-error - The expanded row's player failed to load, re-dispatched with the player's detail, or did not load in time (`recoverable: true`). The summary keeps showing; collapsing and expanding again retries.
-@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - A requested interface-locale catalog failed to load; the row's labels fall back to English, and re-setting `locale` retries.
+@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - A requested interface-locale catalog failed to load; the row's labels fall back to English. Failed loads are not cached, so a later change of `locale` back to that locale retries.
 -->
 
 <script lang="ts">
@@ -231,7 +231,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 						<span class="pie-item-summary__marker" aria-hidden="true">✓</span>
 						<span class="pie-item-summary__sr-only">{messages.t("player.summary.correctA11y")}</span>
 					{/if}
-					<span class="pie-item-summary__option-label">{@html option.label}</span>
+					<span class="pie-item-summary__option-label" data-pie-content>{@html option.label}</span>
 				</span>
 			</li>
 		{/each}
@@ -240,14 +240,14 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 
 {#snippet block(content: RenderedBlock)}
 	{#if content.prompt}
-		<div class="pie-item-summary__prompt">{@html content.prompt}</div>
+		<div class="pie-item-summary__prompt" data-pie-content>{@html content.prompt}</div>
 	{/if}
 	{#if content.groups.some((group) => group.label)}
 		<ul class="pie-item-summary__groups">
 			{#each content.groups as group, index (index)}
 				<li class="pie-item-summary__group">
 					{#if group.label}
-						<div class="pie-item-summary__group-label">{@html group.label}</div>
+						<div class="pie-item-summary__group-label" data-pie-content>{@html group.label}</div>
 					{/if}
 					{@render options(group.options)}
 				</li>
@@ -259,7 +259,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 	{#if content.answer}
 		<div class="pie-item-summary__answer">
 			<span class="pie-item-summary__answer-label">{messages.t("player.summary.answer")}</span>
-			<div class="pie-item-summary__answer-content">{@html content.answer}</div>
+			<div class="pie-item-summary__answer-content" data-pie-content>{@html content.answer}</div>
 		</div>
 	{/if}
 {/snippet}
@@ -268,7 +268,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 {#if rendered && !playerShown}
 	<div class="pie-item-summary">
 		{#if rendered.stem}
-			<div class="pie-item-summary__stem">{@html rendered.stem}</div>
+			<div class="pie-item-summary__stem" data-pie-content>{@html rendered.stem}</div>
 		{/if}
 		{#each rendered.entries as entry, index (index)}
 			<div class="pie-item-summary__entry" data-pkg={entry.pkg} data-source={entry.source}>
@@ -283,7 +283,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 					<div class="pie-item-summary__part">{@render block(part)}</div>
 				{/each}
 				{#if entry.figure}
-					<div class="pie-item-summary__figure">{@html entry.figure}</div>
+					<div class="pie-item-summary__figure" data-pie-content>{@html entry.figure}</div>
 				{/if}
 				{#each entry.media as media, index (index)}
 					<p class="pie-item-summary__media">
@@ -311,6 +311,7 @@ One PIE item as a list row: its stem, prompts, options and, for instructors, its
 			loaderOptions={playerOptions}
 			loaderConfig={playerConfig}
 			i18n={interfaceI18n.provider}
+			{locale}
 			addCorrectResponse={role === "instructor"}
 		></pie-item-player>
 	</div>

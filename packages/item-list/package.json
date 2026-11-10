@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-item-list",
-	"version": "1.0.0-beta.8",
+	"version": "1.0.0-beta.9",
 	"type": "module",
 	"description": "Readable summaries of PIE items for item banks, search results and outlines, rendered without loading element code",
 	"license": "MIT",
@@ -20,23 +20,27 @@
 		"web-components",
 		"custom-elements"
 	],
-	"unpkg": "./dist/pie-item-list.js",
-	"jsdelivr": "./dist/pie-item-list.js",
+	"unpkg": "./dist/browser/pie-item-list.js",
+	"jsdelivr": "./dist/browser/pie-item-list.js",
 	"main": "./dist/pie-item-list.js",
 	"types": "./dist/pie-item-list.d.ts",
 	"exports": {
 		".": {
 			"types": "./dist/pie-item-list.d.ts",
-			"import": "./dist/pie-item-list.js"
+			"import": "./dist/pie-item-list.js",
+			"default": "./dist/pie-item-list.js"
 		},
 		"./summarize": {
 			"types": "./dist/summarize.d.ts",
-			"import": "./dist/summarize.js"
+			"import": "./dist/summarize.js",
+			"default": "./dist/summarize.js"
 		},
 		"./browser": {
 			"types": "./dist/pie-item-list.d.ts",
-			"import": "./dist/browser/pie-item-list.js"
-		}
+			"import": "./dist/browser/pie-item-list.js",
+			"default": "./dist/browser/pie-item-list.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -44,7 +48,7 @@
 		"custom-elements.json"
 	],
 	"scripts": {
-		"build": "vite build && vite build --config vite.config.browser.ts",
+		"build": "vite build && vite build --config vite.config.browser.ts && bun ../../scripts/prune-unreachable-declarations.mjs",
 		"test": "bun test",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
 		"check": "svelte-check --tsconfig ./tsconfig.json"

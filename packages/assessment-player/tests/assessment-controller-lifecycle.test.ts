@@ -1,15 +1,25 @@
 import { describe, expect, test } from "bun:test";
 import { AssessmentController } from "../src/controller/AssessmentController";
-import type { AssessmentPlayerHooks, AssessmentSession } from "../src/types";
+import type {
+	AssessmentDefinition,
+	AssessmentPlayerHooks,
+	AssessmentSession,
+} from "../src/types";
 
 function makeController(
 	hooks: AssessmentPlayerHooks = {},
 	initialSession?: AssessmentSession | null,
+	assessment: AssessmentDefinition | null = {
+		sections: [
+			{ identifier: "one", assessmentItemRefs: [] },
+			{ identifier: "two", assessmentItemRefs: [] },
+		],
+	},
 ) {
 	return new AssessmentController({
 		assessmentId: "lifecycle-assessment",
 		attemptId: "lifecycle-attempt",
-		assessment: { sections: [{ identifier: "one", assessmentItemRefs: [] }, { identifier: "two", assessmentItemRefs: [] }] },
+		assessment,
 		initialSession,
 		hooks: {
 			createAssessmentSessionPersistence: () => ({ loadSession: () => null, saveSession: () => {} }),
@@ -146,5 +156,58 @@ describe("assessment controller lifecycle", () => {
 		await expect(controller.initialize()).rejects.toMatchObject({ name: "AbortError" });
 		expect(controller.getSession()).toBeNull();
 		expect(controller.getRuntimeState().readiness).not.toBe("ready");
+	});
+});
+
+describe("assessment delivery plan and submission state", () => {
+	/** QTI allows sections to nest; the runtime delivers a flat plan. */
+	const nestedAssessment: AssessmentDefinition = {
+		testParts: [
+			{
+				identifier: "part-1",
+				sections: [
+					{
+						identifier: "group",
+						sections: [
+							{ identifier: "alpha", assessmentItemRefs: [] },
+							{ identifier: "alpha-child", assessmentItemRefs: [] },
+						],
+					},
+					{ identifier: "beta", assessmentItemRefs: [] },
+				],
+			},
+		],
+	};
+
+	test("nested sections deliver in document order instead of being dropped", async () => {
+		const controller = makeController({}, null, nestedAssessment);
+		await controller.initialize();
+		expect(controller.getRuntimeState().totalSections).toBe(4);
+		expect(controller.getSectionAt(0)?.sectionIdentifier).toBe("group");
+		expect(controller.getSectionAt(1)?.sectionIdentifier).toBe("alpha");
+		expect(controller.getSectionAt(2)?.sectionIdentifier).toBe("alpha-child");
+		expect(controller.getSectionAt(3)?.sectionIdentifier).toBe("beta");
+		for (const index of [0, 1, 2, 3]) {
+			expect(controller.getSectionAt(index)?.stageIdentifier).toBe("part-1");
+		}
+	});
+
+	test("submit stamps completedAt on the session and the persisted snapshot, once", async () => {
+		const saved: (AssessmentSession | null)[] = [];
+		const controller = makeController({
+			createAssessmentSessionPersistence: () => ({
+				loadSession: () => null,
+				saveSession: (_context, session) => {
+					saved.push(structuredClone(session));
+				},
+			}),
+		});
+		await controller.initialize();
+		await controller.submit();
+		const first = controller.getSession()?.completedAt;
+		expect(first).toBeTruthy();
+		expect(saved.at(-1)?.completedAt).toBe(first);
+		await controller.submit();
+		expect(controller.getSession()?.completedAt).toBe(first);
 	});
 });

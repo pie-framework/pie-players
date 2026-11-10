@@ -123,7 +123,7 @@ light DOM, so host content styles reach it.
 | --- | --- | --- |
 | `load-complete` | `{ view: "summary" \| "player" }` | `summary` once per rendered summary, after math conversion; a new `env` object with the same `role` does not re-render. `player` once the expanded row's player has loaded |
 | `player-error` | `{ code, message, recoverable }` | The expanded row's player failed. The summary keeps showing |
-| `framework-error` | `{ kind: "i18n-locale-load", … }` | The `locale` catalog failed to load. The labels stay English; setting `locale` again retries |
+| `framework-error` | `{ kind: "i18n-locale-load", … }` | The `locale` catalog failed to load. The labels stay English; failed loads are not cached, so a later change of `locale` back to that locale retries |
 
 Every HTML fragment renders through the players' markup sanitizer. Options
 render as a list, with a check mark and a text alternative on correct options
@@ -295,6 +295,6 @@ script runs.
 
 | Entry | Exports |
 | --- | --- |
-| `@pie-players/pie-item-list` | Registers `<pie-item-summary>` and `<pie-item-list>`. Exports the summary and list types, `PieItemSummaryElement` and `PieItemListElement`. Imports `@pie-players/pie-item-player` by bare specifier, on first expand |
+| `@pie-players/pie-item-list` | Registers `<pie-item-summary>` and `<pie-item-list>`. Exports the summary and list types, `PieItemSummaryElement` and `PieItemListElement`. Imports `@pie-players/pie-players-shared` by bare specifier, and `@pie-players/pie-item-player` on first expand |
 | `@pie-players/pie-item-list/summarize` | `summarizeItem`, `isItemSummary`, `convertSummaryMath`, `bundledSummaries`, `pinnedSummaries` and the summary types. Node-safe |
 | `@pie-players/pie-item-list/browser` | The self-contained browser build, with the item player as a chunk ([Loading from a CDN](../../docs/install/cdn.md#item-list-browser-build)) |

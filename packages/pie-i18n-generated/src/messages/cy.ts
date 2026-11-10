@@ -111,8 +111,8 @@ const cy = {
 				"Methwyd ag adfer eich atebion cadwedig ar gyfer yr adran hon. Ceisiwch eto.",
 		},
 
-		formative: {
-			checkAnswer: "Gwirio'r ateb",
+		check: {
+			answer: "Gwirio'r ateb",
 			tryAgain: "Ceisio eto",
 			answerRecorded: "Cofnodwyd yr ateb.",
 			correct: "Cywir.",
@@ -120,7 +120,7 @@ const cy = {
 			notCorrect: "Anghywir.",
 			notAutoScored:
 				"Cofnodwyd yr ateb. Nid yw'r cwestiwn hwn yn cael ei sgorio'n awtomatig.",
-			checkFailed: "Methwyd â gwirio'r cwestiwn hwn. Ceisiwch eto.",
+			failed: "Methwyd â gwirio'r cwestiwn hwn. Ceisiwch eto.",
 			triesLeft: {
 				zero: "{count} o geisiadau ar ôl.",
 				one: "{count} ceisiad ar ôl.",

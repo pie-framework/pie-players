@@ -20,13 +20,19 @@ before this existed — the locale is never detected from the browser.
 <pie-item-player locale="nl-NL" …></pie-item-player>
 ```
 
-POSIX (`nl_NL`), bare (`nl`) and regional (`nl-BE`) tags all resolve to the
-`nl-NL` catalog, through RFC 4647 lookup then primary-subtag widening. Both
+This package bundles `en-US` alone; every other catalog comes from a loader the
+host composes, such as the generated tier's
+([`pie-i18n-generated`](../../../pie-i18n-generated/README.md)). With that tier
+wired, POSIX (`nl_NL`), bare (`nl`) and regional (`nl-BE`) tags all resolve to
+its `nl-NL` catalog, through RFC 4647 lookup then primary-subtag widening. Both
 stay within the request's script, explicit or the CLDR likely script from
 `Intl.Locale.maximize()`: `zh-TW` reads `zh-TW`, `zh-Hant`, then `zh`, and a
-bare `zh` catalog, which is Simplified, never serves it. A locale this
-repository ships no catalog for in its script is honored rather than rejected:
-supply your own messages for it, and anything you omit resolves to English.
+bare `zh` catalog, which is Simplified, never serves it. Host messages resolve
+apart from catalogs, exact tag then truncation, so an `es-MX` override sits on
+top of a shipped `es`, and `getLocale()` reports `es`. A locale no catalog serves in its script stays the
+request (`getRequestedLocale()`): supply your own messages for it, and anything
+you omit resolves to English. `getLocale()` and `getDirection()` name the
+locale actually served, so until such messages exist they name `en-US`.
 
 ```ts
 import { createPieI18n } from "@pie-players/pie-players-shared/i18n";

@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tts",
-	"version": "1.0.0-beta.8",
+	"version": "1.0.0-beta.9",
 	"author": "PIE Framework",
 	"repository": {
 		"type": "git",
@@ -17,8 +17,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"description": "TTS interfaces and types for PIE Assessment Toolkit - No UI dependencies",
 	"files": [

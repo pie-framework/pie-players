@@ -11,9 +11,9 @@ import type { InterfaceLocaleContextValue } from "@pie-players/pie-context";
 const ownsDom = typeof window === "undefined";
 if (ownsDom) GlobalRegistrator.register();
 const { commitPendingSessions } = await import("@pie-players/pie-players-shared");
-const { ContextRequestEvent, interfaceLocaleContext } = await import(
-	"@pie-players/pie-context"
-);
+const { createPieI18n } = await import("@pie-players/pie-players-shared/i18n");
+const { ContextConsumer, ContextRequestEvent, interfaceLocaleContext } =
+	await import("@pie-players/pie-context");
 const { ToolkitCoordinator } = await import("../src/services/ToolkitCoordinator.js");
 await import("../src/components/PieAssessmentToolkit.svelte");
 
@@ -301,7 +301,7 @@ describe("<pie-assessment-toolkit> lifecycle", () => {
 
 	test("a check on an item whose ref is not its item id reaches the controller", async () => {
 		// The composition keys the renderable by its item id; the controller keys
-		// formative state by the ref identifier the card names as canonical.
+		// Try state by the ref identifier the card names as canonical.
 		const tries: string[] = [];
 		const { element } = await mount({
 			sectionId: "s1",
@@ -312,13 +312,13 @@ describe("<pie-assessment-toolkit> lifecycle", () => {
 					section: section("s1"),
 					renderables: [{ flavor: "item", entity: { id: "item-1" } }],
 				}),
-				recordFormativeTry: ({ itemId }: { itemId: string }) => tries.push(itemId),
+				recordTry: ({ itemId }: { itemId: string }) => tries.push(itemId),
 			}),
 		});
 		const card = document.createElement("div");
 		element.append(card);
 		card.dispatchEvent(
-			new CustomEvent("pie-formative-action", {
+			new CustomEvent("pie-try-action", {
 				bubbles: true,
 				composed: true,
 				detail: { itemId: "item-1", canonicalItemId: "ref-1", action: "check", outcomes: [] },
@@ -529,17 +529,107 @@ describe("<pie-assessment-toolkit> interface locale context", () => {
 		return seen;
 	}
 
-	test("answers an element inside it, and republishes once the catalog is resident", async () => {
+	test("leaves an element unanswered until a host sets a locale, then answers and keeps answering", async () => {
+		// Unanswered, a PIE element labels its chrome in the language its item
+		// declares; a default `en-US` answer would override that declaration.
 		const { element } = await mount({});
+		const child = document.createElement("div");
+		element.append(child);
+		const unanswered = subscribe(child);
+		await settle();
+		expect(unanswered).toEqual([]);
+
+		element.setAttribute("locale", "nl-NL");
+		await settle();
+		const seen = subscribe(child);
+		await settle();
+		expect(seen.at(-1)).toEqual({ locale: "nl-NL", direction: "ltr" });
+
+		element.removeAttribute("locale");
+		await settle();
+		expect(seen.at(-1)).toEqual({ locale: "en-US", direction: "ltr" });
+	});
+
+	test("an element that subscribed while unanswered receives the answer once a host sets a locale", async () => {
+		// A consumer installs the document's context root, which replays its
+		// request when the toolkit starts providing, as an element bundle does.
+		const { element } = await mount({});
+		const child = document.createElement("div");
+		element.append(child);
+		const seen: InterfaceLocaleContextValue[] = [];
+		const consumer = new ContextConsumer(child, {
+			context: interfaceLocaleContext,
+			subscribe: true,
+			onValue: (value) => seen.push(value),
+		});
+		consumer.connect();
+		await settle();
+		expect(seen).toEqual([]);
+
+		element.setAttribute("locale", "nl-NL");
+		await settle();
+		expect(seen).toEqual([{ locale: "nl-NL", direction: "ltr" }]);
+		consumer.disconnect();
+	});
+
+	test("publishes the host's tag as requested, once, whatever the toolkit's catalogs serve", async () => {
+		// `en-GB` and `fr-CA` resolve against an element's own catalogs; the
+		// toolkit serves `en-US` and `fr` for them. The Dutch chunk landing
+		// re-fires no subscriber, because the tag it answers did not move.
+		const { element } = await mount({ locale: "en-GB" });
 		const child = document.createElement("div");
 		element.append(child);
 		const seen = subscribe(child);
 		await settle();
-		expect(seen).toEqual([{ locale: "en-US", direction: "ltr" }]);
+		expect(seen).toEqual([{ locale: "en-GB", direction: "ltr" }]);
 
-		element.setAttribute("locale", "nl-NL");
+		element.setAttribute("locale", "fr-ca");
 		await settle();
-		expect(seen.at(-1)).toEqual({ locale: "nl-NL", direction: "ltr" });
+		element.setAttribute("locale", "nl-NL");
+		await settle(60);
+		expect(seen).toEqual([
+			{ locale: "en-GB", direction: "ltr" },
+			{ locale: "fr-CA", direction: "ltr" },
+			{ locale: "nl-NL", direction: "ltr" },
+		]);
+	});
+
+	test("a supplied provider asked for en-US is not a choice; one asked for another locale is", async () => {
+		const provider = (locale: string): I18nProvider => ({
+			getLocale: () => locale,
+			getDirection: () => "ltr",
+			setLocale: async () => {},
+			t: (key) => String(key),
+		});
+		const english = await mount({ i18n: provider("en-US") });
+		const englishChild = document.createElement("div");
+		english.element.append(englishChild);
+		const unanswered = subscribe(englishChild);
+		await settle();
+		expect(unanswered).toEqual([]);
+
+		const dutch = await mount({ i18n: provider("nl-NL") });
+		const dutchChild = document.createElement("div");
+		dutch.element.append(dutchChild);
+		const seen = subscribe(dutchChild);
+		await settle();
+		expect(seen).toEqual([{ locale: "nl-NL", direction: "ltr" }]);
+	});
+
+	test("a supplied provider asked for a locale it serves in en-US is a choice, answered with the request", async () => {
+		const i18n: I18nProvider = {
+			getLocale: () => "en-US",
+			getRequestedLocale: () => "he",
+			getDirection: () => "ltr",
+			setLocale: async () => {},
+			t: (key) => String(key),
+		};
+		const { element } = await mount({ i18n });
+		const child = document.createElement("div");
+		element.append(child);
+		const seen = subscribe(child);
+		await settle();
+		expect(seen).toEqual([{ locale: "he", direction: "rtl" }]);
 	});
 
 	test("a supplied right-to-left provider publishes its locale and direction as given", async () => {
@@ -562,24 +652,62 @@ describe("<pie-assessment-toolkit> interface locale context", () => {
  * The interface locale the toolkit stamps on its own host. It has to be the
  * host, not an element in the shadow tree: what a host composes inside the
  * toolkit is slotted light DOM, and `lang` resolution and CSS `direction`
- * reach slotted content only from a light-tree ancestor. And it has to move
- * once a lazily loaded catalog is resident, because `getLocale()` names the
- * requested locale only from then on.
+ * reach slotted content only from a light-tree ancestor. It names the served
+ * locale, so it moves once a lazily loaded catalog is resident, and it is
+ * written only while a host chose a locale.
  *
  * In this file rather than its own because bun runs test files in one process:
  * a second file registering its own happy-dom window would find the element
  * module already evaluated, defined only in the first window.
  */
 describe("<pie-assessment-toolkit> interface locale", () => {
-	test("stamps the default locale on its host, and follows the attribute through a catalog load", async () => {
-		const { element } = await mount({});
-		expect(element.getAttribute("lang")).toBe("en-US");
-		expect(element.getAttribute("dir")).toBe("ltr");
+	test("stamps nothing until a host chooses, and follows the attribute through a catalog load", async () => {
+		const { element } = await mount({
+			i18n: createPieI18n({
+				availableLocales: ["nl-NL"],
+				loadCatalog: async () => ({ common: { close: "Sluiten" } }),
+			}),
+		});
+		expect(element.getAttribute("lang")).toBeNull();
+		expect(element.getAttribute("dir")).toBeNull();
 
 		element.setAttribute("locale", "nl-NL");
 		await settle();
 		expect(element.getAttribute("lang")).toBe("nl-NL");
 		expect(element.getAttribute("dir")).toBe("ltr");
+	});
+
+	test("names the locale it serves, and removes its stamp when the choice is withdrawn", async () => {
+		// The toolkit's own provider ships `en-US` alone, so a Dutch request
+		// serves, and stamps, English.
+		const { element } = await mount({});
+		element.setAttribute("locale", "nl-NL");
+		await settle();
+		expect(element.getAttribute("lang")).toBe("en-US");
+		expect(element.getAttribute("dir")).toBe("ltr");
+
+		element.removeAttribute("locale");
+		await settle();
+		expect(element.getAttribute("lang")).toBeNull();
+		expect(element.getAttribute("dir")).toBeNull();
+	});
+
+	test("an explicit en-US is a choice and is stamped", async () => {
+		const { element } = await mount({ locale: "en-US" });
+		expect(element.getAttribute("lang")).toBe("en-US");
+		expect(element.getAttribute("dir")).toBe("ltr");
+	});
+
+	test("a host's own lang stays while it chooses no locale", async () => {
+		const element = document.createElement(
+			"pie-assessment-toolkit",
+		) as ToolkitElement;
+		element.setAttribute("lang", "fr");
+		element.assessmentId = "assessment-1";
+		document.body.append(element);
+		await settle();
+		expect(element.getAttribute("lang")).toBe("fr");
+		element.remove();
 	});
 
 	test("a supplied provider's locale and direction reach the host as given", async () => {

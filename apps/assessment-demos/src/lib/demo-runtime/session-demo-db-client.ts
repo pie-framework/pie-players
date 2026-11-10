@@ -3,7 +3,7 @@ import type { SectionControllerSessionState } from "@pie-players/pie-players-sha
 /**
  * The canonical section snapshot, not a local restatement of its first three
  * fields: a demo that round-trips a narrower shape cannot validate hydration of
- * the `formative` or `timedMedia` slices.
+ * the `tries` or `timedMedia` slices.
  */
 export type SectionSessionSnapshot = SectionControllerSessionState;
 

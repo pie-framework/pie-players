@@ -16,7 +16,7 @@ import type { SectionControllerChangeEvent } from "../src/controllers/types";
  * The controller half of timed media: the port, the live cue state, the session
  * slice, and the events layouts and hosts read. The reduction itself is covered
  * in `players-shared`; what is exercised here is the wiring the reduction has no
- * access to — item completion answering a `responded` gate, formative correctness
+ * access to — item completion answering a `responded` gate, Try correctness
  * answering a `correct` gate, and the port being driven rather than assumed.
  */
 
@@ -40,7 +40,7 @@ function makeSection(args: {
 	return {
 		identifier: "timed-media-section",
 		sectionType: "timed-media",
-		formative: {
+		itemSessionControl: {
 			enabled: true,
 			maxTries: args.unlimitedTries === false ? 2 : "unlimited",
 			feedback: "correctness",
@@ -301,11 +301,11 @@ describe("SectionController timed media", () => {
 		controller.attachMediaTimeSource(media.source);
 		media.advanceTo(6);
 
-		controller.recordFormativeTry({ itemId: "q1", outcomes: [{ score: 0, max: 1 }] });
+		controller.recordTry({ itemId: "q1", outcomes: [{ score: 0, max: 1 }] });
 		expect(controller.getTimedMediaProjection()?.gate?.holding).toBe(true);
 
-		controller.retryFormativeItem({ itemId: "q1" });
-		controller.recordFormativeTry({ itemId: "q1", outcomes: [{ score: 1, max: 1 }] });
+		controller.retryItem({ itemId: "q1" });
+		controller.recordTry({ itemId: "q1", outcomes: [{ score: 1, max: 1 }] });
 		expect(controller.getTimedMediaProjection()?.gate).toBeNull();
 
 		const released = events

@@ -84,6 +84,8 @@ TTS provider:
 - `BrowserTTSProvider` for `backend: "browser"`
 - `ServerTTSProvider` for `backend: "server"`, with `serverProvider` naming the
   service: `"polly"`, `"google"` or `"custom"`
+- a host's own provider, when `provider.id` names one registered through
+  `createTTSToolRegistration({ providers })`
 
 The server path loads `@pie-players/tts-client-server` through a dynamic import
 in the TTS registration of `@pie-players/pie-default-tool-loaders`, which passes

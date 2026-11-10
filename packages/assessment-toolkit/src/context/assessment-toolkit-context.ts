@@ -40,7 +40,7 @@ export interface AssessmentToolkitRuntimeContext {
 	attemptId?: string;
 	itemPlayer: ItemPlayerConfig;
 	/**
-	 * Opt-in flag: context consumers render the vendored `<nds-icon-button>`
+	 * Opt-in flag: context consumers render the vendored `<pie-nds-icon-button>`
 	 * only when this is `true`; otherwise (unset/`false`, the default) they
 	 * render plain `<button>` controls. Sourced from the `nds-icons` attribute
 	 * on the toolkit or section player.
@@ -73,6 +73,12 @@ export interface AssessmentToolkitRuntimeContext {
 	 * they saw.
 	 */
 	i18n?: I18nProvider;
+	/**
+	 * Whether a host chose the interface locale (`hostChoseInterfaceLocale`):
+	 * the chrome stamps {@link locale}'s `lang` and `dir` only while this holds,
+	 * so a host that chooses none leaves the page's language in effect.
+	 */
+	interfaceLocaleChosen?: boolean;
 	/**
 	 * Content language: the language the authored content is written in, which
 	 * read-aloud speaks it in and catalog lookups select alternates by. Sourced

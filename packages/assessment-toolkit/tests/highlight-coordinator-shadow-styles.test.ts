@@ -23,7 +23,7 @@ class MockHighlight {
 }
 
 const SHEET_SLOT = Symbol.for(
-	"@pie-players/pie-assessment-toolkit/highlight-stylesheet",
+	"@pie-players/pie-assessment-toolkit/highlight-stylesheet-v2",
 );
 
 // Restored after the file: test files share one process, and later ones assign

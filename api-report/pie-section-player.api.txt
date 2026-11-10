@@ -7,7 +7,15 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
+  type PiePassageShellElement
+  type PieSectionPlayerBaseElement
   type PieSectionPlayerElement
+  type PieSectionPlayerItemCardElement
+  type PieSectionPlayerItemsPaneElement
+  type PieSectionPlayerKernelHostElement
+  type PieSectionPlayerPassageCardElement
+  type PieSectionPlayerPassagesPaneElement
+  type PieSectionPlayerShellElement
   type PieSectionPlayerSplitPaneElement
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
@@ -35,7 +43,15 @@
   DEFAULT_TOOL_MODULE_LOADERS
   type ItemSection
   type ItemSectionOptions
+  type PiePassageShellElement
+  type PieSectionPlayerBaseElement
   type PieSectionPlayerElement
+  type PieSectionPlayerItemCardElement
+  type PieSectionPlayerItemsPaneElement
+  type PieSectionPlayerKernelHostElement
+  type PieSectionPlayerPassageCardElement
+  type PieSectionPlayerPassagesPaneElement
+  type PieSectionPlayerShellElement
   type PieSectionPlayerSplitPaneElement
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
@@ -64,7 +80,15 @@
   DEFAULT_SECTION_PLAYER_POLICIES
   type ItemSection
   type ItemSectionOptions
+  type PiePassageShellElement
+  type PieSectionPlayerBaseElement
   type PieSectionPlayerElement
+  type PieSectionPlayerItemCardElement
+  type PieSectionPlayerItemsPaneElement
+  type PieSectionPlayerKernelHostElement
+  type PieSectionPlayerPassageCardElement
+  type PieSectionPlayerPassagesPaneElement
+  type PieSectionPlayerShellElement
   type PieSectionPlayerSplitPaneElement
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
@@ -102,6 +126,7 @@
 
 ./policies
   DEFAULT_SECTION_PLAYER_POLICIES
+  type SectionPlayerCheckControlPolicy
   type SectionPlayerPolicies
   type SectionPlayerPreloadPolicy
   type SectionPlayerReadinessPolicy

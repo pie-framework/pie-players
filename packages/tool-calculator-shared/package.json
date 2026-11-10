@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-tool-calculator-shared",
-	"version": "1.0.0-beta.8",
+	"version": "1.0.0-beta.9",
 	"type": "module",
 	"description": "Provider-neutral calculator tool surfaces shared by PIE vendor adapters",
 	"repository": {
@@ -21,10 +21,17 @@
 	],
 	"main": "./dist/calculator-element.js",
 	"exports": {
+		".": {
+			"types": "./dist/calculator-element.d.ts",
+			"import": "./dist/calculator-element.js",
+			"default": "./dist/calculator-element.js"
+		},
 		"./calculator-element": {
 			"types": "./dist/calculator-element.d.ts",
-			"import": "./dist/calculator-element.js"
-		}
+			"import": "./dist/calculator-element.js",
+			"default": "./dist/calculator-element.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -39,8 +46,6 @@
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore"
 	},
 	"license": "MIT",
-	"unpkg": "./dist/calculator-element.js",
-	"jsdelivr": "./dist/calculator-element.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-calculator": "workspace:*",

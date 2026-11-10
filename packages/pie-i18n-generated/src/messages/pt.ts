@@ -111,8 +111,8 @@ const pt = {
 				"Não foi possível restaurar suas respostas salvas desta seção. Tente novamente.",
 		},
 
-		formative: {
-			checkAnswer: "Verificar resposta",
+		check: {
+			answer: "Verificar resposta",
 			tryAgain: "Tentar novamente",
 			answerRecorded: "Resposta registrada.",
 			correct: "Correto.",
@@ -120,7 +120,7 @@ const pt = {
 			notCorrect: "Incorreto.",
 			notAutoScored:
 				"Resposta registrada. Esta pergunta não é corrigida automaticamente.",
-			checkFailed:
+			failed:
 				"Não foi possível verificar esta pergunta. Tente novamente.",
 			triesLeft: {
 				one: "Resta {count} tentativa.",

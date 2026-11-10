@@ -13,6 +13,6 @@
 			]
 		}
 	},
-	"include": ["index.ts", "tool-magnifier.svelte", "src/**/*.ts"],
+	"include": ["index.ts", "element-props.ts", "tool-magnifier.svelte", "src/**/*.ts"],
 	"exclude": ["node_modules", "dist"]
 }

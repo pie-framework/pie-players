@@ -23,9 +23,10 @@
  */
 
 import {
+	CONTENT_LEAD_SURFACE as TOOLKIT_CONTENT_LEAD_SURFACE,
 	resolveContentCapabilities,
-	ToolRegistry,
 	type ToolRegistration,
+	ToolRegistry,
 	type ToolSurfaceRenderResult,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
@@ -33,16 +34,16 @@ import {
 	ToolPolicyEngine,
 } from "@pie-players/pie-assessment-toolkit/policy/engine";
 import { AccessibilityCatalogResolver } from "@pie-players/pie-assessment-toolkit/services/AccessibilityCatalogResolver";
-import { CONTENT_LEAD_SURFACE } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { CONTENT_ALTERNATE_REGISTRATIONS } from "@pie-players/pie-default-tool-loaders";
 import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
-import type {
-	AccessibilityCatalog,
-	AssessmentSettings,
-	ItemSettings,
-	PersonalNeedsProfile,
-} from "@pie-players/pie-players-shared/types";
+import type { AccessibilityCatalog } from "@pie-players/pie-players-shared/types";
 
+import type {
+	PrintAssessmentSettings,
+	PrintItemSettings,
+	PrintPersonalNeedsProfile,
+	PrintToolRegistration,
+} from "./shared-shapes.js";
 import type { Item } from "./types.js";
 
 /**
@@ -50,7 +51,7 @@ import type { Item } from "./types.js";
  * Print takes the capability's own declaration, so an alternate that declares
  * the slot reaches paper by construction.
  */
-export { CONTENT_LEAD_SURFACE };
+export const CONTENT_LEAD_SURFACE: "content-lead" = TOOLKIT_CONTENT_LEAD_SURFACE;
 
 /**
  * Class hook for the block print fills with the alternates in play.
@@ -72,11 +73,11 @@ export const ALTERNATES_CLASS = "pie-print-alternates";
  */
 export interface PrintAccessibilityConfig {
 	/** The learner's PNP: which supports they are entitled to. */
-	personalNeedsProfile?: PersonalNeedsProfile;
+	personalNeedsProfile?: PrintPersonalNeedsProfile;
 	/** Program policy refining it: district blocks, test-administration overrides. */
-	settings?: AssessmentSettings;
+	settings?: PrintAssessmentSettings;
 	/** This item's required and restricted supports. */
-	itemSettings?: ItemSettings;
+	itemSettings?: PrintItemSettings;
 	/**
 	 * Capabilities to consider, defaulting to the packaged authored-alternate set.
 	 *
@@ -84,7 +85,7 @@ export interface PrintAccessibilityConfig {
 	 * and delivery agree about what exists. What print must never do is name the
 	 * alternates itself.
 	 */
-	registrations?: readonly ToolRegistration[];
+	registrations?: readonly PrintToolRegistration[];
 }
 
 /** One mounted print job's alternates, for teardown before the next resolve. */
@@ -118,9 +119,14 @@ const PRINT_POLICY_SCOPE_ID = "pie-print";
  * carried explicitly.
  */
 const catalogSourceEntity = (item: Item) => ({
-	accessibilityCatalogs: item.accessibilityCatalogs,
+	// `payload` is typed loosely on the way in, and the resolver validates it.
+	accessibilityCatalogs: item.accessibilityCatalogs as
+		| AccessibilityCatalog[]
+		| undefined,
 	config: {
-		extractedCatalogs: item.extractedCatalogs,
+		extractedCatalogs: item.extractedCatalogs as
+			| AccessibilityCatalog[]
+			| undefined,
 		models: item.models as Array<{
 			id?: string;
 			accessibilityCatalogs?: AccessibilityCatalog[];
@@ -165,7 +171,8 @@ export function mountItemAlternates(args: {
 	const registry = new ToolRegistry();
 	for (const registration of accessibility?.registrations ??
 		CONTENT_ALTERNATE_REGISTRATIONS) {
-		registry.register(registration);
+		// `PrintToolRegistration` states only the id; `register` validates the rest.
+		registry.register(registration as ToolRegistration);
 	}
 
 	const resolver = new AccessibilityCatalogResolver();

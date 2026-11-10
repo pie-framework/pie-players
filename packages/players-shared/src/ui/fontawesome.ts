@@ -1,5 +1,5 @@
 /**
- * FontAwesome for `<nds-icon-button>`, which renders its glyph as
+ * FontAwesome for `<pie-nds-icon-button>`, which renders its glyph as
  * `<i class="fa-light fa-${name}">` and ships no font of its own.
  *
  * FontAwesome comes from the host page when it links any FA stylesheet.

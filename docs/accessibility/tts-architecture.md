@@ -110,6 +110,14 @@ Hosts configure TTS through the toolkit's `tools.providers.textToSpeech`:
 defaults `apiEndpoint` to `/api/tts` and derives the transport from
 `serverProvider`, so host config stays small.
 
+A host with its own `ITTSProvider` registers it with
+`createTTSToolRegistration({ providers })` from
+`@pie-players/pie-default-tool-loaders` and selects it with `provider.id`
+([Text-to-speech providers](../../packages/default-tool-loaders/README.md#text-to-speech-providers)).
+The host provider replaces both backends: no `apiEndpoint`, and the backend and
+transport settings are not read. A `provider.id` that names no registered host
+provider keeps the backend the settings select.
+
 The toolkit always includes `BrowserTTSProvider`. It needs no server and no
 configuration. It fails to initialize where the browser has no Speech Synthesis
 API, and it speaks only in the voices the device has installed.

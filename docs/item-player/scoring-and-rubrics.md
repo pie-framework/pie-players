@@ -78,9 +78,9 @@ A multi-element item has several `config.models` entries and several session
 rows. `provideScore()` returns one outcome per model and leaves the item score
 to the host, which defines the aggregation rule explicitly. The PIE API service
 aggregates by default as [Persisted API Scoring](#persisted-api-scoring)
-describes. Section-level formative delivery aggregates by the same policy and
+describes. Section-level item session control aggregates by the same policy and
 records a four-valued correctness instead of a score
-([formative delivery contract](../prds/formative-delivery-contract.md)).
+([item session control contract](../prds/item-session-control-contract.md)).
 
 ## Persisted API Scoring
 

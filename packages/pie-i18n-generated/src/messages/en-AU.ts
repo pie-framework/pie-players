@@ -105,8 +105,8 @@ const enAU = {
 				"Your saved answers for this section could not be restored. Try again.",
 		},
 
-		formative: {
-			checkAnswer: "Check answer",
+		check: {
+			answer: "Check answer",
 			tryAgain: "Try again",
 			answerRecorded: "Answer recorded.",
 			correct: "Correct.",
@@ -114,7 +114,7 @@ const enAU = {
 			notCorrect: "Not correct.",
 			notAutoScored:
 				"Answer recorded. This question is not scored automatically.",
-			checkFailed: "This question could not be checked. Try again.",
+			failed: "This question could not be checked. Try again.",
 			triesLeft: {
 				one: "{count} try left.",
 				other: "{count} tries left.",

@@ -13,6 +13,7 @@
 import {
 	canonicalLanguageTag,
 	findClosestLanguageMatch,
+	languageTagLookupSequence,
 	normalizeLanguageTag,
 	toLanguageTag,
 } from "./language-tags.js";
@@ -83,6 +84,11 @@ const PLURAL_CATEGORIES = new Set([
 	"other",
 ]);
 
+/** A request's tag in canonical form, or its hyphenated spelling where it is not a tag. */
+function requestTag(locale: string | null | undefined): string {
+	return canonicalLanguageTag(locale) ?? toLanguageTag(locale);
+}
+
 function isPluralGroup(node: MessageNode): node is PluralTranslation {
 	if (typeof node !== "object" || node === null) return false;
 	const keys = Object.keys(node);
@@ -137,10 +143,16 @@ export class SimpleI18n implements I18nServiceApi {
 	/** Shared across instances and views: `Intl.PluralRules` is not cheap. */
 	private static readonly pluralRules = new Map<string, Intl.PluralRules>();
 
-	private locale: string;
+	/** The latest request, canonical; what `getRequestedLocale` names. */
+	private requested: string;
+	/** The request whose strings are served; moves once its catalog is resident. */
+	private active: string;
+	/** The catalog serving `active`, resolved against catalogs alone. */
+	private activeCatalog: string | undefined;
 	private readonly fallbackLocale: string;
 	/** Shared by reference with every `withLocale` view. */
 	private catalogs: Map<string, MessageCatalog>;
+	/** Keyed by normalized tag, so `ES`, `es_ES` and `es-es` reach one set. */
 	private customMessages: Record<string, MessageCatalog>;
 	private loading: Map<string, Promise<void>>;
 	/** Counts `setLocale` calls, so a slow load cannot overwrite a later request. */
@@ -153,9 +165,16 @@ export class SimpleI18n implements I18nServiceApi {
 		this.fallbackLocale =
 			toLanguageTag(config.fallbackLocale) || DEFAULT_LOCALE;
 		this.catalogs = new Map([[DEFAULT_LOCALE, enUS as MessageCatalog]]);
-		this.customMessages = { ...(config.customMessages ?? {}) };
+		this.customMessages = {};
+		for (const [locale, messages] of Object.entries(
+			config.customMessages ?? {},
+		)) {
+			this.mergeCustomMessages(locale, messages);
+		}
 		this.loading = new Map();
-		this.locale = this.resolveLocaleTag(config.locale) ?? DEFAULT_LOCALE;
+		this.requested = requestTag(config.locale) || DEFAULT_LOCALE;
+		this.active = this.requested;
+		this.activeCatalog = this.resolveCatalogLocale(this.active);
 	}
 
 	/**
@@ -172,11 +191,34 @@ export class SimpleI18n implements I18nServiceApi {
 				this.addCustomMessages(locale, messages);
 			}
 		}
-		await this.setLocale(config.locale ?? this.locale);
+		await this.setLocale(config.locale ?? this.requested);
 	}
 
+	/**
+	 * The locale the strings are served in: the resolved catalog locale once
+	 * resident, else the most specific host-message tag on the request's
+	 * truncation chain, canonical, else the fallback. A request nothing serves
+	 * names the fallback, so a chrome root stamped from it never names a
+	 * language its text is not in.
+	 */
 	getLocale(): string {
-		return this.locale;
+		if (this.activeCatalog && this.catalogs.has(this.activeCatalog)) {
+			return this.activeCatalog;
+		}
+		const host = this.hostMessageLocale(this.active);
+		return host === undefined
+			? this.fallbackLocale
+			: (canonicalLanguageTag(host) ?? host);
+	}
+
+	/**
+	 * The latest `setLocale` request (or the configured `locale`), canonical, as
+	 * soon as it is made and whatever its load does. `getLocale` names what is
+	 * served instead, so the two differ while a catalog loads, after a load
+	 * fails, and for a tag nothing ships.
+	 */
+	getRequestedLocale(): string {
+		return this.requested;
 	}
 
 	/**
@@ -191,49 +233,50 @@ export class SimpleI18n implements I18nServiceApi {
 	 */
 	async setLocale(locale: LocaleCode): Promise<void> {
 		const request = ++this.requests;
-		const resolved = this.resolveLocaleTag(locale);
-		if (!resolved) {
-			// A locale we ship no catalog for is legitimate: the host may have
-			// supplied its own messages for it. Honour the tag and let the
-			// fallback chain cover whatever those messages omit.
-			this.locale = toLanguageTag(locale) || DEFAULT_LOCALE;
-			this.notify();
-			return;
-		}
+		const tag = requestTag(locale) || DEFAULT_LOCALE;
+		this.requested = tag;
+		// A tag no catalog serves is legitimate: the host may have supplied its own
+		// messages for it, and the fallback chain covers whatever those omit.
+		const catalog = this.resolveCatalogLocale(tag);
 
-		// The loader is asked only for tags it declares. A tag that resolved through
-		// host messages alone has nothing to load, and is honoured like the
-		// unresolved case above.
+		// The loader is asked only for tags it declares.
 		if (
-			!this.catalogs.has(resolved) &&
-			this.config.availableLocales?.includes(resolved)
+			catalog &&
+			!this.catalogs.has(catalog) &&
+			this.config.availableLocales?.includes(catalog)
 		) {
-			const inFlight = this.loading.get(resolved);
-			if (inFlight) {
-				await inFlight;
-			} else {
-				const load = this.loadCatalog(resolved);
-				this.loading.set(resolved, load);
-				try {
-					await load;
-				} finally {
-					this.loading.delete(resolved);
+			try {
+				let load = this.loading.get(catalog);
+				if (!load) {
+					load = this.loadCatalog(catalog).finally(() => {
+						this.loading.delete(catalog);
+					});
+					this.loading.set(catalog, load);
 				}
+				await load;
+			} catch (error) {
+				// A superseded request stays silent: the later one reports its own
+				// outcome. The current one notifies, since `getRequestedLocale` moved
+				// although the served strings did not, and rejects.
+				if (request !== this.requests) return;
+				this.notify();
+				throw error;
 			}
 		}
 
 		if (request !== this.requests) return;
-		this.locale = resolved;
+		this.active = tag;
+		this.activeCatalog = catalog;
 		this.notify();
 	}
 
 	t(key: MessageKeyInput, values?: InterpolationValues): string {
-		const message = this.lookup(key);
+		const message = this.resolveMessage(key);
 		if (message === undefined) {
-			this.config.onMissingKey?.(key, this.locale);
+			this.config.onMissingKey?.(key, this.getLocale());
 			return key;
 		}
-		return interpolate(message, values, this.locale);
+		return interpolate(message, values, this.getLocale());
 	}
 
 	/**
@@ -241,21 +284,27 @@ export class SimpleI18n implements I18nServiceApi {
 	 *
 	 * The category comes from `Intl.PluralRules` for the active locale, so a
 	 * locale with more than two forms resolves correctly: Arabic selects among
-	 * zero/one/two/few/many/other, Polish among one/few/many/other. A category the
-	 * catalog does not carry resolves to `other`.
+	 * zero/one/two/few/many/other, Polish among one/few/many/other.
+	 *
+	 * Each form resolves on its own, tier by tier (`resolveMessage`): a host
+	 * overriding one category leaves the others to the catalog, and a locale's
+	 * own `other` wins over the fallback's `one`. A group no source completes is
+	 * a miss and returns the key.
 	 */
 	plural(key: MessageKeyInput, options: PluralOptions): string {
-		const group = this.lookupNode(key);
-		if (group === undefined || !isPluralGroup(group)) {
-			return this.t(key, options);
+		const message = this.resolveMessage(
+			key,
+			this.selectPluralCategory(options.count),
+		);
+		if (message === undefined) {
+			this.config.onMissingKey?.(key, this.getLocale());
+			return key;
 		}
-		const category = this.selectPluralCategory(options.count);
-		const form = group[category] ?? group.other;
-		return interpolate(form, options, this.locale);
+		return interpolate(message, options, this.getLocale());
 	}
 
 	getDirection(): TextDirection {
-		return localeDirection(this.locale);
+		return localeDirection(this.getLocale());
 	}
 
 	/**
@@ -266,13 +315,15 @@ export class SimpleI18n implements I18nServiceApi {
 		const tags = new Set<string>([
 			...this.catalogs.keys(),
 			...(this.config.availableLocales ?? []),
-			...Object.keys(this.customMessages),
+			...Object.keys(this.customMessages).map(
+				(tag) => canonicalLanguageTag(tag) ?? tag,
+			),
 		]);
 		return [...tags];
 	}
 
 	isLocaleLoaded(locale: LocaleCode): boolean {
-		const resolved = this.resolveLocaleTag(locale);
+		const resolved = this.resolveCatalogLocale(requestTag(locale));
 		return resolved !== undefined && this.catalogs.has(resolved);
 	}
 
@@ -284,22 +335,28 @@ export class SimpleI18n implements I18nServiceApi {
 	}
 
 	hasKey(key: MessageKeyInput): boolean {
-		return this.lookup(key) !== undefined;
+		return this.resolveMessage(key) !== undefined;
 	}
 
 	/**
 	 * Add or override messages for one locale.
 	 *
 	 * Deep-merged, so a deployment can override a single label without restating
-	 * a catalog.
+	 * a catalog, and keyed by normalized tag, so `es-mx` and `es-MX` are one
+	 * locale's messages.
 	 */
 	addCustomMessages(locale: string, messages: MessageCatalog): void {
-		const tag = toLanguageTag(locale);
+		this.mergeCustomMessages(locale, messages);
+		this.notify();
+	}
+
+	private mergeCustomMessages(locale: string, messages: MessageCatalog): void {
+		const tag = normalizeLanguageTag(locale);
+		if (!tag) return;
 		this.customMessages[tag] = deepMerge(
 			this.customMessages[tag] ?? {},
 			messages,
 		);
-		this.notify();
 	}
 
 	/**
@@ -311,20 +368,22 @@ export class SimpleI18n implements I18nServiceApi {
 	 * locales: the locale is per-view, the catalogs are per-provider.
 	 */
 	withLocale(locale: LocaleCode): I18nServiceApi {
-		const resolved = this.resolveLocaleTag(locale) ?? toLanguageTag(locale);
-		if (resolved === this.locale) return this;
+		const tag = requestTag(locale) || DEFAULT_LOCALE;
+		if (tag === this.active && tag === this.requested) return this;
 
-		const view = new SimpleI18n({ ...this.config, locale: resolved });
-		view.locale = resolved || DEFAULT_LOCALE;
+		const view = new SimpleI18n({ ...this.config, customMessages: {} });
 		view.catalogs = this.catalogs;
 		view.customMessages = this.customMessages;
 		view.loading = this.loading;
+		view.requested = tag;
+		view.active = tag;
+		view.activeCatalog = view.resolveCatalogLocale(tag);
 		return view;
 	}
 
 	formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
 		try {
-			return new Intl.NumberFormat(this.locale, options).format(value);
+			return new Intl.NumberFormat(this.getLocale(), options).format(value);
 		} catch {
 			return new Intl.NumberFormat(DEFAULT_LOCALE, options).format(value);
 		}
@@ -332,15 +391,17 @@ export class SimpleI18n implements I18nServiceApi {
 
 	formatDate(date: Date, options?: Intl.DateTimeFormatOptions): string {
 		try {
-			return new Intl.DateTimeFormat(this.locale, options).format(date);
+			return new Intl.DateTimeFormat(this.getLocale(), options).format(date);
 		} catch {
 			return new Intl.DateTimeFormat(DEFAULT_LOCALE, options).format(date);
 		}
 	}
 
 	/** The resolved catalog for a locale, for a host that wants to inspect it. */
-	getBundle(locale: LocaleCode = this.locale): TranslationBundle | undefined {
-		const tag = this.resolveLocaleTag(locale);
+	getBundle(
+		locale: LocaleCode = this.getLocale(),
+	): TranslationBundle | undefined {
+		const tag = this.resolveCatalogLocale(requestTag(locale));
 		if (!tag) return undefined;
 		const translations = this.catalogs.get(tag);
 		if (!translations) return undefined;
@@ -348,13 +409,24 @@ export class SimpleI18n implements I18nServiceApi {
 	}
 
 	/**
-	 * Which shipped catalog serves a requested tag, under
-	 * `findClosestLanguageMatch`. POSIX `nl_NL` normalizes on the way in, which
-	 * is the form the Learnosity transform emits.
+	 * Which catalog serves a requested tag, under `findClosestLanguageMatch`
+	 * over the resident catalogs and the loader's declared tags. Host messages
+	 * take no part: they resolve separately (`hostMessageLocale`), so a host
+	 * override for `es-MX` cannot hide a shipped `es`.
 	 */
-	private resolveLocaleTag(locale: LocaleCode | undefined): string | undefined {
-		if (!locale) return undefined;
-		return findClosestLanguageMatch(locale, this.getAvailableLocales());
+	private resolveCatalogLocale(tag: string): string | undefined {
+		if (!tag) return undefined;
+		return findClosestLanguageMatch(tag, [
+			...this.catalogs.keys(),
+			...(this.config.availableLocales ?? []),
+		]);
+	}
+
+	/** The most specific host-message tag on a request's truncation chain, normalized. */
+	private hostMessageLocale(tag: string): string | undefined {
+		return languageTagLookupSequence(tag).find(
+			(step) => this.customMessages[step] !== undefined,
+		);
 	}
 
 	private async loadCatalog(locale: string): Promise<void> {
@@ -364,8 +436,8 @@ export class SimpleI18n implements I18nServiceApi {
 			this.catalogs.set(locale, await load(locale));
 		} catch (error) {
 			// Rethrown with the locale named: `setLocale` rejects before switching
-			// (it assigns `this.locale` only after the load), so the previous locale
-			// stays active.
+			// (it moves the served state only after the load), so the previous
+			// locale stays active.
 			throw new Error(`Failed to load i18n catalog for locale: ${locale}`, {
 				cause: error,
 			});
@@ -373,42 +445,72 @@ export class SimpleI18n implements I18nServiceApi {
 	}
 
 	/**
-	 * Resolution order for one key. Host overrides for the active locale win, so
-	 * a deployment can rename one label without forking a catalog.
+	 * Two tiers in lookup order: host messages along the active request's
+	 * truncation chain (`es-MX`, then `es`) and the active catalog, then host
+	 * messages and the catalog for the fallback locale. Host overrides win, so a
+	 * deployment can rename one label without forking a catalog.
 	 */
-	private lookupNode(key: string): MessageNode | undefined {
-		const sources = [
-			this.customMessages[this.locale],
-			this.catalogs.get(this.locale),
-			this.customMessages[this.fallbackLocale],
-			this.catalogs.get(this.fallbackLocale),
+	private sourceTiers(): (MessageCatalog | undefined)[][] {
+		return [
+			[
+				...languageTagLookupSequence(this.active).map(
+					(step) => this.customMessages[step],
+				),
+				this.activeCatalog ? this.catalogs.get(this.activeCatalog) : undefined,
+			],
+			[
+				this.customMessages[normalizeLanguageTag(this.fallbackLocale)],
+				this.catalogs.get(this.fallbackLocale),
+			],
 		];
-		for (const source of sources) {
-			const hit = readPath(source, key);
-			if (hit !== undefined) return hit;
+	}
+
+	/**
+	 * The text for `key`. The first source that has it decides its shape: a
+	 * string is the text, and a plural group resolves `category`, else `other`,
+	 * within the first tier that has a group, so a locale's own `other` wins
+	 * over the fallback's `one`. A namespace (`t("common")`) is a miss:
+	 * returning the object would put one where the caller expects a string.
+	 */
+	private resolveMessage(
+		key: string,
+		category?: keyof PluralTranslation,
+	): string | undefined {
+		const tiers: PluralTranslation[][] = [];
+		for (const tier of this.sourceTiers()) {
+			const groups: PluralTranslation[] = [];
+			for (const source of tier) {
+				const node = readPath(source, key);
+				if (typeof node === "string") {
+					if (tiers.every((t) => t.length === 0) && groups.length === 0) {
+						return node;
+					}
+				} else if (node !== undefined && isPluralGroup(node)) {
+					groups.push(node);
+				}
+			}
+			tiers.push(groups);
+		}
+		for (const groups of tiers) {
+			const form = (name: keyof PluralTranslation) =>
+				groups.find((group) => typeof group[name] === "string")?.[name];
+			const text =
+				(category === undefined ? undefined : form(category)) ?? form("other");
+			if (text !== undefined) return text;
 		}
 		return undefined;
 	}
 
-	private lookup(key: string): string | undefined {
-		const node = this.lookupNode(key);
-		if (typeof node === "string") return node;
-		// A plural group resolves to its `other` form. A namespace (`t("common")`)
-		// is a miss: returning the object would put one where the caller expects
-		// a string, and interpolating it throws.
-		if (node !== undefined && isPluralGroup(node)) return node.other;
-		return undefined;
-	}
-
 	private selectPluralCategory(count: number): keyof PluralTranslation {
-		let rules = SimpleI18n.pluralRules.get(this.locale);
+		const locale = this.getLocale();
+		let rules = SimpleI18n.pluralRules.get(locale);
 		if (!rules) {
 			try {
-				rules = new Intl.PluralRules(this.locale);
+				rules = new Intl.PluralRules(locale);
 			} catch {
 				return count === 1 ? "one" : "other";
 			}
-			SimpleI18n.pluralRules.set(this.locale, rules);
+			SimpleI18n.pluralRules.set(locale, rules);
 		}
 		return rules.select(count) as keyof PluralTranslation;
 	}
@@ -505,7 +607,7 @@ let defaultProvider: SimpleI18n | undefined;
  * present, and this is that state. A tool mounted bare — in `print-player` or
  * an authoring harness — resolves this and renders English rather than
  * leaking raw message keys onto the screen. It carries no locale loader, so it
- * pulls no catalog beyond the 5 KB English one already in the bundle.
+ * pulls no catalog beyond the English one already in the bundle.
  */
 export function getDefaultI18n(): I18nServiceApi {
 	if (!defaultProvider) defaultProvider = new SimpleI18n();
@@ -561,6 +663,7 @@ export function resolveInterfaceI18n(
 			const locale = provider.getLocale();
 			return canonicalLanguageTag(locale) ?? locale;
 		},
+		getRequestedLocale: () => requestedLocaleOf(provider),
 		setLocale: (locale) => provider.setLocale(locale),
 		t: (key, values) => provider.t(key, values),
 		plural: (key, options) =>
@@ -592,11 +695,90 @@ export function stampInterfaceLocale(
 	target: Element,
 	provider: Pick<I18nProvider, "getLocale" | "getDirection">,
 ): void {
-	// `lang` takes the canonical form: a provider honours an unshipped tag as
-	// the host spelled it, and `NL-nl` is a valid request but not a valid
+	// `lang` takes the canonical form: a host's own provider may report a tag
+	// as the host spelled it, and `NL-nl` is a valid request but not a valid
 	// attribute value. Every `lang` this repository writes goes through the
 	// same rule, so chrome and content stamps match in shape.
 	const locale = provider.getLocale();
 	target.setAttribute("lang", canonicalLanguageTag(locale) ?? locale);
 	target.setAttribute("dir", provider.getDirection?.() ?? "ltr");
+}
+
+/** A provider's requested tag, canonical; `getLocale` for one that does not track requests. */
+function requestedLocaleOf(
+	provider: Pick<I18nProvider, "getLocale" | "getRequestedLocale">,
+): string {
+	const locale = provider.getRequestedLocale?.() ?? provider.getLocale();
+	return canonicalLanguageTag(locale) ?? locale;
+}
+
+/**
+ * Whether `provider` was already asked for `locale`. An element handed its
+ * owner's provider together with the owner's `locale` skips asking again, so a
+ * catalog that fails to load is fetched and reported once, by the owner, and
+ * not again by every row and player under it.
+ */
+export function isLocaleRequested(
+	provider: Pick<I18nProvider, "getRequestedLocale">,
+	locale: string,
+): boolean {
+	const requested = provider.getRequestedLocale?.();
+	if (!requested) return false;
+	return (
+		(canonicalLanguageTag(requested) ?? requested) ===
+		(canonicalLanguageTag(locale) ?? locale)
+	);
+}
+
+/**
+ * Whether a host chose a player's interface locale: it set the player's
+ * `locale`, or supplied a provider that was asked for a locale other than
+ * `en-US`.
+ *
+ * A player answers `interfaceLocaleContext` from the first time this holds,
+ * and never before it. An element left unanswered labels its chrome in the
+ * language its item declares, which is how an item declaring Spanish keeps
+ * Spanish labels under a host that sets no locale; a default `en-US` answer
+ * would override that declaration. A supplied provider asked for `en-US` is
+ * not a choice, because hosts supply one to add catalogs or messages; a host
+ * that wants `en-US` chrome over the item's language sets `locale="en-US"`.
+ * Once answering, a player keeps answering, so clearing `locale` republishes
+ * `en-US` to the elements that subscribed.
+ *
+ * The toolkit and the item player both decide through this rule. An item
+ * player a section mounts receives the toolkit's provider, so it answers only
+ * when the toolkit above it would. Callers re-evaluate it on the provider's
+ * change signal, since a supplied provider's locale moves without a property
+ * change.
+ */
+export function hostChoseInterfaceLocale(player: {
+	locale?: unknown;
+	i18n?: Pick<I18nProvider, "getLocale" | "getRequestedLocale"> | null;
+}): boolean {
+	if (typeof player.locale === "string" && player.locale.trim() !== "") {
+		return true;
+	}
+	// The request, not the served locale: a provider asked for a tag nothing
+	// ships serves `en-US`, and the host still chose that tag.
+	if (!player.i18n) return false;
+	return requestedLocaleOf(player.i18n) !== DEFAULT_LOCALE;
+}
+
+/**
+ * The tag a player answers `interfaceLocaleContext` with: its `locale`,
+ * canonical, from the moment it is set, else its provider's requested tag.
+ *
+ * The request rather than the players' own catalog match, because elements
+ * resolve the tag against their own catalogs: a host asking for `en-GB` or
+ * `fr-CA` reaches the elements' catalogs and host messages for that tag
+ * whatever the players ship, and neither a players' catalog still loading nor
+ * one that failed holds the elements on the previous locale.
+ */
+export function requestedInterfaceLocale(player: {
+	locale?: unknown;
+	i18n: Pick<I18nProvider, "getLocale" | "getRequestedLocale">;
+}): string {
+	const locale = typeof player.locale === "string" ? player.locale.trim() : "";
+	if (locale) return requestTag(locale);
+	return requestedLocaleOf(player.i18n);
 }

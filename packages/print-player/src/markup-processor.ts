@@ -7,13 +7,11 @@
  * Ported from pie-print-support/src/pie-print.ts
  */
 
-import {
-	createDefaultItemMarkupSanitizer,
-	type ItemMarkupSanitizer,
-} from "@pie-players/pie-players-shared/security";
+import { createDefaultItemMarkupSanitizer } from "@pie-players/pie-players-shared/security";
 
 import { validateCustomElementTag } from "@pie-players/pie-players-shared/pie/tag-names";
 
+import type { PrintMarkupSanitizer } from "./shared-shapes.js";
 import type {
 	Elements,
 	Item,
@@ -32,7 +30,7 @@ export interface MarkupOptions {
 	 */
 	trustMarkup?: boolean;
 	/** Host-supplied sanitizer, used instead of the default. */
-	sanitize?: ItemMarkupSanitizer;
+	sanitize?: PrintMarkupSanitizer;
 }
 
 /**

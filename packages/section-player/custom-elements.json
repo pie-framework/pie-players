@@ -70,7 +70,7 @@
 							"kind": "field",
 							"name": "item",
 							"type": {
-								"text": "object"
+								"text": "unknown"
 							},
 							"default": "null",
 							"attribute": "item"
@@ -128,7 +128,7 @@
 						{
 							"name": "item",
 							"type": {
-								"text": "object"
+								"text": "unknown"
 							},
 							"default": "null",
 							"fieldName": "item"
@@ -197,7 +197,7 @@
 								"text": "boolean"
 							},
 							"default": "false",
-							"description": "Presentation flag: controls render <nds-icon-button> only when this is explicitly true; otherwise they use plain <button>s.",
+							"description": "Presentation flag: controls render <pie-nds-icon-button> only when this is explicitly true; otherwise they use plain <button>s.",
 							"attribute": "nds-icons"
 						},
 						{
@@ -270,7 +270,7 @@
 							"kind": "field",
 							"name": "toolConfigStrictness",
 							"type": {
-								"text": "ToolConfigStrictness | undefined"
+								"text": "ToolConfigStrictness"
 							},
 							"attribute": "tool-config-strictness"
 						},
@@ -305,7 +305,7 @@
 							"name": "getNavigationStateSnapshot",
 							"return": {
 								"type": {
-									"text": "BaseNavigationState"
+									"text": "SectionPlayerBaseNavigationState"
 								}
 							}
 						},
@@ -353,7 +353,7 @@
 								"text": "boolean"
 							},
 							"default": "false",
-							"description": "Presentation flag: controls render <nds-icon-button> only when this is explicitly true; otherwise they use plain <button>s.",
+							"description": "Presentation flag: controls render <pie-nds-icon-button> only when this is explicitly true; otherwise they use plain <button>s.",
 							"fieldName": "ndsIcons"
 						},
 						{
@@ -525,7 +525,7 @@
 							"kind": "field",
 							"name": "ndsIcons",
 							"type": {
-								"text": "boolean | undefined"
+								"text": "boolean"
 							},
 							"description": "Presentation flag: opt in to NDS icon buttons. Unset renders plain <button>s.",
 							"attribute": "nds-icons"
@@ -599,7 +599,7 @@
 							"kind": "field",
 							"name": "debug",
 							"type": {
-								"text": "string | boolean | undefined"
+								"text": "string"
 							},
 							"attribute": "debug"
 						},
@@ -607,7 +607,7 @@
 							"kind": "field",
 							"name": "baseHeadingLevel",
 							"type": {
-								"text": "number | undefined"
+								"text": "number"
 							},
 							"description": "Composition context: the level this player's card headings occupy. Descendants derive their own outline from it — see docs/architecture/composition-context.md.",
 							"attribute": "base-heading-level"
@@ -634,7 +634,7 @@
 							"kind": "field",
 							"name": "toolRegistry",
 							"type": {
-								"text": "ToolRegistry | null"
+								"text": "object"
 							},
 							"default": "null",
 							"attribute": "toolregistry"
@@ -643,7 +643,7 @@
 							"kind": "field",
 							"name": "sectionHostButtons",
 							"type": {
-								"text": "ToolbarItem[]"
+								"text": "object"
 							},
 							"default": "[]",
 							"attribute": "sectionhostbuttons"
@@ -652,7 +652,7 @@
 							"kind": "field",
 							"name": "itemHostButtons",
 							"type": {
-								"text": "ToolbarItem[]"
+								"text": "object"
 							},
 							"default": "[]",
 							"attribute": "itemhostbuttons"
@@ -661,7 +661,7 @@
 							"kind": "field",
 							"name": "passageHostButtons",
 							"type": {
-								"text": "ToolbarItem[]"
+								"text": "object"
 							},
 							"default": "[]",
 							"attribute": "passagehostbuttons"
@@ -670,7 +670,7 @@
 							"kind": "field",
 							"name": "policies",
 							"type": {
-								"text": "Partial<SectionPlayerPolicies> | undefined"
+								"text": "object"
 							},
 							"attribute": "policies"
 						},
@@ -678,7 +678,7 @@
 							"kind": "field",
 							"name": "hooks",
 							"type": {
-								"text": "SectionPlayerHostHooks | undefined"
+								"text": "object"
 							},
 							"attribute": "hooks"
 						},
@@ -686,7 +686,7 @@
 							"kind": "field",
 							"name": "toolConfigStrictness",
 							"type": {
-								"text": "ToolConfigStrictness | undefined"
+								"text": "string"
 							},
 							"attribute": "tool-config-strictness"
 						},
@@ -872,7 +872,7 @@
 						{
 							"name": "toolregistry",
 							"type": {
-								"text": "ToolRegistry | null"
+								"text": "object"
 							},
 							"default": "null",
 							"fieldName": "toolRegistry"
@@ -880,7 +880,7 @@
 						{
 							"name": "sectionhostbuttons",
 							"type": {
-								"text": "ToolbarItem[]"
+								"text": "object"
 							},
 							"default": "[]",
 							"fieldName": "sectionHostButtons"
@@ -888,7 +888,7 @@
 						{
 							"name": "itemhostbuttons",
 							"type": {
-								"text": "ToolbarItem[]"
+								"text": "object"
 							},
 							"default": "[]",
 							"fieldName": "itemHostButtons"
@@ -896,7 +896,7 @@
 						{
 							"name": "passagehostbuttons",
 							"type": {
-								"text": "ToolbarItem[]"
+								"text": "object"
 							},
 							"default": "[]",
 							"fieldName": "passageHostButtons"
@@ -904,14 +904,14 @@
 						{
 							"name": "policies",
 							"type": {
-								"text": "Partial<SectionPlayerPolicies> | undefined"
+								"text": "object"
 							},
 							"fieldName": "policies"
 						},
 						{
 							"name": "hooks",
 							"type": {
-								"text": "SectionPlayerHostHooks | undefined"
+								"text": "object"
 							},
 							"fieldName": "hooks"
 						},
@@ -2990,7 +2990,7 @@
 				},
 				{
 					"kind": "class",
-					"description": "Item card of a section player: renders an item's heading, `<pie-item-toolbar>` and item player inside `<pie-item-scope>`, with a check-answer control when formative delivery is on. The items pane renders one per item and sets its properties.",
+					"description": "Item card of a section player: renders an item's heading, `<pie-item-toolbar>` and item player inside `<pie-item-scope>`, with a check-answer control when item session control is on. The items pane renders one per item and sets its properties.",
 					"name": "SectionItemCard",
 					"tagName": "pie-section-player-item-card",
 					"customElement": true,
@@ -3072,9 +3072,9 @@
 							"kind": "field",
 							"name": "playerAction",
 							"type": {
-								"text": "(node: HTMLElement, params: PlayerElementParams) => unknown"
+								"text": "PlayerElementAction"
 							},
-							"default": "(_node: HTMLElement, _params: PlayerElementParams) => undefined",
+							"default": "() => undefined",
 							"attribute": "playeraction"
 						},
 						{
@@ -3113,13 +3113,23 @@
 						},
 						{
 							"kind": "field",
-							"name": "formativeView",
+							"name": "tryView",
 							"type": {
-								"text": "FormativeItemView | null"
+								"text": "ItemTryView | null"
 							},
 							"default": "null",
-							"description": "Resolved formative delivery state for this item, or null when the section does not deliver formatively. The pane derives it; this card renders it and reports learner actions.",
-							"attribute": "formative-view"
+							"description": "Resolved item session control state for this item, or null when the section does not enable item session control. The pane derives it; this card renders it and reports learner actions.",
+							"attribute": "try-view"
+						},
+						{
+							"kind": "field",
+							"name": "checkControlEnabled",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "true",
+							"description": "`policies.checkControl.enabled`; off leaves the status line without its button.",
+							"attribute": "check-control-enabled"
 						},
 						{
 							"kind": "field",
@@ -3134,10 +3144,10 @@
 						{
 							"kind": "method",
 							"name": "provideScore",
-							"description": "The item player's `provideScore()`, for the pane's host-facing score; `false` until the player has mounted.",
+							"description": "The item player's `provideScore()`, for the pane's host-facing score; `null` until the player has mounted.",
 							"return": {
 								"type": {
-									"text": "Promise<false | unknown[]>"
+									"text": "ReturnType<SectionItemScorer>"
 								}
 							}
 						}
@@ -3210,9 +3220,9 @@
 						{
 							"name": "playeraction",
 							"type": {
-								"text": "(node: HTMLElement, params: PlayerElementParams) => unknown"
+								"text": "PlayerElementAction"
 							},
-							"default": "(_node: HTMLElement, _params: PlayerElementParams) => undefined",
+							"default": "() => undefined",
 							"fieldName": "playerAction"
 						},
 						{
@@ -3246,13 +3256,22 @@
 							"fieldName": "hostButtons"
 						},
 						{
-							"name": "formative-view",
+							"name": "try-view",
 							"type": {
-								"text": "FormativeItemView | null"
+								"text": "ItemTryView | null"
 							},
 							"default": "null",
-							"description": "Resolved formative delivery state for this item, or null when the section does not deliver formatively. The pane derives it; this card renders it and reports learner actions.",
-							"fieldName": "formativeView"
+							"description": "Resolved item session control state for this item, or null when the section does not enable item session control. The pane derives it; this card renders it and reports learner actions.",
+							"fieldName": "tryView"
+						},
+						{
+							"name": "check-control-enabled",
+							"type": {
+								"text": "boolean"
+							},
+							"default": "true",
+							"description": "`policies.checkControl.enabled`; off leaves the status line without its button.",
+							"fieldName": "checkControlEnabled"
 						},
 						{
 							"name": "timed-media-view",
@@ -3266,9 +3285,9 @@
 					],
 					"events": [
 						{
-							"name": "pie-formative-action",
+							"name": "pie-try-action",
 							"type": {
-								"text": "CustomEvent<InternalFormativeActionDetail>"
+								"text": "CustomEvent<InternalTryActionDetail>"
 							},
 							"description": "When the learner presses the check-answer or try-again control, carrying the item player's `provideScore()` outcomes on a check."
 						}
@@ -3303,12 +3322,12 @@
 							"pie-section-player-card-split-divider__handle",
 							"pie-section-player-card-surface-stack",
 							"pie-section-player-card-surface-stack-anchor",
+							"pie-section-player-check",
+							"pie-section-player-check__button",
+							"pie-section-player-check__status",
 							"pie-section-player-content-card",
 							"pie-section-player-content-card-body",
 							"pie-section-player-content-card-header",
-							"pie-section-player-formative",
-							"pie-section-player-formative__button",
-							"pie-section-player-formative__status",
 							"pie-section-player-item-card-anchor",
 							"pie-section-player-item-content",
 							"pie-section-player-item-header",
@@ -3327,7 +3346,7 @@
 						{
 							"kind": "method",
 							"name": "scoreItem",
-							"description": "Scores one item through its card, which owns the item player node: the section controller's item scorer. An item whose card or player has not mounted reports `false`.",
+							"description": "Scores one item through its card, which owns the item player node: the section controller's item scorer. An item whose card or player has not mounted reports `null`.",
 							"parameters": [
 								{
 									"name": "canonicalItemId",
@@ -3425,9 +3444,9 @@
 							"kind": "field",
 							"name": "playerAction",
 							"type": {
-								"text": "(node: HTMLElement, params: PlayerElementParams) => unknown"
+								"text": "PlayerElementAction"
 							},
-							"default": "(_node: HTMLElement, _params: PlayerElementParams) => undefined",
+							"default": "() => undefined",
 							"attribute": "playeraction"
 						},
 						{
@@ -3503,9 +3522,9 @@
 						{
 							"name": "playeraction",
 							"type": {
-								"text": "(node: HTMLElement, params: PlayerElementParams) => unknown"
+								"text": "PlayerElementAction"
 							},
-							"default": "(_node: HTMLElement, _params: PlayerElementParams) => undefined",
+							"default": "() => undefined",
 							"fieldName": "playerAction"
 						},
 						{
@@ -3655,7 +3674,7 @@
 							"kind": "field",
 							"name": "showToolbar",
 							"type": {
-								"text": "boolean | string | null | undefined"
+								"text": "boolean | string | null"
 							},
 							"default": "\"false\"",
 							"attribute": "show-toolbar"

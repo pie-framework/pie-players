@@ -238,7 +238,7 @@ in the migration guide.
 
 | Export | Purpose |
 |---|---|
-| `PiePrint` | The `<pie-print>` class. Importing the package registers it |
+| `PiePrint` | The `<pie-print>` class. Importing the package registers it. Its type, `PiePrintElement`, extends `HTMLElement` and names no framework |
 | `define`, `status`, `whenDefined` | The guarded registry print elements register through: `define` registers a tag once, `status` reports `none`, `inProgress`, `inRegistry` or `error`, `whenDefined` waits for a tag |
 | `defaultResolve` | The default resolver |
 | `defaultLoadResolution` | Loads one resolution: the HEAD check, then registration |
@@ -249,7 +249,7 @@ in the migration guide.
 The types are `Config`, `Item`, `Elements` and `Model` for the config;
 `PrintLoaderOptions`, `ResolverFn`, `PkgResolution`, `LoadResolutionFn`,
 `LoadResolutionResult` and `MissingElFn` for resolution and loading; `NodeResult` for `processMarkup`'s
-node list; and `PrintAccessibilityConfig` and `MountedAlternates`.
+node list; `PrintAccessibilityConfig` and `MountedAlternates`; `PiePrintElement` and `PiePrintConstructor` for the element; and the shapes `<pie-print>`'s API takes from the assessment toolkit and players-shared, restated here so the package's types install nothing: `PrintMarkupSanitizer`, `PrintElementPackagePolicy`, `PrintEsmCdnProvider`, `PrintEsmCdnProviderOption`, `PrintAccessibilityCatalog`, `PrintCatalogCard`, `PrintPersonalNeedsProfile`, `PrintAssessmentSettings`, `PrintItemSettings`, `PrintToolParameters` and `PrintToolRegistration`.
 
 ## License
 

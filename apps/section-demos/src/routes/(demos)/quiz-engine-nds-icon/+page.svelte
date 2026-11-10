@@ -35,7 +35,7 @@
 	let { data }: { data: PageData } = $props();
 
 	// Reads the demo app's Desmos auth endpoint so the calculator tool (the
-	// tool that renders as an <nds-icon-button> in the item toolbar) can boot.
+	// tool that renders as an <pie-nds-icon-button> in the item toolbar) can boot.
 	async function fetchDesmosAuthConfig() {
 		const response = await fetch('/api/tools/desmos/auth');
 		if (!response.ok) {

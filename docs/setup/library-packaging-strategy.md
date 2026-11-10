@@ -29,7 +29,12 @@ that recovery part of its contract.
 ## Artifact model
 
 Each package publishes one ESM build, for bundlers and Node.js module
-resolution, behind its `.` export and subpaths.
+resolution, behind its `.` export and subpaths. No package ships CommonJS.
+Every condition object lists `default` straight after `import`, with the same
+target, so a resolver that matches neither `import` nor `types`
+(`require.resolve`, a bundler with custom conditions) lands on the same file.
+`check:package-metadata` enforces the pair and `check:node-consumer-imports`
+runs `require.resolve` over every entry point of the installed tarballs.
 
 The section player adds a second build behind `./browser`, for pages without a
 bundler. `vite.config.browser.ts` builds the npm entry again with nothing
@@ -41,11 +46,12 @@ because library mode inlines every asset as a `data:` URL, and Chromium refuses
 a module worker from a large one. Its chunks stay split, so each lazily loaded
 tool downloads on first use.
 
-The section player's npm build leaves the item player, the default tool loaders
-and `speech-rule-engine` external. The host's one item player defines
-`<pie-item-player>` and installs the math renderer for every player on the
-page, and every PIE bundle shares the host's one copy of `speech-rule-engine`
-and its locale tables.
+The section player's npm build leaves the item player, the default tool
+loaders, the toolkit, players-shared and pie-context external, and reaches
+`speech-rule-engine` only through the toolkit. The host's one item player
+defines `<pie-item-player>` and installs the math renderer for every player on
+the page, and every PIE bundle shares the host's one copy of
+`speech-rule-engine` and its locale tables.
 
 ## Export surface
 
@@ -56,31 +62,38 @@ The section player's complete `exports` map:
   "exports": {
     ".": {
       "types": "./dist/pie-section-player.d.ts",
-      "import": "./dist/pie-section-player.js"
+      "import": "./dist/pie-section-player.js",
+      "default": "./dist/pie-section-player.js"
     },
     "./browser": {
       "types": "./dist/browser.d.ts",
-      "import": "./dist/browser/pie-section-player.js"
+      "import": "./dist/browser/pie-section-player.js",
+      "default": "./dist/browser/pie-section-player.js"
     },
     "./components/section-player-splitpane-element": {
       "types": "./dist/pie-section-player.d.ts",
-      "import": "./dist/pie-section-player.js"
+      "import": "./dist/pie-section-player.js",
+      "default": "./dist/pie-section-player.js"
     },
     "./contracts/runtime-host-contract": {
       "types": "./dist/contracts/runtime-host-contract.d.ts",
-      "import": "./dist/contracts/runtime-host-contract.js"
+      "import": "./dist/contracts/runtime-host-contract.js",
+      "default": "./dist/contracts/runtime-host-contract.js"
     },
     "./contracts/host-hooks": {
       "types": "./dist/contracts/host-hooks.d.ts",
-      "import": "./dist/contracts/host-hooks.js"
+      "import": "./dist/contracts/host-hooks.js",
+      "default": "./dist/contracts/host-hooks.js"
     },
     "./policies": {
       "types": "./dist/policies/index.d.ts",
-      "import": "./dist/policies/index.js"
+      "import": "./dist/policies/index.js",
+      "default": "./dist/policies/index.js"
     },
     "./item-section": {
       "types": "./dist/item-section/index.d.ts",
-      "import": "./dist/item-section/index.js"
+      "import": "./dist/item-section/index.js",
+      "default": "./dist/item-section/index.js"
     }
   }
 }
@@ -121,7 +134,9 @@ a chunk.
 Packages publish generated `dist` files as their public API. `exports`, `main`,
 `module`, `types`, `unpkg` and `jsdelivr` point inside `dist/`, never at `src`,
 a non-declaration `.ts` or `.tsx` file, or a `.svelte` or `.svelte.ts` file, and
-no export carries a `development` or `svelte` condition. `check:source-exports`
+no export carries a `development` or `svelte` condition. The one export outside
+`dist/` is `./package.json`, which every package maps to its manifest so a tool
+can read the installed version through the `exports` map. `check:source-exports`
 (before each commit) and `check:pack-integrity` (in CI, and as
 `check:pack-integrity:real` in the release gate) check each manifest and its
 `npm pack` file list for:
@@ -131,7 +146,7 @@ no export carries a `development` or `svelte` condition. `check:source-exports`
   lists for the package;
 - no `src`, `.svelte` or non-declaration TypeScript path in `files`;
 - no package-level `svelte` field, and no Svelte peer or optional dependency;
-- every target inside `dist/`;
+- every target inside `dist/`, the manifest aside;
 - packed files limited to `dist/`, declared `bin` files, `package.json`,
   README, LICENSE and CHANGELOG, an oclif manifest, and static assets.
 
@@ -151,6 +166,12 @@ whose bundle entry is a component also leaves off `insertTypesEntry`, which
 derives the types entry from that component, and ships an `index.ts` types
 entry instead. `check:svelte-type-imports`, run after a build, checks every
 declaration a type entry reaches and every one the package ships.
+
+A package ships only the declarations a type entry reaches, because `exports`
+blocks every other path and TypeScript loads nothing else. `tsc` and
+`vite-plugin-dts` emit one declaration per source file, so a package's `build`
+ends with `bun ../../scripts/prune-unreachable-declarations.mjs`, which deletes
+the rest, and `check:declaration-reachability` fails a package that ships one.
 
 `speech-rule-engine` is pinned to one exact version (`pinnedRuntimeDependencies`
 in `scripts/publish-policy.json`, enforced by `check:package-metadata`), so
@@ -184,8 +205,8 @@ owning package exports.
 | Rule | Gate |
 | --- | --- |
 | Every export target and the `customElements` manifest exist in the packed tarball, and export targets have stable file names | `check:pack-integrity:real` |
-| Node-safe entry points import in Node.js from installed tarballs; the browser-only roots fail on a browser global | `check:node-consumer-imports` |
-| Dist-only surface | `check:pack-integrity:real` |
+| Node-safe entry points import in Node.js, and the browser-only roots fail on a browser global, each package from an install of its own tarball and its workspace dependencies' | `check:node-consumer-imports` |
+| Dist-only surface, including sourcemap sources | `check:pack-integrity:real`, `check:declaration-reachability` |
 | No Svelte for hosts | `check:svelte-runtime-deps`, `check:ce-consumer-contract`, `check:svelte-type-imports` |
 | One `speech-rule-engine` version | `check:package-metadata` |
 | Race-safe registration | `check:ce-define-safety` |

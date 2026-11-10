@@ -92,12 +92,12 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		const { styleStore, highlights } = setupHighlightDom();
 		const first = new HighlightCoordinator();
 		const replacement = new HighlightCoordinator();
-		const replacementWordHighlight = highlights.get("tts-word");
+		const replacementWordHighlight = highlights.get("pie-tts-word");
 
 		first.destroy();
 
-		expect(styleStore.has("pie-highlight-styles")).toBe(true);
-		expect(highlights.get("tts-word")).toBe(replacementWordHighlight);
+		expect(styleStore.has("pie-highlight-styles-v2")).toBe(true);
+		expect(highlights.get("pie-tts-word")).toBe(replacementWordHighlight);
 		replacement.destroy();
 	});
 
@@ -105,7 +105,7 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		const { styleStore } = setupHighlightDom();
 		new HighlightCoordinator();
 
-		const styleEl = styleStore.get("pie-highlight-styles");
+		const styleEl = styleStore.get("pie-highlight-styles-v2");
 		expect(styleEl).toBeTruthy();
 		expect(styleEl.textContent).toContain("--pie-tts-word-highlight");
 		expect(styleEl.textContent).toContain("--pie-tts-word-underline");
@@ -123,7 +123,7 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		const { styleStore } = setupHighlightDom();
 		new HighlightCoordinator();
 
-		const styleEl = styleStore.get("pie-highlight-styles");
+		const styleEl = styleStore.get("pie-highlight-styles-v2");
 		expect(styleEl).toBeTruthy();
 		const annotationCss =
 			styleEl.textContent.split(
@@ -143,7 +143,7 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		const { styleStore } = setupHighlightDom();
 		new HighlightCoordinator();
 
-		const css = styleStore.get("pie-highlight-styles").textContent as string;
+		const css = styleStore.get("pie-highlight-styles-v2").textContent as string;
 
 		// Light is #4221d5 and ignores the theme accent: an accent is picked
 		// against the app's own background, so inheriting it left the mark
@@ -164,10 +164,10 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		// An app that forces dark itself is signalled by data-theme, not by the OS
 		// media query, so that path has to be covered too.
 		expect(css).toContain(
-			`[data-theme="dark"] ::highlight(annotation-underline) {`,
+			`[data-theme="dark"] ::highlight(pie-annotation-underline) {`,
 		);
 		expect(
-			css.split('[data-theme="dark"] ::highlight(annotation-underline) {')[1],
+			css.split('[data-theme="dark"] ::highlight(pie-annotation-underline) {')[1],
 		).toContain(darkValue);
 
 		// The old fallback must be gone; it was unreachable whenever a host set
@@ -189,16 +189,16 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		// Attribute selectors outrank the bare ::highlight() rules, since a media
 		// query adds no specificity.
 		expect(css).toContain(
-			'[data-theme="light"] ::highlight(annotation-underline) {',
+			'[data-theme="light"] ::highlight(pie-annotation-underline) {',
 		);
 		expect(
-			css.split('[data-theme="light"] ::highlight(annotation-underline) {')[1],
+			css.split('[data-theme="light"] ::highlight(pie-annotation-underline) {')[1],
 		).toContain(lightValue);
 
 		// Any OTHER declared theme is a host/DaisyUI palette with its own
 		// coordinated colours, so there the underline does follow the accent.
 		const otherThemeSelector =
-			'[data-theme]:not([data-theme="light"]):not([data-theme="dark"]) ::highlight(annotation-underline) {';
+			'[data-theme]:not([data-theme="light"]):not([data-theme="dark"]) ::highlight(pie-annotation-underline) {';
 		expect(css).toContain(otherThemeSelector);
 		expect(css.split(otherThemeSelector)[1]).toContain(
 			"var(--pie-annotation-underline, var(--pie-primary, #4221d5))",

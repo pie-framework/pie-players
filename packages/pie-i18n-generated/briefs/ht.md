@@ -211,7 +211,7 @@ integer 1 (and the decimal 1.0), **other** = everything else. Creole nouns
 do not inflect after numerals, so each group carries `one`/`other` with
 `{count}` and identical text:
 
-- `player.formative.triesLeft`: `{count} esè ki rete.` (both)
+- `player.check.triesLeft`: `{count} esè ki rete.` (both)
 - `tools.dictionary.entriesCount`: `{count} atik` (both)
 - `tools.pictureDictionary.entriesCount`: `{count} imaj` (both)
 - `debug.tts.browserAvailable`: `Sentez vwa navigatè a disponib ({count}

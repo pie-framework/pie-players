@@ -37,7 +37,7 @@ export default defineConfig({
 		outDir: "dist/browser",
 		emptyOutDir: true,
 		target: "es2020",
-		minify: "esbuild",
+		minify: false,
 		sourcemap: false,
 		assetsInlineLimit: 0,
 		modulePreload: false,

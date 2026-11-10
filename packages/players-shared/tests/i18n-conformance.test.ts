@@ -35,6 +35,19 @@ interface Fixtures {
 		hostMessages: MessageCatalog;
 		expected: Record<string, string>;
 	};
+	scenarios: {
+		name: string;
+		locale: string;
+		source: MessageCatalog;
+		shipped: Record<string, MessageCatalog>;
+		hostMessages: Record<string, MessageCatalog>;
+		expected: {
+			locale: string;
+			direction: "ltr" | "rtl";
+			t: Record<string, string>;
+			plural: { key: string; count: number; expected: string }[];
+		};
+	}[];
 }
 
 const fixtures: Fixtures = JSON.parse(
@@ -43,7 +56,8 @@ const fixtures: Fixtures = JSON.parse(
 
 /**
  * A provider serving the fixture catalogs. `shipped` enters through the loader,
- * as a shipped catalog would; `hostMessages` through `customMessages`. The
+ * which declares its tags, as a shipped catalog would; `hostMessages` through
+ * `customMessages`, which a catalog match never considers. The
  * fixture's `en-US` text always enters as host messages: this engine's shipped
  * `en-US` is the real players catalog and is resident from the start, so
  * `setLocale("en-US")` never calls the loader, and the conformance chain only
@@ -55,9 +69,7 @@ async function providerFor(
 	hostMessages: Record<string, MessageCatalog> = {},
 ): Promise<SimpleI18n> {
 	const i18n = new SimpleI18n({
-		availableLocales: [
-			...new Set([...Object.keys(shipped), ...Object.keys(hostMessages), "en-US"]),
-		],
+		availableLocales: [...new Set([...Object.keys(shipped), "en-US"])],
 		loadCatalog: async (tag) => shipped[tag] ?? {},
 		customMessages: hostMessages,
 	});
@@ -72,9 +84,14 @@ describe("i18n conformance", () => {
 		}
 	});
 
-	test("catalog match: script-aware lookup, then widening within the script", () => {
+	test("catalog match: script-aware lookup, then widening within the script", async () => {
+		// Loaded, because `getLocale` names a catalog only once it is resident.
 		for (const { locale, available, expected } of fixtures.catalogMatch) {
-			const i18n = new SimpleI18n({ availableLocales: available, locale });
+			const i18n = new SimpleI18n({
+				availableLocales: available,
+				loadCatalog: async () => ({}),
+			});
+			await i18n.setLocale(locale);
 			expect(i18n.getLocale(), `${locale} in ${available.join(", ")}`).toBe(
 				expected,
 			);
@@ -119,4 +136,27 @@ describe("i18n conformance", () => {
 			expect(i18n.t(dynamicMessageKey(key)), key).toBe(value);
 		}
 	});
+
+	for (const { name, locale, source, shipped, hostMessages, expected } of fixtures.scenarios) {
+		test(`scenario: ${name}`, async () => {
+			// `source` is the fixture's `en-US`, registered first so a scenario's own
+			// `en-US` host messages layer over it; every other host-message tag is
+			// registered as the fixture writes it.
+			const i18n = await providerFor(locale, shipped, { "en-US": source });
+			for (const [tag, messages] of Object.entries(hostMessages)) {
+				i18n.addCustomMessages(tag, messages);
+			}
+			expect(i18n.getLocale(), "locale").toBe(expected.locale);
+			expect(i18n.getDirection(), "direction").toBe(expected.direction);
+			for (const [key, value] of Object.entries(expected.t)) {
+				expect(i18n.t(dynamicMessageKey(key)), key).toBe(value);
+			}
+			for (const { key, count, expected: text } of expected.plural) {
+				expect(
+					i18n.plural(dynamicMessageKey(key), { count }),
+					`${key} ${count}`,
+				).toBe(text);
+			}
+		});
+	}
 });

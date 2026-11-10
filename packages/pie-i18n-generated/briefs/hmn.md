@@ -159,7 +159,7 @@ calls a native reviewer should check first, in rough priority order:
    "hand-point", the pointing gesture) used for a graph point. A Hmong
    math term would displace it in the graph tool's four point strings.
 4. **correct → tseeb.** Dictionary-backed ("true"); verify the
-   formative-outcome register (`Tseeb.`, `Tsis tseeb.`,
+   check-outcome register (`Tseeb.`, `Tsis tseeb.`,
    `Tseeb ib feem.`).
 5. **yes/no → Yog / Tsis yog.** Hmong has no bare yes/no; these are
    the school-materials convention. Review may prefer `Yawm` for yes.

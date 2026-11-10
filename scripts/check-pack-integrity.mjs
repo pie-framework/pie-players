@@ -61,6 +61,19 @@ export const collectExportTargetViolations = (declaredTargets, packedFiles) => {
 	return violations;
 };
 
+/**
+ * Every path the manifest promises the tarball holds: the entry fields, every
+ * `exports` target, and the `customElements` manifest, which tools read by that
+ * field's path and which, unlike the others, is written without a `./` prefix.
+ */
+export const collectPackTargets = (pkg) => {
+	const targets = collectDeclaredTargets(pkg);
+	if (typeof pkg?.customElements === "string") {
+		targets.add(pkg.customElements.replace(/^\.\//, ""));
+	}
+	return targets;
+};
+
 export const assertPublishablePackagesChecked = (checked) => {
 	if (checked > 0) return;
 	throw new Error(
@@ -150,10 +163,7 @@ const checkPackage = async ({ dir, pkg }, forbiddenPublicExports) => {
 		}
 		violations.push(...collectPackedFileSurfaceViolations(packedFiles, pkg));
 		violations.push(
-			...collectExportTargetViolations(
-				collectDeclaredTargets(pkg),
-				packedFiles,
-			),
+			...collectExportTargetViolations(collectPackTargets(pkg), packedFiles),
 		);
 		violations.push(...collectSourcemapSourceViolations(dir, packedFiles));
 	} catch (error) {

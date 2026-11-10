@@ -20,7 +20,28 @@ export type PieConfigContractValidationResult = {
 	valid: boolean;
 	errors: string[];
 	warnings: string[];
+	/**
+	 * Id problems that can bind a model, markup element or session entry to the
+	 * wrong partner. They do not invalidate the config, since content that
+	 * carries them has always rendered, but the players report them as errors
+	 * so they reach instrumentation. Kept apart from `warnings`, which are
+	 * advisory.
+	 */
+	bindingWarnings: string[];
 };
+
+const MARKUP_ELEMENT_ID_REGEX =
+	/<([a-zA-Z][a-zA-Z0-9._]*-[a-zA-Z0-9._-]*)\b[^>]*?\sid\s*=\s*(["'])(.*?)\2/g;
+
+/** How many PIE elements in the markup carry each `id`. */
+function countMarkupElementIds(markup: string): Map<string, number> {
+	const counts = new Map<string, number>();
+	for (const match of markup.matchAll(MARKUP_ELEMENT_ID_REGEX)) {
+		const id = match[3] ?? "";
+		counts.set(id, (counts.get(id) ?? 0) + 1);
+	}
+	return counts;
+}
 
 function collectMarkupElementTags(markup: string): Set<string> {
 	const tags = new Set<string>();
@@ -42,11 +63,13 @@ export const validatePieConfigContract = (
 ): PieConfigContractValidationResult => {
 	const errors: string[] = [];
 	const warnings: string[] = [];
+	const bindingWarnings: string[] = [];
 	if (!config || typeof config !== "object" || Array.isArray(config)) {
 		return {
 			valid: false,
 			errors: ["Config must be an object."],
 			warnings,
+			bindingWarnings,
 		};
 	}
 
@@ -65,7 +88,7 @@ export const validatePieConfigContract = (
 		errors.push("`models` must be an array.");
 	}
 	if (errors.length > 0) {
-		return { valid: false, errors, warnings };
+		return { valid: false, errors, warnings, bindingWarnings };
 	}
 
 	const elementMap = elements as Record<string, unknown>;
@@ -90,8 +113,23 @@ export const validatePieConfigContract = (
 		}
 	}
 
+	// Ids bind models, markup elements and session entries one-to-one, and each
+	// binding takes the first match.
 	const modelElementTags = new Set<string>();
+	const modelIds = new Set<string>();
 	for (const [index, model] of modelList.entries()) {
+		const modelId = model?.id;
+		if (typeof modelId !== "string" || modelId.trim().length === 0) {
+			bindingWarnings.push(
+				`Model at index ${index} has no valid "id", so no markup element binds to it.`,
+			);
+		} else if (modelIds.has(modelId)) {
+			bindingWarnings.push(
+				`Duplicate model id "${modelId}"; the markup element binds to the first model with it.`,
+			);
+		} else {
+			modelIds.add(modelId);
+		}
 		const modelElement = model?.element;
 		if (typeof modelElement !== "string" || modelElement.trim().length === 0) {
 			errors.push(
@@ -103,6 +141,14 @@ export const validatePieConfigContract = (
 		if (!(modelElement in elementMap)) {
 			errors.push(
 				`Model element "${modelElement}" is not declared in \`elements\`.`,
+			);
+		}
+	}
+
+	for (const [id, count] of countMarkupElementIds(markup as string)) {
+		if (count > 1) {
+			bindingWarnings.push(
+				`${count} markup elements share id "${id}"; they bind to one model and one session entry.`,
 			);
 		}
 	}
@@ -130,6 +176,7 @@ export const validatePieConfigContract = (
 		valid: errors.length === 0,
 		errors,
 		warnings,
+		bindingWarnings,
 	};
 };
 

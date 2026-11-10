@@ -1,7 +1,12 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 
 import {
 	analyzeSpeechRuleEngineBoundary,
+	findInlinedLibrariesWithoutNotice,
 	findInlinedSreLocaleTables,
 	findModuleSpecifiers,
 	findPromiseStaticsBeyondBaseline,
@@ -12,9 +17,18 @@ import {
 	hasInlinedSpeechRuleEngine,
 	hasSourceMapCommentText,
 	hasSvelteDevRuntime,
+	hasViteConfig,
 	looksUnminified,
 	newUrlTailLength,
 } from "../check-bundle-safety.mjs";
+import {
+	LICENSED_LIBRARIES,
+	findLibrariesMissingFromNotices,
+	packageRootOf,
+	packagesListedIn,
+	renderThirdPartyNotices,
+	preserveLegalComments,
+} from "../../packages/players-shared/legal-comments.mjs";
 import { escapeSourceMapCommentText } from "../../packages/players-shared/source-map-comment-text.mjs";
 
 // Roughly the shape the toolkit CE artifact had before it was minified:
@@ -38,10 +52,49 @@ describe("looksUnminified", () => {
 		).toBe(false);
 	});
 
+	test("a preserved licence block does not make minified code look unminified", () => {
+		const licence = `/*!\n${" * Copyright holder, SPDX-License-Identifier: MIT\n".repeat(600)} */\n`;
+		const content = `${licence}${"x".repeat(30_000)}`;
+		expect(content.split("\n").length).toBeGreaterThan(500);
+		expect(looksUnminified(content)).toBe(false);
+		expect(looksUnminified(`${licence}${unminifiedLike}`)).toBe(true);
+	});
+
+	test("a multi-line template literal does not make minified code look unminified", () => {
+		const css = `\`${"  .rule {\n    color: red;\n  }\n".repeat(2000)}\``;
+		const content = `${"x".repeat(30_000)};var s=css${css};`;
+		expect(content.split("\n").length).toBeGreaterThan(5000);
+		expect(looksUnminified(content)).toBe(false);
+		const spaced = Array.from(
+			{ length: 600 },
+			(_, i) => `function fn${i}(first, second) {\n\t// adds\n\tconst total = first + second;\n\treturn total;\n}\n`,
+		).join("");
+		expect(looksUnminified(`${spaced}var s=${css};`)).toBe(true);
+	});
+
 	test("a minified bundle with some newlines still passes", () => {
 		// Minifiers keep the odd newline (license banners, template literals).
 		const content = `${"y".repeat(25_000)}\n${"z".repeat(25_000)}`;
 		expect(looksUnminified(content)).toBe(false);
+	});
+});
+
+describe("hasViteConfig", () => {
+	const withFiles = (...names) => {
+		const dir = mkdtempSync(path.join(tmpdir(), "vite-config-"));
+		for (const name of names) writeFileSync(path.join(dir, name), "");
+		return dir;
+	};
+
+	test("finds the shared and the browser configs a package splits its build across", () => {
+		expect(hasViteConfig(withFiles("package.json", "vite.config.ts"))).toBe(true);
+		expect(hasViteConfig(withFiles("vite.config.browser.ts"))).toBe(true);
+		expect(hasViteConfig(withFiles("vite.config.mjs"))).toBe(true);
+	});
+
+	test("a package without one ships tsc output, which is not held to minification", () => {
+		expect(hasViteConfig(withFiles("package.json", "tsconfig.json"))).toBe(false);
+		expect(hasViteConfig(withFiles("vitest.config.ts"))).toBe(false);
 	});
 });
 
@@ -331,7 +384,7 @@ describe("findUnguardedCustomElementDefines", () => {
 	test("passes a define the same tag's customElements.get guards", () => {
 		expect(
 			findUnguardedCustomElementDefines(
-				'customElements.get("nds-icon-button")||customElements.define("nds-icon-button",n);',
+				'customElements.get("pie-nds-icon-button")||customElements.define("pie-nds-icon-button",n);',
 			),
 		).toEqual([]);
 	});
@@ -475,5 +528,155 @@ describe("findPromiseStaticsBeyondBaseline", () => {
 		expect(
 			findPromiseStaticsBeyondBaseline("this.disposePromise.finally(f);initPromise.any"),
 		).toEqual([]);
+	});
+});
+
+describe("licence notices", () => {
+	const dompurifyBody =
+		"cfg.ADD_DATA_URI_TAGS;cfg.FORBID_CONTENTS;cfg.USE_PROFILES;";
+	const mathliveBody = "class MathfieldElement{};window.mathVirtualKeyboard;";
+
+	test("flags an inlined library whose notice was stripped", () => {
+		expect(findInlinedLibrariesWithoutNotice(dompurifyBody)).toEqual([
+			"DOMPurify",
+		]);
+	});
+
+	test("accepts the same library with its notice", () => {
+		expect(
+			findInlinedLibrariesWithoutNotice(
+				`/*! @license DOMPurify 3.4.17 | Apache-2.0 */${dompurifyBody}`,
+			),
+		).toEqual([]);
+	});
+
+	test("does not take a lone config key for the library", () => {
+		expect(findInlinedLibrariesWithoutNotice("cfg.ADD_DATA_URI_TAGS")).toEqual(
+			[],
+		);
+	});
+
+	const mathliveChunk = {
+		moduleIds: ["/repo/node_modules/.bun/mathlive@0.109.0/node_modules/mathlive/mathlive.mjs"],
+	};
+
+	test("the plugin writes the banner of a library with no upstream notice", () => {
+		const out = preserveLegalComments().renderChunk(mathliveBody, mathliveChunk);
+		expect(out.code.startsWith("/*! @license MathLive | MIT")).toBe(true);
+		expect(
+			preserveLegalComments().renderChunk(out.code, mathliveChunk),
+		).toBeNull();
+		expect(findInlinedLibrariesWithoutNotice(out.code)).toEqual([]);
+	});
+
+	test("the plugin judges a chunk by its module ids, not its text", () => {
+		// A split MathJax chunk, such as a font table, keeps none of the strings the
+		// library's main chunk carries.
+		const out = preserveLegalComments().renderChunk("c.dynamicSetup(\"\",\"latin-b\",{})", {
+			moduleIds: [
+				"\0/repo/node_modules/.bun/@mathjax+src@4.0.0/node_modules/@mathjax/src/mjs/output/fonts/latin-b.js?commonjs",
+			],
+		});
+		expect(out.code.startsWith("/*! @license MathJax")).toBe(true);
+		expect(
+			preserveLegalComments().renderChunk(mathliveBody, {
+				moduleIds: ["/repo/packages/x/src/index.ts"],
+			}),
+		).toBeNull();
+	});
+
+	test("the dist check recognises a split MathJax chunk without its notice", () => {
+		expect(
+			findInlinedLibrariesWithoutNotice("c.dynamicSetup(\"\",\"latin-b\",{})"),
+		).toEqual(["MathJax"]);
+	});
+
+	test("the plugin leaves a notice upstream owns to the bundler", () => {
+		expect(
+			preserveLegalComments().renderChunk(dompurifyBody, {
+				moduleIds: ["/repo/node_modules/dompurify/dist/purify.es.mjs"],
+			}),
+		).toBeNull();
+	});
+
+	test("finds the package root below the last node_modules segment", () => {
+		expect(
+			packageRootOf("/r/node_modules/.bun/svelte@5.1.0/node_modules/svelte/src/index.js"),
+		).toBe("/r/node_modules/.bun/svelte@5.1.0/node_modules/svelte");
+		expect(
+			packageRootOf("/r/node_modules/@cortex-js/compute-engine/dist/a.js"),
+		).toBe("/r/node_modules/@cortex-js/compute-engine");
+		expect(packageRootOf("/r/packages/x/src/index.ts")).toBeNull();
+	});
+
+	const fakeFs = (files, dirs) => ({
+		readFile: (file) => files[file] ?? readFileSync(file, "utf8"),
+		readDir: (dir) => dirs[dir],
+		exists: (file) => file in files,
+	});
+
+	test("the notices file holds each package's licence text, and none of this suite's", () => {
+		const reader = fakeFs(
+			{
+				"/n/node_modules/svelte/package.json": JSON.stringify({ name: "svelte", version: "5.1.0", license: "MIT" }),
+				"/n/node_modules/svelte/LICENSE.md": "Copyright (c) 2016 Svelte contributors\n",
+				"/n/node_modules/complex.js/package.json": JSON.stringify({ name: "complex.js", version: "2.4.2", license: { type: "MIT" } }),
+				"/n/node_modules/@pie-players/pie-context/package.json": JSON.stringify({ name: "@pie-players/pie-context", version: "1.0.0" }),
+			},
+			{
+				"/n/node_modules/svelte": ["package.json", "LICENSE.md", "README.md"],
+				"/n/node_modules/complex.js": ["package.json"],
+				"/n/node_modules/@pie-players/pie-context": ["package.json", "LICENSE"],
+			},
+		);
+		const files = (...names) => names.map((name) => `/n/node_modules/${name}/index.js`);
+		const text = renderThirdPartyNotices(
+			files("svelte", "complex.js", "@pie-players/pie-context", "svelte"),
+			reader,
+		);
+		expect(text.indexOf("complex.js 2.4.2")).toBeLessThan(text.indexOf("svelte 5.1.0"));
+		expect(text).toContain("Copyright (c) 2016 Svelte contributors");
+		expect(text).toContain("License: MIT");
+		expect(text).toContain("ships no licence file");
+		expect(text).not.toContain("pie-context");
+		expect(text.match(/svelte 5\.1\.0/g)).toHaveLength(1);
+		expect(packagesListedIn(text)).toEqual(["complex.js", "svelte"]);
+		expect(
+			renderThirdPartyNotices(files("@pie-players/pie-context"), reader),
+		).toBeNull();
+	});
+
+	test("a package that pre-bundles a library brings that library's licence", () => {
+		const embedding =
+			"/r/node_modules/@pie-element/shared-math-rendering-mathjax/dist/browser/arrows.js";
+		const text = renderThirdPartyNotices([embedding], fakeFs({}, {}));
+		expect(packagesListedIn(text)).toEqual(["mathjax", "speech-rule-engine"]);
+		expect(text).toContain("Apache License");
+		expect(findLibrariesMissingFromNotices("c.dynamicSetup(\"\",\"x\",{})", text)).toEqual([]);
+		expect(
+			preserveLegalComments().renderChunk("c.dynamicSetup(\"\",\"x\",{})", {
+				moduleIds: [embedding],
+			}).code,
+		).toStartWith("/*! @license MathJax");
+	});
+
+	test("the dist check needs every inlined library in the nearest notices file", () => {
+		const svelteCode = 'throw new Error("https://svelte.dev/e/lifecycle_outside_component")';
+		expect(
+			findLibrariesMissingFromNotices(svelteCode, null).map((library) => library.name),
+		).toEqual(["Svelte"]);
+		expect(
+			findLibrariesMissingFromNotices(
+				`${svelteCode};${"cfg.ADD_DATA_URI_TAGS;cfg.FORBID_CONTENTS;cfg.USE_PROFILES;"}`,
+				`intro\n\n${"=".repeat(72)}\n\nsvelte 5.1.0\nLicense: MIT\n\ntext`,
+			).map((library) => library.name),
+		).toEqual(["DOMPurify"]);
+	});
+
+	test("every banner satisfies its own notice pattern", () => {
+		for (const library of LICENSED_LIBRARIES) {
+			if (library.banner)
+				expect(library.notice.test(library.banner)).toBe(true);
+		}
 	});
 });

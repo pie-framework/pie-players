@@ -48,7 +48,7 @@ Items pane of a section player: renders the item cards of the current compositio
 	import {
 		DEFAULT_SECTION_BASE_HEADING_LEVEL,
 		getCanonicalItemId,
-		getFormativeItemView,
+		getItemTryView,
 		getItemPlayerParams,
 		getItemSettings,
 		getTimedMediaItemView,
@@ -105,6 +105,7 @@ Items pane of a section player: renders the item cards of the current compositio
 		layout?.componentTag ?? "pie-section-player-items-pane",
 	);
 	const preloadEnabled = $derived(layout?.preloadEnabled ?? true);
+	const checkControlEnabled = $derived(layout?.checkControlEnabled ?? true);
 	const reportWarmup = $derived(layout?.reportWarmup ?? null);
 
 	const logger = $derived(getPreloadLogger(componentTag));
@@ -249,9 +250,14 @@ Items pane of a section player: renders the item cards of the current compositio
 	 * own elements on demand either way.
 	 */
 	let resolvedRenderablesFingerprint = $state<string | null>(null);
+	// Tracks the readiness and the fingerprint, and writes the remembered
+	// fingerprint untracked, so the effect stays wiring-only.
 	$effect(() => {
 		if (readiness.current.status !== "resolved") return;
-		resolvedRenderablesFingerprint = renderablesFingerprint;
+		const fingerprint = renderablesFingerprint;
+		untrack(() => {
+			resolvedRenderablesFingerprint = fingerprint;
+		});
 	});
 	const cardsMountable = $derived(
 		elementsLoaded || resolvedRenderablesFingerprint === renderablesFingerprint,
@@ -396,7 +402,7 @@ Items pane of a section player: renders the item cards of the current compositio
 	/**
 	 * Scores one item through its card, which owns the item player node: the
 	 * section controller's item scorer. An item whose card or player has not
-	 * mounted reports `false`.
+	 * mounted reports `null`.
 	 */
 	export async function scoreItem(
 		canonicalItemId: string,
@@ -405,8 +411,8 @@ Items pane of a section player: renders the item cards of the current compositio
 			(item: ItemEntity) =>
 				getCanonicalItemId({ compositionModel, item }) === canonicalItemId,
 		);
-		if (itemIndex < 0) return false;
-		return (await itemCards[itemIndex]?.provideScore?.()) ?? false;
+		if (itemIndex < 0) return null;
+		return (await itemCards[itemIndex]?.provideScore?.()) ?? null;
 	}
 
 	/** 1-based position of an item in the pane, for the announcements. */
@@ -519,7 +525,7 @@ Items pane of a section player: renders the item cards of the current compositio
 
 	// Presentation gate from the toolkit runtime context (provided by the
 	// wrapping `<pie-assessment-toolkit>`). The scroll-hint renders as an
-	// <nds-icon-button> only when the host explicitly opts in
+	// <pie-nds-icon-button> only when the host explicitly opts in
 	// (`ndsIcons === true`); otherwise (unset / no provider / false) it is a
 	// plain <button> — the default.
 	let ndsIconsFromContext = $state<boolean | undefined>(undefined);
@@ -545,6 +551,19 @@ Items pane of a section player: renders the item cards of the current compositio
 				chromeRuntimeContext = value;
 			},
 		);
+	});
+
+	// Registers <pie-nds-icon-button> the first time the scroll hint renders as
+	// one, so the pane does not depend on the toolbar or the inline TTS control
+	// having loaded it. The import is idempotent: the bundle guards its define.
+	$effect(() => {
+		if (!useNdsIcons) return;
+		import("@pie-players/pie-players-shared/nds-icon-button").catch((error) => {
+			console.warn(
+				"[pie-section-player] <pie-nds-icon-button> failed to load; the scroll hint stays unstyled",
+				error,
+			);
+		});
 	});
 
 	// The NDS glyph needs FontAwesome, in <head> and in whatever shadow root the
@@ -730,7 +749,7 @@ Items pane of a section player: renders the item cards of the current compositio
 			<!-- Resolved once and used twice: the card renders the control from it, and
 			     the player params project its env override. Two derivations of the same
 			     predicate could disagree about whether feedback is on screen. -->
-			{@const formativeView = getFormativeItemView({ compositionModel, canonicalItemId })}
+			{@const tryView = getItemTryView({ compositionModel, canonicalItemId })}
 			<!-- Cue state for this item. A pending card stays mounted and hidden: its
 			     shell registration, its session and the section's loading accounting all
 			     survive, where mounting on the cue would tear the item player down again
@@ -755,11 +774,12 @@ Items pane of a section player: renders the item cards of the current compositio
 					playerStrategy,
 					itemIndex,
 					baseHeadingLevel,
-					formativeView,
+					tryView,
 					i18n: chromeRuntimeContext?.i18n,
 					contentLanguage: chromeRuntimeContext?.contentLanguageDefault,
 				})}
-				{formativeView}
+				{tryView}
+				{checkControlEnabled}
 				{timedMediaView}
 				itemToolbarTools={itemToolbarTools}
 				{toolRegistry}
@@ -775,14 +795,14 @@ Items pane of a section player: renders the item cards of the current compositio
 		{#if useNdsIcons}
 			<!-- The NDS custom element renders the actual labeled <button>; this host only receives its bubbled click. -->
 			<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-			<nds-icon-button
+			<pie-nds-icon-button
 				variant="tertiary"
 				size="small"
 				icon-name="chevron-down"
 				button-aria-label={interfaceI18n.t("player.scrollDownA11y")}
 				onclick={scrollDown}
 				use:ndsIconButtonAction
-			></nds-icon-button>
+			></pie-nds-icon-button>
 		{:else}
 			<!-- Non-NDS fallback: plain <button> with a self-contained inline SVG
 			     chevron (no FontAwesome dependency in this package). -->
@@ -832,12 +852,12 @@ Items pane of a section player: renders the item cards of the current compositio
 	}
 
 	/* so the "scroll down" button still works */
-	.pie-section-player-scroll-hint nds-icon-button,
+	.pie-section-player-scroll-hint pie-nds-icon-button,
 	.pie-section-player-scroll-hint__button {
 		pointer-events: auto;
 	}
 
-	.pie-section-player-scroll-hint nds-icon-button {
+	.pie-section-player-scroll-hint pie-nds-icon-button {
 		/* NDS palette bridge — keep in sync with the copies in tool-tts-inline
 		   and assessment-toolkit ItemToolBar (asserted by
 		   scripts/check-theme-tokens.mjs). The vendored button paints its glyph,
@@ -888,7 +908,7 @@ Items pane of a section player: renders the item cards of the current compositio
 	}
 
 	/* Painted only from `--pie-*` chains, so it follows every base theme and colour
-	   scheme without a hook of its own — same rule as the formative status line, and
+	   scheme without a hook of its own — same rule as the check status line, and
 	   colour is never the only signal here either. */
 	.pie-section-player-timed-media-status {
 		margin: 0;

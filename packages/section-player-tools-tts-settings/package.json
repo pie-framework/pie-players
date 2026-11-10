@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-section-player-tools-tts-settings",
-	"version": "1.0.0-beta.8",
+	"version": "1.0.0-beta.9",
 	"type": "module",
 	"description": "Reusable TTS settings panel for PIE section-player development tools",
 	"repository": {
@@ -21,13 +21,13 @@
 	],
 	"main": "./dist/section-player-tools-tts-settings.js",
 	"module": "./dist/section-player-tools-tts-settings.js",
-	"unpkg": "./dist/section-player-tools-tts-settings.js",
-	"jsdelivr": "./dist/section-player-tools-tts-settings.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/section-player-tools-tts-settings.js"
-		}
+			"import": "./dist/section-player-tools-tts-settings.js",
+			"default": "./dist/section-player-tools-tts-settings.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [

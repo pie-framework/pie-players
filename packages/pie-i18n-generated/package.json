@@ -1,6 +1,6 @@
 {
 	"name": "@pie-players/pie-i18n-generated",
-	"version": "1.0.0-beta.8",
+	"version": "1.0.0-beta.9",
 	"type": "module",
 	"description": "Optional machine-generated interface locale catalogs for PIE players",
 	"repository": {
@@ -17,22 +17,22 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"files": [
 		"dist",
 		"README.md"
 	],
 	"scripts": {
-		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json",
+		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun ../../scripts/prune-unreachable-declarations.mjs",
 		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
 		"test": "bun test"
 	},
-	"dependencies": {
-		"@pie-players/pie-players-shared": "workspace:*"
-	},
 	"devDependencies": {
+		"@pie-players/pie-players-shared": "workspace:*",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/pie-i18n-generated#readme",

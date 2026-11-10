@@ -258,7 +258,9 @@ request still matches the active input generation.
 ## Worker Boundary
 
 `evaluation-worker.ts` is emitted as a module worker and resolved with a static
-bundler-owned URL. Consumers do not configure a worker CDN. A worker script on
+bundler-owned URL. Consumers do not configure a worker CDN. The build emits the
+worker as an entry of the package's own build, so it imports the Compute Engine
+chunk the main entry loads and the package ships that engine once. A worker script on
 another origin, such as a CDN, starts from a page-origin `blob:` module that
 imports it (`module-worker.ts`). The package artifact test verifies that the
 worker and its dependent chunks are present.

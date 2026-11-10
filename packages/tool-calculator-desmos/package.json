@@ -1,8 +1,8 @@
 {
 	"name": "@pie-players/pie-tool-calculator-desmos",
-	"version": "1.0.0-beta.8",
+	"version": "1.0.0-beta.9",
 	"type": "module",
-	"description": "Calculator tool for PIE assessment player",
+	"description": "Registers <pie-tool-calculator>, the assessment toolkit's provider-neutral calculator element; the desmos in the name is historical",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/pie-framework/pie-players.git",
@@ -22,8 +22,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/pie-tool-calculator.js"
-		}
+			"import": "./dist/pie-tool-calculator.js",
+			"default": "./dist/pie-tool-calculator.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -38,8 +40,6 @@
 		"check": "svelte-check --tsconfig ./tsconfig.json --compiler-warnings options_missing_custom_element:ignore"
 	},
 	"license": "MIT",
-	"unpkg": "./dist/pie-tool-calculator.js",
-	"jsdelivr": "./dist/pie-tool-calculator.js",
 	"dependencies": {
 		"@pie-players/pie-calculator": "workspace:*",
 		"@pie-players/pie-tool-calculator-shared": "workspace:*"

@@ -32,7 +32,7 @@ The subpaths below are the package's `exports`; nothing else is importable.
 | `/i18n/types` | The i18n contract, types only |
 | `/i18n/provider` | `SimpleI18n`, `getDefaultI18n` and `resolveInterfaceI18n`, with the English catalog only |
 | `/i18n/catalogs` | `BUNDLED_LOCALES` and lazy loaders for the bundled locales other than English |
-| `/i18n/language-tags` | BCP 47 language tag normalization and matching |
+| `/i18n/language-tags` | BCP 47 language tag normalization and matching, re-exported from `@pie-players/pie-language-tags` |
 | `/nds-icon-button` | `<pie-nds-icon-button>`, an icon button vendored as a prebuilt bundle with Lit inlined; importing it registers the tag. The assessment toolkit, the section player and `@pie-players/pie-tool-tts-inline` render it |
 | `/ui/attribute-coercion` | Boolean attribute coercion for custom elements |
 | `/ui/content-styles` | `installContentStyles`, `auditContentStyles` and the opt-out checks behind the item player's content styles |

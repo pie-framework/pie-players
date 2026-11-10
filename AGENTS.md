@@ -622,6 +622,9 @@ skill as a thin wrapper over it; `consumer-dependency-audit` is the pattern.
 - `packages/pie-i18n-generated` - optional machine-generated locale catalogs:
   provenance-marked, unreviewed, freshness-gated; hosts compose their loaders
   after the bundled ones, and a locale is promoted by review, not rework.
+- `packages/pie-language-tags` - BCP 47 tag lookup and matching, which
+  players-shared's i18n re-exports and pie-elements-ng's i18n engine imports, and
+  the conformance fixture both engines run.
 - `packages/pie-context` - shared runtime context.
 - `packages/theme` - theme token contract, `<pie-theme>`, color schemes, and the
   DaisyUI provider adapter.

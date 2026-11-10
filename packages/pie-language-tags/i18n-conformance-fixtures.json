@@ -1,5 +1,5 @@
 {
-	"$comment": "Cross-repository conformance spec for the two PIE i18n engines: pie-players' players-shared/src/i18n and pie-elements-ng's @pie-element/shared-i18n, which ports it and shares semantics but no code. Each repository runs this file against its own engine. Keep the two copies byte-identical: pie-players packages/players-shared/tests/i18n-conformance-fixtures.json and pie-elements-ng packages/shared/i18n/tests/i18n-conformance-fixtures.json. A case that only one engine passes is drift, and the fix goes to the engine, not the fixture. Locale tags are full where CLDR defaults differ by region: bare `ar` formats Latin digits and `ar-SA` Arabic-Indic, which is CLDR, not an engine.",
+	"$comment": "Cross-repository conformance spec for the two PIE i18n engines: pie-players' players-shared/src/i18n and pie-elements-ng's @pie-element/shared-i18n, which share this package's language-tag code and keep their own providers. Both repositories read this one file from @pie-players/pie-language-tags and run it against their own engine. A case that only one engine passes is drift, and the fix goes to the engine, not the fixture. Locale tags are full where CLDR defaults differ by region: bare `ar` formats Latin digits and `ar-SA` Arabic-Indic, which is CLDR, not an engine.",
 	"lookupSequence": [
 		{ "tag": "nl-BE", "expected": ["nl-be", "nl"] },
 		{ "tag": "pt-BR", "expected": ["pt-br", "pt"] },
@@ -9,21 +9,52 @@
 		{ "tag": "und", "expected": ["und"] }
 	],
 	"catalogMatch": [
-		{ "locale": "zh-TW", "available": ["en-US", "zh", "zh-Hant"], "expected": "zh-Hant" },
+		{
+			"locale": "zh-TW",
+			"available": ["en-US", "zh", "zh-Hant"],
+			"expected": "zh-Hant"
+		},
 		{ "locale": "zh-TW", "available": ["en-US", "zh"], "expected": "en-US" },
 		{ "locale": "zh-HK", "available": ["en-US", "zh"], "expected": "en-US" },
-		{ "locale": "zh-HK", "available": ["en-US", "zh", "zh-TW"], "expected": "zh-TW" },
+		{
+			"locale": "zh-HK",
+			"available": ["en-US", "zh", "zh-TW"],
+			"expected": "zh-TW"
+		},
 		{ "locale": "zh-SG", "available": ["en-US", "zh"], "expected": "zh" },
 		{ "locale": "zh-CN", "available": ["en-US", "zh-TW"], "expected": "en-US" },
 		{ "locale": "zh", "available": ["en-US", "zh-TW"], "expected": "en-US" },
-		{ "locale": "sr-ME", "available": ["en-US", "sr", "sr-Latn"], "expected": "sr-Latn" },
+		{
+			"locale": "sr-ME",
+			"available": ["en-US", "sr", "sr-Latn"],
+			"expected": "sr-Latn"
+		},
 		{ "locale": "sr-ME", "available": ["en-US", "sr"], "expected": "en-US" },
 		{ "locale": "sr-Cyrl-RS", "available": ["en-US", "sr"], "expected": "sr" },
 		{ "locale": "sr-Latn", "available": ["en-US", "sr"], "expected": "en-US" },
-		{ "locale": "sr-Latn", "available": ["en-US", "sr-ME"], "expected": "sr-ME" },
+		{
+			"locale": "sr-Latn",
+			"available": ["en-US", "sr-ME"],
+			"expected": "sr-ME"
+		},
 		{ "locale": "es-MX", "available": ["en-US", "es"], "expected": "es" },
 		{ "locale": "es_MX", "available": ["en-US", "es-ES"], "expected": "es-ES" },
-		{ "locale": "pt-BR", "available": ["en-US", "pt-PT"], "expected": "pt-PT" }
+		{ "locale": "pt-BR", "available": ["en-US", "pt-PT"], "expected": "pt-PT" },
+		{
+			"locale": "de-CH-1996",
+			"available": ["en-US", "de-DE"],
+			"expected": "en-US"
+		},
+		{
+			"locale": "ca-ES-valencia",
+			"available": ["en-US", "ca-AD", "ca-AD-valencia"],
+			"expected": "ca-AD-valencia"
+		},
+		{
+			"locale": "en-AU",
+			"available": ["en-GB-x-gulf", "en-US"],
+			"expected": "en-US"
+		}
 	],
 	"direction": [
 		{ "tag": "ar-SA", "expected": "rtl" },
@@ -76,11 +107,36 @@
 		]
 	},
 	"interpolation": [
-		{ "locale": "en-US", "template": "Hello {name}", "values": { "name": "Ana" }, "expected": "Hello Ana" },
-		{ "locale": "en-US", "template": "{name} and {name}", "values": { "name": "A" }, "expected": "A and A" },
-		{ "locale": "en-US", "template": "Keep {missing} literal", "values": {}, "expected": "Keep {missing} literal" },
-		{ "locale": "de-DE", "template": "{count} Punkte", "values": { "count": 1234.5 }, "expected": "1.234,5 Punkte" },
-		{ "locale": "ar-SA", "template": "{count}", "values": { "count": 5 }, "expected": "٥" }
+		{
+			"locale": "en-US",
+			"template": "Hello {name}",
+			"values": { "name": "Ana" },
+			"expected": "Hello Ana"
+		},
+		{
+			"locale": "en-US",
+			"template": "{name} and {name}",
+			"values": { "name": "A" },
+			"expected": "A and A"
+		},
+		{
+			"locale": "en-US",
+			"template": "Keep {missing} literal",
+			"values": {},
+			"expected": "Keep {missing} literal"
+		},
+		{
+			"locale": "de-DE",
+			"template": "{count} Punkte",
+			"values": { "count": 1234.5 },
+			"expected": "1.234,5 Punkte"
+		},
+		{
+			"locale": "ar-SA",
+			"template": "{count}",
+			"values": { "count": 5 },
+			"expected": "٥"
+		}
 	],
 	"fallbackChain": {
 		"locale": "es-ES",
@@ -93,7 +149,9 @@
 		{
 			"name": "a host plural override of one category leaves the others to the catalog",
 			"locale": "en-US",
-			"source": { "max": { "one": "{count} answer", "other": "{count} answers" } },
+			"source": {
+				"max": { "one": "{count} answer", "other": "{count} answers" }
+			},
 			"shipped": {},
 			"hostMessages": { "en-US": { "max": { "one": "Just {count} answer" } } },
 			"expected": {
@@ -109,8 +167,14 @@
 		{
 			"name": "a host plural override in a shipped locale falls through to that locale's catalog per category",
 			"locale": "es",
-			"source": { "max": { "one": "{count} answer", "other": "{count} answers" } },
-			"shipped": { "es": { "max": { "one": "{count} respuesta", "other": "{count} respuestas" } } },
+			"source": {
+				"max": { "one": "{count} answer", "other": "{count} answers" }
+			},
+			"shipped": {
+				"es": {
+					"max": { "one": "{count} respuesta", "other": "{count} respuestas" }
+				}
+			},
 			"hostMessages": { "es": { "max": { "one": "Solo {count} respuesta" } } },
 			"expected": {
 				"locale": "es",
@@ -125,7 +189,9 @@
 		{
 			"name": "a locale's own other form wins over the fallback's category",
 			"locale": "es",
-			"source": { "max": { "one": "{count} answer", "other": "{count} answers" } },
+			"source": {
+				"max": { "one": "{count} answer", "other": "{count} answers" }
+			},
 			"shipped": { "es": { "max": { "other": "{count} respuestas" } } },
 			"hostMessages": {},
 			"expected": {
@@ -141,7 +207,12 @@
 			"source": { "a": "A", "b": "B", "c": "C" },
 			"shipped": { "es": { "a": "Á", "b": "Bé" } },
 			"hostMessages": { "es-MX": { "a": "Ä" } },
-			"expected": { "locale": "es", "direction": "ltr", "t": { "a": "Ä", "b": "Bé", "c": "C" }, "plural": [] }
+			"expected": {
+				"locale": "es",
+				"direction": "ltr",
+				"t": { "a": "Ä", "b": "Bé", "c": "C" },
+				"plural": []
+			}
 		},
 		{
 			"name": "a parent host override reaches a regional request",
@@ -149,7 +220,12 @@
 			"source": { "a": "A", "b": "B" },
 			"shipped": { "es": { "a": "Á", "b": "Bé" } },
 			"hostMessages": { "es": { "a": "Ä" } },
-			"expected": { "locale": "es", "direction": "ltr", "t": { "a": "Ä", "b": "Bé" }, "plural": [] }
+			"expected": {
+				"locale": "es",
+				"direction": "ltr",
+				"t": { "a": "Ä", "b": "Bé" },
+				"plural": []
+			}
 		},
 		{
 			"name": "host messages match the request whatever their tag's casing",
@@ -157,7 +233,12 @@
 			"source": { "a": "A", "b": "B" },
 			"shipped": { "es": { "a": "Á", "b": "Bé" } },
 			"hostMessages": { "ES": { "a": "Ä" } },
-			"expected": { "locale": "es", "direction": "ltr", "t": { "a": "Ä", "b": "Bé" }, "plural": [] }
+			"expected": {
+				"locale": "es",
+				"direction": "ltr",
+				"t": { "a": "Ä", "b": "Bé" },
+				"plural": []
+			}
 		},
 		{
 			"name": "a locale nothing serves reports the fallback it is served in",
@@ -165,7 +246,12 @@
 			"source": { "a": "A" },
 			"shipped": { "es": { "a": "Á" } },
 			"hostMessages": {},
-			"expected": { "locale": "en-US", "direction": "ltr", "t": { "a": "A" }, "plural": [] }
+			"expected": {
+				"locale": "en-US",
+				"direction": "ltr",
+				"t": { "a": "A" },
+				"plural": []
+			}
 		},
 		{
 			"name": "a locale served by host messages alone reports the host-message locale",
@@ -173,7 +259,12 @@
 			"source": { "a": "A", "b": "B" },
 			"shipped": {},
 			"hostMessages": { "he": { "a": "א" } },
-			"expected": { "locale": "he", "direction": "rtl", "t": { "a": "א", "b": "B" }, "plural": [] }
+			"expected": {
+				"locale": "he",
+				"direction": "rtl",
+				"t": { "a": "א", "b": "B" },
+				"plural": []
+			}
 		}
 	]
 }

@@ -12,7 +12,7 @@ import {
 	negotiateContentLanguage,
 	normalizeLanguageTag,
 	toLanguageTag,
-} from "../src/i18n/language-tags.js";
+} from "../src/index.js";
 
 describe("normalizeLanguageTag", () => {
 	it("unifies POSIX and BCP-47 separators", () => {
@@ -222,7 +222,10 @@ describe("content-language negotiation conformance", () => {
 		}[];
 	}
 	const fixtures: Fixtures = JSON.parse(
-		readFileSync(new URL("./content-language-fixtures.json", import.meta.url), "utf8"),
+		readFileSync(
+			new URL("./content-language-fixtures.json", import.meta.url),
+			"utf8",
+		),
 	);
 
 	for (const { tag, expected } of fixtures.scriptLookupSequence) {
@@ -231,10 +234,23 @@ describe("content-language negotiation conformance", () => {
 		});
 	}
 
-	for (const { requested, available, defaultLanguage, fallback, matching, source, expected } of fixtures.negotiate) {
+	for (const {
+		requested,
+		available,
+		defaultLanguage,
+		fallback,
+		matching,
+		source,
+		expected,
+	} of fixtures.negotiate) {
 		it(`negotiates [${requested.join(", ")}] over [${available.map((tag) => tag ?? "unlabeled").join(", ")}]${fallback ? ` with fallback ${fallback}` : ""}${matching ? ` matching ${matching}` : ""}${source !== undefined ? ` from source ${source ?? "unlabeled"}` : ""}`, () => {
 			expect(
-				negotiateContentLanguage(requested, available, { defaultLanguage, fallback, matching, source }) ?? null,
+				negotiateContentLanguage(requested, available, {
+					defaultLanguage,
+					fallback,
+					matching,
+					source,
+				}) ?? null,
 			).toEqual(expected);
 		});
 	}

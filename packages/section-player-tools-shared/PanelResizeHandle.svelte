@@ -7,13 +7,13 @@
 		handleClass = "pie-panel-resize-handle",
 		iconClass = "pie-panel-resize-icon",
 		i18n,
-	} = $props<{
+	}: {
 		onPointerDown?: (event: MouseEvent) => void;
 		handleClass?: string;
 		iconClass?: string;
 		/** Interface-locale provider; the English-only default covers its absence. */
 		i18n?: I18nProvider;
-	}>();
+	} = $props();
 
 	const label = $derived(resolveInterfaceI18n({ i18n }).t("toolkit.resizeWindow"));
 </script>

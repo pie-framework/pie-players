@@ -10,11 +10,11 @@
 		layoutModel,
 		contentMaxWidthNoPassagePx = undefined as number | undefined,
 		contentMaxWidthWithPassagePx = undefined as number | undefined,
-	} = $props<{
+	}: {
 		layoutModel: LayoutModel;
 		contentMaxWidthNoPassagePx?: number;
 		contentMaxWidthWithPassagePx?: number;
-	}>();
+	} = $props();
 
 	let frameElement = $state<HTMLDivElement | null>(null);
 	const interfaceI18n = useInterfaceI18n(() => frameElement);

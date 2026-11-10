@@ -46,7 +46,7 @@
 		dividerAriaLabel,
 		dividerValueTextSuffix = "% media width",
 		content,
-	} = $props<{
+	}: {
 		/** Id the resize handle points `aria-controls` at. */
 		regionId: string;
 		/** Owner scope for the catalog lookup, built by the toolkit's own helper. */
@@ -56,7 +56,7 @@
 		dividerAriaLabel: string;
 		dividerValueTextSuffix?: string;
 		content: Snippet;
-	}>();
+	} = $props();
 
 	let mediaAnchor = $state<HTMLDivElement | null>(null);
 	let mediaSplitContainer = $state<HTMLDivElement | null>(null);

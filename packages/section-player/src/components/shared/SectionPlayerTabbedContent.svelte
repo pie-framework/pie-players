@@ -13,12 +13,12 @@
 		contentMaxWidthNoPassagePx = undefined as number | undefined,
 		contentMaxWidthWithPassagePx = undefined as number | undefined,
 		idBase = "pie-section-player-tabbed",
-	} = $props<{
+	}: {
 		layoutModel: LayoutModel;
 		contentMaxWidthNoPassagePx?: number;
 		contentMaxWidthWithPassagePx?: number;
 		idBase?: string;
-	}>();
+	} = $props();
 
 	let frameElement = $state<HTMLDivElement | null>(null);
 	const interfaceI18n = useInterfaceI18n(() => frameElement);

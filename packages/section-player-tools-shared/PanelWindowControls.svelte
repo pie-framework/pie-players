@@ -7,14 +7,14 @@
 		onClose,
 		buttonClass = "",
 		i18n,
-	} = $props<{
+	}: {
 		minimized?: boolean;
 		onToggle?: () => void;
 		onClose?: () => void;
 		buttonClass?: string;
 		/** Interface-locale provider; the English-only default covers its absence. */
 		i18n?: I18nProvider;
-	}>();
+	} = $props();
 
 	const t = $derived(resolveInterfaceI18n({ i18n }));
 

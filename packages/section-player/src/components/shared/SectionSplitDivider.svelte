@@ -9,7 +9,7 @@
 		ariaControls = "",
 		ariaValueText = "",
 		onResize,
-	} = $props<{
+	}: {
 		value?: number;
 		min?: number;
 		max?: number;
@@ -20,7 +20,7 @@
 		ariaValueText?: string;
 		/** The requested split percentage, bounded by `min` and `max`. */
 		onResize?: (value: number) => void;
-	}>();
+	} = $props();
 
 	let dragging = $state(false);
 	let startX = 0;

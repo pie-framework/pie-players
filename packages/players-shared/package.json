@@ -138,6 +138,7 @@
 	"dependencies": {
 		"@pie-element/shared-utils": "0.1.6",
 		"@pie-lib/math-rendering-module": "6.0.0",
+		"@pie-players/pie-language-tags": "workspace:*",
 		"dompurify": "^3.4.17",
 		"ipaddr.js": "^2.5.0",
 		"semver": "^7.8.5"

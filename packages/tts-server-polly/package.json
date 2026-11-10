@@ -39,7 +39,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@aws-sdk/client-polly": "^3.1156.0",
+		"@aws-sdk/client-polly": "^3.1163.0",
 		"@pie-players/tts-server-core": "workspace:*"
 	},
 	"devDependencies": {

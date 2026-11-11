@@ -78,7 +78,7 @@
 			onInsertSound: { type: "Object", reflect: false },
 			onDeleteSound: { type: "Object", reflect: false },
 		},
-		extend: coerceBooleanAttributes,
+		extend: (element) => withItemPlayerFocus(coerceBooleanAttributes(element)),
 	}}
 />
 
@@ -118,6 +118,12 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	// projection; session snapshots and page-lifecycle commits; public methods and
 	// model updates; element session forwarding.
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
+	import {
+		attachItemPlayerFocus,
+		createItemPlayerFocus,
+		type ItemFocusReadiness,
+		withItemPlayerFocus,
+	} from "./focus-first-input.js";
 	import type {
 		ConfigEntity,
 		ConfigResource,
@@ -564,6 +570,39 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	$effect(() => {
 		if (!hostElement || customElementHost) return;
 		customElementHost = resolveCustomElementHost(hostElement);
+	});
+
+	// The renderer whose load settled, and whether it failed. `focus()` is ready
+	// only once the renderer mounted now has loaded: a config change mounts a new
+	// one, and its elements have no models until its own `load-complete`.
+	let settledRenderer: { renderer: unknown; failed: boolean } | null = null;
+
+	function itemFocusReadiness(): ItemFocusReadiness {
+		if (error) return "unavailable";
+		const settled = settledRenderer;
+		if (loading || !itemConfig || !rendererElement) return "pending";
+		if (!settled || settled.renderer !== rendererElement) return "pending";
+		return settled.failed ? "unavailable" : "ready";
+	}
+
+	const itemFocus = createItemPlayerFocus({
+		readiness: itemFocusReadiness,
+		// The item's own container, not the passage's.
+		itemContainer: () =>
+			hostElement?.querySelector(
+				":scope > .pie-player-item-container > div > .pie-item-container",
+			) ?? null,
+		logger,
+	});
+	// At script init, because Svelte runs no effect before a custom element's
+	// mount returns, and a host may call `focus()` right after inserting it.
+	const focusHost: HTMLElement | undefined = $host();
+	const detachItemFocus = focusHost
+		? attachItemPlayerFocus(focusHost, itemFocus)
+		: () => {};
+	onDestroy(() => {
+		detachItemFocus();
+		itemFocus.dispose();
 	});
 
 	// A host that mounts the player inside its own shadow root gets no document
@@ -1424,6 +1463,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 				...(cause ? { cause } : {}),
 			} satisfies PieItemPlayerErrorDetail;
 			trackItemPlayerError(message, { ...detail, errorType: detail.code });
+			itemFocus.failed();
 			handlePlayerEvent(
 				new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, { detail }),
 			);
@@ -2235,12 +2275,21 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 					onLoadComplete={(detail: unknown) => {
 						seedHostSessionEntriesForItem();
 						reportDirectionMismatch();
+						// Ahead of the event, so a host's `load-complete` listener can
+						// call `focus()`.
+						settledRenderer = { renderer: rendererElement, failed: false };
+						itemFocus.loaded();
 						handlePlayerEvent(new CustomEvent("load-complete", { detail }));
 					}}
-					onPlayerError={(detail: PieItemPlayerErrorDetail) =>
+					onPlayerError={(detail: PieItemPlayerErrorDetail) => {
+						if (detail?.recoverable !== true) {
+							settledRenderer = { renderer: rendererElement, failed: true };
+							itemFocus.failed();
+						}
 						handlePlayerEvent(
 							new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, { detail }),
-						)}
+						);
+					}}
 					onSessionChanged={(detail: unknown) => handleSessionChanged(detail)}
 					onElementSessionUpdate={handleElementSessionUpdate}
 					onModelUpdated={(detail: unknown) => handleModelUpdated(detail)}

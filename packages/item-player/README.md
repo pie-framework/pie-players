@@ -345,6 +345,18 @@ These are set from JavaScript; they have no attribute.
 - `getPendingSessionSnapshot(): SessionSnapshotRecord | null` returns the
   snapshot `session-snapshot-available` announced, for a host that attached its
   listener after the event fired.
+- `focus(options?: FocusOptions): Promise<boolean>` focuses the item's first
+  input and resolves whether focus moved. Each element in the item is asked in
+  document order through its `focusFirstInput()` hook
+  ([element contract](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/PIE_ELEMENT_CONTRACT.md#focus-hook)),
+  and one without the hook gets its first tabbable descendant. The passage is
+  skipped, and an item with no input leaves focus where it is. A call made while
+  the item loads waits for `load-complete`, then focuses only if focus has not
+  moved since the call; a newer call resolves a waiting one `false`. `options`
+  passes through, so `preventScroll` keeps the page still. Call it on an
+  explicit learner action, such as Enter or a Next button: focus moved on load
+  skips the prompt for a screen-reader user, and focus moved as an answer is
+  typed is a change of context on input (WCAG 3.2.2).
 
 A backend method rejects its promise on failure and dispatches no
 `backend-error`.

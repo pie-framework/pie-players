@@ -72,6 +72,17 @@ export interface PieItemPlayerElement extends HTMLElement {
 	saveContent(options?: BackendSaveContentOptions): Promise<string>;
 	/** Release authoring content through `backend.authoring` when configured. */
 	releaseContent(options?: BackendAuthoringReleaseOptions): Promise<string>;
+	/**
+	 * Focus the first input of the rendered item; resolves whether focus moved.
+	 *
+	 * Each element is asked in document order through its `focusFirstInput()`
+	 * hook, and one without the hook gets its first tabbable descendant; the
+	 * passage is skipped. An item with no input leaves focus where it is. A call
+	 * made while the item loads waits for `load-complete`, then focuses only if
+	 * focus has not moved since the call. Call it on an explicit learner action,
+	 * such as Enter or a Next button, not on load or as an answer is typed.
+	 */
+	focus(options?: FocusOptions): Promise<boolean>;
 }
 
 export interface PieItemSessionDebuggerElement extends HTMLElement {

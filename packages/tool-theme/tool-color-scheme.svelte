@@ -478,8 +478,13 @@ itself there once a scheme is chosen.
 		flex-shrink: 0;
 	}
 
+	/* The panel has a fixed pixel size and its contents scale with the root font.
+	   As a scroll container this flex item may otherwise shrink to nothing, so it
+	   keeps its height and the content area scrolls instead. */
 	.pie-tool-color-scheme__dropdown {
 		position: relative;
+		flex-shrink: 0;
+		box-sizing: border-box;
 		width: 100%;
 		max-height: 24rem;
 		background-color: var(--pie-background, white);

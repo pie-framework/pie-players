@@ -797,6 +797,49 @@ test.describe("section theme and color scheme integration", () => {
 		await expect(trigger).toBeFocused();
 	});
 
+	test("keeps the open menu at full height when enlarged text overflows the panel", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		// The panel opens at a fixed pixel size while its contents scale with the
+		// root font, as a larger browser font-size setting makes them.
+		await page.evaluate(() => {
+			document.documentElement.style.fontSize = "24px";
+		});
+		await page
+			.getByRole("button", { name: "Theme, change colors and contrast" })
+			.first()
+			.click();
+		const themeTool = page.locator("pie-tool-theme").first();
+		await themeTool.getByRole("button", { name: "Select theme" }).click();
+		const menu = themeTool.getByRole("menu");
+		await expect(menu).toBeVisible();
+
+		const sizes = await menu.evaluate((element) => {
+			const computed = getComputedStyle(element);
+			const borders =
+				Number.parseFloat(computed.borderTopWidth) +
+				Number.parseFloat(computed.borderBottomWidth);
+			const content = element.closest(".pie-tool-color-scheme__content");
+			return {
+				height: element.getBoundingClientRect().height,
+				natural: Math.min(
+					element.scrollHeight + borders,
+					Number.parseFloat(computed.maxHeight),
+				),
+				contentOverflowX: content
+					? content.scrollWidth - content.clientWidth
+					: Number.NaN,
+			};
+		});
+		expect(sizes.height).toBeCloseTo(sizes.natural, 0);
+		expect(sizes.contentOverflowX).toBe(0);
+
+		const lastOption = themeTool.getByRole("menuitem").last();
+		await lastOption.scrollIntoViewIfNeeded();
+		await expect(lastOption).toBeInViewport({ ratio: 1 });
+	});
+
 	test("follows the host scheme over a stored pie-color-scheme", async ({
 		page,
 	}) => {

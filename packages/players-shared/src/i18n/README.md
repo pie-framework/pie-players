@@ -200,17 +200,17 @@ closing the loop, not clearing a gate.
 
 ## Conformance with pie-elements-ng
 
-pie-elements-ng's `@pie-element/shared-i18n` ports this engine and shares its
-semantics, not its code. The shared semantics are written down once, in
-[`tests/i18n-conformance-fixtures.json`](../../tests/i18n-conformance-fixtures.json)
+pie-elements-ng's `@pie-element/shared-i18n` ports this engine's provider and
+imports its language-tag code from
+[`@pie-players/pie-language-tags`](../../../pie-language-tags/README.md), as this
+engine does. The shared semantics are written down once, in that package's
+[`i18n-conformance-fixtures.json`](../../../pie-language-tags/i18n-conformance-fixtures.json)
 (lookup sequence, direction, plural routing with locale numerals,
-interpolation, the fallback chain), which pie-elements-ng keeps as a
-byte-identical copy at `packages/shared/i18n/tests/` and both repositories run
+interpolation, the fallback chain), and both repositories run that one file
 against their own engine. A case only one engine passes is drift, and the fix
-goes to the engine, not the fixture; a deliberate semantics change edits both
-copies together. Locale tags in the fixture are full where CLDR's regional
-defaults differ: bare `ar` formats Latin digits and `ar-SA` Arabic-Indic, which
-is CLDR, not an engine.
+goes to the engine, not the fixture. Locale tags in the fixture are full where
+CLDR's regional defaults differ: bare `ar` formats Latin digits and `ar-SA`
+Arabic-Indic, which is CLDR, not an engine.
 
 ## Module layout
 
@@ -226,7 +226,7 @@ follows the same imports.
 | `i18n/provider` | `SimpleI18n`, `getDefaultI18n`, `localeDirection`, `stampInterfaceLocale` | components, for the English fallback |
 | `i18n/catalogs` | dynamic loader map for the non-English locales | players only |
 | `i18n` | `createPieI18n()`, wiring provider to catalogs | players only |
-| `i18n/language-tags` | BCP-47 comparison, no locale data, no DOM | catalog resolver, TTS voice selection |
+| `i18n/language-tags` | BCP-47 comparison, no locale data, no DOM; re-exports `@pie-players/pie-language-tags` | catalog resolver, TTS voice selection |
 
 A component reaching only the first two pulls in the interface (a type) and the
 English catalog (about 9 KB gzipped). It never reaches `catalogs`, so no locale chunk is emitted

@@ -49,7 +49,7 @@
 		onSectionReady,
 		onFrameworkErrorEvent,
 		onToolkitReady,
-	} = $props<{
+	}: {
 		runtime?: Record<string, unknown> | null;
 		ndsIcons?: boolean;
 		locale?: string;
@@ -75,7 +75,7 @@
 		 */
 		onFrameworkErrorEvent?: (event: Event) => void;
 		onToolkitReady?: (event: Event) => void;
-	}>();
+	} = $props();
 	let cardContextAnchor = $state<HTMLDivElement | null>(null);
 	let navigationStatusMessage = $state("");
 	let unsubscribeNavigationStatus: (() => void) | null = null;

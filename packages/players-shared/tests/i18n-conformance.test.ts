@@ -1,17 +1,24 @@
 /**
  * Conformance of the players-shared i18n engine to the cross-repository spec.
  *
- * `i18n-conformance-fixtures.json` is the semantics the two PIE engines share:
- * this one and pie-elements-ng's `@pie-element/shared-i18n`, which ports it and
- * shares no code. Each repository runs the same file against its own engine, so
- * a case one engine passes and the other fails is drift made visible. The copies
- * are kept byte-identical; the fixture file's `$comment` names both paths.
+ * `@pie-players/pie-language-tags/i18n-conformance-fixtures.json` is the
+ * semantics the two PIE engines share: this one and pie-elements-ng's
+ * `@pie-element/shared-i18n`. Both import the language-tag code from that
+ * package and keep their own providers, and both run this one file against
+ * their own engine, so a case one engine passes and the other fails is drift
+ * made visible.
  */
 
-import { readFileSync } from "node:fs";
+import fixturesJson from "@pie-players/pie-language-tags/i18n-conformance-fixtures.json" with {
+	type: "json",
+};
 import { describe, expect, test } from "bun:test";
 import { languageTagLookupSequence } from "../src/i18n/language-tags.js";
-import { dynamicMessageKey, localeDirection, SimpleI18n } from "../src/i18n/provider.js";
+import {
+	dynamicMessageKey,
+	localeDirection,
+	SimpleI18n,
+} from "../src/i18n/provider.js";
 import type { MessageCatalog } from "../src/i18n/types.js";
 
 interface Fixtures {
@@ -50,9 +57,7 @@ interface Fixtures {
 	}[];
 }
 
-const fixtures: Fixtures = JSON.parse(
-	readFileSync(new URL("./i18n-conformance-fixtures.json", import.meta.url), "utf8"),
-);
+const fixtures = fixturesJson as unknown as Fixtures;
 
 /**
  * A provider serving the fixture catalogs. `shipped` enters through the loader,
@@ -115,10 +120,22 @@ describe("i18n conformance", () => {
 	});
 
 	test("interpolation", async () => {
-		for (const { locale, template, values, expected } of fixtures.interpolation) {
-			const i18n = await providerFor(locale, {}, { [locale]: { tpl: template } });
+		for (const {
+			locale,
+			template,
+			values,
+			expected,
+		} of fixtures.interpolation) {
+			const i18n = await providerFor(
+				locale,
+				{},
+				{ [locale]: { tpl: template } },
+			);
 			expect(
-				i18n.t(dynamicMessageKey("tpl"), values as Record<string, string | number>),
+				i18n.t(
+					dynamicMessageKey("tpl"),
+					values as Record<string, string | number>,
+				),
 				template,
 			).toBe(expected);
 		}
@@ -137,7 +154,14 @@ describe("i18n conformance", () => {
 		}
 	});
 
-	for (const { name, locale, source, shipped, hostMessages, expected } of fixtures.scenarios) {
+	for (const {
+		name,
+		locale,
+		source,
+		shipped,
+		hostMessages,
+		expected,
+	} of fixtures.scenarios) {
 		test(`scenario: ${name}`, async () => {
 			// `source` is the fixture's `en-US`, registered first so a scenario's own
 			// `en-US` host messages layer over it; every other host-message tag is

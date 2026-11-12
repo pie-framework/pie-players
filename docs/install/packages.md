@@ -55,6 +55,7 @@ lockstep set ([preloaded player](../preloaded-player/readme.md)).
 | [`@pie-players/pie-default-tool-loaders`](../../packages/default-tool-loaders/README.md) | The packaged tool set: registrations, tag map, placement preset, universal and empty profiles, and lazy module loaders |
 | [`@pie-players/pie-players-shared`](../../packages/players-shared/README.md) | Element loaders, the markup sanitizer, i18n, shared types and UI utilities |
 | [`@pie-players/pie-i18n-generated`](../../packages/pie-i18n-generated/README.md) | Optional machine-generated interface locale catalogs, provenance-marked and unreviewed; hosts wire their loaders in after the bundled ones and can override any string |
+| [`@pie-players/pie-language-tags`](../../packages/pie-language-tags/README.md) | BCP 47 language tag lookup and matching, which `@pie-players/pie-players-shared/i18n/language-tags` re-exports, and the conformance spec both PIE i18n engines run |
 | [`@pie-players/pie-context`](../../packages/pie-context/README.md) | Context Protocol helpers through which the custom elements share runtime services |
 | [`@pie-players/pie-theme`](../../packages/theme/README.md) | Theme tokens, CSS variables and the `<pie-theme>` element ([theming](../theming/how-theming-works.md)) |
 
@@ -142,6 +143,7 @@ the packed tarball.
 | `@pie-players/pie-default-tool-loaders` | `.` |
 | `@pie-players/pie-players-shared` | `.`, `./i18n/language-tags`, `./security/private-hosts` |
 | `@pie-players/pie-context` | `.` |
+| `@pie-players/pie-language-tags` | `.` |
 | `@pie-players/pie-calculator`, `@pie-players/pie-calculator-cortex`, `@pie-players/pie-calculator-desmos` | `.` |
 | `@pie-players/pie-tts`, `@pie-players/tts-client-server`, `@pie-players/tts-server-core`, `@pie-players/tts-server-google`, `@pie-players/tts-server-polly` | `.` |
 

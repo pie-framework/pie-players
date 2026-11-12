@@ -387,11 +387,12 @@ jobs:
         run: test "${{ needs.section-player-e2e.result }}" = success
 
   # The Cortex calculator's own browser suite, in parallel with the critical legs.
+  # Cortex's unit and browser suites, kept out of `bun run test` and the Build job.
   # Not a required check: a pull request runs it only when it touches Cortex, the
   # calculator contract it depends on, or the toolchain, and every push to master
   # runs it. The Change Scope job decides which.
   cortex-e2e:
-    name: Cortex Calculator E2E
+    name: Cortex Calculator
     needs: change-scope
     if: ${{ !cancelled() && needs.change-scope.outputs.skip_cortex != 'true' }}
     runs-on: ubuntu-latest
@@ -431,6 +432,10 @@ jobs:
           path: .turbo/cache
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: turbo-${{ runner.os }}-
+
+      # Before the build, as in the Build job: unit tests resolve workspace siblings to source.
+      - name: Run Cortex Unit Tests
+        run: bun run --cwd packages/calculator-cortex test
 
       - name: Build Cortex Dependencies
         run: bunx turbo build --filter='@pie-players/pie-calculator-cortex^...'

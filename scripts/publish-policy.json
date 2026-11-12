@@ -55,6 +55,7 @@
 			"@pie-players/pie-players-shared/i18n/language-tags",
 			"@pie-players/pie-players-shared/security/private-hosts",
 			"@pie-players/pie-context",
+			"@pie-players/pie-language-tags",
 			"@pie-players/pie-calculator",
 			"@pie-players/pie-calculator-cortex",
 			"@pie-players/pie-calculator-desmos",

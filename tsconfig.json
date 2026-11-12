@@ -49,6 +49,9 @@
 			"path": "./packages/pie-i18n-generated"
 		},
 		{
+			"path": "./packages/pie-language-tags"
+		},
+		{
 			"path": "./packages/item-list"
 		},
 		{

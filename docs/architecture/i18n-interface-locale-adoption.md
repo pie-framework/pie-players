@@ -57,7 +57,7 @@ obliged to reproduce an English flaw.
 
 **One provider, in `players-shared`.** `players-shared` is already a runtime
 dependency of every tool and player, is on the publish policy's `nodeSafe` list,
-and owns `i18n/language-tags`. A new package would mean a Changesets `fixed` entry,
+and exposes `i18n/language-tags`. A new package would mean a Changesets `fixed` entry,
 build wiring and a dependency edit in 30 packages to deliver one interface and one
 catalog.
 

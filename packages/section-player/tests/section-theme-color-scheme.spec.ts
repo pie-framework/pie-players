@@ -17,6 +17,18 @@ async function gotoDemo(page: Page) {
 	await expectDemoChromeReady(page);
 }
 
+/** Open the Theme tool from the toolbar, then its scheme menu. */
+async function openThemeMenu(page: Page) {
+	await page
+		.getByRole("button", { name: "Theme, change colors and contrast" })
+		.first()
+		.click();
+	const themeTool = page.locator("pie-tool-theme").first();
+	await themeTool.getByRole("button", { name: "Select theme" }).click();
+	await expect(themeTool.getByRole("menu")).toBeVisible();
+	return themeTool;
+}
+
 /** Set the scheme the way a host does, on its document-scoped `<pie-theme>`. */
 async function setHostScheme(page: Page, scheme: string) {
 	await page
@@ -796,6 +808,62 @@ test.describe("section theme and color scheme integration", () => {
 		await expect(themeTool.getByRole("menu")).toHaveCount(0);
 		await expect(trigger).toBeFocused();
 	});
+
+	test("keeps the open menu inside the panel at the default size", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		const themeTool = await openThemeMenu(page);
+		const panelOverflow = await themeTool
+			.locator(".pie-tool-color-scheme__content")
+			.evaluate((content) => ({
+				x: content.scrollWidth - content.clientWidth,
+				y: content.scrollHeight - content.clientHeight,
+			}));
+		expect(panelOverflow).toEqual({ x: 0, y: 0 });
+	});
+
+	// The panel opens at a fixed pixel size, clamped to the window, while its
+	// contents scale with the root font, as a larger browser font-size setting
+	// makes them. Either way the contents outgrow the panel.
+	for (const layout of [
+		{ name: "enlarged text", fontSize: "24px" },
+		{ name: "a short window", viewport: { width: 1280, height: 300 } },
+	]) {
+		test(`opens the menu in view with room for two options under ${layout.name}`, async ({
+			page,
+		}) => {
+			if (layout.viewport) await page.setViewportSize(layout.viewport);
+			await gotoDemo(page);
+			if (layout.fontSize) {
+				await page.evaluate((size) => {
+					document.documentElement.style.fontSize = size;
+				}, layout.fontSize);
+			}
+			const themeTool = await openThemeMenu(page);
+			const options = themeTool.getByRole("menuitem");
+
+			await expect(options.first()).toBeInViewport({ ratio: 1 });
+			await expect(
+				themeTool.getByRole("button", { name: "Select theme" }),
+			).toBeInViewport({ ratio: 1 });
+			const optionHeight = await options
+				.first()
+				.evaluate((option) => option.getBoundingClientRect().height);
+			const menuRoom = await themeTool
+				.getByRole("menu")
+				.evaluate((menu) => menu.clientHeight);
+			expect(menuRoom).toBeGreaterThanOrEqual(2 * optionHeight);
+			const panelOverflowX = await themeTool
+				.locator(".pie-tool-color-scheme__content")
+				.evaluate((content) => content.scrollWidth - content.clientWidth);
+			expect(panelOverflowX).toBe(0);
+
+			// Scrolling through two nested scrollers can leave a sub-pixel clip.
+			await options.last().scrollIntoViewIfNeeded();
+			await expect(options.last()).toBeInViewport({ ratio: 0.99 });
+		});
+	}
 
 	test("follows the host scheme over a stored pie-color-scheme", async ({
 		page,

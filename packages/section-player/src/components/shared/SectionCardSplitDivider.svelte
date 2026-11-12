@@ -27,7 +27,7 @@
 		ariaControls = "",
 		ariaValueText = "",
 		onresize = (_value: number, _input: "pointer" | "keyboard") => {},
-	} = $props<{
+	}: {
 		value?: number;
 		min?: number;
 		max?: number;
@@ -37,7 +37,7 @@
 		ariaControls?: string;
 		ariaValueText?: string;
 		onresize?: (value: number, input: "pointer" | "keyboard") => void;
-	}>();
+	} = $props();
 
 	let dragging = $state(false);
 	let startX = 0;

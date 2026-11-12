@@ -23,12 +23,13 @@
 		"build:e2e:item-list": "turbo build --filter=@pie-players/pie-item-list...",
 		"build:e2e:print-player": "turbo build --filter=@pie-players/pie-print-player...",
 		"dev": "bun run dev:section",
-		"test": "turbo test --filter='!./apps/*' --filter='!./tools/*' && bun run --filter './apps/*' test",
+		"test": "turbo test --filter='!./apps/*' --filter='!./tools/*' --filter='!@pie-players/pie-calculator-cortex' && bun run --filter './apps/*' test",
 		"test:e2e:section-player": "export SECTION_DEMOS_PORT=${SECTION_DEMOS_PORT:-$(bun ./scripts/get-free-port.mjs)}; bun run build:e2e:section-player && bunx playwright test --config packages/section-player/playwright.config.ts",
 		"test:e2e:section-player:tts-ssml": "export SECTION_DEMOS_PORT=${SECTION_DEMOS_PORT:-$(bun ./scripts/get-free-port.mjs)}; bun run build:e2e:section-player && bunx playwright test packages/section-player/tests/section-player-tts-ssml.spec.ts --config packages/section-player/playwright.config.ts",
 		"test:e2e:section-player:critical": "bun run build:e2e:section-player && bun run test:e2e:section-player:critical:prebuilt",
 		"test:e2e:section-player:critical:prebuilt": "export SECTION_DEMOS_PORT=${SECTION_DEMOS_PORT:-$(bun ./scripts/get-free-port.mjs)}; bunx playwright test packages/section-player/tests/section-player-tts-ssml.spec.ts packages/section-player/tests/section-player-tts-generated-ssml.spec.ts packages/section-player/tests/section-player-event-panel.spec.ts packages/section-player/tests/section-player-session-hydrate-db.spec.ts packages/section-player/tests/section-player-non-painting-document.spec.ts packages/section-player/tests/section-player-browser-build.spec.ts --config packages/section-player/playwright.config.ts",
 		"test:e2e:section-player:local-esm-cdn": "export SECTION_DEMOS_PORT=${SECTION_DEMOS_PORT:-$(bun ./scripts/get-free-port.mjs)}; bun run build:e2e:section-player && bunx playwright test --config packages/section-player/playwright.local-esm-cdn.config.ts",
+		"perf:delivery-cost": "export SECTION_DEMOS_PORT=${SECTION_DEMOS_PORT:-$(bun ./scripts/get-free-port.mjs)}; bun run build:e2e:section-player && bunx turbo build --filter=@pie-players/tts-server-sc && bun run --cwd apps/section-demos build && bunx playwright test --config packages/section-player/playwright.perf.config.ts",
 		"test:e2e:item-player": "export ITEM_DEMOS_PORT=${ITEM_DEMOS_PORT:-$(bun ./scripts/get-free-port.mjs)}; bun run build:e2e:item-player && bunx playwright test --config packages/item-player/playwright.config.ts",
 		"test:e2e:backend-demo": "bun run build:e2e:section-player && bun run test:e2e:backend-demo:prebuilt",
 		"test:e2e:backend-demo:prebuilt": "export BACKEND_DEMOS_PORT=${BACKEND_DEMOS_PORT:-$(bun ./scripts/get-free-port.mjs)}; bunx playwright test --config packages/item-player/playwright.backend.config.ts",
@@ -183,7 +184,7 @@
 	"dependencies": {
 		"@sveltejs/kit": "^3.1.1",
 		"svelte": "^5.57.3",
-		"svelte-check": "^4.7.6",
+		"svelte-check": "^4.7.8",
 		"vite": "8.3.3"
 	}
 }

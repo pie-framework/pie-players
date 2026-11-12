@@ -18,7 +18,7 @@
 const DOCS_FILE = /^(docs|\.agents)\/.+\.(md|png|jpe?g|gif|svg|webp)$/i;
 const ROOT_MARKDOWN = /^[^/]+\.md$/i;
 
-/** The paths Cortex's browser suite depends on, so a pull request touching one runs it. */
+/** The paths Cortex's unit and browser suites depend on, so a pull request touching one runs them. */
 const CORTEX_INPUT =
 	/^(packages\/calculator-cortex\/|packages\/calculator\/|package\.json$|bun\.lock$|\.github\/workflows\/ci\.yml$|scripts\/ci-change-scope\.mjs$|scripts\/lib\/change-scope\.mjs$)/;
 

@@ -379,6 +379,10 @@ tiers on height, which a fluid demo at 1280px reaches neither of.
 
 ## Test coverage
 
+`bun run --cwd packages/calculator-cortex test` runs the unit tests, which the
+repository's `bun run test` leaves out. CI runs them with the browser suite in its
+Cortex job, on a pull request touching Cortex's inputs and on every push to master.
+
 Feature coverage rests on three suites with different jobs.
 
 `tests/calculator-cortex-keypad-coverage.test.ts` maintains itself: every shipped

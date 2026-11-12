@@ -1,4 +1,10 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import {
+	afterEach,
+	describe,
+	expect,
+	setDefaultTimeout,
+	test,
+} from "bun:test";
 import { CortexCalculatorController } from "../src/calculator-controller.js";
 import { resolveCortexSettings } from "../src/settings.js";
 import { expectCortexRejection } from "./support/cortex-errors.js";
@@ -20,6 +26,10 @@ import {
  * Requests run through `installFakeWorkers("computing")`, which routes them to the
  * same evaluator the shipped worker calls, over the real protocol.
  */
+
+// A journey takes up to 2s of real evaluations on CI, and a loaded runner has
+// taken 5.1s, past the 5s default.
+setDefaultTimeout(30_000);
 
 let fleet: FakeWorkerFleet | null = null;
 

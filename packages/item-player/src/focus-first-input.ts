@@ -92,10 +92,35 @@ export async function focusItemFirstInput(
 	options?: FocusOptions,
 	logger?: FocusLogger,
 ): Promise<boolean> {
+	const doc = container.ownerDocument;
 	for (const element of itemFocusCandidates(container)) {
+		const before = deepActiveElement(doc);
 		if (await focusElementFirstInput(element, options, logger)) return true;
+		// A hook resolves false both when its element has no input and when focus
+		// moved while it waited, and leaves that focus alone. Only the first lets
+		// the next element take focus.
+		if (deepActiveElement(doc) !== before) return false;
 	}
 	return false;
+}
+
+/**
+ * Whether focus left `held` only because `held` could no longer hold it: it left
+ * the page, stopped rendering or was disabled, and the browser moved focus to the
+ * document. No learner chose that, so it is no move to respect.
+ */
+function lostItsFocus(held: Element, now: Element | null, doc: Document): boolean {
+	if (now && now !== doc.body && now !== doc.documentElement) return false;
+	if (!held.isConnected || held.matches(":disabled")) return true;
+	const element = held as HTMLElement;
+	return typeof element.checkVisibility === "function" && !element.checkVisibility();
+}
+
+/** Whether focus moved since `activeAtCall` held it. */
+function focusMovedSince(activeAtCall: Element | null, doc: Document): boolean {
+	const now = deepActiveElement(doc);
+	if (now === activeAtCall) return false;
+	return !(activeAtCall && lostItsFocus(activeAtCall, now, doc));
 }
 
 /**
@@ -123,12 +148,22 @@ export type ItemPlayerFocus = {
  *
  * A call made while the item loads waits for it, and then focuses only if focus
  * has not moved since the call: a learner who clicked elsewhere in the meantime
- * keeps that focus. One call waits at a time, and a newer one resolves the older
- * false.
+ * keeps that focus. Focus that fell to the document because the element holding
+ * it was removed or hidden did not move. One call waits at a time, and a newer
+ * one resolves the older false.
  */
 export function createItemPlayerFocus(deps: {
 	readiness: () => ItemFocusReadiness;
 	itemContainer: () => Element | null;
+	/**
+	 * Resolves once the player has acted on changes made before the call, or
+	 * returns null when there are none. A host that sets `config` and calls
+	 * `focus()` in one task otherwise finds the old item still ready and focuses
+	 * an input the new load is about to remove. With nothing pending, focus moves
+	 * within the caller's task, which is what makes Firefox show the focus ring
+	 * for focus moved from a keyboard handler.
+	 */
+	settle?: () => Promise<void> | null;
 	logger?: FocusLogger;
 }): ItemPlayerFocus {
 	let waiting: ((loaded: boolean) => void) | null = null;
@@ -155,12 +190,14 @@ export function createItemPlayerFocus(deps: {
 
 	return {
 		async focus(options, activeAtCall = deepActiveElement()) {
+			const settling = deps.settle?.();
+			if (settling) await settling;
 			const readiness = deps.readiness();
 			if (readiness === "unavailable") return false;
 			if (readiness === "ready") return focusNow(options);
 			if (!(await waitForLoad())) return false;
 			if (deps.readiness() !== "ready") return false;
-			if (deepActiveElement() !== activeAtCall) return false;
+			if (focusMovedSince(activeAtCall, document)) return false;
 			return focusNow(options);
 		},
 		loaded: () => settle(true),

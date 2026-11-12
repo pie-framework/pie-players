@@ -577,6 +577,27 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	// one, and its elements have no models until its own `load-complete`.
 	let settledRenderer: { renderer: unknown; failed: boolean } | null = null;
 
+	// What the load effect last queued `loadConfig` with, and the promise of that
+	// load's start, null once it has started. A change reaches `loadConfig` only
+	// through that effect and its microtask, so until then the outgoing item still
+	// reads as loaded.
+	let scheduledLoadInputs: readonly unknown[] = [];
+	let scheduledLoadStart: Promise<void> | null = null;
+
+	// Null when the player has acted on every change made so far, so `focus()`
+	// moves focus within the caller's task; otherwise resolves once the effects
+	// have run and the load they queue has started. A real change then reads as
+	// loading, and one the no-op guard drops leaves the item ready.
+	function settleScheduledLoad(): Promise<void> | null {
+		const inputs = untrack(configLoadInputs);
+		const changed = inputs.some((value, index) => value !== scheduledLoadInputs[index]);
+		if (!changed && !scheduledLoadStart) return null;
+		return (async () => {
+			await tick();
+			while (scheduledLoadStart) await scheduledLoadStart;
+		})();
+	}
+
 	function itemFocusReadiness(): ItemFocusReadiness {
 		if (error) return "unavailable";
 		const settled = settledRenderer;
@@ -587,6 +608,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 
 	const itemFocus = createItemPlayerFocus({
 		readiness: itemFocusReadiness,
+		settle: settleScheduledLoad,
 		// The item's own container, not the passage's.
 		itemContainer: () =>
 			hostElement?.querySelector(
@@ -1490,21 +1512,35 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		};
 	});
 
+	// Everything `loadConfig` reads; a change to any of them queues a load.
+	function configLoadInputs(): readonly unknown[] {
+		return [
+			effectiveConfig,
+			normalizedStrategy,
+			resolvedMode,
+			resolvedIifeBundleHost,
+			resolvedEsmCdnUrl,
+			loaderRetrySignature,
+			loaderOptions,
+			allowedResize,
+			itemFeatureInputs,
+		];
+	}
+
 	$effect(() => {
-		const currentConfig = effectiveConfig;
-		void normalizedStrategy;
-		void resolvedMode;
-		void resolvedIifeBundleHost;
-		void resolvedEsmCdnUrl;
-		void loaderRetrySignature;
-		void loaderOptions;
-		void allowedResize;
-		void itemFeatureInputs;
-		queueMicrotask(() => {
-			untrack(() => {
-				loadConfig(currentConfig);
+		const inputs = configLoadInputs();
+		const currentConfig = inputs[0];
+		scheduledLoadInputs = inputs;
+		const start: Promise<void> = new Promise((resolve) => {
+			queueMicrotask(() => {
+				untrack(() => {
+					loadConfig(currentConfig);
+				});
+				if (scheduledLoadStart === start) scheduledLoadStart = null;
+				resolve();
 			});
 		});
+		scheduledLoadStart = start;
 	});
 
 	$effect(() => {

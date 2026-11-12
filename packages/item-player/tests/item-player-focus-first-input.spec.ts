@@ -205,6 +205,23 @@ async function openHost(page: Page): Promise<void> {
 }
 
 const active = (page: Page) => page.evaluate(() => window.__focusGrid.active());
+const results = (page: Page) => page.evaluate(() => window.__focusGrid.results);
+
+type FocusablePlayer = HTMLElement & { focus(): Promise<boolean>; config: unknown };
+
+/** One loaded player showing "Fact 1", with focus in its input. */
+async function openLoadedPlayer(page: Page): Promise<void> {
+	await openHost(page);
+	await page.evaluate(() => {
+		window.__focusGrid.addPlayer(window.__focusGrid.itemConfig(0, "focus-probe-plain")).id =
+			"fact-player";
+	});
+	await expect.poll(() => page.evaluate(() => window.__focusGrid.loaded.length)).toBe(1);
+	await page.evaluate(() =>
+		(document.getElementById("fact-player") as FocusablePlayer).focus(),
+	);
+	await expect.poll(() => active(page)).toMatchObject({ player: 0, label: "Fact 1" });
+}
 
 test.describe("item-player focus()", () => {
 	test("Enter moves focus through a page of items", async ({ page }) => {
@@ -285,6 +302,81 @@ test.describe("item-player focus()", () => {
 			player.config = window.__focusGrid.itemConfig(0, "focus-probe-plain");
 		});
 		await expect.poll(() => page.evaluate(() => window.__focusGrid.results)).toEqual([false]);
+		await expect(page.getByRole("textbox", { name: "Notes" })).toBeFocused();
+	});
+
+	test("Enter that swaps the item and calls focus() in one task focuses the new item", async ({
+		page,
+	}) => {
+		// A drill: one player shows item after item. Before the player has started
+		// the new load, the old item still reads as loaded.
+		await openLoadedPlayer(page);
+		await page.evaluate(() => {
+			const player = document.getElementById("fact-player") as FocusablePlayer;
+			player.addEventListener("keydown", (event) => {
+				if (event.key !== "Enter") return;
+				event.preventDefault();
+				player.config = window.__focusGrid.itemConfig(1, "focus-probe-plain");
+				void player.focus().then((result) => window.__focusGrid.results.push(result));
+			});
+		});
+		await page.keyboard.press("Enter");
+		await expect.poll(() => results(page)).toEqual([true]);
+		expect(await active(page)).toMatchObject({ player: 0, label: "Fact 2" });
+	});
+
+	test("removing the item that held focus is not the learner moving it", async ({ page }) => {
+		await openLoadedPlayer(page);
+		await page.evaluate(() => {
+			const next = window.__focusGrid.addPlayer(null) as FocusablePlayer;
+			void next.focus().then((result) => window.__focusGrid.results.push(result));
+			// The grid drops the finished item while the next one is still loading.
+			document.getElementById("fact-player")?.remove();
+			setTimeout(() => {
+				next.config = window.__focusGrid.itemConfig(1, "focus-probe-plain");
+			}, 100);
+		});
+		await expect.poll(() => results(page)).toEqual([true]);
+		expect(await active(page)).toMatchObject({ label: "Fact 2" });
+	});
+
+	test("focus the learner moves while an element's hook waits stays where they put it", async ({
+		page,
+	}) => {
+		await openHost(page);
+		await page.evaluate(
+			({ hookTag, plainTag }) => {
+				const outside = document.createElement("input");
+				outside.setAttribute("aria-label", "Notes");
+				document.body.append(outside);
+				const player = window.__focusGrid.addPlayer(null) as FocusablePlayer;
+				player.addEventListener(
+					"load-complete",
+					() => {
+						void player.focus().then((result) => window.__focusGrid.results.push(result));
+						// The hooked element's input is still mounting, so its hook waits
+						// and then declines; the plain element after it must not take focus.
+						setTimeout(() => outside.focus(), 50);
+					},
+					{ once: true },
+				);
+				player.config = {
+					id: "item-two-elements",
+					markup: `<${hookTag} id="hooked"></${hookTag}><${plainTag} id="plain"></${plainTag}>`,
+					elements: {
+						[hookTag]: `@pie-element/${hookTag}@1.0.0`,
+						[plainTag]: `@pie-element/${plainTag}@1.0.0`,
+					},
+					models: [
+						{ id: "hooked", element: hookTag, label: "Hooked answer" },
+						{ id: "plain", element: plainTag, label: "Plain answer" },
+					],
+				};
+			},
+			{ hookTag: HOOK_TAG, plainTag: PLAIN_TAG },
+		);
+		await expect.poll(() => results(page), { timeout: 10_000 }).toEqual([false]);
+		expect(await page.evaluate(() => window.__focusGrid.hookCalls)).toEqual(["hooked"]);
 		await expect(page.getByRole("textbox", { name: "Notes" })).toBeFocused();
 	});
 

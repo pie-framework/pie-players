@@ -137,6 +137,25 @@ describe("focusItemFirstInput", () => {
 		expect(document.activeElement).toBe(next);
 	});
 
+	test("stops, leaving focus alone, when focus moved while a hook waited", async () => {
+		// The contract's hook resolves false for this too, so false alone cannot
+		// tell the player to move on.
+		const outside = input("notes");
+		document.body.append(outside);
+		const next = input("next");
+		const root = container(
+			withHook(element("mounting-element"), async () => {
+				await new Promise((resolve) => setTimeout(resolve, 5));
+				return false;
+			}),
+			element("plain-element", next),
+		);
+		const result = focusItemFirstInput(root);
+		outside.focus();
+		expect(await result).toBe(false);
+		expect(document.activeElement).toBe(outside);
+	});
+
 	test("falls back to the first tabbable descendant when the hook throws", async () => {
 		const target = input("fallback");
 		const warn = mock(() => {});
@@ -223,6 +242,72 @@ describe("createItemPlayerFocus", () => {
 		expect(await result).toBe(false);
 		expect(document.activeElement).toBe(elsewhere);
 		expect(document.activeElement).not.toBe(target);
+	});
+
+	test("focus that fell to the page when its holder was removed has not moved", async () => {
+		// A grid that removes the finished item while the next one loads.
+		const { focus, target, setReadiness } = setup("pending");
+		const finished = input("finished item");
+		document.body.append(finished);
+		finished.focus();
+		const result = focus.focus();
+		finished.remove();
+		(document.activeElement as HTMLElement | null)?.blur?.();
+		setReadiness("ready");
+		focus.loaded();
+		expect(await result).toBe(true);
+		expect(document.activeElement).toBe(target);
+	});
+
+	test("focus the learner put on the page itself has moved", async () => {
+		const { focus, target, setReadiness } = setup("pending");
+		const field = input("still here");
+		document.body.append(field);
+		field.focus();
+		const result = focus.focus();
+		field.blur();
+		setReadiness("ready");
+		focus.loaded();
+		expect(await result).toBe(false);
+		expect(document.activeElement).not.toBe(target);
+	});
+
+	test("moves focus within the caller's task when nothing is pending", async () => {
+		// Firefox shows the focus ring for focus a keyboard handler moves only
+		// while that handler runs.
+		const target = input("response");
+		const root = container(element("plain-element", target));
+		const focus = createItemPlayerFocus({
+			readiness: () => "ready",
+			itemContainer: () => root,
+			settle: () => null,
+		});
+		const result = focus.focus();
+		expect(document.activeElement).toBe(target);
+		expect(await result).toBe(true);
+	});
+
+	test("reads readiness only once the player has acted on the caller's changes", async () => {
+		// The host set `config` in the same task: the old item reads ready until
+		// the player starts the new load.
+		let readiness: ItemFocusReadiness = "ready";
+		const target = input("new item");
+		const root = container(element("plain-element", target));
+		const focus = createItemPlayerFocus({
+			readiness: () => readiness,
+			itemContainer: () => root,
+			settle: async () => {
+				await Promise.resolve();
+				readiness = "pending";
+			},
+		});
+		const result = focus.focus();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(document.activeElement).not.toBe(target);
+		readiness = "ready";
+		focus.loaded();
+		expect(await result).toBe(true);
+		expect(document.activeElement).toBe(target);
 	});
 
 	test("a newer call resolves the waiting one false", async () => {

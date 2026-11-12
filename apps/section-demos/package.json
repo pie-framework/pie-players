@@ -9,6 +9,7 @@
 		"dev:cdn": "bun run --cwd ../local-esm-cdn build && LOCAL_ESM_CDN=true vite dev",
 		"dev:cdn-debug": "bun run --cwd ../local-esm-cdn build && LOCAL_ESM_CDN=true LOCAL_ESM_CDN_DEBUG=true vite dev",
 		"build": "vite build",
+		"preview": "vite preview",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"test": "bun test src tests",
 		"typecheck": "tsc --noEmit"

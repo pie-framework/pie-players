@@ -4,3 +4,5 @@ Authored in-repo for the `image-cloze-association/default` sample on `/preloaded
 
 - `tire-pieces-graph.svg`: the 465×313 graph. The dashed boxes sit where the model's `response_containers` place the drop zones.
 - `with-tire-recycling.svg`, `without-tire-recycling.svg`: the two 145×55 data labels.
+
+`apps/item-demos/static/demo-assets/image-cloze-association/` holds copies for the same item in the item demos. Change both copies together.

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 72" width="52" height="72" role="img" aria-label="An array of 7 rows of 5 dots">
+	<g fill="#999999" stroke="#333333" stroke-width="1.2">
+		<circle cx="6" cy="6" r="4.2" />
+		<circle cx="16" cy="6" r="4.2" />
+		<circle cx="26" cy="6" r="4.2" />
+		<circle cx="36" cy="6" r="4.2" />
+		<circle cx="46" cy="6" r="4.2" />
+		<circle cx="6" cy="16" r="4.2" />
+		<circle cx="16" cy="16" r="4.2" />
+		<circle cx="26" cy="16" r="4.2" />
+		<circle cx="36" cy="16" r="4.2" />
+		<circle cx="46" cy="16" r="4.2" />
+		<circle cx="6" cy="26" r="4.2" />
+		<circle cx="16" cy="26" r="4.2" />
+		<circle cx="26" cy="26" r="4.2" />
+		<circle cx="36" cy="26" r="4.2" />
+		<circle cx="46" cy="26" r="4.2" />
+		<circle cx="6" cy="36" r="4.2" />
+		<circle cx="16" cy="36" r="4.2" />
+		<circle cx="26" cy="36" r="4.2" />
+		<circle cx="36" cy="36" r="4.2" />
+		<circle cx="46" cy="36" r="4.2" />
+		<circle cx="6" cy="46" r="4.2" />
+		<circle cx="16" cy="46" r="4.2" />
+		<circle cx="26" cy="46" r="4.2" />
+		<circle cx="36" cy="46" r="4.2" />
+		<circle cx="46" cy="46" r="4.2" />
+		<circle cx="6" cy="56" r="4.2" />
+		<circle cx="16" cy="56" r="4.2" />
+		<circle cx="26" cy="56" r="4.2" />
+		<circle cx="36" cy="56" r="4.2" />
+		<circle cx="46" cy="56" r="4.2" />
+		<circle cx="6" cy="66" r="4.2" />
+		<circle cx="16" cy="66" r="4.2" />
+		<circle cx="26" cy="66" r="4.2" />
+		<circle cx="36" cy="66" r="4.2" />
+		<circle cx="46" cy="66" r="4.2" />
+	</g>
+</svg>

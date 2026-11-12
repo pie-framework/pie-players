@@ -29,13 +29,10 @@
 	],
 	"scripts": {
 		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && cp i18n-conformance-fixtures.json dist/",
-		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
-		"lint": "biome lint .",
 		"test": "bun test"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.4",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/pie-language-tags#readme",

@@ -23,7 +23,7 @@
 		"build:e2e:item-list": "turbo build --filter=@pie-players/pie-item-list...",
 		"build:e2e:print-player": "turbo build --filter=@pie-players/pie-print-player...",
 		"dev": "bun run dev:section",
-		"test": "turbo test --filter='!./apps/*' --filter='!./tools/*' && bun run --filter './apps/*' test",
+		"test": "turbo test --filter='!./apps/*' --filter='!./tools/*' --filter='!@pie-players/pie-calculator-cortex' && bun run --filter './apps/*' test",
 		"test:e2e:section-player": "export SECTION_DEMOS_PORT=${SECTION_DEMOS_PORT:-$(bun ./scripts/get-free-port.mjs)}; bun run build:e2e:section-player && bunx playwright test --config packages/section-player/playwright.config.ts",
 		"test:e2e:section-player:tts-ssml": "export SECTION_DEMOS_PORT=${SECTION_DEMOS_PORT:-$(bun ./scripts/get-free-port.mjs)}; bun run build:e2e:section-player && bunx playwright test packages/section-player/tests/section-player-tts-ssml.spec.ts --config packages/section-player/playwright.config.ts",
 		"test:e2e:section-player:critical": "bun run build:e2e:section-player && bun run test:e2e:section-player:critical:prebuilt",

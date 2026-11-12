@@ -536,6 +536,7 @@ Commands:
 ```sh
 bun run typecheck
 bun run test
+bun run --cwd packages/calculator-cortex test
 bun run check:source-exports
 bun run check:consumer-boundaries
 bun run check:custom-elements

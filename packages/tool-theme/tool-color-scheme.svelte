@@ -51,7 +51,7 @@ itself there once a scheme is chosen.
 		ToolCoordinatorApi,
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
 	import { createFocusTrap } from '@pie-players/pie-players-shared';
-	import { onMount, untrack } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 
 	const isBrowser = typeof window !== 'undefined';
@@ -64,6 +64,8 @@ itself there once a scheme is chosen.
 	let contextHostElement = $state<HTMLDivElement | undefined>();
 	let containerEl = $state<HTMLDivElement | undefined>();
 	let dropdownTriggerEl = $state<HTMLButtonElement | undefined>();
+	let contentEl = $state<HTMLDivElement | undefined>();
+	let menuEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	const coordinator = $derived(
 		runtimeContext?.toolCoordinator as ToolCoordinatorApi | undefined,
@@ -152,6 +154,24 @@ itself there once a scheme is chosen.
 
 	function toggleDropdown() {
 		dropdownOpen = !dropdownOpen;
+		if (dropdownOpen) void tick().then(revealMenu);
+	}
+
+	// When the panel's contents overflow, the menu opens below the content
+	// area's fold. Scroll that area as far as the whole menu needs, but no
+	// further than the trigger's top, so the control just used stays in view,
+	// unless that leaves the first option hidden, as at high zoom. Setting
+	// `scrollTop` on this one element leaves the host page's scrollers alone.
+	function revealMenu() {
+		if (!contentEl || !menuEl || !dropdownTriggerEl) return;
+		const content = contentEl.getBoundingClientRect();
+		const fold = content.top + contentEl.clientHeight;
+		const toMenuEnd = menuEl.getBoundingClientRect().bottom - fold;
+		const firstOption = menuEl.firstElementChild?.getBoundingClientRect();
+		const toFirstOption = firstOption ? firstOption.bottom - fold : 0;
+		const toTrigger = dropdownTriggerEl.getBoundingClientRect().top - content.top;
+		const delta = Math.min(toMenuEnd, Math.max(toTrigger, toFirstOption));
+		if (delta > 0) contentEl.scrollTop += delta;
 	}
 
 	const requestedSchemeOption = $derived.by(() => {
@@ -292,7 +312,7 @@ itself there once a scheme is chosen.
 		aria-label={interfaceI18n.t('tools.theme.selectorA11y')}
 		onkeydown={handleKeyDown}
 	>
-		<div class="pie-tool-color-scheme__content">
+		<div bind:this={contentEl} class="pie-tool-color-scheme__content">
 			<p class="pie-tool-color-scheme__description">
 				{interfaceI18n.t('tools.theme.hint')}
 			</p>
@@ -344,7 +364,7 @@ itself there once a scheme is chosen.
 			</p>
 
 			{#if dropdownOpen}
-				<div id="pie-tool-color-scheme-menu" class="pie-tool-color-scheme__dropdown" role="menu">
+				<div bind:this={menuEl} id="pie-tool-color-scheme-menu" class="pie-tool-color-scheme__dropdown" role="menu">
 					{#each displayedSchemes as scheme (scheme.id)}
 						<button
 							type="button"
@@ -407,7 +427,7 @@ itself there once a scheme is chosen.
 	}
 
 	.pie-tool-color-scheme__description {
-		margin: 0 0 1rem 0;
+		margin: 0;
 		color: var(--pie-text, black);
 		font-size: 0.875rem;
 	}
@@ -462,7 +482,10 @@ itself there once a scheme is chosen.
 		line-height: 1.4;
 	}
 
+	/* Out of the flex flow, so the empty live region costs no gap, while staying
+	   in the accessibility tree to announce a later status. */
 	.pie-tool-color-scheme__status--empty {
+		position: absolute;
 		display: block;
 		width: 0;
 		height: 0;
@@ -478,9 +501,16 @@ itself there once a scheme is chosen.
 		flex-shrink: 0;
 	}
 
+	/* The menu fills the panel's remaining height and scrolls its options. A
+	   scroll container's automatic minimum height is 0, so when the contents
+	   outgrow the panel (larger text, zoom, a short window) the floor keeps about
+	   two options showing and the content area scrolls instead. Border-box sizing
+	   keeps the border inside `width: 100%`. */
 	.pie-tool-color-scheme__dropdown {
 		position: relative;
+		box-sizing: border-box;
 		width: 100%;
+		min-height: 9rem;
 		max-height: 24rem;
 		background-color: var(--pie-background, white);
 		border: 2px solid var(--pie-border, #ccc);
@@ -488,7 +518,6 @@ itself there once a scheme is chosen.
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 		overflow-y: auto;
 		overflow-x: hidden;
-		margin-top: 0.5rem;
 	}
 
 	.pie-tool-color-scheme__option {

@@ -90,6 +90,8 @@ export const ITEM_PLAYER_METHOD_PARITY = {
 	commitPendingElementSessions: { controller: "commitPendingSessions" },
 	// Commit, then read `getSession()`.
 	getPendingSessionSnapshot: { controller: "commitPendingSessions" },
+	// Each item player a section renders has it; the section has no focus method.
+	focus: "unsupported",
 	// The section's items load from their derived delivery backend on their own.
 	loadFromBackend: "authoring",
 	saveContent: "authoring",

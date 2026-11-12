@@ -47,6 +47,7 @@ decisions behind the current contracts, including implemented ones, under the
 - [Custom layouts](./section-player/custom-layouts.md): arranging items and passages with `<pie-section-player-kernel-host>` and the panes
 - [Item session control](./section-player/item-session-control.md): check-answer delivery, tries, feedback reveal and section mastery
 - [Timed media](../packages/section-player/README.md#timed-media): section-level media that reveals items at cue points
+- [Delivery cost](./section-player/delivery-cost.md): measured load time, memory and downloads for one-question runs and fact grids, and the pattern each recommends
 
 ## Multi-section assessments
 

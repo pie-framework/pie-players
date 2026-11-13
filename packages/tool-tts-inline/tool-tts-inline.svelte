@@ -109,10 +109,9 @@ the runtime context supplies a TTS service.
 		};
 	};
 
-	// <pie-nds-icon-button> only exposes `button-aria-label` on its inner light-DOM
-	// <button>. Reflect any additional ARIA relationships (expanded / controls /
-	// pressed / haspopup) onto that inner button so the trigger keeps its
-	// disclosure + toggle semantics. The button is created by Lit after the
+	// <pie-nds-icon-button> copies `expanded`, `controls` and `button-aria-pressed`
+	// onto its inner light-DOM <button>, but not `aria-busy`. Reflect what it does
+	// not forward onto that inner button. The button is created by Lit after the
 	// element's first update, so we watch for it and re-apply on re-render.
 	const reflectAria = (node: HTMLElement, attrs: Record<string, string | null>) => {
 		let current = attrs;
@@ -1027,18 +1026,18 @@ the runtime context supplies a TTS service.
 				{#if useNdsIcons && ndsIconButtonReady}
 				<!-- NDS circular icon button. The native click bubbles out of the
 					     component's inner <button>, so `onclick` still runs
-					     handlePlayPause. `reflectAria` mirrors the disclosure/toggle
-					     relationships onto that inner button (nds exposes only aria-label). -->
+					     handlePlayPause. NDS copies `expanded`, `controls` and
+					     `button-aria-pressed` onto that inner button; `reflectAria`
+					     adds `aria-busy`, which it does not forward. -->
 					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 					<pie-nds-icon-button
 						use:ndsIconButtonAction
-						use:reflectAria={{
-							'aria-expanded': controlsVisible ? 'true' : 'false',
-							'aria-controls': controlsVisible ? panelId : null,
-							'aria-pressed': controlsVisible ? 'true' : 'false',
-							'aria-busy': playbackStartInFlight ? 'true' : null,
-						}}
+						use:reflectAria={{ 'aria-busy': playbackStartInFlight ? 'true' : null }}
+						expanded={controlsVisible ? 'true' : 'false'}
+						controls={controlsVisible ? panelId : ''}
+						button-aria-pressed={controlsVisible ? 'true' : 'false'}
 						class="pie-tool-tts-inline__trigger {sizeClass}"
+						class:pie-tool-tts-inline__trigger--open={controlsVisible}
 						type="circle"
 						size="small"
 						variant="tertiary"
@@ -1264,8 +1263,8 @@ the runtime context supplies a TTS service.
 	   trigger has no filled active look, and adding one would restyle the
 	   control for every host. Hosts opt in by setting a hook.
 
-	   Keyed off [aria-expanded='true'], which the markup already maintains, so
-	   there is no new state to keep in sync. */
+	   The plain trigger is keyed off [aria-expanded='true'], which its markup
+	   already maintains; the NDS trigger off `--open`, below. */
 	.pie-tool-tts-inline__trigger--plain[aria-expanded="true"] {
 		/* All three fallbacks are `__control`'s chains, including the glyph colour.
 		   Not `--plain`'s: that rule also declares `color`, but `__control` repeats
@@ -1290,8 +1289,10 @@ the runtime context supplies a TTS service.
 	   accent is remapped rather than painted, exactly as the base rule does. Only
 	   the foreground hook applies -- background and border are owned by the NDS
 	   button's own internals, and setting them on this host element would paint a
-	   box the tertiary button does not currently have. */
-	.pie-tool-tts-inline__trigger:not(.pie-tool-tts-inline__trigger--plain)[aria-expanded="true"] {
+	   box the tertiary button does not currently have. Keyed off a class, not
+	   [aria-expanded]: that attribute sits on the inner button NDS renders, never
+	   on this host, so a selector on it never matched. */
+	.pie-tool-tts-inline__trigger--open:not(.pie-tool-tts-inline__trigger--plain) {
 		--color-interactive-blue: var(
 			--pie-tool-trigger-active-color,
 			var(--pie-tts-button-color, var(--pie-button-color, var(--pie-text, #222)))

@@ -28,6 +28,7 @@ import {
 	type ToolbarContext,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { resolveOverlayElement } from "./overlay-element-cache.js";
+import { resolveToolbarFaGlyph } from "./toolbar-glyphs.js";
 
 /** A window's geometry. Absent for overlays that paint their own chrome. */
 export interface OverlayToolShell {
@@ -62,13 +63,15 @@ export function renderOverlayToolbar(
 	const { toolId } = registration;
 	const visibility = createScopedVisibilityBinding(toolId, toolbarContext);
 
+	const icon =
+		typeof registration.icon === "function"
+			? registration.icon(context)
+			: registration.icon;
 	const button: ToolToolbarButtonDefinition = {
 		toolId,
 		label: registration.name,
-		icon:
-			typeof registration.icon === "function"
-				? registration.icon(context)
-				: registration.icon,
+		icon,
+		faIconName: resolveToolbarFaGlyph(icon),
 		disabled: false,
 		ariaLabel: toolbarContext.i18n.t(
 			`tools.${toolId}.buttonA11y` as MessageKey,

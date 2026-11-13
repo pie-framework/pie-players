@@ -1410,10 +1410,12 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
+			"packages/assessment-toolkit/src/components/ItemToolBar.svelte",
 			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
+			"packages/assessment-toolkit/README.md",
 			"packages/tool-tts-inline/README.md",
 			"packages/tool-calculator-inline-desmos/README.md",
 			"packages/tool-calculator-shared/README.md"
@@ -1428,10 +1430,12 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
+			"packages/assessment-toolkit/src/components/ItemToolBar.svelte",
 			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
+			"packages/assessment-toolkit/README.md",
 			"packages/tool-tts-inline/README.md",
 			"packages/tool-calculator-inline-desmos/README.md",
 			"packages/tool-calculator-shared/README.md"
@@ -1446,10 +1450,12 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
+			"packages/assessment-toolkit/src/components/ItemToolBar.svelte",
 			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte"
 		],
 		"documentedIn": [
+			"packages/assessment-toolkit/README.md",
 			"packages/tool-tts-inline/README.md",
 			"packages/tool-calculator-inline-desmos/README.md",
 			"packages/tool-calculator-shared/README.md"

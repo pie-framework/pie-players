@@ -77,6 +77,33 @@ describe("tool-calculator-inline active trigger styling contract", () => {
 		);
 	});
 
+	test("border and ink resolve through the toolbar button's chains", () => {
+		// The toolbar's own buttons read --pie-button-border and
+		// --pie-button-color; a trigger reading --pie-border / --pie-text ignored a
+		// host that restyled toolbar buttons through them.
+		const resting = cssRuleBody(".pie-tool-calculator-inline__button").replace(
+			/\s+/g,
+			"",
+		);
+		expect(resting).toContain(
+			"border:1pxsolidvar(--pie-button-border,var(--pie-border,#ccc))",
+		);
+		expect(resting).toContain(
+			"color:var(--pie-button-color,var(--pie-text,#333))",
+		);
+	});
+
+	test("hover glyph follows the theme, not a literal", () => {
+		const declarations = source
+			.slice(source.indexOf("<style"))
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/\s+/g, "");
+		expect(declarations).not.toContain("#667eea");
+		expect(declarations).toContain(
+			"color:var(--pie-button-hover-color,var(--pie-button-color,var(--pie-text,#333)))",
+		);
+	});
+
 	test("no surface fill resolves through --pie-background", () => {
 		/*
 		 * Ported from `packages/calculator-cortex/tests/calculator-cortex-style-contract.test.ts`.

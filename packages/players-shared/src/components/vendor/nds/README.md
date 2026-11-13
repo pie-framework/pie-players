@@ -9,8 +9,8 @@ own copy.
 
 Known consumers:
 
-- `@pie-players/pie-assessment-toolkit` — `ItemToolBar.svelte` calculator shell
-  header (chevrons, zoom, close).
+- `@pie-players/pie-assessment-toolkit` — `ItemToolBar.svelte` toolbar buttons
+  and the calculator shell header (chevrons, zoom, close).
 - `@pie-players/pie-tool-tts-inline` — the Text-to-Speech play/pause trigger
   and the "more" overflow control.
 - `@pie-players/pie-section-player` — the items pane's scroll hint.
@@ -24,10 +24,12 @@ lands, so it never leaks into a consumer's own dependency set.
 
 | Field | Value |
 | --- | --- |
-| Upstream | NDS component library |
+| Upstream | NDS component library (`@nds/web`) |
 | Source file | `web-components/src/components/icon-button/nds-icon-button.ts` |
-| Last sync commit | `1c728d3` |
-| Bundler | Vite 7 in lib mode, ES output, single-file (Lit inlined) |
+| Release | `v5.6.0` |
+| Source commit | `a7ed2a9` |
+| Inlined Lit | `3.3.3` |
+| Bundler | `scripts/sync-nds-icon-button.mjs`: this repository's Vite in lib mode, ES output, single file |
 
 ## Licence
 
@@ -35,50 +37,38 @@ The inlined Lit runtime is BSD-3-Clause, Copyright Google LLC. Its `@license`
 comments sit in `nds-icon-button.js` and must survive every refresh, since the
 licence requires the notice to travel with a redistributed copy.
 
-The NDS component code is Renaissance's own. The bundle carries no NDS licence
-header and the repository records no separate terms, so it ships inside
-`@pie-players/pie-players-shared` under that package's MIT licence (`LICENSE`).
-Renaissance owns that call; record any different terms here.
+The NDS component code is Renaissance's own. Its package manifest declares MIT,
+and the copy ships inside `@pie-players/pie-players-shared` under that package's
+MIT licence (`LICENSE`). Record any different terms Renaissance sets here.
 
 ## Why a vendored bundle, not an npm dep
 
-NDS is not currently published to a registry the `@pie-players/*` chain can
-consume. Copying the `.ts` source directly (the path the NDS docs suggest)
-would force a `lit` dependency plus a chunk of foundations CSS onto every
-downstream consumer on lockstep release. A pre-built single-file bundle
-sidesteps both: zero new package deps, the bundle inlines what it needs.
+NDS publishes as `@nds/web`, but to a private, access-restricted registry. Every
+`@pie-players/*` package is public, so a dependency on it would fail to install
+for any host without access to that registry, and so would a build-time
+dependency for CI and contributors. Copying the `.ts` source instead would force
+a `lit` dependency plus a chunk of foundations CSS onto every downstream
+consumer on lockstep release. A pre-built single-file bundle sidesteps both: no
+new runtime dependency, and the bundle inlines what it needs. `lit` is a
+devDependency of `players-shared` only so the sync script can inline it.
 
 ## Registered tag
 
 The bundle registers `pie-nds-icon-button`, under PIE's prefix. A host page that
-also loads NDS registers upstream's own `nds-icon-button`, often unguarded and
-at a different version; sharing that name would leave whichever copy defines
-second either skipped (PIE's guarded define) or throwing (the host's). Two
-sites are patched: the `Pt("…")` decorator argument at the class registration,
-and the `nds-icon-button { display: inline-block; }` element selector at the top
-of `render()`'s inline `<style>`. The BEM class names (`.nds-icon-button`,
+also loads NDS registers upstream's own `nds-icon-button`, at whatever version it
+ships; sharing that name would leave whichever copy defines second skipped, and
+every consumer of the other one rendering markup and styles it was not built
+against. The sync script patches two sites: the tag passed to the
+`defineElement("…")` decorator at the class registration, and the
+`nds-icon-button { display: inline-block; }` element selector at the top of
+`render()`'s inline `<style>`. The BEM class names (`.nds-icon-button`,
 `.nds-icon-button__icon`, modifiers) stay upstream's, and so do the export path
 and file names.
 
-## Idempotent registration (built-in define guard)
-
-A host page can load more than one `pie-nds-icon-button` consumer (e.g. the
-toolkit and the inline TTS tool), and each would otherwise register the tag a
-second time and throw `NotSupportedError`. To make registration idempotent
-regardless of load order, the Lit `@customElement` decorator helper (`Pt`) in
-this bundle is patched to guard the define:
-
-```js
-const Pt = (o) => (t, e) => {
-  e !== void 0 ? e.addInitializer((() => {
-    customElements.get(o) || customElements.define(o, t);
-  })) : (customElements.get(o) || customElements.define(o, t));
-};
-```
-
-Re-apply this guard after any refresh from upstream. Because the guard still
-contains the literal `customElements.define(` token, this file is allow-listed
-in `scripts/check-ce-define-safety.mjs` (which would otherwise flag it).
+Upstream's `defineElement` skips a tag that is already defined (with a console
+warning), so registration is idempotent without a patch. It still contains the
+literal `customElements.define(` token, so this file is allow-listed in
+`scripts/check-ce-define-safety.mjs`.
 
 ## One registration per page
 
@@ -115,40 +105,24 @@ Consuming bundlers treat this module per their own externals config:
 
 ## How to refresh
 
-When a newer `nds-icon-button` is needed:
+Never edit `nds-icon-button.js` by hand. With a checkout of the NDS component
+library (its release tags fetched), run:
 
-1. Check out the latest NDS component library source.
-2. From its `web-components/` directory, `bun install`.
-3. Build a self-contained ESM bundle (no shared chunks) — the upstream
-   `vite.bundle.config.js` splits Lit into a `property.js` chunk, which would
-   break the single-file copy here. Use this one-shot config instead:
+```sh
+bun run sync:nds-icon-button -- --source <path to the checkout> [--ref vX.Y.Z]
+```
 
-   ```js
-   // vite.self-contained.config.js
-   import { defineConfig } from 'vite';
-   import { resolve } from 'path';
-   export default defineConfig({
-     publicDir: false,
-     build: {
-       outDir: resolve(__dirname, 'NDS-Prototypes/dist-bundles-self-contained'),
-       emptyOutDir: true,
-       minify: true,
-       lib: {
-         entry: resolve(__dirname, 'src/components/icon-button/nds-icon-button.ts'),
-         name: 'NdsIconButton',
-         fileName: () => 'nds-icon-button.bundled.js',
-         formats: ['es'],
-       },
-       rollupOptions: { output: { inlineDynamicImports: true } },
-     },
-   });
-   ```
+`--ref` defaults to the newest `vX.Y.Z` tag in the checkout. The script reads
+that tag through `git archive`, so the checkout's working tree is untouched, and
+it neither installs nor runs anything from it: the component's TypeScript is
+compiled with this repository's Vite and the `lit` that `players-shared` pins.
+It then applies the patches above, failing if either target is missing or
+duplicated, and rewrites the provenance rows. After a sync:
 
-   Then: `bunx vite build --config vite.self-contained.config.js`.
-4. Copy the output over this file, re-apply the define guard and the two tag
-   renames above, and update the `Last sync commit` row.
-5. Rebuild the consumers (`assessment-toolkit`, `tool-tts-inline`) and verify
-   the calculator shell and the TTS trigger still mount and register.
+1. Update `nds-icon-button.d.ts` for any property upstream added or removed.
+2. Rebuild the consumers (`assessment-toolkit`, `tool-tts-inline`,
+   `section-player`) and verify the toolbar buttons, the calculator shell, the
+   TTS trigger and the scroll hint still mount and register.
 
 ## Runtime dependencies
 

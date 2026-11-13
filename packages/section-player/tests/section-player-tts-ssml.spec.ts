@@ -743,7 +743,7 @@ test.describe("section player demo tts-ssml", () => {
 			const triggerA11y = await firstInlineTts.evaluate((host) => {
 				const root = host.shadowRoot;
 				// Disclosure ARIA lives on the focusable <button>: the inner button
-				// when the trigger is an <nds-icon-button> host (ndsIcons on), or the
+				// when the trigger is an <pie-nds-icon-button> host (ndsIcons on), or the
 				// trigger button itself in the default plain rendering.
 				const trigger = root?.querySelector(
 					".pie-tool-tts-inline__trigger button, button.pie-tool-tts-inline__trigger",

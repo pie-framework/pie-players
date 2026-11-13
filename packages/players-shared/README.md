@@ -8,7 +8,6 @@ integrations that need the helpers the player packages use.
 ## Public Exports
 
 ```ts
-import { safeLocalStorageGet } from "@pie-players/pie-players-shared";
 import { makeUniqueTags } from "@pie-players/pie-players-shared/pie";
 import { normalizeItemPlayerStrategy } from "@pie-players/pie-players-shared";
 ```
@@ -17,7 +16,7 @@ The subpaths below are the package's `exports`; nothing else is importable.
 
 | Subpath | Contents |
 | --- | --- |
-| `@pie-players/pie-players-shared` | The root: the loader, PIE, security and object helpers, loader config, instrumentation providers, the item-player strategy helpers, the default bundle host URL (`BUILDER_BUNDLE_URL`), a subset of the shared types, and the UI helpers (attribute coercion, content styles, pointer gestures, overlay placement, focus trap, safe storage, scoped CSS) |
+| `@pie-players/pie-players-shared` | The root: the loader, PIE and security helpers, loader config, instrumentation providers, the item-player strategy helpers, the default bundle host URL (`BUILDER_BUNDLE_URL`), a subset of the shared types, and the UI helpers the tools share (focus trap and focusable lookup, IME composition, overlay containment and placement, pointer drag and gestures, scoped CSS). Attribute coercion, content styles and the object helpers are on their own subpaths only |
 | `/loader-config` | `LoaderConfig` and its defaults: instrumentation (`trackPageActions`, `instrumentationProvider`), resource retry, and IIFE bundle retry |
 | `/security` | The item-markup sanitizer (`sanitizeItemMarkup`, `createDefaultItemMarkupSanitizer`, `buildAuthoringAllowList`), external-stylesheet URL validation, the SVG icon and `style` attribute sanitizers, and the wrappers that put overwide images and tables in a scrollable region |
 | `/security/private-hosts` | `isPrivateHostname` and `isCloudMetadataHostname`, the host classification for a URL a server fetches on someone else's behalf. Node-safe: it loads none of the markup sanitizers |
@@ -33,11 +32,11 @@ The subpaths below are the package's `exports`; nothing else is importable.
 | `/i18n/types` | The i18n contract, types only |
 | `/i18n/provider` | `SimpleI18n`, `getDefaultI18n` and `resolveInterfaceI18n`, with the English catalog only |
 | `/i18n/catalogs` | `BUNDLED_LOCALES` and lazy loaders for the bundled locales other than English |
-| `/i18n/language-tags` | BCP 47 language tag normalization and matching |
-| `/nds-icon-button` | `<nds-icon-button>`, an icon button vendored as a prebuilt bundle with Lit inlined; importing it registers the tag. The assessment toolkit, the section player and `@pie-players/pie-tool-tts-inline` render it |
+| `/i18n/language-tags` | BCP 47 language tag normalization and matching, re-exported from `@pie-players/pie-language-tags` |
+| `/nds-icon-button` | `<pie-nds-icon-button>`, an icon button vendored as a prebuilt bundle with Lit inlined; importing it registers the tag. The assessment toolkit, the section player and `@pie-players/pie-tool-tts-inline` render it |
 | `/ui/attribute-coercion` | Boolean attribute coercion for custom elements |
 | `/ui/content-styles` | `installContentStyles`, `auditContentStyles` and the opt-out checks behind the item player's content styles |
-| `/ui/fontawesome` | The FontAwesome `<nds-icon-button>` glyphs need: the one FA Free pin, Pro detection, the `<head>` and shadow-root installs, and the glyph weight. The assessment toolkit, the section player and `@pie-players/pie-tool-tts-inline` use it |
+| `/ui/fontawesome` | The FontAwesome `<pie-nds-icon-button>` glyphs need: the one FA Free pin, Pro detection, the `<head>` and shadow-root installs, and the glyph weight. The assessment toolkit, the section player and `@pie-players/pie-tool-tts-inline` use it |
 | `/tools/term-lookup` | Term normalization and the lookup session the dictionary tools share; the host supplies the endpoint or a resolver |
 
 ## Item Session Control

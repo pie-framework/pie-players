@@ -4,9 +4,13 @@ import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
+import { minifyChunks } from "../players-shared/minify-chunks.mjs";
 
 export default defineConfig({
 	plugins: [
+		preserveLegalComments(),
+		minifyChunks(),
 		svelte({
 			compilerOptions: {
 				customElement: true,
@@ -22,7 +26,12 @@ export default defineConfig({
 			// entry, which is a `.svelte` file with no declarations, and writes a
 			// stub over the `index.d.ts` emitted from `index.ts`. The stub imports
 			// `svelte`, which hosts do not install, so no `.svelte` is included.
-			include: ["index.ts", "element-props.ts", "panel-records.ts"],
+			include: [
+				"index.ts",
+				"element-props.ts",
+				"panel-records.ts",
+				"debug-record.ts",
+			],
 		}),
 	],
 	resolve: {
@@ -43,7 +52,7 @@ export default defineConfig({
 		outDir: "dist",
 		emptyOutDir: true,
 		target: "es2020",
-		minify: "esbuild",
+		minify: false,
 		sourcemap: false,
 		rollupOptions: {
 			// speech-rule-engine and its locale tables resolve from the host's

@@ -14,6 +14,9 @@ generated locale fetches nothing, because every catalog is a lazy chunk
 behind a static `import()` map and the default locale (`en-US`) is statically
 resident in `players-shared` and never hits a loader at all.
 
+The package depends on nothing: it is catalog data, and the provider it plugs
+into comes with the players, which install `@pie-players/pie-players-shared`.
+
 ## Wiring
 
 ```ts

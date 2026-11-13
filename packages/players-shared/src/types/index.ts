@@ -178,9 +178,17 @@ export type ReferencedItemEntity = Omit<
 };
 
 // ============================================================================
-// QTI-aligned assessment model (QTI 2.x compatible shape)
+// QTI-aligned assessment model. Structure and names follow QTI 3.0, the
+// version this format targets (`qtiVersion`, `contextDeclarations`, `testParts`);
+// the shared section and rubric-block shapes remain compatible with their
+// QTI 2.x counterparts.
 // ============================================================================
 
+/**
+ * QTI 3 `qti-rubric-block@view` roles — the complete token set of the QTI 3.0
+ * ASI information model (v3p0p1). QTI 3 kebab-cases element names but keeps
+ * these camelCase attribute values unchanged from QTI 2.x.
+ */
 export type RubricBlockView =
 	| "author"
 	| "candidate"
@@ -316,8 +324,20 @@ export interface AssessmentSection extends BaseEntity {
 export interface TestPart {
 	id?: string;
 	identifier: string;
-	navigationMode: "linear" | "nonlinear";
-	submissionMode: "individual" | "simultaneous";
+	/**
+	 * QTI 3.0 import metadata (`qti-test-part@navigation-mode`), declared for
+	 * structural fidelity and read by no player. PIE delivery is index-linear
+	 * over the flattened section plan whatever this says, so it stays optional
+	 * rather than requiring a value the runtime cannot honor.
+	 */
+	navigationMode?: "linear" | "nonlinear";
+	/**
+	 * QTI 3.0 import metadata (`qti-test-part@submission-mode`), declared for
+	 * structural fidelity and read by no player. How an item commits its
+	 * response is delivery policy (ADR 0005, `sessionCommitContext`), not this
+	 * field.
+	 */
+	submissionMode?: "individual" | "simultaneous";
 	sections: AssessmentSection[];
 }
 
@@ -629,7 +649,12 @@ export interface AssessmentEntity extends BaseEntity {
 	/** QTI 3.0: Integrated APIP accessibility catalogs */
 	accessibilityCatalogs?: AccessibilityCatalog[];
 
-	/** QTI 3.0: Personal Needs Profile (PNP 3.0) */
+	/**
+	 * A learner's Personal Needs Profile in PIE tool ids — the AfA PNP 3.0
+	 * vocabulary, shaped through the adapter in `@pie-players/default-tool-loaders`
+	 * (`createPersonalNeedsProfileFromAfa`). This is not a QTI structure and not
+	 * an AfA record itself.
+	 */
 	personalNeedsProfile?: PersonalNeedsProfile;
 
 	/**

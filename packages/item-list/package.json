@@ -20,23 +20,27 @@
 		"web-components",
 		"custom-elements"
 	],
-	"unpkg": "./dist/pie-item-list.js",
-	"jsdelivr": "./dist/pie-item-list.js",
+	"unpkg": "./dist/browser/pie-item-list.js",
+	"jsdelivr": "./dist/browser/pie-item-list.js",
 	"main": "./dist/pie-item-list.js",
 	"types": "./dist/pie-item-list.d.ts",
 	"exports": {
 		".": {
 			"types": "./dist/pie-item-list.d.ts",
-			"import": "./dist/pie-item-list.js"
+			"import": "./dist/pie-item-list.js",
+			"default": "./dist/pie-item-list.js"
 		},
 		"./summarize": {
 			"types": "./dist/summarize.d.ts",
-			"import": "./dist/summarize.js"
+			"import": "./dist/summarize.js",
+			"default": "./dist/summarize.js"
 		},
 		"./browser": {
 			"types": "./dist/pie-item-list.d.ts",
-			"import": "./dist/browser/pie-item-list.js"
-		}
+			"import": "./dist/browser/pie-item-list.js",
+			"default": "./dist/browser/pie-item-list.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -44,7 +48,7 @@
 		"custom-elements.json"
 	],
 	"scripts": {
-		"build": "vite build && vite build --config vite.config.browser.ts",
+		"build": "vite build && vite build --config vite.config.browser.ts && bun ../../scripts/prune-unreachable-declarations.mjs",
 		"dev": "vite build --watch",
 		"test": "bun test",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
@@ -65,7 +69,7 @@
 		"@types/node": "^26.6.6",
 		"esbuild": "^0.28.2",
 		"svelte": "^5.57.3",
-		"svelte-check": "^4.7.6",
+		"svelte-check": "^4.7.8",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.3",
 		"vite-plugin-dts": "^5.1.2"

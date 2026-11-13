@@ -1,5 +1,6 @@
 import {
 	createNewAssessmentSession,
+	markAssessmentSessionSubmitted,
 	setCurrentSectionPosition,
 	upsertSectionSession,
 } from "@pie-players/pie-assessment-toolkit";
@@ -9,6 +10,7 @@ import type {
 	AssessmentDeliveryPlan,
 	AssessmentPlayerHooks,
 	AssessmentSession,
+	AssessmentSection,
 	AssessmentSectionInstance,
 	AssessmentSessionPersistenceStrategy,
 	SectionControllerSessionState,
@@ -235,6 +237,40 @@ function getOrCreateAnonymousDeviceId(storage: Storage): string {
 	return created;
 }
 
+/**
+ * One delivery step per section in document order: a pre-order walk over
+ * `testParts[].sections` (or top-level `sections`), descending through nested
+ * `AssessmentSection.sections`. QTI allows sections to nest; the runtime
+ * delivers a flat plan, so a nested subtree becomes its own consecutive steps
+ * instead of being silently dropped. Every section becomes a step — including
+ * one that only groups its subsections — matching how a content-less
+ * top-level section delivers today.
+ */
+function collectSectionInstances(
+	section: AssessmentSection,
+	stageIdentifier: string,
+	stageIndex: number,
+	path: string,
+	instances: AssessmentSectionInstance[],
+): void {
+	instances.push({
+		stageIdentifier,
+		stageIndex,
+		sectionIndex: instances.length,
+		sectionIdentifier: section.identifier || `section-${path}`,
+		section,
+	});
+	(section.sections || []).forEach((child, childIndex) => {
+		collectSectionInstances(
+			child,
+			stageIdentifier,
+			stageIndex,
+			`${path}-${childIndex}`,
+			instances,
+		);
+	});
+}
+
 function flattenSections(
 	assessment: AssessmentDefinition | null,
 ): AssessmentSectionInstance[] {
@@ -244,26 +280,19 @@ function flattenSections(
 	if (testParts.length > 0) {
 		testParts.forEach((part, stageIndex) => {
 			(part.sections || []).forEach((section, sectionIndex) => {
-				instances.push({
-					stageIdentifier: part.identifier,
-					stageIndex,
-					sectionIndex: instances.length,
-					sectionIdentifier:
-						section.identifier || `section-${stageIndex}-${sectionIndex}`,
+				collectSectionInstances(
 					section,
-				});
+					part.identifier,
+					stageIndex,
+					`${stageIndex}-${sectionIndex}`,
+					instances,
+				);
 			});
 		});
 		return instances;
 	}
 	(assessment.sections || []).forEach((section, index) => {
-		instances.push({
-			stageIdentifier: "default",
-			stageIndex: 0,
-			sectionIndex: index,
-			sectionIdentifier: section.identifier || `section-${index}`,
-			section,
-		});
+		collectSectionInstances(section, "default", 0, `${index}`, instances);
 	});
 	return instances;
 }
@@ -620,6 +649,9 @@ export class AssessmentController implements AssessmentControllerHandle {
 	async submit(): Promise<void> {
 		this.assertActive();
 		try {
+			// Stamp completion before the final save so the persisted snapshot
+			// carries it; a repeated submit keeps the first timestamp.
+			this.session = markAssessmentSessionSubmitted(this.ensureSession());
 			await this.save();
 		} catch (error) {
 			if (!this.disposed) this.handleError(error, "session-save");

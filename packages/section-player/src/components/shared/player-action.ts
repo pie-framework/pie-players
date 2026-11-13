@@ -6,6 +6,16 @@ export type PlayerElementParams = {
 	props?: Record<string, unknown>;
 };
 
+/** The Svelte action the cards apply to their player element. */
+export type PlayerElementAction = (
+	node: HTMLElement,
+	params: PlayerElementParams,
+	// biome-ignore lint/suspicious/noConfusingVoidType: an action that returns nothing infers `void`, as in Svelte's own `Action`
+) => void | {
+	update?(params: PlayerElementParams): void;
+	destroy?(): void;
+};
+
 type AppliedPlayerParams = {
 	config?: Record<string, unknown>;
 	configSignature?: string;

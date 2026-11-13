@@ -53,9 +53,9 @@ test("evaluates a second artifact copy and catches an unguarded definition", () 
 	expect(() => probeEntries(directory, entries)).toThrow();
 });
 
-test("allows the documented NDS vendor registration and rejects other implementation tags", () => {
-	const allowed = fixture('customElements.define("nds-icon-button", class extends HTMLElement {}); export {};');
+test("allows pie-prefixed registrations and rejects unprefixed implementation tags", () => {
+	const allowed = fixture('customElements.define("pie-nds-icon-button", class extends HTMLElement {}); export {};');
 	expect(() => probeEntries(allowed.directory, allowed.entries)).not.toThrow();
-	const leaked = fixture('customElements.define("vendor-private-widget", class extends HTMLElement {}); export {};');
+	const leaked = fixture('customElements.define("nds-icon-button", class extends HTMLElement {}); export {};');
 	expect(() => probeEntries(leaked.directory, leaked.entries)).toThrow("Unexpected implementation registrations");
 });

@@ -458,6 +458,25 @@
 									"text": "Promise<{ hasErrors: boolean; validatedModels: any[] }>"
 								}
 							}
+						},
+						{
+							"kind": "method",
+							"name": "focus",
+							"description": "Focus the first input of the rendered item; resolves whether focus moved. Each element is asked in document order through its `focusFirstInput()` hook, and one without the hook gets its first tabbable descendant; the passage is skipped. An item with no input leaves focus where it is. A call made while the item loads waits for `load-complete`, then focuses only if focus has not moved since the call. Call it on an explicit learner action, such as Enter or a Next button, not on load or as an answer is typed.",
+							"parameters": [
+								{
+									"name": "options",
+									"type": {
+										"text": "FocusOptions"
+									},
+									"optional": true
+								}
+							],
+							"return": {
+								"type": {
+									"text": "Promise<boolean>"
+								}
+							}
 						}
 					],
 					"attributes": [
@@ -868,7 +887,7 @@
 							"type": {
 								"text": "CustomEvent<{ kind: \"i18n-locale-load\"; source: string; message: string; details: string[]; recoverable: true; scope: \"runtime\"; cause?: unknown }>"
 							},
-							"description": "When a requested interface-locale catalog fails to load; the player keeps rendering through the English fallback chain, and re-setting `locale` retries the load."
+							"description": "When a requested interface-locale catalog fails to load; the player keeps rendering through the English fallback chain. Failed loads are not cached, so a later change of `locale` back to that locale retries the load."
 						}
 					],
 					"x-pie": {

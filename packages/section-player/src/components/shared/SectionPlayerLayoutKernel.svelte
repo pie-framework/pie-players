@@ -1,9 +1,9 @@
 <script lang="ts">
 	import {
-		coerceBooleanLike,
 		createPieLogger,
 		isGlobalDebugEnabled,
 	} from "@pie-players/pie-players-shared";
+	import { coerceBooleanLike } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import {
 		dispatchCrossBoundaryEvent,
 		toFrameworkErrorModel,
@@ -233,8 +233,11 @@
 	);
 	const currentCohort = () => makeCohort({ sectionId: cohortSectionId, attemptId });
 	const effectiveToolsConfig = $derived(runtimeState.effectiveToolsConfig);
-	const defaultToolRegistry = createPackagedToolRegistry();
-	const effectiveToolRegistry = $derived(toolRegistry ?? defaultToolRegistry);
+	// A derived is computed on its first read, and this one is read only when no
+	// registry is supplied, so a host's registry leaves the packaged registry
+	// unbuilt. It reads no state, so it is built at most once.
+	const packagedToolRegistry = $derived(createPackagedToolRegistry());
+	const effectiveToolRegistry = $derived(toolRegistry ?? packagedToolRegistry);
 	const playerRuntime = $derived(runtimeState.playerRuntime);
 	// Hosts set `runtime.tools.placement.{section,item,passage}` as arrays; the
 	// card and pane CEs take each level as the comma-separated `tools` attribute

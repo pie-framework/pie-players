@@ -1,6 +1,8 @@
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
+import { minifyChunks } from "../players-shared/minify-chunks.mjs";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 
@@ -13,12 +15,15 @@ export default defineConfig({
 			},
 		}),
 		guardSvelteCustomElementDefines(),
+		preserveLegalComments(),
+		minifyChunks(),
 		// The build entry is the component, whose declaration is a stub that
 		// imports `svelte`, which hosts do not install; `index.ts` is the type
 		// entry instead.
 		dts({ bundleTypes: false, include: ["index.ts", "element-props.ts"] }),
 	],
 	build: {
+		minify: false,
 		lib: {
 			entry: "tool-tts-inline.svelte",
 			name: "PieToolTTSInline",

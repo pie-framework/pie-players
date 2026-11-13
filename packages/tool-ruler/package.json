@@ -24,8 +24,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-ruler.js"
-		}
+			"import": "./dist/tool-ruler.js",
+			"default": "./dist/tool-ruler.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -35,8 +37,6 @@
 		"README.md"
 	],
 	"license": "MIT",
-	"unpkg": "./dist/tool-ruler.js",
-	"jsdelivr": "./dist/tool-ruler.js",
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*"
@@ -55,7 +55,7 @@
 		"@happy-dom/global-registrator": "^21.0.4",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"svelte": "^5.57.3",
-		"svelte-check": "^4.7.6",
+		"svelte-check": "^4.7.8",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.3",
 		"vite-plugin-dts": "^5.1.2"

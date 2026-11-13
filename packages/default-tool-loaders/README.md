@@ -16,6 +16,7 @@ capability id. A support id is the tool id a profile grants.
 | `PACKAGED_TOOL_REGISTRATIONS`, `createPackagedToolRegistry` | Which capabilities exist, and their toolbar and surface contracts |
 | `PACKAGED_TOOL_TAG_MAP` | Which custom element each one renders as |
 | `createCalculatorToolRegistration` | Which calculator backends `provider.id` selects among |
+| `createTTSToolRegistration` | Which host text-to-speech providers `provider.id` selects among |
 | `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` | Where they appear and in what order |
 | `createUniversalPersonalNeedsProfile`, `createEmptyPersonalNeedsProfile` | Which of them the program grants to everyone, or to no one |
 | `createPersonalNeedsProfileFromAfa` | Which of them a student's AfA PNP 3.0 record grants, prohibits and turns on at start, and with which settings |
@@ -121,6 +122,49 @@ exports: `angleMode`, `calculationPrecision`, `displayPrecision`,
 `restrictedMode`; `allowClipboard` alone blocks nothing. The
 [Cortex README](../calculator-cortex/README.md) covers localization, message
 overrides and the keypad.
+
+## Text-to-speech providers
+
+The packaged text-to-speech registration speaks through the browser or a TTS
+server, as `backend` selects. `createTTSToolRegistration({ providers })` adds a
+host's own `ITTSProvider`, keyed by `provider.id`; the class is imported only
+when its id is selected.
+
+```ts
+import {
+	createPackagedToolRegistry,
+	createTTSToolRegistration,
+} from "@pie-players/pie-default-tool-loaders";
+
+const registry = createPackagedToolRegistry({
+	overrides: {
+		textToSpeech: createTTSToolRegistration({
+			providers: {
+				"host-tts": {
+					load: async () => (await import("./host-tts.js")).HostTTSProvider,
+				},
+			},
+		}),
+	},
+});
+
+// tools.providers.textToSpeech
+const textToSpeech = {
+	enabled: true,
+	language: "en-US",
+	provider: { id: "host-tts" },
+};
+```
+
+The provider's `initialize()` receives the config the toolkit builds for every
+backend: `voice`, `rate`, `pitch`, `language`, `providerOptions` (the host's
+`language` as `locale`) and `mathTokenHighlighting`. `apiEndpoint` and the
+backend and transport keys are not required. With `requiresAuth: true` on the
+descriptor, the toolkit first awaits `provider.runtime.authFetcher` and merges what it returns, such as
+`authToken` or `headers`, into that config. A provider that fails to initialize
+falls back to browser speech, as a server backend does. A `provider.id` that
+names no registered provider, or none at all, keeps the browser or server
+backend.
 
 ## Custom sets
 

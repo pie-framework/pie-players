@@ -7,6 +7,7 @@
  *   `polly` and `google` run on the `pie` transport; `custom` runs on the
  *   `custom` transport to a host's own service, which takes `lang_id`,
  *   `speedRate` and `cache`
+ * - a host's own `ITTSProvider`, given as `loadHostProvider`, in place of both
  */
 
 import {
@@ -49,13 +50,20 @@ export type TTSToolProviderConfig = RuntimeTTSConfig & {
  */
 export type TTSToolProviderOptions = {
 	loadServerProvider?: () => Promise<new () => ITTSProvider>;
+	/**
+	 * Resolves a host's own provider class. When set, `initialize()` constructs
+	 * it in place of the browser or server backend, binds it to the config the
+	 * registry initialized this tool provider with, `authToken` included, and
+	 * requires no `apiEndpoint`.
+	 */
+	loadHostProvider?: () => Promise<new () => ITTSProvider>;
 };
 
-/** The part of `TTSToolProviderConfig` a server backend's provider reads. */
+/** The part of `TTSToolProviderConfig` a server or host provider reads. */
 type ServerBackendConfig = Omit<TTSToolProviderConfig, "onTelemetry">;
 
 /**
- * Binds a server backend's provider to the config the registry initialized this
+ * Binds a server or host provider to the config the registry initialized this
  * tool provider with, including what `provider.runtime.authFetcher` returned.
  * The bound config wins over the runtime config the TTS service initializes the
  * provider with; `headers` and `providerOptions` merge key by key, keeping the
@@ -110,9 +118,7 @@ function bindServerBackendConfig(
  * const ttsProvider = await provider.createInstance();
  * ```
  */
-export class TTSToolProvider
-	implements ToolProviderApi<ITTSProvider>
-{
+export class TTSToolProvider implements ToolProviderApi<ITTSProvider> {
 	readonly providerName = "Text-to-Speech";
 	readonly category = "tts" as const;
 	readonly version = "1.0";
@@ -122,6 +128,7 @@ export class TTSToolProvider
 	private ttsProvider: ITTSProvider | null = null;
 	private config: TTSToolProviderConfig | null = null;
 	private readonly loadServerProvider: TTSToolProviderOptions["loadServerProvider"];
+	private readonly loadHostProvider: TTSToolProviderOptions["loadHostProvider"];
 
 	private async emitTelemetry(
 		eventName: string,
@@ -134,14 +141,18 @@ export class TTSToolProvider
 		}
 	}
 
-	/** A server backend needs `options.loadServerProvider`. */
+	/**
+	 * A server backend needs `options.loadServerProvider`. With
+	 * `options.loadHostProvider` the backend is not used.
+	 */
 	constructor(
 		backend: TTSBackend = "browser",
 		options: TTSToolProviderOptions = {},
 	) {
 		this.backend = backend;
-		this.requiresAuth = backend !== "browser";
 		this.loadServerProvider = options.loadServerProvider;
+		this.loadHostProvider = options.loadHostProvider;
+		this.requiresAuth = Boolean(this.loadHostProvider) || backend !== "browser";
 	}
 
 	/**
@@ -157,6 +168,12 @@ export class TTSToolProvider
 		}
 
 		this.config = config;
+
+		if (this.loadHostProvider) {
+			await this._initializeHostTTS(config, this.loadHostProvider);
+			logger.debug("initialized (host provider)");
+			return;
+		}
 
 		switch (this.backend) {
 			case "browser":
@@ -185,6 +202,53 @@ export class TTSToolProvider
 		logger.debug("browser TTS initialized (Web Speech API)");
 	}
 
+	private async _initializeHostTTS(
+		config: TTSToolProviderConfig,
+		loadHostProvider: NonNullable<TTSToolProviderOptions["loadHostProvider"]>,
+	): Promise<void> {
+		const HostProvider = await this.loadProviderClass(
+			loadHostProvider,
+			"host-provider-module-import",
+			"host",
+		);
+		const { onTelemetry: _onTelemetry, ...boundConfig } = config;
+		this.ttsProvider = bindServerBackendConfig(new HostProvider(), boundConfig);
+	}
+
+	/** Resolves a provider class, reporting the import as library-load telemetry. */
+	private async loadProviderClass(
+		load: () => Promise<new () => ITTSProvider>,
+		operation: string,
+		backend: string,
+	): Promise<new () => ITTSProvider> {
+		const moduleLoadStartedAt = Date.now();
+		await this.emitTelemetry("pie-tool-library-load-start", {
+			toolId: "textToSpeech",
+			operation,
+			backend,
+		});
+		try {
+			const loaded = await load();
+			await this.emitTelemetry("pie-tool-library-load-success", {
+				toolId: "textToSpeech",
+				operation,
+				backend,
+				duration: Date.now() - moduleLoadStartedAt,
+			});
+			return loaded;
+		} catch (error) {
+			await this.emitTelemetry("pie-tool-library-load-error", {
+				toolId: "textToSpeech",
+				operation,
+				backend,
+				duration: Date.now() - moduleLoadStartedAt,
+				errorType: "ToolLibraryLoadError",
+				message: error instanceof Error ? error.message : String(error),
+			});
+			throw error;
+		}
+	}
+
 	private async _initializeServerTTS(
 		config: TTSToolProviderConfig,
 	): Promise<void> {
@@ -202,34 +266,11 @@ export class TTSToolProvider
 		}
 
 		const serverProvider = config.provider || this.backend;
-		const moduleLoadStartedAt = Date.now();
-		await this.emitTelemetry("pie-tool-library-load-start", {
-			toolId: "textToSpeech",
-			operation: "server-provider-module-import",
-			backend: serverProvider,
-		});
-		const ServerProvider = await (async () => {
-			try {
-				const loaded = await loadServerProvider();
-				await this.emitTelemetry("pie-tool-library-load-success", {
-					toolId: "textToSpeech",
-					operation: "server-provider-module-import",
-					backend: serverProvider,
-					duration: Date.now() - moduleLoadStartedAt,
-				});
-				return loaded;
-			} catch (error) {
-				await this.emitTelemetry("pie-tool-library-load-error", {
-					toolId: "textToSpeech",
-					operation: "server-provider-module-import",
-					backend: serverProvider,
-					duration: Date.now() - moduleLoadStartedAt,
-					errorType: "ToolLibraryLoadError",
-					message: error instanceof Error ? error.message : String(error),
-				});
-				throw error;
-			}
-		})();
+		const ServerProvider = await this.loadProviderClass(
+			loadServerProvider,
+			"server-provider-module-import",
+			serverProvider,
+		);
 		// The server adapter owns these fields, `mathTokenHighlighting` aside, which
 		// is the toolkit's. Picking them from its config type fails the build when
 		// one is renamed there or typed differently. The adapter is only a dev
@@ -248,9 +289,7 @@ export class TTSToolProvider
 			>,
 		);
 
-		logger.debug(
-			`server TTS initialized (provider: ${serverProvider})`,
-		);
+		logger.debug(`server TTS initialized (provider: ${serverProvider})`);
 	}
 
 	/**

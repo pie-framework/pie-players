@@ -78,7 +78,7 @@
 			onInsertSound: { type: "Object", reflect: false },
 			onDeleteSound: { type: "Object", reflect: false },
 		},
-		extend: coerceBooleanAttributes,
+		extend: (element) => withItemPlayerFocus(coerceBooleanAttributes(element)),
 	}}
 />
 
@@ -102,7 +102,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 @fires {CustomEvent<{ scope: "authoring"; operation: "saveContent"; contentId: string }>} backend-content-saved - After the authoring backend saves the item's content.
 @fires {CustomEvent<{ scope: "authoring"; operation: "releaseContent"; contentId: string }>} backend-content-released - After the authoring backend releases the item's content.
 @fires {CustomEvent<{ scope: "delivery"; operation: "load" | "model" | "saveSession"; message: string; error: unknown }>} backend-error - When a delivery load, model refresh or autosave the player started itself fails; a host's own `saveSession()` or `score()` call rejects instead.
-@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - When a requested interface-locale catalog fails to load; the player keeps rendering through the English fallback chain, and re-setting `locale` retries the load.
+@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - When a requested interface-locale catalog fails to load; the player keeps rendering through the English fallback chain. Failed loads are not cached, so a later change of `locale` back to that locale retries the load.
 -->
 
 <script lang="ts">
@@ -118,6 +118,12 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	// projection; session snapshots and page-lifecycle commits; public methods and
 	// model updates; element session forwarding.
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
+	import {
+		attachItemPlayerFocus,
+		createItemPlayerFocus,
+		type ItemFocusReadiness,
+		withItemPlayerFocus,
+	} from "./focus-first-input.js";
 	import type {
 		ConfigEntity,
 		ConfigResource,
@@ -130,6 +136,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		parseAllowedStyleOrigins,
 		validateExternalStyleUrl,
 	} from "@pie-players/pie-players-shared";
+	import { adoptContentStylesInto } from "@pie-players/pie-players-shared/ui/content-styles";
 	import type {
 		AuthoringBackendMode,
 		BackendAuthoringReleaseOptions,
@@ -238,6 +245,10 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		createPieI18n,
 		DEFAULT_LOCALE,
 		defaultContentLanguage,
+		hostChoseInterfaceLocale,
+		isLocaleRequested,
+		localeDirection,
+		requestedInterfaceLocale,
 		resolveInterfaceI18n,
 		reportInterfaceLocaleLoadError,
 		stampContentLanguage,
@@ -489,6 +500,23 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		}),
 	);
 
+	// Load failures and config binding problems arise before the inner player,
+	// which reports its own runtime errors, exists. Without this the host's
+	// `player-error` listener is their only witness.
+	function trackItemPlayerError(
+		message: string,
+		attributes: { errorType: string } & Record<string, unknown>,
+	): void {
+		try {
+			resolvedInstrumentationProvider?.trackError(new Error(message), {
+				component: "pie-item-player",
+				...attributes,
+			});
+		} catch (trackError) {
+			logger.warn("[pie-item-player] error report to instrumentation failed:", trackError);
+		}
+	}
+
 	let loading = $state(true);
 	let error: string | null = $state(null);
 	let bundleRetryStatus: IifeBundleRetryStatus | null = $state(null);
@@ -542,6 +570,67 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	$effect(() => {
 		if (!hostElement || customElementHost) return;
 		customElementHost = resolveCustomElementHost(hostElement);
+	});
+
+	// The renderer whose load settled, and whether it failed. `focus()` is ready
+	// only once the renderer mounted now has loaded: a config change mounts a new
+	// one, and its elements have no models until its own `load-complete`.
+	let settledRenderer: { renderer: unknown; failed: boolean } | null = null;
+
+	// What the load effect last queued `loadConfig` with, and the promise of that
+	// load's start, null once it has started. A change reaches `loadConfig` only
+	// through that effect and its microtask, so until then the outgoing item still
+	// reads as loaded.
+	let scheduledLoadInputs: readonly unknown[] = [];
+	let scheduledLoadStart: Promise<void> | null = null;
+
+	// Null when the player has acted on every change made so far, so `focus()`
+	// moves focus within the caller's task; otherwise resolves once the effects
+	// have run and the load they queue has started. A real change then reads as
+	// loading, and one the no-op guard drops leaves the item ready.
+	function settleScheduledLoad(): Promise<void> | null {
+		const inputs = untrack(configLoadInputs);
+		const changed = inputs.some((value, index) => value !== scheduledLoadInputs[index]);
+		if (!changed && !scheduledLoadStart) return null;
+		return (async () => {
+			await tick();
+			while (scheduledLoadStart) await scheduledLoadStart;
+		})();
+	}
+
+	function itemFocusReadiness(): ItemFocusReadiness {
+		if (error) return "unavailable";
+		const settled = settledRenderer;
+		if (loading || !itemConfig || !rendererElement) return "pending";
+		if (!settled || settled.renderer !== rendererElement) return "pending";
+		return settled.failed ? "unavailable" : "ready";
+	}
+
+	const itemFocus = createItemPlayerFocus({
+		readiness: itemFocusReadiness,
+		settle: settleScheduledLoad,
+		// The item's own container, not the passage's.
+		itemContainer: () =>
+			hostElement?.querySelector(
+				":scope > .pie-player-item-container > div > .pie-item-container",
+			) ?? null,
+		logger,
+	});
+	// At script init, because Svelte runs no effect before a custom element's
+	// mount returns, and a host may call `focus()` right after inserting it.
+	const focusHost: HTMLElement | undefined = $host();
+	const detachItemFocus = focusHost
+		? attachItemPlayerFocus(focusHost, itemFocus)
+		: () => {};
+	onDestroy(() => {
+		detachItemFocus();
+		itemFocus.dispose();
+	});
+
+	// A host that mounts the player inside its own shadow root gets no document
+	// stylesheet there, so the content rules are adopted into that root.
+	$effect(() => {
+		if (hostElement) adoptContentStylesInto(hostElement);
 	});
 
 	/**
@@ -974,12 +1063,20 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		// provider built here resolves `en-US`; one that was supplied keeps the
 		// locale its owner set — the section's shared provider, above all.
 		if (!requested && provider !== ownedInterfaceI18n) return;
+		// A supplied provider its owner already asked for this locale (a list
+		// row's, a section's) is left alone, so a failed load reports once.
+		if (
+			requested &&
+			provider !== ownedInterfaceI18n &&
+			isLocaleRequested(provider, requested)
+		)
+			return;
 		untrack(() => {
 			// A failed catalog load must not take the player down: every key still
 			// resolves through the English fallback chain. It is reported, like
 			// the toolkit reports its own, so a host can tell English-because-
 			// requested from English-because-failed; failed loads are not cached,
-			// so re-setting `locale` retries.
+			// so a later change of `locale` back to it retries.
 			void Promise.resolve(
 				provider.setLocale(requested || DEFAULT_LOCALE),
 			).catch((error) => {
@@ -1243,8 +1340,20 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			] as const) {
 				if (!cfg) continue;
 				assertPieConfigContract(cfg);
-				for (const warning of validatePieConfigContract(cfg).warnings) {
+				const { warnings, bindingWarnings } = validatePieConfigContract(cfg);
+				for (const warning of warnings) {
 					logger.warn(`[pie-item-player] ${label}: ${warning}`);
+				}
+				if (bindingWarnings.length > 0) {
+					const message = `${label} config: ${bindingWarnings.join(" | ")}`;
+					logger.error(`[pie-item-player] ${message}`);
+					trackItemPlayerError(message, {
+						errorType: "ITEM_PLAYER_CONFIG_BINDING",
+						recoverable: true,
+						stage,
+						configRole: label,
+						...(typeof cfg.id === "string" ? { itemId: cfg.id } : {}),
+					});
 				}
 			}
 
@@ -1366,18 +1475,19 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			});
 			logger.error("[pie-item-player] failed loading:", err);
 			const cause = describeRegistrationFailures(err);
+			const detail = {
+				code: "ITEM_PLAYER_LOAD_ERROR",
+				message,
+				recoverable: false,
+				stage,
+				strategy: normalizedStrategy,
+				mode: resolvedMode,
+				...(cause ? { cause } : {}),
+			} satisfies PieItemPlayerErrorDetail;
+			trackItemPlayerError(message, { ...detail, errorType: detail.code });
+			itemFocus.failed();
 			handlePlayerEvent(
-				new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, {
-					detail: {
-						code: "ITEM_PLAYER_LOAD_ERROR",
-						message,
-						recoverable: false,
-						stage,
-						strategy: normalizedStrategy,
-						mode: resolvedMode,
-						...(cause ? { cause } : {}),
-					} satisfies PieItemPlayerErrorDetail,
-				}),
+				new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, { detail }),
 			);
 			return false;
 		}
@@ -1402,21 +1512,35 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		};
 	});
 
+	// Everything `loadConfig` reads; a change to any of them queues a load.
+	function configLoadInputs(): readonly unknown[] {
+		return [
+			effectiveConfig,
+			normalizedStrategy,
+			resolvedMode,
+			resolvedIifeBundleHost,
+			resolvedEsmCdnUrl,
+			loaderRetrySignature,
+			loaderOptions,
+			allowedResize,
+			itemFeatureInputs,
+		];
+	}
+
 	$effect(() => {
-		const currentConfig = effectiveConfig;
-		void normalizedStrategy;
-		void resolvedMode;
-		void resolvedIifeBundleHost;
-		void resolvedEsmCdnUrl;
-		void loaderRetrySignature;
-		void loaderOptions;
-		void allowedResize;
-		void itemFeatureInputs;
-		queueMicrotask(() => {
-			untrack(() => {
-				loadConfig(currentConfig);
+		const inputs = configLoadInputs();
+		const currentConfig = inputs[0];
+		scheduledLoadInputs = inputs;
+		const start: Promise<void> = new Promise((resolve) => {
+			queueMicrotask(() => {
+				untrack(() => {
+					loadConfig(currentConfig);
+				});
+				if (scheduledLoadStart === start) scheduledLoadStart = null;
+				resolve();
 			});
 		});
+		scheduledLoadStart = start;
 	});
 
 	$effect(() => {
@@ -1788,25 +1912,37 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	});
 
 	// The interface locale, on the host-neutral channel the elements read
-	// (`interfaceLocaleContext`). A fresh object per version bump, so the
-	// context republishes once a lazily loaded catalog is resident and
-	// `getLocale()` names it.
-	const interfaceLocaleContextValue = $derived.by(
-		(): InterfaceLocaleContextValue => {
-			void interfaceI18nVersion;
-			return {
-				locale: interfaceI18n.getLocale(),
-				direction: interfaceI18n.getDirection?.() ?? "ltr",
-			};
-		},
-	);
+	// (`interfaceLocaleContext`): the host's requested tag, which elements
+	// resolve against their own catalogs, from the moment `locale` is set and
+	// whatever the players' own catalog load does. The version counter
+	// covers a supplied provider's request moving. A new object only when the
+	// tag changes, so subscribers are not re-fired by every catalog load.
+	const interfaceLocaleTag = $derived.by(() => {
+		void interfaceI18nVersion;
+		return requestedInterfaceLocale({ locale, i18n: interfaceI18n });
+	});
+	const interfaceLocaleContextValue = $derived<InterfaceLocaleContextValue>({
+		locale: interfaceLocaleTag,
+		direction: localeDirection(interfaceLocaleTag),
+	});
+	// Answered only once a host chose the locale (`hostChoseInterfaceLocale`
+	// has the invariant): until then an element labels its chrome in the
+	// language its item declares. Inside a section `i18n` is the toolkit's
+	// provider, so this player answers only what the toolkit above it would.
+	let answersInterfaceLocale = $state(false);
+	$effect(() => {
+		void interfaceI18nVersion;
+		if (hostChoseInterfaceLocale({ locale, i18n })) {
+			answersInterfaceLocale = true;
+		}
+	});
 	let interfaceLocaleContextProvider: ReturnType<
 		typeof provideInterfaceLocaleContext
 	> | null = null;
 	$effect(() => {
 		if (!isBrowser) return;
 		const localHost = hostElement;
-		if (!localHost) return;
+		if (!localHost || !answersInterfaceLocale) return;
 		const provider = untrack(() =>
 			provideInterfaceLocaleContext(localHost, interfaceLocaleContextValue),
 		);
@@ -2175,12 +2311,21 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 					onLoadComplete={(detail: unknown) => {
 						seedHostSessionEntriesForItem();
 						reportDirectionMismatch();
+						// Ahead of the event, so a host's `load-complete` listener can
+						// call `focus()`.
+						settledRenderer = { renderer: rendererElement, failed: false };
+						itemFocus.loaded();
 						handlePlayerEvent(new CustomEvent("load-complete", { detail }));
 					}}
-					onPlayerError={(detail: PieItemPlayerErrorDetail) =>
+					onPlayerError={(detail: PieItemPlayerErrorDetail) => {
+						if (detail?.recoverable !== true) {
+							settledRenderer = { renderer: rendererElement, failed: true };
+							itemFocus.failed();
+						}
 						handlePlayerEvent(
 							new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, { detail }),
-						)}
+						);
+					}}
 					onSessionChanged={(detail: unknown) => handleSessionChanged(detail)}
 					onElementSessionUpdate={handleElementSessionUpdate}
 					onModelUpdated={(detail: unknown) => handleModelUpdated(detail)}

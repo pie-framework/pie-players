@@ -52,8 +52,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 	import type {
 		AssessmentToolkitRuntimeContext,
 		CatalogOwnerContext,
-		ToolRegistry,
-		ToolbarItem,
+		SectionItemScorer,
 	} from "@pie-players/pie-assessment-toolkit";
 	import {
 		catalogOwnerContextFor,
@@ -62,16 +61,12 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		PIE_INTERNAL_TRY_ACTION_EVENT,
 		type InternalTryActionDetail,
 	} from "@pie-players/pie-assessment-toolkit";
-	import type {
-		ItemEntity,
-		ItemSettings,
-	} from "@pie-players/pie-players-shared/types";
 	import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 	import type { ItemTryView } from "@pie-players/pie-players-shared/item-session-control";
-	import type { TimedMediaItemView } from "./section-player-view-state.js";
 	import type { SectionPlayerCardTitleFormatter } from "../../contracts/card-title-formatters.js";
+	import type { SectionItemCardElementProps } from "../../contracts/elements.js";
 	import { resolveCardTitle } from "./card-title.js";
-	import type { PlayerElementParams } from "./player-action.js";
+	import type { PlayerElementAction } from "./player-action.js";
 	import {
 		DEFAULT_SECTION_BASE_HEADING_LEVEL,
 		normalizeBaseHeadingLevel,
@@ -89,37 +84,29 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		item,
 		itemIndex = 0,
 		itemCount = 1,
+		// Whether this is the section's current item. Reflected as the
+		// `is-current` attribute, which is where hosts read it; the card sets no
+		// `aria-current`.
 		isCurrent = false,
 		canonicalItemId,
-		itemSettings = null as ItemSettings | null,
-		baseHeadingLevel = DEFAULT_SECTION_BASE_HEADING_LEVEL as number,
+		itemSettings = null,
+		baseHeadingLevel = DEFAULT_SECTION_BASE_HEADING_LEVEL,
 		resolvedPlayerTag = "div",
-		playerAction = (_node: HTMLElement, _params: PlayerElementParams) => undefined,
+		playerAction = () => undefined,
 		playerParams,
 		itemToolbarTools,
-		toolRegistry = null as ToolRegistry | null,
-		hostButtons = [] as ToolbarItem[],
-		tryView = null as ItemTryView | null,
+		toolRegistry = null,
+		hostButtons = [],
+		tryView = null,
 		checkControlEnabled = true,
-		timedMediaView = null as TimedMediaItemView | null,
-	} = $props<{
-		item: ItemEntity;
-		itemIndex?: number;
-		itemCount?: number;
-		isCurrent?: boolean;
-		canonicalItemId: string;
-		itemSettings?: ItemSettings | null;
-		baseHeadingLevel?: number;
-		resolvedPlayerTag?: string;
-		playerAction?: (node: HTMLElement, params: PlayerElementParams) => unknown;
-		playerParams: PlayerElementParams;
-		itemToolbarTools: string;
-		toolRegistry?: ToolRegistry | null;
-		hostButtons?: ToolbarItem[];
-		tryView?: ItemTryView | null;
-		checkControlEnabled?: boolean;
-		timedMediaView?: TimedMediaItemView | null;
-	}>();
+		timedMediaView = null,
+	}: SectionItemCardElementProps &
+		Required<
+			Pick<
+				SectionItemCardElementProps,
+				"item" | "canonicalItemId" | "playerParams" | "itemToolbarTools"
+			>
+		> = $props();
 
 	// Clamped here rather than trusted: the pane normalizes, but this card is a
 	// custom element a host can drive directly, and an out-of-range level would
@@ -136,7 +123,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 	let contextAnchor = $state<HTMLDivElement | null>(null);
 	let contextResolvedPlayerTag = $state<string | null>(null);
 	let contextPlayerAction = $state<
-		((node: HTMLElement, params: PlayerElementParams) => unknown) | null
+		PlayerElementAction | null
 	>(null);
 	let contextCardTitleFormatter = $state<SectionPlayerCardTitleFormatter | null>(null);
 	let contextConnected = $state(false);
@@ -327,9 +314,9 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 		);
 	}
 
-	function itemPlayerScorer(): (() => Promise<false | unknown[]>) | null {
+	function itemPlayerScorer(): (() => ReturnType<SectionItemScorer>) | null {
 		const scorer = (
-			playerNode as { provideScore?: () => Promise<false | unknown[]> } | null
+			playerNode as { provideScore?: () => ReturnType<SectionItemScorer> } | null
 		)?.provideScore;
 		return typeof scorer === "function" ? () => scorer.call(playerNode) : null;
 	}
@@ -338,7 +325,7 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 	 * The item player's `provideScore()`, for the pane's host-facing score; `null`
 	 * until the player has mounted.
 	 */
-	export async function provideScore(): Promise<false | null | unknown[]> {
+	export async function provideScore(): ReturnType<SectionItemScorer> {
 		const scorer = itemPlayerScorer();
 		return scorer ? scorer() : null;
 	}
@@ -401,13 +388,20 @@ Item card of a section player: renders an item's heading, `<pie-item-toolbar>` a
 	<!-- `tabindex="-1"` is exactly what a programmatic focus target takes, and the
 	     pane sends focus here when a gate pauses playback. The card is never in the
 	     tab order: the value is negative, and it is absent unless this item is what
-	     the gate is waiting for. -->
+	     the gate is waiting for.
+
+	     No `aria-current` here, even on the current item. It marks the current
+	     control in a set of navigation controls, and on a wrapper with no role
+	     screen readers repeat it inside the card: JAWS said "current" each time its
+	     cursor entered or left an element, so every formula in an answer choice
+	     ended with "current current". The host's reflected `is-current` attribute
+	     carries the state; the navigation status region and the item heading tell
+	     a screen-reader user where they are. -->
 	<div
 		class="pie-section-player-content-card"
 		data-section-item-card
 		data-canonical-item-id={canonicalItemId}
 		data-pie-tool-overlay-boundary
-		aria-current={isCurrent ? "true" : undefined}
 		data-pie-timed-media-gate={timedMediaView?.isGateTarget ? "holding" : undefined}
 		tabindex={timedMediaView?.isGateTarget ? -1 : undefined}
 	>

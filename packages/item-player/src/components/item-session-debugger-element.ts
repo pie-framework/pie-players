@@ -1,7 +1,7 @@
 import {
 	installContentStyles,
 	auditContentStyles,
-} from "@pie-players/pie-players-shared";
+} from "@pie-players/pie-players-shared/ui/content-styles";
 import contentStyles from "@pie-players/pie-theme/components.css?raw";
 import "../ItemSessionDebugger.svelte";
 import type { PieItemSessionDebuggerElement } from "../types.js";

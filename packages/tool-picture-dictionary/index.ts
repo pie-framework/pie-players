@@ -11,6 +11,17 @@
  * use a client of your own.
  */
 
+import type { PictureDictionaryElementProps } from "./element-props.js";
+
+/** Native host interface for `<pie-tool-picture-dictionary>`. Properties may be unset until it mounts. */
+export interface PieToolPictureDictionaryElement extends HTMLElement, PictureDictionaryElementProps {}
+
+declare global {
+	interface HTMLElementTagNameMap {
+		"pie-tool-picture-dictionary": PieToolPictureDictionaryElement;
+	}
+}
+
 export type {
 	PictureLookup,
 	PictureLookupRequest,

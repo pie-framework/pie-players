@@ -36,7 +36,7 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 @fires {CustomEvent<{ id: string; part: "item" | "passage"; code: string; message: string; recoverable: boolean }>} player-error - A row's player failed to load, with the entry `id` and the failed `part` added to `<pie-item-summary>`'s detail.
 @fires {CustomEvent<{ id: string; part: "item" | "passage"; view: "summary" | "player" }>} load-complete - A row's item or passage summary rendered, or its player loaded.
 @fires {CustomEvent<{ id: string; slot: "details" | "actions" | "highlights"; phase: "render" | "update" | "destroy"; cause: unknown }>} extension-error - A row extension threw or rejected; the rest of the list keeps rendering.
-@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - A requested interface-locale catalog failed to load; the labels fall back to English, and re-setting `locale` retries.
+@fires {CustomEvent<{ kind: "i18n-locale-load"; source: string; message: string; details: string[]; recoverable: true; scope: "runtime"; cause?: unknown }>} framework-error - A requested interface-locale catalog failed to load; the labels fall back to English. Failed loads are not cached, so a later change of `locale` back to that locale retries.
 -->
 
 <script lang="ts">
@@ -349,6 +349,7 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 							{env}
 							{resolve}
 							i18n={interfaceI18n.provider}
+							{locale}
 							{strategy}
 							{loaderOptions}
 							{loaderConfig}
@@ -363,6 +364,7 @@ PIE items as a list of `<pie-item-summary>` rows, for a host with no list chrome
 						{env}
 						{resolve}
 						i18n={interfaceI18n.provider}
+						{locale}
 						{strategy}
 						{loaderOptions}
 						{loaderConfig}

@@ -87,7 +87,8 @@ provider named, has one consumer, Host P, which is client-facing. Its
 `@pie-players` path renders through the preloaded `pie-item-player`, where the
 implicit default sends New Relic a `pie-resource-load` page action per tracked
 resource, retry and error page actions and a `noticeError` per failure from the
-resource monitor, and a `noticeError` per item-player runtime error. It sends
+resource monitor, and a `noticeError` per item-player runtime error, failed load
+and config carrying binding warnings. It sends
 whenever the agent is on the page at the moment it tracks, as described under
 [Probed readiness](#probed-readiness). The agent there comes from an outer page,
 so either order is possible, and PIE resource telemetry first reaches that host's

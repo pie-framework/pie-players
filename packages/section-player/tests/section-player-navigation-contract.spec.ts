@@ -88,13 +88,11 @@ async function validateNavigationContract(args: {
 		const navStatusText = statusEl
 			? (statusEl.textContent?.trim() ?? "")
 			: null;
-		const currentCards = Array.from(
-			document.querySelectorAll(
-				".pie-section-player-content-card[data-section-item-card]",
-			),
-		);
-		const ariaCurrentCount = currentCards.filter(
-			(card) => (card as HTMLElement).getAttribute("aria-current") === "true",
+		const currentCardCount = document.querySelectorAll(
+			"pie-section-player-item-card[is-current]",
+		).length;
+		const ariaCurrentInCardsCount = document.querySelectorAll(
+			"pie-section-player-item-card[aria-current], .pie-section-player-content-card[data-section-item-card][aria-current]",
 		).length;
 
 		return {
@@ -106,7 +104,8 @@ async function validateNavigationContract(args: {
 			afterPrev,
 			itemSelectedEvents,
 			navStatusText,
-			ariaCurrentCount,
+			currentCardCount,
+			ariaCurrentInCardsCount,
 		};
 	}, selector);
 
@@ -118,8 +117,12 @@ async function validateNavigationContract(args: {
 
 	// aria-live region must be present in the DOM (WCAG 4.1.3).
 	expect(result.navStatusText).not.toBeNull();
-	// Exactly one rendered item card should expose aria-current semantics.
-	expect(result.ariaCurrentCount).toBe(1);
+	// Exactly one rendered item card is marked current, through the host's
+	// reflected `is-current` attribute.
+	expect(result.currentCardCount).toBe(1);
+	// And not through `aria-current`: on a wrapper with no role, screen readers
+	// repeat it inside the card ("current current" after each formula in JAWS).
+	expect(result.ariaCurrentInCardsCount).toBe(0);
 
 	const canNext = result.before?.canNext === true;
 	if (canNext) {

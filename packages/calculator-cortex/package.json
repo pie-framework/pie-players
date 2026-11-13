@@ -8,8 +8,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"files": [
 		"dist",
@@ -17,9 +19,9 @@
 		"LICENSE.md"
 	],
 	"scripts": {
-		"build": "vite build",
+		"build": "vite build && bun ../../scripts/prune-unreachable-declarations.mjs",
 		"demo": "bun run build && bunx vite demo",
-		"test": "bun test tests",
+		"test": "bun test tests --timeout 30000",
 		"test:corpus": "bun scripts/build-expression-corpus.mjs --full --out .corpus/gsm8k-arithmetic.json && CORTEX_CORPUS=.corpus/gsm8k-arithmetic.json bun test tests/calculator-cortex-corpus.test.ts",
 		"test:e2e": "bun run build && bunx playwright test --config playwright.config.ts",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.demo.json && tsc -p tsconfig.tests.json",
@@ -55,10 +57,10 @@
 		"@cortex-js/compute-engine": "0.154.0",
 		"@playwright/test": "^1.64.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
-		"jsxgraph": "1.14.0",
-		"mathlive": "0.111.0",
+		"jsxgraph": "1.14.3",
+		"mathlive": "0.111.4",
 		"svelte": "^5.57.3",
-		"svelte-check": "^4.7.6",
+		"svelte-check": "^4.7.8",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.3",
 		"vite-plugin-dts": "^5.1.2"

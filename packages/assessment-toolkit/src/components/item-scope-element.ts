@@ -1,3 +1,3 @@
 import "./ItemScope.custom-element.js";
 
-export {};
+export type { PieItemScopeElement } from "./element-contracts.js";

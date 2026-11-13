@@ -5,8 +5,6 @@
 	"license": "MIT",
 	"main": "./dist/tool-tts-inline.js",
 	"types": "./dist/index.d.ts",
-	"unpkg": "./dist/tool-tts-inline.js",
-	"jsdelivr": "./dist/tool-tts-inline.js",
 	"publishConfig": {
 		"access": "public"
 	},
@@ -18,8 +16,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/tool-tts-inline.js"
-		}
+			"import": "./dist/tool-tts-inline.js",
+			"default": "./dist/tool-tts-inline.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -43,7 +43,7 @@
 		"@happy-dom/global-registrator": "^21.0.4",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"svelte": "^5.57.3",
-		"svelte-check": "^4.7.6",
+		"svelte-check": "^4.7.8",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.3",
 		"vite-plugin-dts": "^5.1.2"

@@ -80,7 +80,7 @@ const glyphWeights = async (scope: Locator) => [
 	...new Set(
 		await scope.evaluate((element) =>
 			Array.from(
-				(element.shadowRoot ?? element).querySelectorAll("nds-icon-button i"),
+				(element.shadowRoot ?? element).querySelectorAll("pie-nds-icon-button i"),
 				(icon) => icon.className.match(/\bfa-(light|regular|solid)\b/)?.[0],
 			),
 		),
@@ -112,10 +112,17 @@ test.describe("FontAwesome assets on a host that links none", () => {
 		const requests = await asHostWithoutFontAwesome(page);
 		await page.goto(NDS_ICON_PAGE, { waitUntil: "networkidle" });
 		const toolbar = page.locator("pie-item-toolbar").first();
-		const calculatorButton = toolbar.locator("nds-icon-button").first();
+		const calculatorButton = toolbar.locator("pie-nds-icon-button").first();
 		await expect(calculatorButton).toBeVisible();
+		// A button created before the tag is defined upgrades with
+		// `disabled="false"` read as true, and swallows every click.
+		expect(
+			await calculatorButton.evaluate(
+				(element) => (element as HTMLElement & { disabled: boolean }).disabled,
+			),
+		).toBe(false);
 		await expect(
-			page.locator("pie-tool-tts-inline nds-icon-button").first(),
+			page.locator("pie-tool-tts-inline pie-nds-icon-button").first(),
 		).toBeVisible();
 
 		// The toolbar's shadow root copies the stylesheet the toolbar added. FA
@@ -126,7 +133,7 @@ test.describe("FontAwesome assets on a host that links none", () => {
 		expect(await glyphWeights(toolbar)).toEqual(["fa-solid"]);
 		// The scroll hint's chevron is drawn by the same FA Free stylesheet.
 		const scrollHint = page.locator(".pie-section-player-scroll-hint").first();
-		await expect(scrollHint.locator("nds-icon-button i")).toHaveClass(
+		await expect(scrollHint.locator("pie-nds-icon-button i")).toHaveClass(
 			/\bfa-solid\b/,
 		);
 		expect(count(requests, "fa-free")).toBe(1);
@@ -155,10 +162,10 @@ test.describe("FontAwesome assets on a host that links none", () => {
 		await page.goto(NDS_ICON_PAGE, { waitUntil: "networkidle" });
 		const toolbars = page.locator("pie-item-toolbar");
 		await expect(
-			toolbars.first().locator("nds-icon-button").first(),
+			toolbars.first().locator("pie-nds-icon-button").first(),
 		).toBeVisible();
 		await expect(
-			page.locator("pie-tool-tts-inline nds-icon-button").first(),
+			page.locator("pie-tool-tts-inline pie-nds-icon-button").first(),
 		).toBeVisible();
 
 		// Every toolbar and read-aloud button finds the failed links still in the
@@ -197,12 +204,12 @@ test.describe("FontAwesome assets on a host that links FA Pro and Roboto", () =>
 		});
 		await page.goto(NDS_ICON_PAGE, { waitUntil: "networkidle" });
 		const toolbar = page.locator("pie-item-toolbar").first();
-		const calculatorButton = toolbar.locator("nds-icon-button").first();
+		const calculatorButton = toolbar.locator("pie-nds-icon-button").first();
 		await expect(calculatorButton).toBeVisible();
 
 		expect(await glyphWeights(toolbar)).toEqual(["fa-light"]);
 		await expect(
-			page.locator(".pie-section-player-scroll-hint nds-icon-button i").first(),
+			page.locator(".pie-section-player-scroll-hint pie-nds-icon-button i").first(),
 		).toHaveClass(/\bfa-light\b/);
 		await calculatorButton.click();
 		const shell = page.locator('[data-pie-tool-shell="calculator"]').first();

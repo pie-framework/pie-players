@@ -21,13 +21,13 @@
 	],
 	"main": "./dist/section-player-tools-session-debugger.js",
 	"module": "./dist/section-player-tools-session-debugger.js",
-	"unpkg": "./dist/section-player-tools-session-debugger.js",
-	"jsdelivr": "./dist/section-player-tools-session-debugger.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/section-player-tools-session-debugger.js"
-		}
+			"import": "./dist/section-player-tools-session-debugger.js",
+			"default": "./dist/section-player-tools-session-debugger.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -53,7 +53,7 @@
 		"@pie-players/pie-section-player-tools-shared": "workspace:*",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"svelte": "^5.57.3",
-		"svelte-check": "^4.7.6",
+		"svelte-check": "^4.7.8",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.3",
 		"vite-plugin-dts": "^5.1.2"

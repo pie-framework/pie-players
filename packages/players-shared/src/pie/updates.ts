@@ -5,6 +5,7 @@
  */
 
 import { mergeObjectsIgnoringNullUndefined } from "../object/index.js";
+import { settleAll } from "../promise/index.js";
 import type {
 	ConfigEntity,
 	Env,
@@ -268,7 +269,9 @@ const updateSinglePieElement = async (
 		| undefined;
 	if (!model) {
 		logger.error(`${logContext} Model not found for`, controllerLookupTag);
-		throw new Error(`model not found for ${controllerLookupTag}`);
+		throw new Error(
+			`model not found for ${controllerLookupTag}#${pieElement.id}`,
+		);
 	}
 
 	const elementSession = findOrAddSession(session, model.id, model.element);
@@ -369,9 +372,12 @@ export const updatePieElementWithRef = (
 };
 
 /**
- * Update a PIE element by name (finds all matching elements in DOM)
+ * Update a PIE element by name (finds all matching elements in DOM).
+ *
+ * Updates every matching element even when some fail, then rejects with one
+ * aggregated error naming each failed element.
  */
-export const updatePieElement = (
+export const updatePieElement = async (
 	elName: string,
 	opts: UpdatePieElementOptions,
 ): Promise<void> => {
@@ -385,9 +391,9 @@ export const updatePieElement = (
 	const pieElements = searchRoot.querySelectorAll(elName);
 	if (!pieElements || pieElements.length === 0) {
 		logger.debug(`no elements found for ${elName}`);
-		return Promise.resolve();
+		return;
 	}
-	return Promise.all(
+	const results = await settleAll(
 		Array.from(pieElements, (el) =>
 			updateSinglePieElement(
 				el as PieElement,
@@ -396,7 +402,23 @@ export const updatePieElement = (
 				"[updatePieElement]",
 			),
 		),
-	).then(() => undefined);
+	);
+	const failures = results.filter(
+		(result): result is PromiseRejectedResult => result.status === "rejected",
+	);
+	if (failures.length === 0) return;
+	if (failures.length === 1) {
+		const [failure] = failures;
+		if (failure?.reason instanceof Error) throw failure.reason;
+	}
+	const reasons = failures.map((failure) =>
+		failure.reason instanceof Error
+			? failure.reason.message
+			: String(failure.reason),
+	);
+	throw new Error(
+		`${failures.length} of ${pieElements.length} elements failed to update: ${reasons.join(" | ")}`,
+	);
 };
 
 /**

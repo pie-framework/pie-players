@@ -443,9 +443,9 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 		integrationLevel: 1,
 		integrationTheme: "NDS icon opt-in",
 		focus:
-			"Shows the vendored `<nds-icon-button>` rendering for the toolbar tools (calculator), the calculator shell controls, the inline text-to-speech trigger, and the section scroll-hint. Identical to Single Question except the player element carries `nds-icons={true}`; every other demo omits it and renders plain `<button>`s.",
+			"Shows the vendored `<pie-nds-icon-button>` rendering for the toolbar tools (calculator), the calculator shell controls, the inline text-to-speech trigger, and the section scroll-hint. Identical to Single Question except the player element carries `nds-icons={true}`; every other demo omits it and renders plain `<button>`s.",
 		whatMakesItTick: [
-			"`nds-icons={true}` on the `<pie-section-player-*>` element reaches the toolkit runtime context, so consumers render `<nds-icon-button>` instead of plain buttons.",
+			"`nds-icons={true}` on the `<pie-section-player-*>` element reaches the toolkit runtime context, so consumers render `<pie-nds-icon-button>` instead of plain buttons.",
 			"Opt-in with presence semantics: omit the attribute (the default) for plain buttons.",
 			"`calculator` is placed on the item toolbar so both the NDS toolbar button and its NDS-styled floating shell controls are visible.",
 			"Inline text-to-speech renders its NDS circular play/pause trigger.",

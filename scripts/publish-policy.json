@@ -4,6 +4,7 @@
 	"requireRepositoryDirectory": true,
 	"requiredRepositoryUrl": "git+https://github.com/pie-framework/pie-players.git",
 	"requireExportsOrMainTypes": true,
+	"requireDefaultExportCondition": true,
 	"requireNodeEngine": true,
 	"defaultNodeEngine": ">=20.0.0",
 	"svelteRuntimeDependencyRange": "^5.57.0",
@@ -12,19 +13,28 @@
 	},
 	"allowedSvelteRuntimeDependencies": {},
 	"allowedUndeclaredRuntimeImports": {
-		"@pie-players/pie-calculator-cortex": [
-			"https://esm.run/@cortex-js/compute-engine",
-			"canvas.js"
-		],
-		"@pie-players/pie-item-list": [
-			"@pie-players/pie-theme/components.css"
-		],
-		"@pie-players/pie-section-player": [
-			"https://esm.run/@cortex-js/compute-engine",
-			"canvas.js",
-			"@pie-players/pie-theme/components.css"
-		]
+		"npm": {},
+		"browser": {
+			"@pie-players/pie-item-list": ["@pie-players/pie-theme/components.css"],
+			"@pie-players/pie-section-player": ["@pie-players/pie-theme/components.css"]
+		}
 	},
+	"allowedTypeOnlyDependencies": {
+		"@pie-players/pie-assessment-player": ["@pie-players/pie-players-shared"],
+		"@pie-players/pie-assessment-toolkit": [
+			"@pie-players/pie-calculator",
+			"@pie-players/pie-tts"
+		],
+		"@pie-players/pie-calculator-cortex": ["@pie-players/pie-calculator"],
+		"@pie-players/pie-calculator-desmos": ["@pie-players/pie-calculator"],
+		"@pie-players/pie-calculator-geogebra": ["@pie-players/pie-calculator"],
+		"@pie-players/pie-default-tool-loaders": ["@pie-players/pie-calculator"],
+		"@pie-players/pie-item-list": ["@pie-element/shared-types"],
+		"@pie-players/pie-item-player": ["@pie-players/pie-players-shared"],
+		"@pie-players/pie-tool-calculator-desmos": ["@pie-players/pie-calculator"],
+		"@pie-players/pie-tool-calculator-shared": ["@pie-players/pie-calculator"]
+	},
+	"allowedUnreachableDependencies": {},
 	"workspaceRoots": ["packages"],
 	"forbiddenPublicExports": {
 		"@pie-players/pie-players-shared": [
@@ -45,6 +55,7 @@
 			"@pie-players/pie-players-shared/i18n/language-tags",
 			"@pie-players/pie-players-shared/security/private-hosts",
 			"@pie-players/pie-context",
+			"@pie-players/pie-language-tags",
 			"@pie-players/pie-calculator",
 			"@pie-players/pie-calculator-cortex",
 			"@pie-players/pie-calculator-desmos",

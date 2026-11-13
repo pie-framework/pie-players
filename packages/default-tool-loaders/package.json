@@ -17,15 +17,17 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"files": [
 		"dist",
 		"README.md"
 	],
 	"scripts": {
-		"build": "bun run check:composition && tsc -p tsconfig.json",
+		"build": "bun run check:composition && tsc -p tsconfig.json && bun ../../scripts/prune-unreachable-declarations.mjs",
 		"check:composition": "bun test tests/packaged-capability-composition.test.ts",
 		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit",

@@ -2,6 +2,8 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { resolve } from "path";
 import { defaultClientConditions, type PluginOption, type UserConfig } from "vite";
 import { chunkFileNamesFromSource } from "../players-shared/chunk-file-names.js";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
+import { minifyChunks } from "../players-shared/minify-chunks.mjs";
 import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map-comment-text.mjs";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
@@ -28,6 +30,8 @@ export const sharedSveltePlugins = (): PluginOption[] => [
 	}),
 	guardSvelteCustomElementDefines(),
 	escapeSourceMapCommentTextInOutput(),
+	preserveLegalComments(),
+	minifyChunks(),
 ];
 
 export const sharedChunkFileNames = chunkFileNamesFromSource(resolve(__dirname, "../.."));

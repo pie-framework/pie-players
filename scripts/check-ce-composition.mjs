@@ -98,8 +98,7 @@ for (const entry of ${JSON.stringify(entries)}) {
 }
 if (${inert} && definitions.length) throw Error("Contract imports registered " + definitions.join(", "));
 for (const tag of ${JSON.stringify(forbiddenTags)}) if (customElements.get(tag)) throw Error("Targeted entry registered unrelated " + tag);
-// NDS is a documented, guarded vendor registration shared by the suite.
-const leaked = definitions.filter(tag => !tag.startsWith("pie-") && tag !== "nds-icon-button");
+const leaked = definitions.filter(tag => !tag.startsWith("pie-"));
 if (leaked.length) throw Error("Unexpected implementation registrations: " + leaked.join(", "));
 `;
 	try {
@@ -152,7 +151,7 @@ async function main() {
 	try {
 		const packages = collectFixturePackageNames(packageMap, specifiers.map((specifier) => splitPackageSpecifier(specifier).name));
 		const tarballs = await packFixturePackages(fixtureDir, packageMap, packages);
-		installTarballs(fixtureDir, [...tarballs.values()]);
+		await installTarballs(fixtureDir, [...tarballs.values()]);
 		const expectedExports = declarationExports(fixtureDir, specifiers);
 		const entry = (specifier) => ({
 			specifier,

@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Replaces tsc's output for each vendored module with one self-contained ESM
-// bundle of its source and dependencies, so hosts install nothing for it. Runs
-// after tsc, which still emits the modules' declarations.
+// bundle of its source and dependencies, so hosts install nothing for it, and
+// writes the package's `THIRD-PARTY-LICENSES.txt`. Runs after tsc, which still
+// emits the modules' declarations.
 //
 // Every dynamic `import()` in a bundle is marked for bundlers to leave alone:
 // a vendored module imports URLs it computes at runtime, and webpack would
@@ -11,6 +12,11 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
+import {
+	THIRD_PARTY_NOTICES_FILE,
+	nodeFileReader,
+	renderThirdPartyNotices,
+} from "../legal-comments.mjs";
 import { escapeSourceMapCommentText } from "../source-map-comment-text.mjs";
 
 const packageDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -22,6 +28,12 @@ const VENDORED_MODULES = [
 
 const DYNAMIC_IMPORT = /(?<![\w$.])import\((?!\/\* webpackIgnore)/g;
 const RUNTIME_IMPORT = "import(/* webpackIgnore: true */ /* @vite-ignore */ ";
+
+// The files the bundles inline, plus the vendored NDS button the build script
+// copies into `dist` afterwards, which carries Lit pre-bundled.
+const inlinedModuleFiles = [
+	path.join(packageDir, "src/components/vendor/nds/nds-icon-button.js"),
+];
 
 for (const { output, source } of VENDORED_MODULES) {
 	const result = await build({
@@ -35,8 +47,14 @@ for (const { output, source } of VENDORED_MODULES) {
 		minify: true,
 		legalComments: "eof",
 		logLevel: "warning",
+		metafile: true,
 		write: false,
 	});
+	inlinedModuleFiles.push(
+		...Object.keys(result.metafile.inputs).map((input) =>
+			path.resolve(packageDir, input),
+		),
+	);
 	for (const file of result.outputFiles) {
 		await writeFile(
 			file.path,
@@ -45,4 +63,11 @@ for (const { output, source } of VENDORED_MODULES) {
 			),
 		);
 	}
+}
+
+// One file for the package, beside every bundle it covers: `dist/loaders/` and
+// `dist/components/vendor/` both sit below it.
+const notices = renderThirdPartyNotices(inlinedModuleFiles, nodeFileReader);
+if (notices) {
+	await writeFile(path.join(packageDir, "dist", THIRD_PARTY_NOTICES_FILE), notices);
 }

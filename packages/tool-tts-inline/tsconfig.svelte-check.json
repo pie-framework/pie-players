@@ -2,9 +2,10 @@
 	"extends": "./tsconfig.json",
 	"compilerOptions": {
 		"noEmit": true,
+		"allowJs": true,
 		"rootDir": "..",
 		"baseUrl": "."
 	},
 	"include": ["**/*.ts", "**/*.svelte"],
-	"exclude": ["node_modules", "dist", "tests"]
+	"exclude": ["node_modules", "dist", "tests", "vite.config.ts"]
 }

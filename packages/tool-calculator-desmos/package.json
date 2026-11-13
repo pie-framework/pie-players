@@ -2,7 +2,7 @@
 	"name": "@pie-players/pie-tool-calculator-desmos",
 	"version": "1.0.0-beta.9",
 	"type": "module",
-	"description": "Calculator tool for PIE assessment player",
+	"description": "Registers <pie-tool-calculator>, the assessment toolkit's provider-neutral calculator element; the desmos in the name is historical",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/pie-framework/pie-players.git",
@@ -22,8 +22,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/pie-tool-calculator.js"
-		}
+			"import": "./dist/pie-tool-calculator.js",
+			"default": "./dist/pie-tool-calculator.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -40,8 +42,6 @@
 		"lint": "biome lint ."
 	},
 	"license": "MIT",
-	"unpkg": "./dist/pie-tool-calculator.js",
-	"jsdelivr": "./dist/pie-tool-calculator.js",
 	"dependencies": {
 		"@pie-players/pie-calculator": "workspace:*",
 		"@pie-players/pie-tool-calculator-shared": "workspace:*"
@@ -50,7 +50,7 @@
 		"@biomejs/biome": "^2.6.4",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"svelte": "^5.57.3",
-		"svelte-check": "^4.7.6",
+		"svelte-check": "^4.7.8",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.3",
 		"vite-plugin-dts": "^5.1.2"

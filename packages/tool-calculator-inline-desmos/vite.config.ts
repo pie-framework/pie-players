@@ -5,6 +5,8 @@ import dts from "vite-plugin-dts";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
 import { calculatorSharedSvelteSourceAliases } from "../tool-calculator-shared/svelte-source-aliases.js";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
+import { minifyChunks } from "../players-shared/minify-chunks.mjs";
 
 export default defineConfig({
 	// Declared once in tool-calculator-shared; see svelte-source-aliases.ts.
@@ -15,6 +17,8 @@ export default defineConfig({
 		),
 	},
 	plugins: [
+		preserveLegalComments(),
+		minifyChunks(),
 		svelte({
 			compilerOptions: {
 				customElement: true,
@@ -41,7 +45,7 @@ export default defineConfig({
 		outDir: "dist",
 		emptyOutDir: true,
 		target: "es2022",
-		minify: "esbuild",
+		minify: false,
 		sourcemap: false,
 		rollupOptions: {
 			// The toolkit, players-shared and pie-context resolve from the

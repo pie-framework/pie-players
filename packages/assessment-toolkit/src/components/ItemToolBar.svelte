@@ -110,13 +110,8 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	import type { ElementToolContext, ItemToolContext, ToolContext } from '../services/tool-context.js';
 	import { elementSupports } from '../services/tool-context.js';
 	import type { ToolPolicyDecision } from '../policy/engine.js';
+	import type { ItemToolbarElementProps } from './element-contracts.js';
 	import { createDecidedToolsTracker } from '../services/toolbar-decided-tools.js';
-	// Side-effect import: registers <nds-icon-button>. Single vendored source of
-	// truth lives in players-shared (Lit inlined, self-contained); see
-	// players-shared/src/components/vendor/nds/README.md. The CE build externalizes
-	// @pie-players/*, so this resolves as a bare import in the published artifact
-	// like every other players-shared specifier ItemToolBar already emits.
-	import '@pie-players/pie-players-shared/nds-icon-button';
 
 	const isBrowser = typeof window !== 'undefined';
 	// Turns the glyph and leaves the button upright: a turned button's box grows
@@ -134,8 +129,38 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	};
 	// FontAwesome for the NDS glyphs, and where it comes from: see
 	// players-shared `ui/fontawesome`.
-	const ensureNdsAssets = () =>
+	const ensureNdsAssets = () => {
+		registerNdsIconButton();
 		ensureFontAwesome(runtimeContext?.itemPlayer?.loaderOptions);
+	};
+	// Registers <pie-nds-icon-button> the first time an NDS control is about to
+	// render, so a page that never sets `ndsIcons` does not load the bundle or take
+	// its tag. The vendored source of truth lives in players-shared (Lit inlined,
+	// self-contained); see players-shared/src/components/vendor/nds/README.md. The
+	// CE build externalizes @pie-players/*, so the import stays a bare specifier in
+	// the published artifact like every other players-shared one ItemToolBar emits.
+	//
+	// The toolbar renders its NDS buttons only once the tag is defined. Created
+	// before registration, an element takes `disabled={false}` as the attribute
+	// `disabled="false"`, which upgrades to `disabled === true`, and the button
+	// swallows every click. Until then, and if the load fails, the plain buttons
+	// render.
+	let ndsIconButtonReady = $state(isBrowser && !!customElements.get('pie-nds-icon-button'));
+	const registerNdsIconButton = () => {
+		if (ndsIconButtonReady) return;
+		import('@pie-players/pie-players-shared/nds-icon-button').then(
+			() => {
+				ndsIconButtonReady = true;
+			},
+			(error) => {
+				warnOncePerDocument(
+					typeof document === 'undefined' ? null : document,
+					'nds-icon-button-load',
+					`[pie-item-toolbar] <pie-nds-icon-button> failed to load, so the toolbar keeps its plain buttons: ${String(error)}`
+				);
+			}
+		);
+	};
 	// The toolbar's own glyphs render inside <pie-item-toolbar>'s shadow root,
 	// which <head> stylesheets don't reach; the calculator shell's controls mount
 	// on document.body, where they do.
@@ -145,7 +170,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		return { destroy: applyNdsGlyphVariant(node, 'fa-light') };
 	};
 
-	// <nds-icon-button> exposes only `button-aria-label` on its inner light-DOM
+	// <pie-nds-icon-button> exposes only `button-aria-label` on its inner light-DOM
 	// <button> — no `aria-pressed`. Toolbar tool buttons are toggles (calculator
 	// open/closed, line reader on/off, …), so mirror the pressed state onto that
 	// inner button to keep the toggle semantics exposed to assistive tech. The
@@ -171,7 +196,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		};
 	};
 
-	// <nds-icon-button> renders FontAwesome glyphs via `icon-name` only (no slot).
+	// <pie-nds-icon-button> renders FontAwesome glyphs via `icon-name` only (no slot).
 	// Which items route through it is declared by whoever owns the capability —
 	// `faIconName` on the registration's button definition, or on a host-contributed
 	// button — not mapped from a toolId here: this package names no capability.
@@ -193,7 +218,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 
 	// Props
 	let {
-		level = 'item' as ToolScopeLevel,
+		level = 'item',
 		scopeId = '',
 		itemId = '',
 		sectionId = '',
@@ -205,37 +230,24 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		// answer `fallbackToolRegistry` gives.
 		tools = '',
 		contentKind = 'assessment-item',
-		position = 'bottom' as 'top' | 'right' | 'bottom' | 'left' | 'none',
+		position = 'bottom',
 		scopeElement = null,
 		toolRegistry = null,
 		item = null,
-		hostButtons = [] as ToolbarItem[],
+		hostButtons = [],
 		class: className = '',
-		size = 'md' as 'sm' | 'md' | 'lg',
+		size = 'md',
 		language = ''
-	}: {
-		level?: ToolScopeLevel;
-		scopeId?: string;
-		itemId?: string;
-		sectionId?: string;
-		catalogId?: string;
-		tools?: string;
-		contentKind?: string;
-		position?: 'top' | 'right' | 'bottom' | 'left' | 'none';
-		scopeElement?: HTMLElement | null;
-		toolRegistry?: ToolRegistry | null;
-		item?: ItemEntity | null;
-		hostButtons?: ToolbarItem[];
+	}: ItemToolbarElementProps & {
+		/** Svelte-side only; the element has no `class` property. */
 		class?: string;
-		size?: 'sm' | 'md' | 'lg';
-		language?: string;
 	} = $props();
 
 	let toolbarRootElement = $state<HTMLDivElement | null>(null);
 
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Presentation gate from the host runtime. Controls render
-	// <nds-icon-button> only when the host explicitly opts in
+	// <pie-nds-icon-button> only when the host explicitly opts in
 	// (`ndsIcons === true`); otherwise they use plain <button> markup.
 	const useNdsIcons = $derived(runtimeContext?.ndsIcons === true);
 	// Interface locale. Resolved from the runtime context, which republishes when
@@ -1270,7 +1282,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		let titleEl: HTMLSpanElement | null = null;
 		let controlsEl: HTMLDivElement | null = null;
 		// HTMLElement (not HTMLButtonElement) so the calculator branch can use
-		// <nds-icon-button> here while other shells keep the inline <button>.
+		// <pie-nds-icon-button> here while other shells keep the inline <button>.
 		let closeButtonEl: HTMLElement | null = null;
 		let startFocusGuardEl: HTMLDivElement | null = null;
 		let endFocusGuardEl: HTMLDivElement | null = null;
@@ -1522,7 +1534,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 			glyphTurn?: string
 		) => {
 			ensureNdsAssets();
-			const button = document.createElement('nds-icon-button');
+			const button = document.createElement('pie-nds-icon-button');
 			button.setAttribute('variant', 'tertiary');
 			button.setAttribute('size', 'small');
 			button.setAttribute('type', 'circle');
@@ -1611,7 +1623,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 			}
 			for (const { el, key } of localizedControlEls) {
 				const label = currentArgs.i18n.t(key);
-				// nds-icon-button forwards `button-aria-label` to the <button> it
+				// pie-nds-icon-button forwards `button-aria-label` to the <button> it
 				// renders; the plain controls carry aria-label themselves.
 				if (el.tagName === 'NDS-ICON-BUTTON') {
 					el.setAttribute('button-aria-label', label);
@@ -1988,7 +2000,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		};
 
 		if (isBrowser && currentArgs.mounted.entry.shell) {
-			// A shell renders its header controls as <nds-icon-button>s only when its
+			// A shell renders its header controls as <pie-nds-icon-button>s only when its
 			// own config asks for them; gated on the host flag too, so an opted-out
 			// env gets the plain-<button> controls every other shell uses.
 			const useNdsShellIcons = shellDeclaresNdsChrome() && useNdsIcons;
@@ -2007,10 +2019,10 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 			shellEl.style.boxShadow =
 				'0 10px 40px color-mix(in srgb, var(--pie-black, #000) 25%, transparent)';
 			// NDS palette bridge for the shell's header controls. They are created
-			// imperatively, so the scoped `.item-toolbar nds-icon-button` rule below
+			// imperatively, so the scoped `.item-toolbar pie-nds-icon-button` rule below
 			// never matches them: without this they kept a #146eb3 glyph on a
 			// near-white pill on top of a themed header. Set on the shell so every
-			// nds-icon-button inside inherits it. Same mapping as the style block —
+			// pie-nds-icon-button inside inherits it. Same mapping as the style block —
 			// see scripts/check-theme-tokens.mjs.
 			shellEl.style.setProperty(
 				'--color-interactive-blue',
@@ -2419,12 +2431,12 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 				);
 				applyShellStrings();
 				adoptDeclaredSize();
-				// An <nds-icon-button> is a custom element with inline-block default
+				// An <pie-nds-icon-button> is a custom element with inline-block default
 				// display; a plain <button> shell control is inline-flex. Read which one
 				// was actually built rather than re-deriving it, so a prop refresh cannot
 				// clobber inline-block back to inline-flex.
 				const closeButtonOpenDisplay =
-					closeButtonEl.tagName.toLowerCase() === 'nds-icon-button'
+					closeButtonEl.tagName.toLowerCase() === 'pie-nds-icon-button'
 						? 'inline-block'
 						: 'inline-flex';
 				closeButtonEl.style.display =
@@ -2550,7 +2562,9 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 
 			{#each toolbarItems as item (item.id)}
 				{@const faIconName =
-					useNdsIcons && !isToolbarLinkItem(item) ? resolveFaIconName(item) : null}
+					useNdsIcons && ndsIconButtonReady && !isToolbarLinkItem(item)
+						? resolveFaIconName(item)
+						: null}
 				{#if faIconName}
 					<!-- NDS circular icon button. Active tools use the filled `primary`
 					     variant; inactive use `ghost`. The click bubbles out of the
@@ -2559,7 +2573,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 					     button since nds has no native aria-pressed. -->
 					<span class="item-toolbar__nds-button-zoom">
 						<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-						<nds-icon-button
+						<pie-nds-icon-button
 							use:ndsIconButtonAction
 							use:reflectToggleState={isToolbarItemActive(item)}
 							class="item-toolbar__nds-button"
@@ -2571,7 +2585,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 							title={item.tooltip || item.label}
 							disabled={item.disabled}
 							onclick={item.onClick}
-						></nds-icon-button>
+						></pie-nds-icon-button>
 					</span>
 				{:else if isToolbarLinkItem(item)}
 					<a
@@ -2754,7 +2768,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		flex-shrink: 0;
 	}
 
-	.item-toolbar nds-icon-button {
+	.item-toolbar pie-nds-icon-button {
 		/* Host-settable button size per toolbar size (drives the NDS outer button
 		   via its own --height-32). */
 		--height-32: var(--pie-calculator-button-size, 2rem);
@@ -2782,11 +2796,11 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		--color-focus-blue: var(--pie-button-focus-outline, #2b87ff);
 	}
 
-	.item-toolbar--sm nds-icon-button {
+	.item-toolbar--sm pie-nds-icon-button {
 		--height-32: var(--pie-calculator-button-size-sm, 2.75rem);
 	}
 
-	.item-toolbar--lg nds-icon-button {
+	.item-toolbar--lg pie-nds-icon-button {
 		--height-32: var(--pie-calculator-button-size-lg, 2.5rem);
 	}
 

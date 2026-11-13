@@ -9,7 +9,15 @@ import "./components/section-player-shell-element";
 import "./components/section-player-kernel-host-element";
 
 export type {
+	PiePassageShellElement,
+	PieSectionPlayerBaseElement,
 	PieSectionPlayerElement,
+	PieSectionPlayerItemCardElement,
+	PieSectionPlayerItemsPaneElement,
+	PieSectionPlayerKernelHostElement,
+	PieSectionPlayerPassageCardElement,
+	PieSectionPlayerPassagesPaneElement,
+	PieSectionPlayerShellElement,
 	PieSectionPlayerSplitPaneElement,
 } from "./contracts/elements.js";
 export type {

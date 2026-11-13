@@ -143,14 +143,15 @@ before opening or merging a release.
 | Version policy | `check:changeset-patch-only`, `check:fixed-versioning` |
 | Manifests and dependencies | `check:package-metadata`, `check:svelte-runtime-deps`, `check:ce-consumer-contract` (Svelte peer policy), `check:deps`, `check:undeclared-subpaths` (cross-package imports name declared exports), `check:math-rendering-version` (one `@pie-lib/math-rendering-module` version) |
 | Custom elements | `check:custom-elements`, `check:custom-elements:dist`, `check:ce-define-safety` |
-| Published surface | `check:publint`, `check:types-publish` (ATTW), `check:svelte-type-imports` (no declaration reaches `svelte`), `check:pack-integrity:real` (real tarballs) |
+| Published surface | `check:publint` (import graph from the manifest, then `publint --strict`), `check:types-publish` (ATTW), `check:svelte-type-imports` (no declaration reaches `svelte`), `check:declaration-reachability` (every shipped declaration is reachable from a type entry), `check:pack-integrity:real` (real tarballs) |
 | Consumer boundaries | `check:consumer-boundaries` (app imports), `check:node-consumer-imports` (Node-safe entry points), `check:bundle-safety` (bundle shape, player and tool boundaries) |
 | Toolkit core | `check:engine-core-purity`, `check:speech-composition-purity`, `check:capability-neutrality` |
 | Scripts | `check:scripts` (unit tests for `scripts/`) |
 
-`check:publish-surface` and `check:sourcemaps` run on their own. The dist-only
-rules they enforce are in
-[Library packaging strategy](./library-packaging-strategy.md#dist-only-publish-surface).
+`check:pack-integrity:real` enforces the dist-only rules in
+[Library packaging strategy](./library-packaging-strategy.md#dist-only-publish-surface);
+`check:publish-surface`, which the pre-commit hook runs through
+`check:source-exports`, applies the same rules to a dry-run pack.
 
 ## Release intent in CI
 
@@ -459,6 +460,13 @@ with `npm view @pie-players/pie-preloaded-player@<version> dist.attestations`.
 - Metadata failures: update the `package.json` fields the error lists.
 - `publint` failures: align `exports`, `types` and packed files with the
   published entry points.
+- Import-graph failures (`check:publint`): declare the package the shipped file
+  imports, or stop importing it. A `type-only-dependency` is a dependency that
+  only the package's own declarations name; list it in
+  `allowedTypeOnlyDependencies` in `scripts/publish-policy.json` when the
+  declarations expose its types. `allowedUnreachableDependencies` and
+  `allowedUndeclaredRuntimeImports` (`npm` and `browser`) excuse the other
+  findings, and a stale entry fails the check.
 - ATTW failures: fix the type entry points or their resolution.
 - Pack-integrity failures (`check:pack-integrity:real`): include every declared
   export target in `files` and produce it in the build.

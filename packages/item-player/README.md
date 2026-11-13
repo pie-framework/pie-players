@@ -95,10 +95,12 @@ that renders authored markup itself, outside a player, puts `data-pie-content` o
 that container to give it the same styles.
 
 Rules whose selector requires a `kds-*` or `Kds*` class, MathJax output
-(`mjx-*`, `TEX-*`) or a legacy content class such as `.frac` or `.noprint` stay
-document-wide. Elements portal menus and popovers holding authored markup to
-`<body>`, outside the player, and an inline-dropdown's choices keep their
-`kds-fraction` and MathJax glyph fixes there.
+(`mjx-*`, `TEX-*`) or the legacy `.frac` fraction stay document-wide. Elements
+portal menus and popovers holding authored markup to `<body>`, outside the
+player, and an inline-dropdown's choices keep their `kds-fraction`, `.frac` and
+MathJax glyph fixes there. The other legacy content classes (`.variable`,
+`.whole`, `.noprint` and the rest) are common words, so they apply inside
+`[data-pie-content]` only.
 
 ### Upgrading from a manual import
 
@@ -219,12 +221,15 @@ item.
 - `include-sr-heading`: `Boolean`, default `true`. Emit the item's visually
   hidden heading. Reflected.
 - `locale`: `String`, default `""` (renders `en-US`). BCP 47 interface locale
-  for the player's own UI. The toolkit and toolbar inside the player stamp it
-  on their own roots; the content root asserts no `lang`/`dir`, so unnamed
-  content keeps the browser voice for read-aloud. The item's content language
-  is separate: content that names its own `lang`/`dir` keeps it. The player
-  answers `interfaceLocaleContext` (`@pie-players/pie-context`) from it for
-  the elements inside, as `{ locale, direction }`.
+  for the player's own UI. Set, the player stamps the served locale's `lang`
+  and `dir` on its own host; the content root asserts no `lang`/`dir`, so
+  unnamed content keeps the browser voice for read-aloud. The item's content
+  language is separate: content that names its own `lang`/`dir` keeps it.
+  Once a host chose a locale — set `locale`, or supplied an `i18n` provider
+  asked for a locale other than `en-US` — the player answers
+  `interfaceLocaleContext` (`@pie-players/pie-context`) for the elements
+  inside, as `{ locale, direction }` with the requested tag. Until then an
+  element labels its chrome in the language its item declares.
 - `i18n`: `I18nProvider`, optional. A provider the host composed — the
   generated locale tier, host messages, or the host's own — used in place of
   the one the player builds. `locale` still names the locale, and a supplied
@@ -232,8 +237,8 @@ item.
   ([Interface i18n](../players-shared/src/i18n/README.md#for-a-host)). A
   catalog that fails to load dispatches a recoverable `framework-error` event
   on the player (`detail.kind` is `i18n-locale-load`); the player renders
-  through the English fallback chain, and failed loads are not cached, so
-  re-setting `locale` retries.
+  through the English fallback chain, and failed loads are not cached, so a
+  later change of `locale` back to that locale retries.
 - `debug`: `String`, default `""`. Any value other than `"false"` (any case),
   `"0"` or the empty string turns on the player's debug logging. The player
   writes the result to `window.PIE_DEBUG`, the flag the page's other PIE loggers
@@ -340,6 +345,21 @@ These are set from JavaScript; they have no attribute.
 - `getPendingSessionSnapshot(): SessionSnapshotRecord | null` returns the
   snapshot `session-snapshot-available` announced, for a host that attached its
   listener after the event fired.
+- `focus(options?: FocusOptions): Promise<boolean>` focuses the item's first
+  input and resolves whether focus moved. Each element in the item is asked in
+  document order through its `focusFirstInput()` hook
+  ([element contract](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/PIE_ELEMENT_CONTRACT.md#focus-hook)),
+  and one without the hook gets its first tabbable descendant. The passage is
+  skipped, and an item with no input leaves focus where it is. A call made while
+  the item loads, including one in the same task as a `config` change, waits for
+  `load-complete`, then focuses only if focus has not moved since the call; focus
+  that fell to the page because the element holding it was removed, hidden or
+  disabled has not moved. A newer call resolves a waiting one `false`, and so
+  does focus moving while an element's hook waits. `options`
+  passes through, so `preventScroll` keeps the page still. Call it on an
+  explicit learner action, such as Enter or a Next button: focus moved on load
+  skips the prompt for a screen-reader user, and focus moved as an answer is
+  typed is a change of context on input (WCAG 3.2.2).
 
 A backend method rejects its promise on failure and dispatches no
 `backend-error`.

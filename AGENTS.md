@@ -107,6 +107,11 @@ when one literal tag is defined in two files.
   element depends on no host or global utility class names.
   `bun run check:light-dom-classes` fails on a class outside the `pie-` namespace in
   the markup such an element or any component it renders names.
+- A new DOM event is named `pie-<noun>-<change>`; event names share one flat page
+  namespace. `bun run check:event-names` fails on an event outside the `pie-`
+  namespace in a package's `custom-elements.json` unless `LEGACY_EVENT_NAMES`
+  lists it, and the names that shipped before the rule stay because hosts listen to
+  them.
 - Package `exports` runtime targets point at built `dist` artifacts unless there is
   an explicit documented exception.
 - If a CE registration entry imports `*.svelte?customElement`, ensure the referenced
@@ -159,6 +164,12 @@ build.
 - After adding a locale, build the package and confirm `dist` holds it as its own
   chunk. The design is in
   [`docs/architecture/internationalization.md`](docs/architecture/internationalization.md#packaging).
+- Players answer `interfaceLocaleContext` only once a host chose a locale, decided
+  by `hostChoseInterfaceLocale` alone. Never answer it, or forward a provider that
+  makes a nested player answer it, with a default `en-US`: unanswered, a PIE
+  element labels its chrome in the language its item declares, and Spanish content
+  relies on that. The rule is in
+  [`docs/architecture/internationalization.md`](docs/architecture/internationalization.md#interface-locale).
 
 ### Decision Records
 
@@ -433,7 +444,7 @@ also compiles each `.svelte` file that source reaches with the options the packa
 builds use; the root and every package running `bun test` preload it from their
 `bunfig.toml`. A Vitest package with tests and a workspace sibling sets
 `workspaceSourcesVitePlugin()` in its `vitest.config.ts`. A test of a built artifact
-builds its own package in its `test` script, as `tool-color-scheme` and
+builds its own package in its `test` script, as `tool-theme` and
 `tool-calculator-shared` do, so `turbo test` and CI run no build before unit tests.
 
 `scripts/tests/workspace-sources.test.mjs`, run by `bun run check:scripts`, fails on a
@@ -611,6 +622,9 @@ skill as a thin wrapper over it; `consumer-dependency-audit` is the pattern.
 - `packages/pie-i18n-generated` - optional machine-generated locale catalogs:
   provenance-marked, unreviewed, freshness-gated; hosts compose their loaders
   after the bundled ones, and a locale is promoted by review, not rework.
+- `packages/pie-language-tags` - BCP 47 tag lookup and matching, which
+  players-shared's i18n re-exports and pie-elements-ng's i18n engine imports, and
+  the conformance fixture both engines run.
 - `packages/pie-context` - shared runtime context.
 - `packages/theme` - theme token contract, `<pie-theme>`, color schemes, and the
   DaisyUI provider adapter.

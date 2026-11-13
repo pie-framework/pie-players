@@ -71,4 +71,9 @@ export {
 	graphToolRegistration,
 	periodicTableToolRegistration,
 } from "./registrations/subject-specific-tools.js";
-export { ttsToolRegistration } from "./registrations/tts.js";
+export {
+	createTTSToolRegistration,
+	type TTSHostProviderDescriptor,
+	type TTSRegistrationOptions,
+	ttsToolRegistration,
+} from "./registrations/tts.js";

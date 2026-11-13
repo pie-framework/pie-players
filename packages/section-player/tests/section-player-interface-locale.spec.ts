@@ -286,8 +286,9 @@ test.describe("section player interface locale", () => {
 		// every pane, card and item player — with the toolkit host, the
 		// navigation live region, and the toolbar carrying their own. The
 		// document root is never touched: an embedded player has no business
-		// writing it. `ar-XB` makes the `dir` half observable without an Arabic
-		// catalog. The item player's content root takes `lang=""` with
+		// writing it. `ar-XB` resolves the shipped `ar` catalog, so the stamps
+		// name `ar`, the locale served, under the pseudo-locale's host messages.
+		// The item player's content root takes `lang=""` with
 		// `dir="auto"`: content that declares no language is claimed for no
 		// language, and its direction comes from its own text.
 		await page.setViewportSize(WIDE);
@@ -296,14 +297,14 @@ test.describe("section player interface locale", () => {
 		});
 
 		const shell = page.locator("pie-section-player-shell");
-		await expect(shell).toHaveAttribute("lang", "ar-XB");
+		await expect(shell).toHaveAttribute("lang", "ar");
 		await expect(shell).toHaveAttribute("dir", "rtl");
 		await expect(page.locator("pie-assessment-toolkit")).toHaveAttribute(
 			"dir",
 			"rtl",
 		);
 		const navStatus = page.locator(".pie-section-player-nav-status");
-		await expect(navStatus).toHaveAttribute("lang", "ar-XB");
+		await expect(navStatus).toHaveAttribute("lang", "ar");
 		await expect(navStatus).toHaveAttribute("dir", "rtl");
 		await expect(
 			page.locator("pie-item-toolbar .item-toolbar").first(),
@@ -368,6 +369,51 @@ test.describe("section player interface locale", () => {
 			page.getByRole("heading", { name: "Passage", level: 2 }),
 		).toBeVisible();
 		await expect(page.getByTestId("demo-locale-select")).toHaveCount(0);
+	});
+
+	test("with no locale, neither the item players nor the toolkit answer interfaceLocaleContext, and the chrome stamps no lang", async ({
+		page,
+	}) => {
+		// Unanswered, a PIE element labels its chrome in the language its item
+		// declares. A default `en-US` answer from the section, or from an item
+		// player handed the section's provider, would override that declaration;
+		// a default `lang` stamp would claim the host's undeclared content for
+		// `en-US` over the page's language. The demo supplies a provider asked
+		// for `en-US` and no locale, which is not a choice.
+		await page.setViewportSize(WIDE);
+		await page.goto("/question-passage", { waitUntil: "networkidle" });
+		await expect(
+			page.getByRole("heading", { name: "Passage", level: 2 }),
+		).toBeVisible();
+		for (const selector of [
+			"pie-section-player-shell",
+			"pie-assessment-toolkit",
+		]) {
+			const host = page.locator(selector).first();
+			await expect(host).not.toHaveAttribute("lang");
+			await expect(host).not.toHaveAttribute("dir");
+		}
+
+		const content = page.locator("pie-item-player .pie-item-player").first();
+		const seen = await content.evaluate(async (node) => {
+			const values: unknown[] = [];
+			const from = node.firstElementChild ?? node;
+			from.dispatchEvent(
+				Object.assign(
+					new Event("context-request", { bubbles: true, composed: true }),
+					{
+						context: Symbol.for("pie.interfaceLocale"),
+						contextTarget: from,
+						subscribe: false,
+						callback: (value: unknown) => values.push(value),
+					},
+				),
+			);
+			await new Promise((resolve) => setTimeout(resolve, 250));
+			return values;
+		});
+
+		expect(seen).toEqual([]);
 	});
 
 	test("the item players answer interfaceLocaleContext with the section's locale", async ({

@@ -300,9 +300,9 @@ so they read as chosen rather than overlooked.
 | The page owns its language | WCAG 2.2 3.1.1 Language of Page (A) | no player or element writes `document.documentElement` |
 | Tags are BCP 47, canonicalized | RFC 5646 (BCP 47); W3C *Language tags in HTML and XML* | `normalizeLanguageTag` and `toLanguageTag`: `es_ES.UTF-8` compares as `es-es` and renders as `es-ES` |
 | Lookup, then primary-subtag widening, within the request's script | RFC 4647 §3.4; UTS #35 likely subtags, through ECMA-402 `Intl.Locale.maximize()` | `languageTagLookupSequence` never stops on a singleton; `sv-SE` reaches `sv`, bare `en` the bundled `en-US`; catalog lookup tries the language and likely script before the bare language, so `zh-TW` reaches `zh-Hant`, and a bare-tag catalog declares its likely script, so `zh-TW` passes the Simplified `zh` by and `sr-ME` the Cyrillic `sr`. The accessibility catalog resolver keeps plain truncation |
-| Plural forms are CLDR categories | UTS #35 plural rules, through ECMA-402 `Intl.PluralRules` | `other` is required; a catalog carries its locale's set (`cy` and `ar` six, `pt` `one`/`many`/`other`); a category the catalog lacks resolves to `other` |
-| Numbers and dates follow the locale | UTS #35 numbering systems and formats, through ECMA-402 `Intl.NumberFormat` and `Intl.DateTimeFormat` | numeric placeholders, `formatNumber` and `formatDate` format at the resolved locale; current CLDR resolves bare `ar` to Western digits and `ar-SA` to Arabic-Indic, so a regional request that widens to the `ar` catalog renders Western digits unless the host registers a regional catalog |
-| A control is never unnamed | WCAG 2.2 4.1.2 Name, Role, Value | lookup falls from host messages to the locale's catalog to `en-US` to the key itself; a failed catalog load is reported and renders English |
+| Plural forms are CLDR categories | UTS #35 plural rules, through ECMA-402 `Intl.PluralRules` | `other` is required; a catalog carries its locale's set (`cy` and `ar` six, `pt` `one`/`many`/`other`); each form resolves on its own, in two tiers: the request's host messages and its catalog, then `en-US`'s; within the first tier holding a group, the first source carrying the selected category, then the first carrying `other`. A host overriding one category keeps the catalog's others, and a catalog's own `other` serves `1 respuestas` before English `one` would; a group no tier completes renders the key |
+| Numbers and dates follow the locale | UTS #35 numbering systems and formats, through ECMA-402 `Intl.NumberFormat` and `Intl.DateTimeFormat` | numeric placeholders, `formatNumber` and `formatDate` format at the served locale; current CLDR resolves bare `ar` to Western digits and `ar-SA` to Arabic-Indic, so a regional request that widens to the `ar` catalog renders Western digits unless the host registers a regional catalog |
+| A control is never unnamed | WCAG 2.2 4.1.2 Name, Role, Value | lookup falls from host messages along the request's lookup sequence (`es-MX`, then `es`) to the catalog resolved against catalogs alone, then to `en-US`'s host messages and catalog, then to the key itself; host messages are keyed by normalized tag and never stand in for a catalog, so an `es-MX` override sits on a shipped `es`; `getLocale()` names the served locale — the resolved catalog once resident, else the most specific host-message tag on the request's chain, else `en-US` — so a `he` request with no Hebrew serves and stamps `en-US`; a failed catalog load is reported by the current request alone and renders English |
 | Direction comes from locale data | ECMA-402 `Intl.Locale` and the Locale Info proposal's `textInfo`, with an RTL-subtag fallback | `localeDirection` feature-detects `textInfo` and never reads a catalog |
 | A learner preference is an accommodation | AfA PNP 3.0; [ADR 0003](../adr/0003-elements-read-accessibility-settings-from-a-host-neutral-context.md) | the profile-to-support mapping lives in the host; an element maps a fixed support id to fixed behavior |
 
@@ -360,7 +360,9 @@ plural category and `{placeholder}` untouched. It registers through
 `en-XA` exercises expansion and externalization — anything still reading plain
 English was never catalog text. `ar-XB` needs no Arabic: its primary subtag
 resolves RTL through `localeDirection`, so an English reader watches the chrome
-lay out right to left.
+lay out right to left. Both widen to a shipped catalog (`en-US`, and `ar` where
+it ships), which is the locale they are served and stamped in; their host
+messages still win every lookup.
 
 ```ts
 import {
@@ -432,12 +434,46 @@ interface locale is a side effect of content locale.
 PIE elements read the same fact on a second, host-neutral channel:
 `interfaceLocaleContext` in `@pie-players/pie-context`, keyed
 `Symbol.for("pie.interfaceLocale")`, which the toolkit and the item player
-answer with `{ locale, direction }` — the tag as the player's provider resolved
-it and its writing direction — and republish on a locale change and again once
-a lazily loaded catalog is resident. Element bundles are third-party and
-release independently, so they get the key and the value shape rather than the
-players' provider, resolve the tag against their own catalogs, and treat an
-unanswered request as `en-US`. The value only grows, per ADR 0003's protocol.
+answer with `{ locale, direction }`: the host's requested tag, canonical, and
+its writing direction (`requestedInterfaceLocale`). The `locale` attribute
+supplies it from the moment it is set; without one, a supplied provider's
+`getRequestedLocale()`. The value is the request and never the players' own
+catalog match, because elements ship catalogs the players do not: `en-GB`
+reaches an element's `en-GB` where the players serve `en-US`, `fr-CA` reaches
+host messages registered on elements for `fr-CA`, and neither a players'
+chunk still loading nor one that failed holds elements on the previous locale.
+A player republishes only when the tag changes. Element bundles are
+third-party and release independently, so they get the key and the value
+shape rather than the players' provider, resolve the tag against their own
+catalogs, and treat an unanswered request as "no locale chosen". The value
+only grows, per ADR 0003's protocol.
+
+**Invariant: a player answers `interfaceLocaleContext` only once a host chose a
+locale.** A host chooses by setting `locale`, or by supplying a provider asked
+for a locale other than `en-US`; a supplied provider asked for `en-US` is
+not a choice, because hosts supply one to add catalogs or messages. The test
+reads the provider's request, so a provider asked for a tag nothing ships,
+which serves `en-US`, still counts. Before the
+choice the toolkit and the item player leave the request unanswered, and an
+element labels its chrome in the language its item declares, else `en-US`.
+That fallback is what keeps an item declaring Spanish in Spanish chrome under a
+host that sets no locale. One live installation's multiple-choice models
+declare `es_ES` and render Spanish chrome that way on pie-elements today; a
+default `en-US` answer would turn them English on the move to pie-players. Once answering, a player keeps answering, so
+clearing `locale` republishes `en-US` to subscribers. A host that wants English
+chrome over the item's language sets `locale="en-US"`.
+`hostChoseInterfaceLocale` in `@pie-players/pie-players-shared/i18n` is the one
+definition of the rule. An item player a section mounts receives the toolkit's
+provider and decides by the same rule, so it never answers what the toolkit
+above it leaves unanswered. `<pie-item-list>` and `<pie-item-summary>` forward
+their `locale` to the item players they mount, so `locale="en-US"` there is
+answered as on a standalone player. The toolkit and the section shell stamp
+the served locale's `lang` and `dir` on their hosts only while a host's choice
+holds (`interfaceLocaleChosen` on the toolkit runtime context carries it to
+the shell), and remove a stamp they wrote when it is withdrawn, so a host that
+chooses none leaves the page's language and direction on the chrome and on
+undeclared content. The item-player, toolkit and section-player
+interface-locale tests hold each case, the unanswered one included.
 pie-elements-ng's
 [interface-i18n PRD](https://github.com/pie-framework/pie-elements-ng/blob/develop/docs/prds/interface-i18n/PRD.md)
 is the subscriber half: an element subscribes in `connectedCallback`, re-renders

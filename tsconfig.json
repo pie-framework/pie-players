@@ -49,6 +49,9 @@
 			"path": "./packages/pie-i18n-generated"
 		},
 		{
+			"path": "./packages/pie-language-tags"
+		},
+		{
 			"path": "./packages/item-list"
 		},
 		{
@@ -70,7 +73,7 @@
 			"path": "./packages/tool-calculator-shared"
 		},
 		{
-			"path": "./packages/tool-color-scheme"
+			"path": "./packages/tool-theme"
 		},
 		{
 			"path": "./packages/tool-graph"

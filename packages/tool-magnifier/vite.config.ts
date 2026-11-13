@@ -5,6 +5,8 @@ import dts from "vite-plugin-dts";
 import { guardSvelteCustomElementDefines } from "../players-shared/svelte-custom-element-guard.js";
 import { playersSharedSvelteSourceAliases } from "../players-shared/svelte-source-aliases.js";
 import { svelteRootDir } from "../players-shared/svelte-root-dir.js";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
+import { minifyChunks } from "../players-shared/minify-chunks.mjs";
 
 export default defineConfig({
 	// The tap controls compile into this bundle from players-shared source; see
@@ -16,6 +18,8 @@ export default defineConfig({
 		),
 	},
 	plugins: [
+		preserveLegalComments(),
+		minifyChunks(),
 		svelte({
 			compilerOptions: {
 				customElement: true,
@@ -27,8 +31,10 @@ export default defineConfig({
 		dts({
 			tsconfigPath: resolve(__dirname, "tsconfig.json"),
 			outDirs: "dist",
-			insertTypesEntry: true,
-			include: ["index.ts"],
+			// No `insertTypesEntry`: it derives the types entry from the bundle
+			// entry, which is a `.svelte` file with no declarations, and writes a
+			// stub over the `index.d.ts` emitted from `index.ts`.
+			include: ["index.ts", "element-props.ts"],
 		}),
 	],
 	build: {
@@ -41,7 +47,7 @@ export default defineConfig({
 		outDir: "dist",
 		emptyOutDir: true,
 		target: "es2020",
-		minify: "esbuild",
+		minify: false,
 		sourcemap: false,
 		rollupOptions: {
 			// The toolkit, players-shared, pie-context and speech-rule-engine

@@ -13,7 +13,7 @@ await runDevServerBootstrap({
 		"packages/tool-calculator-desmos/dist/pie-tool-calculator.js",
 		"packages/tool-answer-eliminator/dist/tool-answer-eliminator.js",
 		"packages/tool-annotation-toolbar/dist/tool-annotation-toolbar.js",
-		"packages/tool-color-scheme/dist/tool-color-scheme.js",
+		"packages/tool-theme/dist/tool-color-scheme.js",
 		"packages/tool-graph/dist/tool-graph.js",
 		"packages/tool-periodic-table/dist/tool-periodic-table.js",
 		"packages/tool-protractor/dist/tool-protractor.js",

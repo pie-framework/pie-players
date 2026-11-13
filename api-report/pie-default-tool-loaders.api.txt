@@ -23,6 +23,8 @@
   type PackagedToolRegistryOptions
   type ResolvedAudioTranscript
   SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT
+  type TTSHostProviderDescriptor
+  type TTSRegistrationOptions
   annotationToolbarRegistration
   answerEliminatorToolRegistration
   audioTranscriptRegistration
@@ -33,6 +35,7 @@
   createPackagedToolRegistry
   createPersonalNeedsProfileFromAfa
   createPictureDictionaryToolRegistration
+  createTTSToolRegistration
   createUniversalPersonalNeedsProfile
   dictionaryToolRegistration
   graphToolRegistration

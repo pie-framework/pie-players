@@ -8,8 +8,10 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"files": [
 		"dist"
@@ -37,7 +39,7 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@aws-sdk/client-polly": "^3.1156.0",
+		"@aws-sdk/client-polly": "^3.1163.0",
 		"@pie-players/tts-server-core": "workspace:*"
 	},
 	"devDependencies": {

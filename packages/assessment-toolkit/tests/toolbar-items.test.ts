@@ -92,12 +92,16 @@ describe("toolbar-items validation", () => {
 			"const fallbackToolRegistry = new ToolRegistry();",
 		);
 		expect(code).not.toContain("createPackagedToolRegistry");
-		expect(code).not.toContain("@pie-players/pie-default-tool-loaders");
+		// The package name may appear in prose, as the empty-registry warning
+		// names it; an import of it may not.
+		expect(code).not.toMatch(
+			/(?:\bfrom\s*|\bimport\s*\(?\s*)["']@pie-players\/pie-default-tool-loaders/,
+		);
 		expect(code).not.toContain("DEFAULT_TOOL_MODULE_LOADERS");
 	});
 });
 
-describe("calculator nds-icon-button styling contract", () => {
+describe("calculator pie-nds-icon-button styling contract", () => {
 	const source = readFileSync(ITEM_TOOLBAR_PATH, "utf8");
 	const stripped = source.slice(source.indexOf("<style")).replace(/\s+/g, "");
 
@@ -147,7 +151,7 @@ describe("calculator nds-icon-button styling contract", () => {
 
 	test("the floating shell bridges the palette for its own header controls", () => {
 		// The shell's window controls are created imperatively, so the scoped
-		// `.item-toolbar nds-icon-button` rule never matches them.
+		// `.item-toolbar pie-nds-icon-button` rule never matches them.
 		const script = source.slice(0, source.lastIndexOf("<style"));
 		expect(script).toContain(
 			"shellEl.style.setProperty('--color-new-gray', 'var(--pie-background-dark, #f3f5f7)')",

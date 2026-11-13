@@ -12,19 +12,20 @@
 	"publishConfig": {
 		"access": "public"
 	},
-	"unpkg": "./dist/pie-assessment-player.js",
-	"jsdelivr": "./dist/pie-assessment-player.js",
 	"main": "./dist/pie-assessment-player.js",
 	"types": "./dist/pie-assessment-player.d.ts",
 	"exports": {
 		".": {
 			"types": "./dist/pie-assessment-player.d.ts",
-			"import": "./dist/pie-assessment-player.js"
+			"import": "./dist/pie-assessment-player.js",
+			"default": "./dist/pie-assessment-player.js"
 		},
 		"./components/assessment-player-default-element": {
 			"types": "./dist/pie-assessment-player.d.ts",
-			"import": "./dist/pie-assessment-player.js"
-		}
+			"import": "./dist/pie-assessment-player.js",
+			"default": "./dist/pie-assessment-player.js"
+		},
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -32,7 +33,7 @@
 		"custom-elements.json"
 	],
 	"scripts": {
-		"build": "vite build",
+		"build": "vite build && bun ../../scripts/prune-unreachable-declarations.mjs",
 		"dev": "vite build --watch",
 		"test": "bun test",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",

@@ -190,6 +190,7 @@
   frameworkErrorFromUnknown
   hasReadableText
   hasSpokenContent
+  markAssessmentSessionSubmitted
   setCurrentPosition
   setCurrentSectionPosition
   toFrameworkErrorModel
@@ -199,16 +200,16 @@
   upsertVisitedItem
 
 ./components/item-scope-element
-  (no named exports)
+  type PieItemScopeElement
 
 ./components/item-toolbar-element
-  (no named exports)
+  type PieItemToolbarElement
 
 ./components/pie-assessment-toolkit-element
-  (no named exports)
+  type PieAssessmentToolkitElement
 
 ./components/section-toolbar-element
-  (no named exports)
+  type PieSectionToolbarElement
 
 ./policy/engine
   type FeaturePolicyDecision

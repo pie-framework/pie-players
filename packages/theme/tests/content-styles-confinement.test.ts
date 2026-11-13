@@ -10,37 +10,12 @@ const source = readFileSync(
 const CONTENT_ROOT = ":where([data-pie-content]) ";
 
 /**
- * Unprefixed legacy content classes. They name content semantics (a book title,
- * a stacked fraction, a numbered paragraph) rather than presentation, so no
- * host UI carries them.
+ * The one unprefixed legacy content class that stays document-wide. A stacked
+ * fraction is rendered in menus portaled to `<body>`, outside every content
+ * root. The other legacy classes (`.abs`, `.variable`, `.whole`, `.noprint` and
+ * the rest) are common words a host page can carry too, so they are confined.
  */
-const LEGACY_CONTENT_CLASSES = new Set([
-	"abs",
-	"block-quote",
-	"book-title",
-	"book-title-k5",
-	"content-emphasis",
-	"embedded-error",
-	"equation-block",
-	"evaluate-bottom-border",
-	"fillin",
-	"frac",
-	"newradical",
-	"noprint",
-	"numbered-paragraph",
-	"p-number",
-	"passage-author",
-	"passage-subtitle",
-	"passage-title",
-	"proper-name",
-	"relative-emphasis",
-	"short-quote",
-	"text-block",
-	"variable",
-	"Verdana2t",
-	"whole",
-	"word-callout",
-]);
+const PAGE_WIDE_CONTENT_CLASSES = new Set(["frac"]);
 
 /** KDS classes and MathJax output, which only authored content carries. */
 const AUTHORED_PREFIXES = ["kds-", "Kds", "mjx-", "TEX-"];
@@ -71,7 +46,7 @@ const requiresAuthoredName = (selector: string): boolean => {
 	];
 	return names.some(
 		(name) =>
-			LEGACY_CONTENT_CLASSES.has(name) ||
+			PAGE_WIDE_CONTENT_CLASSES.has(name) ||
 			AUTHORED_PREFIXES.some((prefix) => name.startsWith(prefix)),
 	);
 };
@@ -125,7 +100,7 @@ describe("components.css confinement", () => {
 
 	// Elements portal menus and popovers holding authored markup to <body>,
 	// outside every [data-pie-content] root, and those rules have to reach it.
-	test("leaves KDS, MathJax and legacy-content rules document-wide", () => {
+	test("leaves KDS, MathJax and fraction rules document-wide", () => {
 		const confined = selectors.filter(
 			(selector) =>
 				selector.startsWith(CONTENT_ROOT) &&
@@ -134,20 +109,30 @@ describe("components.css confinement", () => {
 		expect(confined).toEqual([]);
 		expect(selectors).toContain("table.kds-fraction");
 		expect(selectors).toContain(".TEX-I");
-		expect(selectors).toContain(".noprint");
+		expect(selectors).toContain("table.frac");
 		expect(selectors).toContain(
 			'[data-color-scheme] [data-pie-authored-fill="shade"]',
 		);
 	});
 
-	test("lists only legacy classes the stylesheet styles", () => {
+	test("confines the legacy content classes that are common words", () => {
+		for (const name of ["abs", "noprint", "variable", "whole", "fillin"]) {
+			const rules = selectors.filter((selector) =>
+				new RegExp(`\\.${name}(?![\\w-])`).test(selector),
+			);
+			expect(rules.length).toBeGreaterThan(0);
+			for (const rule of rules) expect(rule.startsWith(CONTENT_ROOT)).toBe(true);
+		}
+	});
+
+	test("lists only page-wide classes the stylesheet styles", () => {
 		const styled = new Set(
 			selectors.flatMap(
 				(selector) => selector.match(/(?<=\.)-?[_a-zA-Z][\w-]*/g) ?? [],
 			),
 		);
 		expect(
-			[...LEGACY_CONTENT_CLASSES].filter((name) => !styled.has(name)),
+			[...PAGE_WIDE_CONTENT_CLASSES].filter((name) => !styled.has(name)),
 		).toEqual([]);
 	});
 });

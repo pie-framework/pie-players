@@ -271,6 +271,21 @@ re-applies them when `theme: "auto"` follows an OS change. The plot is
 contrast directly: tick labels at 4.5:1 as text and axes at 3:1 as a graphical
 object.
 
+## MathLive on the page
+
+A page holds one MathLive copy that works. MathLive defines `<math-field>` once,
+guarded by `customElements.get("math-field")`, so the first copy to load owns the
+tag, and a copy that loads second cannot construct a mathfield: its
+`MathfieldElement` is not the registered class, and `new MathfieldElement()`
+throws `Illegal constructor`. The package bundles MathLive and
+constructs its own class, so the calculator works when its copy loaded first.
+A host that ships a MathLive of its own loads the calculator first, and its
+`<math-field>` elements then run on the calculator's copy.
+
+The locale lease under [Localization](#localization) and the settings the
+calculator pins on the class (`fontsDirectory`, `soundsDirectory`, `computeEngine`)
+are statics of that one copy, so they apply to every mathfield on the page.
+
 ## Keypad
 
 Basic and scientific render a display and a keypad; graphing puts the keypad in
@@ -363,6 +378,10 @@ The package's size-dependent rules are container queries on width and density
 tiers on height, which a fluid demo at 1280px reaches neither of.
 
 ## Test coverage
+
+`bun run --cwd packages/calculator-cortex test` runs the unit tests, which the
+repository's `bun run test` leaves out. CI runs them with the browser suite in its
+Cortex job, on a pull request touching Cortex's inputs and on every push to master.
 
 Feature coverage rests on three suites with different jobs.
 

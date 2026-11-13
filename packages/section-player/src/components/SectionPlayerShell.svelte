@@ -21,29 +21,20 @@ Section toolbar shell that renders `<pie-section-toolbar>` at the `toolbar-posit
 
 <script lang="ts">
 	import "@pie-players/pie-assessment-toolkit/components/section-toolbar-element";
-	import type {
-		ToolRegistry,
-		ToolbarItem,
-	} from "@pie-players/pie-assessment-toolkit";
-	import { coerceBooleanLike } from "@pie-players/pie-players-shared";
+	import type { SectionPlayerShellElementProps } from "../contracts/elements.js";
+	import { coerceBooleanLike } from "@pie-players/pie-players-shared/ui/attribute-coercion";
 	import { stampInterfaceLocale } from "@pie-players/pie-players-shared/i18n/provider";
 	import { useInterfaceI18n } from "./shared/use-interface-i18n.svelte.js";
 
 	const DEFAULT_COLLAPSED_BREAKPOINT_PX = 1100;
 
 	let {
-		showToolbar = "false" as boolean | string | null | undefined,
+		showToolbar = "false",
 		toolbarPosition = "right",
 		enabledTools = "",
-		toolRegistry = null as ToolRegistry | null,
-		sectionHostButtons = [] as ToolbarItem[],
-	} = $props<{
-		showToolbar?: boolean | string | null | undefined;
-		toolbarPosition?: string;
-		enabledTools?: string;
-		toolRegistry?: ToolRegistry | null;
-		sectionHostButtons?: ToolbarItem[];
-	}>();
+		toolRegistry = null,
+		sectionHostButtons = [],
+	}: SectionPlayerShellElementProps = $props();
 
 	let layoutBody = $state<HTMLDivElement | null>(null);
 	const interfaceI18n = useInterfaceI18n(() => layoutBody);
@@ -52,12 +43,24 @@ Section toolbar shell that renders `<pie-section-toolbar>` at the `toolbar-posit
 	// this element's light DOM, slotted through the layout body, and `lang`
 	// resolves along the light tree. The host is the one element that is an
 	// ancestor of all of it there and of the toolbar in the shadow tree, so the
-	// stamp goes on the host and not on the shell div.
+	// stamp goes on the host and not on the shell div. Stamped only while a
+	// host chose a locale, as the toolkit stamps its own host, and a stamp
+	// written here is removed when the choice is withdrawn.
+	let stamped: HTMLElement | null = null;
 	$effect(() => {
 		const host = $host();
+		const provider = interfaceI18n.provider;
 		// Undefined when mounted as a plain component rather than as the element.
-		if (!host) return;
-		stampInterfaceLocale(host, interfaceI18n.provider);
+		if (!host || !interfaceI18n.interfaceLocaleChosen) {
+			if (stamped) {
+				stamped.removeAttribute("lang");
+				stamped.removeAttribute("dir");
+				stamped = null;
+			}
+			return;
+		}
+		stampInterfaceLocale(host, provider);
+		stamped = host;
 	});
 
 	let isNarrow = $state(false);

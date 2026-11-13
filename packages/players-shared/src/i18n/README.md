@@ -20,13 +20,19 @@ before this existed — the locale is never detected from the browser.
 <pie-item-player locale="nl-NL" …></pie-item-player>
 ```
 
-POSIX (`nl_NL`), bare (`nl`) and regional (`nl-BE`) tags all resolve to the
-`nl-NL` catalog, through RFC 4647 lookup then primary-subtag widening. Both
+This package bundles `en-US` alone; every other catalog comes from a loader the
+host composes, such as the generated tier's
+([`pie-i18n-generated`](../../../pie-i18n-generated/README.md)). With that tier
+wired, POSIX (`nl_NL`), bare (`nl`) and regional (`nl-BE`) tags all resolve to
+its `nl-NL` catalog, through RFC 4647 lookup then primary-subtag widening. Both
 stay within the request's script, explicit or the CLDR likely script from
 `Intl.Locale.maximize()`: `zh-TW` reads `zh-TW`, `zh-Hant`, then `zh`, and a
-bare `zh` catalog, which is Simplified, never serves it. A locale this
-repository ships no catalog for in its script is honored rather than rejected:
-supply your own messages for it, and anything you omit resolves to English.
+bare `zh` catalog, which is Simplified, never serves it. Host messages resolve
+apart from catalogs, exact tag then truncation, so an `es-MX` override sits on
+top of a shipped `es`, and `getLocale()` reports `es`. A locale no catalog serves in its script stays the
+request (`getRequestedLocale()`): supply your own messages for it, and anything
+you omit resolves to English. `getLocale()` and `getDirection()` name the
+locale actually served, so until such messages exist they name `en-US`.
 
 ```ts
 import { createPieI18n } from "@pie-players/pie-players-shared/i18n";
@@ -194,17 +200,17 @@ closing the loop, not clearing a gate.
 
 ## Conformance with pie-elements-ng
 
-pie-elements-ng's `@pie-element/shared-i18n` ports this engine and shares its
-semantics, not its code. The shared semantics are written down once, in
-[`tests/i18n-conformance-fixtures.json`](../../tests/i18n-conformance-fixtures.json)
+pie-elements-ng's `@pie-element/shared-i18n` ports this engine's provider and
+imports its language-tag code from
+[`@pie-players/pie-language-tags`](../../../pie-language-tags/README.md), as this
+engine does. The shared semantics are written down once, in that package's
+[`i18n-conformance-fixtures.json`](../../../pie-language-tags/i18n-conformance-fixtures.json)
 (lookup sequence, direction, plural routing with locale numerals,
-interpolation, the fallback chain), which pie-elements-ng keeps as a
-byte-identical copy at `packages/shared/i18n/tests/` and both repositories run
+interpolation, the fallback chain), and both repositories run that one file
 against their own engine. A case only one engine passes is drift, and the fix
-goes to the engine, not the fixture; a deliberate semantics change edits both
-copies together. Locale tags in the fixture are full where CLDR's regional
-defaults differ: bare `ar` formats Latin digits and `ar-SA` Arabic-Indic, which
-is CLDR, not an engine.
+goes to the engine, not the fixture. Locale tags in the fixture are full where
+CLDR's regional defaults differ: bare `ar` formats Latin digits and `ar-SA`
+Arabic-Indic, which is CLDR, not an engine.
 
 ## Module layout
 
@@ -220,7 +226,7 @@ follows the same imports.
 | `i18n/provider` | `SimpleI18n`, `getDefaultI18n`, `localeDirection`, `stampInterfaceLocale` | components, for the English fallback |
 | `i18n/catalogs` | dynamic loader map for the non-English locales | players only |
 | `i18n` | `createPieI18n()`, wiring provider to catalogs | players only |
-| `i18n/language-tags` | BCP-47 comparison, no locale data, no DOM | catalog resolver, TTS voice selection |
+| `i18n/language-tags` | BCP-47 comparison, no locale data, no DOM; re-exports `@pie-players/pie-language-tags` | catalog resolver, TTS voice selection |
 
 A component reaching only the first two pulls in the interface (a type) and the
 English catalog (about 9 KB gzipped). It never reaches `catalogs`, so no locale chunk is emitted

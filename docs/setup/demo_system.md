@@ -104,7 +104,7 @@ Three checks, all in `verify:pre-commit`, hold this boundary:
 - `check:source-exports` runs the publish-surface check, which keeps every
   manifest target inside `dist/`.
 - `check:custom-elements` checks each custom-element package's tags, its build
-  and check scripts, its `main`, `exports`, `unpkg` and `jsdelivr` fields, and
+  and check scripts, its `main` and `exports` fields, and
   `dist` in `files`. `check:custom-elements:dist` checks after a build that no
   published JavaScript imports a `.svelte` file.
 

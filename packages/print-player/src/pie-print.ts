@@ -14,8 +14,6 @@ import { html, LitElement, type PropertyValues } from "lit";
 import { property } from "lit/decorators.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 
-import type { ItemMarkupSanitizer } from "@pie-players/pie-players-shared/security";
-
 import {
 	ALTERNATES_CLASS,
 	mountItemAlternates,
@@ -27,6 +25,7 @@ import {
 	defaultResolve,
 	hashCode,
 } from "./element-resolver.js";
+import { adoptContentStylesInto } from "@pie-players/pie-players-shared/ui/content-styles";
 import {
 	toPrintHashedTag,
 	validateCustomElementTag,
@@ -35,6 +34,7 @@ import { mkItem, printItemAndFloaters } from "./markup-processor.js";
 import { defaultMissingElement } from "./missing-element.js";
 import { findRenderedModelElement } from "./model-element-lookup.js";
 import { assertPrintConfigAllowed } from "./print-config-policy.js";
+import type { PrintMarkupSanitizer } from "./shared-shapes.js";
 
 import type {
 	Config,
@@ -90,7 +90,7 @@ export class PiePrint extends LitElement {
 	private _printItem: Item = { markup: "", elements: {}, models: [] };
 	private _floatItem: Item = { markup: "", elements: {}, models: [] };
 	private _trustMarkup = false;
-	private _sanitizeMarkup: ItemMarkupSanitizer | null = null;
+	private _sanitizeMarkup: PrintMarkupSanitizer | null = null;
 	private _alternates: MountedAlternates | null = null;
 	private _loaderOptions: PrintLoaderOptions | undefined = undefined;
 	private _activeConfigRequest: object = {};
@@ -144,13 +144,13 @@ export class PiePrint extends LitElement {
 	 * Custom sanitizer, used instead of the default one. Ignored when
 	 * `trustMarkup` is set.
 	 */
-	public set sanitizeMarkup(fn: ItemMarkupSanitizer | null) {
+	public set sanitizeMarkup(fn: PrintMarkupSanitizer | null) {
 		this._sanitizeMarkup = fn;
 		this._rebuildPrintItems();
 		this.requestUpdate();
 	}
 
-	public get sanitizeMarkup(): ItemMarkupSanitizer | null {
+	public get sanitizeMarkup(): PrintMarkupSanitizer | null {
 		return this._sanitizeMarkup;
 	}
 
@@ -287,6 +287,12 @@ export class PiePrint extends LitElement {
 		});
 	}
 
+	connectedCallback() {
+		super.connectedCallback();
+		// Inside a host's shadow root the document stylesheet does not apply.
+		adoptContentStylesInto(this);
+	}
+
 	disconnectedCallback() {
 		this._alternates?.destroy();
 		this._alternates = null;
@@ -355,9 +361,3 @@ export class PiePrint extends LitElement {
 // calls `customElements.define` unconditionally and throws an uncaught
 // `NotSupportedError` on double-bundling.
 define("pie-print", PiePrint);
-
-declare global {
-	interface HTMLElementTagNameMap {
-		"pie-print": PiePrint;
-	}
-}

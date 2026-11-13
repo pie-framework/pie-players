@@ -30,7 +30,6 @@
   type ConfigResource
   ConsoleInstrumentationProvider
   type ConsoleProviderConfig
-  type ContentStylesResult
   DEFAULT_BUNDLE_HOST
   DEFAULT_CONTAINMENT_GUTTER
   DEFAULT_ESM_CDN_URL
@@ -92,17 +91,11 @@
   type MetricAttributes
   NewRelicInstrumentationProvider
   type NormalizedItemSessionChange
-  OVERLAY_PLACEMENT_FINE_ROTATE_STEP
-  OVERLAY_PLACEMENT_MOVE_STEP
   OVERLAY_PLACEMENT_NUDGES
-  OVERLAY_PLACEMENT_ROTATE_STEP
   OVERLAY_PLACEMENT_ROTATIONS
   type OutcomeResponse
-  type OverlayPlacement
-  type OverlayPlacementAnnouncement
   type OverlayPlacementController
   type OverlayPlacementNudge
-  type OverlayPlacementOptions
   type OverlaySizeControl
   type OverlayTapTarget
   type PassageEntity
@@ -118,14 +111,6 @@
   type PieRegistry
   type PieUpdateSession
   type PieViewMode
-  type Point
-  type PointerDragController
-  type PointerDragControllerArgs
-  type PointerDragPosition
-  type PointerGesture
-  type PointerGestureArgs
-  type PointerRotateController
-  type PointerRotateControllerArgs
   type PreloadedController
   type PreloadedElement
   type PreloadedElementSpecs
@@ -142,7 +127,6 @@
   type SafeDefineResult
   type SafeDefineStatus
   type SanitizeItemMarkupOptions
-  type ScreenBox
   type SessionCommitReason
   type SessionSnapshot
   type SessionSnapshotConfig
@@ -150,7 +134,6 @@
   type SessionSnapshotRecord
   type SessionSnapshotStore
   SessionStorageItemSessionStorage
-  type Size
   type Stage
   type StageChangeDetail
   type StageStatus
@@ -177,21 +160,12 @@
   assertRegistered
   attachInstrumentationEventBridge
   attemptCustomElementDefine
-  auditContentStyles
   bindPageLifecycleCommit
   buildAuthoringAllowList
-  clampOffsetOverlappingBlock
-  clampOffsetWithinBlock
   clampPointWithinBlock
   clearBufferedInstrumentationDebugRecords
-  cloneDeep
-  coerceBooleanAttribute
-  coerceBooleanAttributes
-  coerceBooleanLike
   collectFocusable
   commitPendingSessions
-  contentStylesOptedOut
-  contentStylesPresent
   createAuthoringAssetEventManager
   createDefaultItemMarkupSanitizer
   createEsmBackend
@@ -202,7 +176,6 @@
   createPieLogger
   createPointerDragController
   createPointerGesture
-  createPointerRotateController
   createSessionSnapshot
   defaultPieElementOptions
   defineAuthoredPreloadedTags
@@ -229,7 +202,6 @@
   initializeAuthoringConfigures
   initializeMathRendering
   initializePiesFromLoadedBundle
-  installContentStyles
   isComposingKeyEvent
   isCustomElementConstructor
   isGlobalDebugEnabled
@@ -238,21 +210,17 @@
   isOverwideTableWrapMutation
   isPieAvailable
   isPieRegistryAvailable
-  isPlainRecord
   isProgrammaticFocusTarget
   isScopedPackageSpec
   isSessionSnapshotEnabled
   isSnapshotIdentitySpecific
-  isTabbable
   isTtsDebugEnabled
   loadBundleFromString
   loadPieModule
   loadPieModuleFromString
   makeUniqueTags
   mapEsmViewElements
-  mergeObjectsIgnoringNullUndefined
   modelsForPackage
-  normalizeDegrees
   normalizeItemPlayerStrategy
   normalizeItemSessionChange
   normalizeItemSessionContainer
@@ -267,7 +235,6 @@
   pieRegistry
   projectSessionIntoHostContainer
   registerPreloadedElements
-  resetContentStylesWarningForTesting
   resolveConfigureConfiguration
   resolveContainingBlockRect
   resolveEsmAssetRoot
@@ -276,15 +243,10 @@
   resolveInstrumentationProvider
   resolveItemPlayerView
   resolveLoadControllers
-  rotatedExtent
-  rotationCentreShift
   runtimeElementTags
-  safeLocalStorageGet
-  safeLocalStorageSet
   sanitizeItemMarkup
   sanitizeStyleAttribute
   sanitizeSvgIcon
-  scopeSelector
   scopeStylesheetCss
   scorePieItem
   sessionSnapshotKey
@@ -296,8 +258,6 @@
   updatePieElement
   updatePieElementWithRef
   updatePieElements
-  uprightDockCentre
-  uprightDockCorner
   validateAuthoringModels
   validateCustomElementTag
   validateExternalStyleUrl
@@ -343,6 +303,8 @@
   findClosestLanguageMatch
   firstStrongDirection
   getDefaultI18n
+  hostChoseInterfaceLocale
+  isLocaleRequested
   languageTagLookupSequence
   languageTagScriptLookupSequence
   languageTagsEqual
@@ -352,6 +314,7 @@
   normalizeLanguageTag
   pseudoLocalize
   reportInterfaceLocaleLoadError
+  requestedInterfaceLocale
   resolveInterfaceI18n
   stampContentLanguage
   stampInterfaceLocale
@@ -384,7 +347,10 @@
   detectBrowserLocale
   dynamicMessageKey
   getDefaultI18n
+  hostChoseInterfaceLocale
+  isLocaleRequested
   localeDirection
+  requestedInterfaceLocale
   resolveInterfaceI18n
   stampInterfaceLocale
 
@@ -819,12 +785,13 @@
   coerceBooleanLike
 
 ./ui/content-styles
+  type ContentStylesAdoption
   type ContentStylesResult
+  adoptContentStylesInto
   auditContentStyles
   contentStylesOptedOut
   contentStylesPresent
   installContentStyles
-  resetContentStylesWarningForTesting
 
 ./ui/fontawesome
   type NdsGlyphVariant

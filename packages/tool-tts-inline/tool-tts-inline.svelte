@@ -51,11 +51,6 @@ the runtime context supplies a TTS service.
 		reportToolFailure,
 		resolveContentRegion
 	} from '@pie-players/pie-assessment-toolkit/tools/registration';
-	// Side-effect import: registers <nds-icon-button>. Single vendored source of
-	// truth lives in players-shared (Lit inlined, self-contained); see
-	// players-shared/src/components/vendor/nds/README.md. players-shared is not
-	// externalized by this package's Vite build, so the bundle is inlined here.
-	import '@pie-players/pie-players-shared/nds-icon-button';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
 	import {
 		applyNdsGlyphVariant,
@@ -79,7 +74,7 @@ the runtime context supplies a TTS service.
 
 	const isBrowser = typeof window !== 'undefined';
 
-	// ── FontAwesome wiring for <nds-icon-button> ──────────────────────────────
+	// ── FontAwesome wiring for <pie-nds-icon-button> ──────────────────────────────
 	// Every glyph here is FA Solid, which FA Free carries. Where FontAwesome
 	// comes from: see players-shared `ui/fontawesome`.
 	//
@@ -100,7 +95,7 @@ the runtime context supplies a TTS service.
 		nodesAwaitingFa.clear();
 		for (const node of nodes) installFaAssets(node);
 	});
-	// Svelte action applied to every <nds-icon-button>: install the FA assets its
+	// Svelte action applied to every <pie-nds-icon-button>: install the FA assets its
 	// glyphs need, and render them in Solid whether or not the page links Pro:
 	// play/pause read as media-control icons in Solid.
 	const ndsIconButtonAction = (node: HTMLElement) => {
@@ -114,7 +109,7 @@ the runtime context supplies a TTS service.
 		};
 	};
 
-	// <nds-icon-button> only exposes `button-aria-label` on its inner light-DOM
+	// <pie-nds-icon-button> only exposes `button-aria-label` on its inner light-DOM
 	// <button>. Reflect any additional ARIA relationships (expanded / controls /
 	// pressed / haspopup) onto that inner button so the trigger keeps its
 	// disclosure + toggle semantics. The button is created by Lit after the
@@ -162,9 +157,35 @@ the runtime context supplies a TTS service.
 	let toolbarEl = $state<HTMLDivElement | undefined>();
 	let runtimeContext = $state<AssessmentToolkitRuntimeContext | null>(null);
 	// Presentation gate from the host runtime. The trigger renders as an
-	// <nds-icon-button> only when the host explicitly opts in
+	// <pie-nds-icon-button> only when the host explicitly opts in
 	// (`ndsIcons === true`); otherwise it is a plain <button>.
 	const useNdsIcons = $derived(runtimeContext?.ndsIcons === true);
+	// Registers <pie-nds-icon-button> the first time the trigger renders as one, so
+	// a page that never sets `ndsIcons` does not load the bundle or take its tag.
+	// The vendored source of truth lives in players-shared (Lit inlined,
+	// self-contained); see players-shared/src/components/vendor/nds/README.md.
+	// players-shared is external to this package's Vite build, so the import stays
+	// a bare specifier in the published artifact.
+	//
+	// The trigger renders as one only once the tag is defined. Created before
+	// registration, the element would take `disabled={false}` as the attribute
+	// `disabled="false"`, which upgrades to `disabled === true`, and the button
+	// would swallow every click. Until then, and if the load fails, it is the
+	// plain-button fallback.
+	let ndsIconButtonReady = $state(
+		typeof customElements !== 'undefined' && !!customElements.get('pie-nds-icon-button')
+	);
+	$effect(() => {
+		if (!useNdsIcons || ndsIconButtonReady) return;
+		import('@pie-players/pie-players-shared/nds-icon-button').then(
+			() => {
+				ndsIconButtonReady = true;
+			},
+			(error) => {
+				logger.warn('<pie-nds-icon-button> failed to load; the trigger stays a plain button', error);
+			}
+		);
+	});
 	// Interface locale, re-derived on every context republish.
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let shellContext = $state<AssessmentToolkitShellContext | null>(null);
@@ -292,7 +313,7 @@ the runtime context supplies a TTS service.
 
 	function focusTriggerIfPanelHadFocus(hadPanelFocus: boolean): void {
 		if (!hadPanelFocus) return;
-		// The trigger is an <nds-icon-button> host whose real focusable control is
+		// The trigger is an <pie-nds-icon-button> host whose real focusable control is
 		// its inner light-DOM <button>; fall back to the host for any non-nds
 		// rendering.
 		const trigger = getTriggerElement();
@@ -1003,13 +1024,13 @@ the runtime context supplies a TTS service.
 	>
 		{#snippet triggerButton()}
 			<span class="pie-tool-tts-inline__trigger-zoom">
-				{#if useNdsIcons}
+				{#if useNdsIcons && ndsIconButtonReady}
 				<!-- NDS circular icon button. The native click bubbles out of the
 					     component's inner <button>, so `onclick` still runs
 					     handlePlayPause. `reflectAria` mirrors the disclosure/toggle
 					     relationships onto that inner button (nds exposes only aria-label). -->
 					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-					<nds-icon-button
+					<pie-nds-icon-button
 						use:ndsIconButtonAction
 						use:reflectAria={{
 							'aria-expanded': controlsVisible ? 'true' : 'false',
@@ -1025,7 +1046,7 @@ the runtime context supplies a TTS service.
 						button-aria-label={interfaceI18n.t(triggerLabelKey)}
 						disabled={!ttsService}
 						onclick={handlePlayPause}
-					></nds-icon-button>
+					></pie-nds-icon-button>
 			{:else}
 				<!-- Non-NDS fallback: plain <button> with the same play/pause FA
 				     glyph the panel controls use. Keeps the `__trigger` class so
@@ -1190,7 +1211,7 @@ the runtime context supplies a TTS service.
 		justify-content: flex-end;
 	}
 
-	/* The play/pause trigger is an <nds-icon-button> host; the NDS component
+	/* The play/pause trigger is an <pie-nds-icon-button> host; the NDS component
 	   owns its shape, colours and hover/active/focus states. This class only
 	   drives the host's size via NDS's own size custom properties (see the size
 	   variants below), so the light-DOM inner button matches the toolbar's
@@ -1222,7 +1243,7 @@ the runtime context supplies a TTS service.
 		--color-focus-blue: var(--pie-button-focus-outline, #2b87ff);
 	}
 
-	/* Non-NDS fallback trigger (host opted out of nds-icon-button). Inherits
+	/* Non-NDS fallback trigger (host opted out of pie-nds-icon-button). Inherits
 	   the plain `__control` box; only override to keep the round trigger
 	   shape and the themeable accent colour on its glyph. */
 	.pie-tool-tts-inline__trigger--plain {
@@ -1300,9 +1321,9 @@ the runtime context supplies a TTS service.
 	   :focus-visible and would paint no ring at all. Scoped to
 	   `:focus:not(:focus-visible)` so it only fills that gap: genuine keyboard
 	   focus keeps whatever the shared `__control` rule (plain trigger) or the NDS
-	   component (nds-icon-button) already paints, untouched.
+	   component (pie-nds-icon-button) already paints, untouched.
 	   Two selectors because the two trigger variants focus different nodes: the
-	   plain fallback IS the button, while <nds-icon-button> holds focus on an
+	   plain fallback IS the button, while <pie-nds-icon-button> holds focus on an
 	   inner light-DOM <button> that Lit creates — so it carries no Svelte scoping
 	   class and must be reached with :global(). */
 	.pie-tool-tts-inline__trigger:focus:not(:focus-visible),

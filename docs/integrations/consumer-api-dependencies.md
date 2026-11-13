@@ -82,6 +82,29 @@ outside the sheet. Hosts V and M are unchanged: their copies sit inside `@scope`
 which still bounds every rule to the scope root. Row verification dates are
 unchanged.
 
+On 2026-11-08 the legacy content classes that are common words (`.abs`,
+`.variable`, `.whole`, `.noprint`, `.passage-title`, `.numbered-paragraph` and the
+rest of the list in `packages/theme/tests/content-styles-confinement.test.ts`)
+went back inside `[data-pie-content]`; only `kds-*`, `Kds*`, `mjx-*`, `TEX-*` and
+`.frac` match page-wide. Authored markup an element portals to `<body>` keeps the
+KDS, MathJax and fraction rules and loses the others, which reaches Hosts A and P
+only for a portaled menu whose choices carry one of those classes. Hosts V and M
+are unchanged under `@scope`. Host R's own authored-markup components lose the
+same rules unless their container carries `data-pie-content`. `pie-item-summary`
+marks its prompt, options, answers, stem and figures with it, so the item list's
+summaries keep them. The item player and
+the print player now adopt the stylesheet into a host's ShadowRoot, so content a
+host mounts there is styled where it was not; a root that supplies its own copy,
+and a document with `data-pie-content-styles="host"`, are left alone. The CSS
+highlight names the toolkit registers became `pie-tts-word`, `pie-tts-sentence`
+and `pie-annotation-<colour>`; no checkout names one in a rule or in
+`CSS.highlights`, and Host A and Host P set only the `--pie-tts-*` properties,
+which are unchanged. The NDS icon button loads on first use under `ndsIcons`, so
+Host A, the one host that sets `nds-icons`, gets its toolbar, inline TTS and
+scroll-hint buttons one import later than before: plain buttons render until the
+tag registers, then the NDS buttons replace them. Row verification dates are
+unchanged.
+
 On 2026-10-06 MathJax's fonts and speech, from
 `@pie-element/shared-math-rendering-mathjax` 0.1.3, load from the file URLs or the
 asset root `registerPreloadedElements` takes as `math.assetUrls` and
@@ -690,8 +713,8 @@ On 2026-10-19 failed interface-locale catalog loads became observable:
 section player already report) on their host when a requested catalog fails to
 load, where the item player previously swallowed the rejection. Additive: a
 host listening for the toolkit's event sees the same shape; a host that never
-listens sees nothing. Failed loads are not cached, so re-setting `locale`
-retries. `@pie-players/pie-players-shared/i18n` gained
+listens sees nothing. Failed loads are not cached, so a later change of
+`locale` back to that locale retries. `@pie-players/pie-players-shared/i18n` gained
 `reportInterfaceLocaleLoadError` and the `InterfaceLocaleLoadErrorModel` type,
 additive.
 
@@ -756,6 +779,15 @@ Host R, whose committed source scores through `pie-item-player` alone and sets
 no `backend` on it. Host R's Browse in a section renders the correct responses
 without saving them. Row verification dates are unchanged.
 
+Also on 2026-11-08 `pie-section-player-tools-shared` became private, so no
+version after `1.0.0-beta.9` is published. The four panel packages bundle it and
+declare it as a development dependency, so none of them installs it. Only Host R
+declares it (`^1.0.0-beta.9`) and imports nothing from it, so its range keeps
+resolving to `1.0.0-beta.9`; Host A's lockfile holds `0.3.70` of it as a
+transitive dependency of the `0.3.x` panels, which this does not touch. A scan of
+every recorded checkout, and of Hosts P and S on their preloaded-player branches,
+finds no other mention. Row verification dates are unchanged.
+
 Also on 2026-10-24 language variants landed as additive surfaces: optional
 `language` and `isAdaptationOf` on `ItemEntity` and `PassageEntity`, optional
 `languagePolicy` on `AssessmentEntity`, optional `requestedLanguages` on the
@@ -792,6 +824,28 @@ reads it as of its interface-i18n Phase 2 (merged 2026-10-19, unreleased at
 this writing); no host provides or consumes a `pie.*` context of its own, so
 no listed host is affected. The key is now a cross-repository contract: it is
 not renamed, and the value only grows.
+
+On 2026-11-09 both players stopped answering it until a host chooses a locale
+(`locale` set, or a supplied provider resolving a locale other than `en-US`).
+Before that they answered `en-US`/`ltr`, which made a pie-elements-ng element
+ignore the language its item declares. It protects the hosts delivering the
+one installation whose multiple-choice models declare `es_ES`: on their move to
+pie-players those items keep Spanish labels with no host change. Hosts that set
+a locale see no change; no listed host reads `pie.interfaceLocale` itself.
+Later the same day the answer became the host's requested tag, canonical, in
+place of the players' own catalog match, so an element resolves `en-GB` or
+`fr-CA` against its own catalogs; and `pie-assessment-toolkit` and the section
+shell stopped stamping `lang`/`dir` on their hosts until a host chooses a
+locale. Hosts A, C, R and S mount the section-player layouts and set no
+locale, so their section chrome now inherits the page's language and direction where it carried
+`lang="en-US" dir="ltr"`; read-aloud is unaffected, since its `lang` climb ends
+at the item shell.
+
+`pie-item-player`, `pie-assessment-toolkit` and the item-list rows then stopped
+re-requesting a supplied provider's locale when its owner already asked for the
+same tag, so a failed catalog is fetched and reported once. It acts only where a
+`locale` arrives together with a supplied provider; no host passes `locale`, so
+no host's behaviour changes.
 
 The interface-locale machinery is an ES-module graph by construction: every
 locale but `en-US` is a dynamic `import()` of its own chunk in each player's
@@ -939,6 +993,18 @@ sanitizer's forbid-list. A targeted lookup in the same checkouts found no host
 listening for the event and none setting `trust-markup` or `sanitizeMarkup` outside
 vendored player bundles, so no recorded host is affected.
 
+On 2026-11-09, before any release carried the stricter check, a model with no `id`,
+two models sharing one and two markup elements sharing one became binding warnings
+instead of config-contract errors, so no host sees a load fail on them. The same
+change made `pie-item-player` report to its instrumentation provider each failed
+load (`errorType` `ITEM_PLAYER_LOAD_ERROR`, with the `player-error` detail) and each
+config carrying binding warnings (`ITEM_PLAYER_CONFIG_BINDING`, `recoverable: true`,
+with no `player-error`). Host P, the one consumer of the implicit default, receives
+both in its New Relic account; a full scan of two installations and samples of the
+other two found no content carrying a binding warning, so the volume is its failed
+loads. Host R receives them through the provider it hands the section player in
+`runtime.player.loaderConfig`. Row verification dates are unchanged.
+
 ## Consumer profiles
 
 The control-sizing repair removes automatic zoom compensation from section
@@ -1049,8 +1115,8 @@ per launch. Two `1.0.0` prereleases therefore run in its delivery at once, and a
 section-player bundle of one version can share a page with a preloaded build of
 another. It reads the installed section player's `package.json` by file path
 at build time for its `version` field, which names the bundle, so that field and
-the manifest's place in the package root are API to it even though the package
-exports no `./package.json`.
+the manifest's place in the package root are API to it whatever the `exports`
+map says.
 
 Host R is not client-facing and is ours to fix, so its rows are not a reason to
 avoid a change. They are a reason to expect the change to show up there first,

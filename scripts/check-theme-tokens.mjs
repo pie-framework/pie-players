@@ -453,8 +453,8 @@ const NDS_BRIDGE_DECLARATIONS = [
 ];
 
 const NDS_MOUNT_PATTERNS = [
-	/<nds-icon-button[\s/>]/,
-	/createElement\(\s*["']nds-icon-button["']/,
+	/<pie-nds-icon-button[\s/>]/,
+	/createElement\(\s*["']pie-nds-icon-button["']/,
 ];
 
 function checkNdsPaletteBridge(root, failures) {
@@ -463,7 +463,7 @@ function checkNdsPaletteBridge(root, failures) {
 			if (!isSourceUsageFile(absPath)) return;
 			const relPath = rel(root, absPath);
 			const source = readFileSync(absPath, "utf8");
-			if (!source.includes("nds-icon-button")) return;
+			if (!source.includes("pie-nds-icon-button")) return;
 			// Comment text mentions the tag far more often than markup mounts it.
 			const code = stripComments(source);
 			if (!NDS_MOUNT_PATTERNS.some((pattern) => pattern.test(code))) return;
@@ -479,13 +479,13 @@ function checkNdsPaletteBridge(root, failures) {
 					!source.includes(asStyleProperty)
 				) {
 					failures.push(
-						`[theme-tokens] ${relPath} mounts nds-icon-button but does not bridge \`${property}\` to a --pie-* token`,
+						`[theme-tokens] ${relPath} mounts pie-nds-icon-button but does not bridge \`${property}\` to a --pie-* token`,
 					);
 				}
 			}
 			if (!/--color-interactive-blue:\s*var\(--pie-/.test(source)) {
 				failures.push(
-					`[theme-tokens] ${relPath} mounts nds-icon-button but does not remap --color-interactive-blue through a --pie-* token`,
+					`[theme-tokens] ${relPath} mounts pie-nds-icon-button but does not remap --color-interactive-blue through a --pie-* token`,
 				);
 			}
 		});

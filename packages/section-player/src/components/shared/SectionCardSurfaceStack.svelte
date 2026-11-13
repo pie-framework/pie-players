@@ -31,7 +31,7 @@
 		ownerContext,
 		runtimeContext = null,
 		toolRegistry = null,
-	} = $props<{
+	}: {
 		/** Stable id, so a caller can point `aria-controls`/`aria-describedby` here. */
 		regionId: string;
 		/** Host slot name this stack fills. */
@@ -39,7 +39,7 @@
 		ownerContext: CatalogOwnerContext;
 		runtimeContext?: AssessmentToolkitRuntimeContext | null;
 		toolRegistry?: ToolRegistry | null;
-	}>();
+	} = $props();
 
 	let anchor = $state<HTMLDivElement | null>(null);
 	let surfaceSnapshot = $state<ToolSurfaceHostSnapshot>({

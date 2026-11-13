@@ -61,7 +61,7 @@ declare global {
 	}
 }
 
-// The demo content's images live on an external host; any image does here.
+// The probe's image URL names no real image; any image does here.
 async function serveImages(page: Page) {
 	await page.route("https://app.fluence.net/**", (route) =>
 		route.fulfill({ status: 200, contentType: "image/svg+xml", body: SVG }),
@@ -123,7 +123,6 @@ test.describe("item-player model images", () => {
 	test("image-cloze-association stores the authored responses and scores the correct placement 1", async ({
 		page,
 	}) => {
-		await serveImages(page);
 		await page.goto(
 			"/demo/image-cloze-association-default/delivery?mode=gather&role=student&player=iife",
 			{ waitUntil: "domcontentloaded" },

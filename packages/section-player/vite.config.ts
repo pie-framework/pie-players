@@ -1,6 +1,7 @@
 import { resolve } from "path";
 import { defineConfig } from "vite";
 import dts from "vite-plugin-dts";
+import { hostSharedExternals } from "../players-shared/host-shared-externals.js";
 import {
 	assertNoEvalRequireInOutput,
 	sharedAliases,
@@ -18,6 +19,21 @@ const CONTRACT_ENTRIES = [
 	"policies/index",
 	"item-section/index",
 ];
+
+const isHostShared = hostSharedExternals(resolve(__dirname, ".."));
+
+/**
+ * Imports the npm build leaves to the host: the packages a host page shares
+ * (toolkit, players-shared, pie-context), the default tool loaders and the item
+ * player. `./browser` bundles all of them. speech-rule-engine is the toolkit's
+ * import and reaches the host through it.
+ */
+const external = (specifier: string): boolean =>
+	isHostShared(specifier) ||
+	specifier === "@pie-players/pie-default-tool-loaders" ||
+	// The host's one item player defines `pie-item-player` and installs
+	// the math renderer, for this player's items and its own.
+	/^@pie-players\/pie-item-player(?:\/|$)/.test(specifier);
 
 export default defineConfig({
 	resolve: {
@@ -52,18 +68,10 @@ export default defineConfig({
 		outDir: "dist",
 		emptyOutDir: true,
 		target: "es2020",
-		minify: "esbuild",
+		minify: false,
 		sourcemap: false,
 		rollupOptions: {
-			external: [
-				"@pie-players/pie-default-tool-loaders",
-				// The host's one item player defines `pie-item-player` and installs
-				// the math renderer, for this player's items and its own.
-				/^@pie-players\/pie-item-player(?:\/|$)/,
-				// speech-rule-engine and its locale tables resolve from the host's
-				// node_modules, so every PIE bundle a host loads shares one copy.
-				/^speech-rule-engine(?:\/|$)/,
-			],
+			external,
 			output: {
 				format: "es",
 				entryFileNames: "[name].js",

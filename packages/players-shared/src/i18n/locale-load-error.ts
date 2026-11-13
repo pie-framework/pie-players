@@ -29,8 +29,9 @@ export interface InterfaceLocaleLoadErrorModel {
  * `bubbles`/`composed` `framework-error` event. No-op without a target, so a
  * caller mounted as a plain component rather than an element stays silent.
  *
- * Failed loads are not cached: re-setting the `locale` attribute, or
- * recomposing the `i18n` provider, drives `setLocale` again and so retries.
+ * Failed loads are not cached: a later change of the `locale` attribute back
+ * to that locale, or recomposing the `i18n` provider, drives `setLocale` again
+ * and so retries.
  */
 export function reportInterfaceLocaleLoadError(
 	target: Element | null | undefined,

@@ -1,9 +1,14 @@
 import { resolve } from "path";
 import { defineConfig } from "vite";
+import { preserveLegalComments } from "../players-shared/legal-comments.mjs";
+import { minifyChunks } from "../players-shared/minify-chunks.mjs";
 import { escapeSourceMapCommentTextInOutput } from "../players-shared/source-map-comment-text.mjs";
 
 export default defineConfig({
-	plugins: [escapeSourceMapCommentTextInOutput()],
+	plugins: [escapeSourceMapCommentTextInOutput(),
+		preserveLegalComments(),
+		minifyChunks(),
+	],
 	build: {
 		lib: {
 			entry: resolve(__dirname, "src/index.ts"),
@@ -15,7 +20,7 @@ export default defineConfig({
 		// Target modern browsers
 		target: "es2020",
 		// Minify for production
-		minify: "esbuild",
+		minify: false,
 	},
 	// Ensure proper module resolution
 	resolve: {

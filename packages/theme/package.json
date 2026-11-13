@@ -14,22 +14,23 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
-	"unpkg": "./dist/index.js",
-	"jsdelivr": "./dist/index.js",
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
 		},
 		"./theme-element": {
 			"types": "./dist/theme-element.d.ts",
-			"import": "./dist/theme-element.js"
+			"import": "./dist/theme-element.js",
+			"default": "./dist/theme-element.js"
 		},
 		"./token-registry.json": "./dist/token-registry.json",
 		"./tokens.css": "./dist/tokens.css",
 		"./color-schemes.css": "./dist/color-schemes.css",
 		"./font-sizes.css": "./dist/font-sizes.css",
-		"./components.css": "./dist/components.css"
+		"./components.css": "./dist/components.css",
+		"./package.json": "./package.json"
 	},
 	"customElements": "custom-elements.json",
 	"files": [
@@ -38,7 +39,7 @@
 		"README.md"
 	],
 	"scripts": {
-		"build": "bun run check:generated-css && tsc -p tsconfig.json && cp src/*.css dist/ && cp src/token-registry.json dist/",
+		"build": "bun run check:generated-css && tsc -p tsconfig.json && cp src/*.css dist/ && cp src/token-registry.json dist/ && bun ../../scripts/prune-unreachable-declarations.mjs",
 		"dev": "bun ./scripts/dev-theme.ts",
 		"generate:css": "bun ./scripts/generate-theme-css.ts --write",
 		"check:generated-css": "bun ./scripts/generate-theme-css.ts --check",

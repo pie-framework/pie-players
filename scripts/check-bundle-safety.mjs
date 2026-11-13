@@ -3,12 +3,20 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { transformSync } from "esbuild";
 import {
 	MATH_RENDERING_MODULE_FACTORY,
 	MATHJAX_3_SETUP_TEXT,
 } from "../packages/players-shared/math-rendering-module-deferral.mjs";
+import {
+	THIRD_PARTY_NOTICES_FILE,
+	builtNoticesFileFor,
+	findLibrariesMissingFromNotices,
+	findLibrariesMissingNotice,
+} from "../packages/players-shared/legal-comments.mjs";
 import { SOURCE_MAP_COMMENT_TEXT } from "../packages/players-shared/source-map-comment-text.mjs";
 import { readPublishPolicy } from "./lib/pack-inspection.mjs";
+import { scanScriptImports } from "./lib/package-import-graph.mjs";
 
 const ROOT = process.cwd();
 const EVAL_REQUIRE_PATTERN = /eval\((["'])require\1\)/;
@@ -89,23 +97,41 @@ const collectJsFiles = (dir) =>
 /**
  * True when a bundle looks like it skipped minification.
  *
- * Uses average bytes-per-line rather than any minifier-specific marker, because
- * that gap is enormous and stable: the unminified toolkit artifact averaged
- * about 40 bytes per line (30,106 lines for 1.19 MB), while minified output runs
- * to thousands. The 200-byte threshold therefore sits nowhere near either case.
- * Small files are skipped because a short artifact can legitimately be one or
- * two lines regardless of minification.
+ * Average bytes-per-line selects the candidates, because that gap is enormous
+ * and stable: the unminified toolkit artifact averaged about 40 bytes per line
+ * (30,106 lines for 1.19 MB), while minified output runs to thousands. Small
+ * files are skipped because a short artifact can legitimately be one or two
+ * lines regardless of minification.
+ *
+ * A dense-lined file is then minified once more and counts as unminified only
+ * when that shrinks it by `minShrink`. Minified code with a preserved licence
+ * block, or a stylesheet or SVG path data in a template literal, spans many
+ * short lines yet is already at its minimum, so the density alone cannot tell
+ * it from a bundle that skipped the pass. A file that does not parse is judged
+ * on density.
  */
 export function looksUnminified(
 	content,
-	{ minBytes = 20_000, minBytesPerLine = 200 } = {},
+	{ minBytes = 20_000, minBytesPerLine = 200, minShrink = 0.1 } = {},
 ) {
 	const bytes = Buffer.byteLength(content, "utf8");
 	if (bytes < minBytes) return false;
 	// Count lines the way `wc -l` would, then add one for a trailing partial line
 	// so a single-line file is 1 rather than 0.
 	const lines = content.split("\n").length;
-	return bytes / lines < minBytesPerLine;
+	if (bytes / lines >= minBytesPerLine) return false;
+	try {
+		const { code } = transformSync(content, {
+			minify: true,
+			legalComments: "inline",
+			charset: "utf8",
+			loader: "js",
+			supported: { "dynamic-import": true, "import-meta": true },
+		});
+		return Buffer.byteLength(code, "utf8") < bytes * (1 - minShrink);
+	} catch {
+		return true;
+	}
 }
 
 /**
@@ -320,7 +346,8 @@ export function findIdenticalFiles(files) {
 }
 
 /**
- * Packages every tool imports from the host's node_modules, each with a string
+ * Packages every tool, and the section player's and item list's npm builds,
+ * import from the host's node_modules, each with a string
  * only its own published code carries and minifiers keep: a `Symbol.for` key of
  * the toolkit's contexts, pie-context's request event name, and an error of
  * players-shared's i18n provider.
@@ -482,6 +509,41 @@ function checkEvalRequire(failures) {
 	return filesChecked;
 }
 
+/**
+ * True when `directory` holds a package whose `dist` Vite builds: a
+ * `vite.config*` sits beside its `package.json`. The other `dist`s are `tsc`
+ * output, which is not a bundle and ships its whitespace.
+ */
+export function hasViteConfig(directory) {
+	return readdirSync(directory).some((name) => /^vite\.config[\w.]*\.[cm]?[jt]s$/.test(name));
+}
+
+/**
+ * Fails a Vite-built bundle that skipped minification. Vite 8 keeps the
+ * whitespace of a library ES build, so a build lists `minifyChunks()`
+ * (packages/players-shared/minify-chunks.mjs) and sets `build.minify` to false.
+ * Returns how many files it read, so a run that reached none is visible.
+ */
+function checkViteBundlesMinified(failures) {
+	let filesChecked = 0;
+	for (const dir of listBundleRoots()) {
+		const packageDir =
+			path.basename(dir) === BROWSER_BUILD_DIRNAME
+				? path.dirname(path.dirname(dir))
+				: path.dirname(dir);
+		if (!hasViteConfig(packageDir)) continue;
+		for (const filePath of collectJsFiles(dir)) {
+			filesChecked += 1;
+			if (looksUnminified(readFileSync(filePath, "utf8"))) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, filePath)} looks unminified; list minifyChunks() from packages/players-shared/minify-chunks.mjs in the package's Vite build and set build.minify to false`,
+				);
+			}
+		}
+	}
+	return filesChecked;
+}
+
 function checkToolkitCustomElements(failures) {
 	const absDir = path.join(ROOT, TOOLKIT_CE_DIR);
 	if (!existsSync(absDir)) {
@@ -552,7 +614,7 @@ export function findUnresolvableBrowserSpecifiers(content, allowed = []) {
 
 function readAllowedUndeclaredRuntimeImports(packageName) {
 	const policy = readPublishPolicy(ROOT);
-	return policy.allowedUndeclaredRuntimeImports?.[packageName] ?? [];
+	return policy.allowedUndeclaredRuntimeImports?.browser?.[packageName] ?? [];
 }
 
 /**
@@ -562,19 +624,38 @@ function readAllowedUndeclaredRuntimeImports(packageName) {
  */
 function checkBrowserBuilds(failures) {
 	const dirs = listBrowserBuildDirs();
+	const checked = new Set();
 	for (const dir of dirs) {
 		const packageName = readManifest(path.dirname(path.dirname(dir))).name;
+		checked.add(packageName);
 		const allowed = readAllowedUndeclaredRuntimeImports(packageName);
+		const excused = new Set();
 		for (const file of readDistFiles(dir)) {
-			for (const specifier of findUnresolvableBrowserSpecifiers(
-				file.content,
-				allowed,
-			)) {
+			const unresolvable = findUnresolvableBrowserSpecifiers(file.content);
+			for (const specifier of unresolvable) {
+				if (allowed.includes(specifier)) {
+					excused.add(specifier);
+					continue;
+				}
 				failures.push(
 					`[bundle-safety] ${path.relative(ROOT, dir)}/${file.path} imports ${specifier}, which a page cannot resolve without an import map; the browser build bundles every dependency (external: [])`,
 				);
 			}
 		}
+		for (const specifier of allowed.filter((entry) => !excused.has(entry))) {
+			failures.push(
+				`[bundle-safety] "${specifier}" in allowedUndeclaredRuntimeImports.browser["${packageName}"] excuses nothing in ${path.relative(ROOT, dir)}; remove it from scripts/publish-policy.json`,
+			);
+		}
+	}
+	const policy = readPublishPolicy(ROOT);
+	for (const packageName of Object.keys(
+		policy.allowedUndeclaredRuntimeImports?.browser ?? {},
+	)) {
+		if (checked.has(packageName)) continue;
+		failures.push(
+			`[bundle-safety] allowedUndeclaredRuntimeImports.browser["${packageName}"] names a package with no browser build; remove it from scripts/publish-policy.json`,
+		);
 	}
 	return dirs.length;
 }
@@ -701,16 +782,43 @@ function checkNoIdenticalFiles(failures) {
 }
 
 /**
- * A tool resolves the toolkit, players-shared and pie-context from the host,
- * so a section host carries one copy of each rather than one per tool.
+ * The players whose npm build resolves the toolkit, players-shared and
+ * pie-context from the host, as the tools do. Each has a self-contained
+ * `dist/browser` build for a page that loads it by URL.
+ */
+const PLAYERS_IMPORTING_HOST_SHARED = new Set([
+	"@pie-players/pie-item-list",
+	"@pie-players/pie-section-player",
+]);
+
+/**
+ * The players whose one `dist` is also the CDN entry, which docs/install/cdn.md
+ * promises imports no bare specifier, so they bundle the host-shared packages.
+ */
+const SELF_CONTAINED_CDN_PLAYERS = new Set([
+	"@pie-players/pie-item-player",
+	"@pie-players/pie-print-player",
+]);
+
+/** A specifier a page resolves only through an import map: no path, no URL. */
+const isBareSpecifier = (specifier) =>
+	!/^(?:\.{0,2}\/|[a-z][a-z0-9+.-]*:)/i.test(specifier);
+
+/**
+ * A tool or a player's npm build resolves the toolkit, players-shared and
+ * pie-context from the host, so a section host carries one copy of each rather
+ * than one per bundle.
  */
 function checkToolsImportHostSharedPackages(failures) {
 	for (const shared of HOST_SHARED_PACKAGES) {
 		const absDist = path.join(ROOT, shared.dist);
-		if (
-			!existsSync(absDist) ||
-			!readDistFiles(absDist).some((file) => shared.marker.test(file.content))
-		) {
+		if (!existsSync(absDist)) {
+			failures.push(
+				`[bundle-safety] ${shared.dist} is missing, so nothing can tell whether ${shared.name} is inlined elsewhere; build it first`,
+			);
+			continue;
+		}
+		if (!readDistFiles(absDist).some((file) => shared.marker.test(file.content))) {
 			failures.push(
 				`[bundle-safety] ${shared.dist} no longer carries ${shared.marker}, which marks ${shared.name} inlined elsewhere; pick a string only its published code still carries`,
 			);
@@ -719,14 +827,35 @@ function checkToolsImportHostSharedPackages(failures) {
 
 	for (const dir of listPackageDistDirs()) {
 		const packageDir = path.dirname(dir);
-		if (!/^@pie-players\/pie-tool-/.test(readManifest(packageDir).name)) {
+		const { name: packageName } = readManifest(packageDir);
+		const isTool = /^@pie-players\/pie-tool-/.test(packageName);
+		if (!isTool && !PLAYERS_IMPORTING_HOST_SHARED.has(packageName)) {
 			continue;
 		}
+		const fix = isTool
+			? "list /^@pie-players\\/pie-(?:assessment-toolkit|players-shared|context)(?:\\/|$)/ in the tool's Vite externals"
+			: "list hostSharedExternals() from players-shared/host-shared-externals.ts in the player's Vite external";
 		for (const file of readDistFiles(dir)) {
 			for (const name of findInlinedHostSharedPackages(file.content)) {
 				failures.push(
-					`[bundle-safety] ${path.relative(ROOT, dir)}/${file.path} inlines ${name}; list /^@pie-players\\/pie-(?:assessment-toolkit|players-shared|context)(?:\\/|$)/ in the tool's Vite externals so the host resolves one copy`,
+					`[bundle-safety] ${path.relative(ROOT, dir)}/${file.path} inlines ${name}; ${fix} so the host resolves one copy`,
 				);
+			}
+		}
+	}
+
+	for (const dir of listPackageDistDirs()) {
+		const packageDir = path.dirname(dir);
+		if (!SELF_CONTAINED_CDN_PLAYERS.has(readManifest(packageDir).name)) {
+			continue;
+		}
+		for (const file of readDistFiles(dir)) {
+			for (const { specifier } of scanScriptImports(file.content)) {
+				if (isBareSpecifier(specifier)) {
+					failures.push(
+						`[bundle-safety] ${path.relative(ROOT, dir)}/${file.path} imports ${specifier}, but this dist is the CDN entry and imports no bare specifier; bundle it`,
+					);
+				}
 			}
 		}
 	}
@@ -849,11 +978,64 @@ function checkNoSourceMapCommentText(failures) {
 	}
 }
 
+/**
+ * The names of the libraries `content` inlines without the licence notice their
+ * licence requires. Minifying strips `@license` comments unless the build lists
+ * `preserveLegalComments()` (packages/players-shared/legal-comments.mjs).
+ */
+export function findInlinedLibrariesWithoutNotice(content) {
+	return findLibrariesMissingNotice(content).map((library) => library.name);
+}
+
+function checkLicenseNotices(failures) {
+	for (const dir of listBundleRoots()) {
+		for (const filePath of collectJsFiles(dir)) {
+			const missing = findInlinedLibrariesWithoutNotice(
+				readFileSync(filePath, "utf8"),
+			);
+			if (missing.length > 0) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, filePath)} inlines ${missing.join(", ")} without its licence notice; list preserveLegalComments() from packages/players-shared/legal-comments.mjs in the package's Vite build`,
+				);
+			}
+		}
+	}
+}
+
+function checkThirdPartyNotices(failures) {
+	for (const dir of listBundleRoots()) {
+		for (const filePath of collectJsFiles(dir)) {
+			// The browser build is its own root with its own notices file.
+			if (
+				path.basename(dir) !== BROWSER_BUILD_DIRNAME &&
+				filePath.startsWith(path.join(dir, BROWSER_BUILD_DIRNAME) + path.sep)
+			) {
+				continue;
+			}
+			const noticesPath = builtNoticesFileFor(filePath, existsSync);
+			const missing = findLibrariesMissingFromNotices(
+				readFileSync(filePath, "utf8"),
+				noticesPath ? readFileSync(noticesPath, "utf8") : null,
+			).map((library) => library.name);
+			if (missing.length > 0) {
+				failures.push(
+					`[bundle-safety] ${path.relative(ROOT, filePath)} inlines ${missing.join(", ")}, which ${
+						noticesPath
+							? path.relative(ROOT, noticesPath)
+							: `no ${THIRD_PARTY_NOTICES_FILE} beside it`
+					} does not list; preserveLegalComments() writes the file for a Vite build`,
+				);
+			}
+		}
+	}
+}
+
 function main() {
 	const failures = [];
 	const filesChecked =
 		checkEvalRequire(failures) + checkToolkitCustomElements(failures);
 	const mathSpeechPackages = checkSpeechRuleEngineBoundaries(failures);
+	const minifiedBundles = checkViteBundlesMinified(failures);
 	checkNoPublishedSourcemaps(failures);
 	checkNoSvelteDevRuntime(failures);
 	checkNoIdenticalFiles(failures);
@@ -864,6 +1046,8 @@ function main() {
 	// URL, and they hold the whole calculator runtime in one chunk.
 	checkNewUrlTails(failures);
 	checkNoSourceMapCommentText(failures);
+	checkLicenseNotices(failures);
+	checkThirdPartyNotices(failures);
 	checkMathJax3Deferred(failures);
 	checkPromiseStatics(failures);
 	const browserBuilds = checkBrowserBuilds(failures);
@@ -879,7 +1063,7 @@ function main() {
 	}
 
 	console.log(
-		`[check-bundle-safety] OK: validated ${filesChecked} JS bundle file(s) the speech-rule-engine boundary in ${mathSpeechPackages} package(s) and ${browserBuilds} browser build(s)`,
+		`[check-bundle-safety] OK: validated ${filesChecked} JS bundle file(s), ${minifiedBundles} Vite bundle file(s) for minification, the speech-rule-engine boundary in ${mathSpeechPackages} package(s) and ${browserBuilds} browser build(s)`,
 	);
 }
 

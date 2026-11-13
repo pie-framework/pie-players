@@ -78,7 +78,7 @@
 			onInsertSound: { type: "Object", reflect: false },
 			onDeleteSound: { type: "Object", reflect: false },
 		},
-		extend: coerceBooleanAttributes,
+		extend: (element) => withItemPlayerFocus(coerceBooleanAttributes(element)),
 	}}
 />
 
@@ -118,6 +118,12 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	// projection; session snapshots and page-lifecycle commits; public methods and
 	// model updates; element session forwarding.
 	import { coerceBooleanAttributes } from "@pie-players/pie-players-shared/ui/attribute-coercion";
+	import {
+		attachItemPlayerFocus,
+		createItemPlayerFocus,
+		type ItemFocusReadiness,
+		withItemPlayerFocus,
+	} from "./focus-first-input.js";
 	import type {
 		ConfigEntity,
 		ConfigResource,
@@ -564,6 +570,61 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	$effect(() => {
 		if (!hostElement || customElementHost) return;
 		customElementHost = resolveCustomElementHost(hostElement);
+	});
+
+	// The renderer whose load settled, and whether it failed. `focus()` is ready
+	// only once the renderer mounted now has loaded: a config change mounts a new
+	// one, and its elements have no models until its own `load-complete`.
+	let settledRenderer: { renderer: unknown; failed: boolean } | null = null;
+
+	// What the load effect last queued `loadConfig` with, and the promise of that
+	// load's start, null once it has started. A change reaches `loadConfig` only
+	// through that effect and its microtask, so until then the outgoing item still
+	// reads as loaded.
+	let scheduledLoadInputs: readonly unknown[] = [];
+	let scheduledLoadStart: Promise<void> | null = null;
+
+	// Null when the player has acted on every change made so far, so `focus()`
+	// moves focus within the caller's task; otherwise resolves once the effects
+	// have run and the load they queue has started. A real change then reads as
+	// loading, and one the no-op guard drops leaves the item ready.
+	function settleScheduledLoad(): Promise<void> | null {
+		const inputs = untrack(configLoadInputs);
+		const changed = inputs.some((value, index) => value !== scheduledLoadInputs[index]);
+		if (!changed && !scheduledLoadStart) return null;
+		return (async () => {
+			await tick();
+			while (scheduledLoadStart) await scheduledLoadStart;
+		})();
+	}
+
+	function itemFocusReadiness(): ItemFocusReadiness {
+		if (error) return "unavailable";
+		const settled = settledRenderer;
+		if (loading || !itemConfig || !rendererElement) return "pending";
+		if (!settled || settled.renderer !== rendererElement) return "pending";
+		return settled.failed ? "unavailable" : "ready";
+	}
+
+	const itemFocus = createItemPlayerFocus({
+		readiness: itemFocusReadiness,
+		settle: settleScheduledLoad,
+		// The item's own container, not the passage's.
+		itemContainer: () =>
+			hostElement?.querySelector(
+				":scope > .pie-player-item-container > div > .pie-item-container",
+			) ?? null,
+		logger,
+	});
+	// At script init, because Svelte runs no effect before a custom element's
+	// mount returns, and a host may call `focus()` right after inserting it.
+	const focusHost: HTMLElement | undefined = $host();
+	const detachItemFocus = focusHost
+		? attachItemPlayerFocus(focusHost, itemFocus)
+		: () => {};
+	onDestroy(() => {
+		detachItemFocus();
+		itemFocus.dispose();
 	});
 
 	// A host that mounts the player inside its own shadow root gets no document
@@ -1424,6 +1485,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 				...(cause ? { cause } : {}),
 			} satisfies PieItemPlayerErrorDetail;
 			trackItemPlayerError(message, { ...detail, errorType: detail.code });
+			itemFocus.failed();
 			handlePlayerEvent(
 				new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, { detail }),
 			);
@@ -1450,21 +1512,35 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		};
 	});
 
+	// Everything `loadConfig` reads; a change to any of them queues a load.
+	function configLoadInputs(): readonly unknown[] {
+		return [
+			effectiveConfig,
+			normalizedStrategy,
+			resolvedMode,
+			resolvedIifeBundleHost,
+			resolvedEsmCdnUrl,
+			loaderRetrySignature,
+			loaderOptions,
+			allowedResize,
+			itemFeatureInputs,
+		];
+	}
+
 	$effect(() => {
-		const currentConfig = effectiveConfig;
-		void normalizedStrategy;
-		void resolvedMode;
-		void resolvedIifeBundleHost;
-		void resolvedEsmCdnUrl;
-		void loaderRetrySignature;
-		void loaderOptions;
-		void allowedResize;
-		void itemFeatureInputs;
-		queueMicrotask(() => {
-			untrack(() => {
-				loadConfig(currentConfig);
+		const inputs = configLoadInputs();
+		const currentConfig = inputs[0];
+		scheduledLoadInputs = inputs;
+		const start: Promise<void> = new Promise((resolve) => {
+			queueMicrotask(() => {
+				untrack(() => {
+					loadConfig(currentConfig);
+				});
+				if (scheduledLoadStart === start) scheduledLoadStart = null;
+				resolve();
 			});
 		});
+		scheduledLoadStart = start;
 	});
 
 	$effect(() => {
@@ -2235,12 +2311,21 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 					onLoadComplete={(detail: unknown) => {
 						seedHostSessionEntriesForItem();
 						reportDirectionMismatch();
+						// Ahead of the event, so a host's `load-complete` listener can
+						// call `focus()`.
+						settledRenderer = { renderer: rendererElement, failed: false };
+						itemFocus.loaded();
 						handlePlayerEvent(new CustomEvent("load-complete", { detail }));
 					}}
-					onPlayerError={(detail: PieItemPlayerErrorDetail) =>
+					onPlayerError={(detail: PieItemPlayerErrorDetail) => {
+						if (detail?.recoverable !== true) {
+							settledRenderer = { renderer: rendererElement, failed: true };
+							itemFocus.failed();
+						}
 						handlePlayerEvent(
 							new CustomEvent(ITEM_PLAYER_PUBLIC_EVENTS.error, { detail }),
-						)}
+						);
+					}}
 					onSessionChanged={(detail: unknown) => handleSessionChanged(detail)}
 					onElementSessionUpdate={handleElementSessionUpdate}
 					onModelUpdated={(detail: unknown) => handleModelUpdated(detail)}

@@ -136,8 +136,10 @@ Packages publish generated `dist` files as their public API. `exports`, `main`,
 a non-declaration `.ts` or `.tsx` file, or a `.svelte` or `.svelte.ts` file, and
 no export carries a `development` or `svelte` condition. The one export outside
 `dist/` is `./package.json`, which every package maps to its manifest so a tool
-can read the installed version through the `exports` map. `check:publish-surface`
-checks each manifest and its `npm pack` file list for:
+can read the installed version through the `exports` map. `check:source-exports`
+(before each commit) and `check:pack-integrity` (in CI, and as
+`check:pack-integrity:real` in the release gate) check each manifest and its
+`npm pack` file list for:
 
 - no `development` or `svelte` export condition;
 - no export that `forbiddenPublicExports` in `scripts/publish-policy.json`
@@ -202,7 +204,7 @@ owning package exports.
 
 | Rule | Gate |
 | --- | --- |
-| Every export target exists in the packed tarball and has a stable file name | `check:pack-integrity:real` |
+| Every export target and the `customElements` manifest exist in the packed tarball, and export targets have stable file names | `check:pack-integrity:real` |
 | Node-safe entry points import in Node.js, and the browser-only roots fail on a browser global, each package from an install of its own tarball and its workspace dependencies' | `check:node-consumer-imports` |
 | Dist-only surface, including sourcemap sources | `check:pack-integrity:real`, `check:declaration-reachability` |
 | No Svelte for hosts | `check:svelte-runtime-deps`, `check:ce-consumer-contract`, `check:svelte-type-imports` |

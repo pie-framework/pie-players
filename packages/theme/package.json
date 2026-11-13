@@ -44,12 +44,10 @@
 		"generate:css": "bun ./scripts/generate-theme-css.ts --write",
 		"check:generated-css": "bun ./scripts/generate-theme-css.ts --check",
 		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
-		"lint": "biome lint .",
 		"check": "tsc -p tsconfig.json --noEmit",
 		"test": "bun test --dom tests"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.4",
 		"@happy-dom/global-registrator": "^21.0.4",
 		"typescript": "^5.9.3"
 	},

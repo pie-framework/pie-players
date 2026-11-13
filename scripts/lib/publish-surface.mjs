@@ -1,10 +1,10 @@
 /**
  * The dist-only publish-surface rules, shared by the pre-commit check
- * (`check-publish-surface.mjs`) and the CI pack check (`check-pack-integrity.mjs`)
+ * (`check-source-exports.mjs`) and the CI pack check (`check-pack-integrity.mjs`)
  * so a package cannot pass one and fail the other.
  */
 
-import { collectTargets } from "./pack-inspection.mjs";
+import { collectDeclaredTargets } from "./pack-inspection.mjs";
 
 const FORBIDDEN_EXPORT_CONDITIONS = new Set(["development", "svelte"]);
 
@@ -124,11 +124,14 @@ export const collectManifestSurfaceViolations = (
 
 	collectExportKeyViolations(pkg, forbiddenPublicExports, violations);
 
-	const targets = new Set();
-	for (const field of ["main", "module", "types", "unpkg", "jsdelivr"]) {
-		collectTargets(pkg[field], targets);
-	}
-	collectTargets(pkg.exports, targets);
+	// `svelte` is rejected as a field above, so it is no target here.
+	const targets = collectDeclaredTargets(pkg, [
+		"main",
+		"module",
+		"types",
+		"unpkg",
+		"jsdelivr",
+	]);
 
 	for (const target of [...targets].sort()) {
 		if (target.startsWith("src/")) {

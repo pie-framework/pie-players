@@ -21,7 +21,7 @@
  *
  * Lives at the package root, outside `src/`, so `tsconfig.json`'s `include` leaves
  * it out of the build and it never lands in `dist`; `files: ["dist"]` keeps it
- * unpublished, which `check-source-exports` requires of anything outside `dist`.
+ * unpublished, which `check:source-exports` requires of anything outside `dist`.
  *
  * Paths are relative, and each consumer resolves them against this package's
  * directory. That keeps the module free of `import.meta.url`, which a consumer

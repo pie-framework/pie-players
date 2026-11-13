@@ -1,7 +1,5 @@
 # Accessibility Catalogs - TTS Integration
 
-<!-- markdownlint-disable MD032 MD040 MD060 -->
-
 `TTSService` speaks pre-authored `spoken` catalog cards (SSML) ahead of
 generated speech. This page covers how TTS resolves a card and how to diagnose
 one that is not spoken. The

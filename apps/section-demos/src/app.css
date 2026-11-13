@@ -1,7 +1,6 @@
 @import "tailwindcss";
 /*
- * Tailwind v4 + daisyUI v5: theme configuration lives here, not in
- * tailwind.config.ts (which is unused without an `@config` directive).
+ * Tailwind v4 + daisyUI v5: theme configuration lives here, in CSS.
  * `themes: all` compiles every built-in daisyUI theme so the demo theme
  * selector (DAISY_DEFAULT_THEMES) actually applies each option.
  */

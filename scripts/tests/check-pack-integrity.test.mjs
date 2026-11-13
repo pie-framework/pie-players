@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-	assertPublishablePackagesChecked,
 	collectExportTargetViolations,
 	collectPackTargets,
 } from "../check-pack-integrity.mjs";
@@ -96,10 +95,16 @@ describe("check-pack-integrity rule functions", () => {
 		).toEqual(["missing: custom-elements.json"]);
 	});
 
-	test("fails closed when no publishable packages were checked", () => {
-		expect(() => assertPublishablePackagesChecked(0)).toThrow(
-			/no publishable packages discovered/,
-		);
-		expect(() => assertPublishablePackagesChecked(1)).not.toThrow();
+	test("holds a bare top-level entry path to the tarball", () => {
+		// npm reads `"main": "dist/index.js"` like `"./dist/index.js"`; read as
+		// an `exports` target it named no file, so a missing one passed.
+		const targets = collectPackTargets({
+			main: "dist/index.js",
+			types: "dist/index.d.ts",
+		});
+
+		expect(
+			collectExportTargetViolations(targets, new Set(["dist/index.js"])),
+		).toEqual(["missing: dist/index.d.ts"]);
 	});
 });

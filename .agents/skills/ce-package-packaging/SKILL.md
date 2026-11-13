@@ -164,6 +164,9 @@ bun run check:bundle-safety
 bun run check:locale-lazy-loading
 ```
 
+`check:node-consumer-imports` packs the packages and installs the tarballs into
+a fixture, so it needs a fresh build and registry access.
+
 A package that ships localized content keeps English resident and every other
 locale behind a dynamic `import()`, one chunk each; after a build, confirm `dist`
 holds each locale as its own chunk. AGENTS.md, Localized Content Loading, has the

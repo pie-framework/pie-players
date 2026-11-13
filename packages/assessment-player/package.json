@@ -34,11 +34,9 @@
 	],
 	"scripts": {
 		"build": "vite build && bun ../../scripts/prune-unreachable-declarations.mjs",
-		"dev": "vite build --watch",
 		"test": "bun test",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
-		"check": "tsc --noEmit",
-		"lint": "biome lint ."
+		"check": "tsc --noEmit"
 	},
 	"dependencies": {
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
@@ -49,7 +47,6 @@
 		"@axe-core/playwright": "^4.14.0",
 		"@happy-dom/global-registrator": "^21.0.4",
 		"@playwright/test": "^1.64.1",
-		"@biomejs/biome": "^2.6.4",
 		"typescript": "^5.9.3",
 		"vite": "^8.3.3",
 		"vite-plugin-dts": "^5.1.2"

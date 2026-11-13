@@ -1,7 +1,5 @@
 # TTS Architecture
 
-<!-- markdownlint-disable MD022 MD031 MD032 MD036 MD040 -->
-
 This document covers the text-to-speech (TTS) packages: where each runs, what it
 depends on, how the providers compare and how word highlighting aligns speech
 with the page. It is for host integrators choosing a provider and for

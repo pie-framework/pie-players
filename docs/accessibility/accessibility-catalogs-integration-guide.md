@@ -1,7 +1,5 @@
 # Accessibility Catalogs
 
-<!-- markdownlint-disable MD012 MD031 MD032 MD040 MD060 -->
-
 This guide defines the accessibility catalog data model and how the PIE runtime
 consumes it. An accessibility catalog attaches alternative representations to
 one piece of content: a spoken script or recording, a signed video, a

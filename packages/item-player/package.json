@@ -41,18 +41,15 @@
 	],
 	"scripts": {
 		"build": "vite build && bun ../../scripts/prune-unreachable-declarations.mjs",
-		"dev": "vite build --watch",
 		"test": "bun test",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
-		"check": "svelte-check --tsconfig ./tsconfig.json",
-		"lint": "biome lint ."
+		"check": "svelte-check --tsconfig ./tsconfig.json"
 	},
 	"dependencies": {
 		"@pie-players/pie-players-shared": "workspace:*"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.14.0",
-		"@biomejs/biome": "^2.6.4",
 		"@happy-dom/global-registrator": "^21.0.4",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-theme": "workspace:*",

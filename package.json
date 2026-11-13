@@ -95,6 +95,7 @@
 		"check:publish-surface": "bun ./scripts/check-publish-surface.mjs",
 		"check:source-exports": "bun ./scripts/check-source-exports.mjs",
 		"api-report": "bun ./scripts/api-report.mjs --write",
+		"sync:nds-icon-button": "bun ./scripts/sync-nds-icon-button.mjs",
 		"check:api-report": "bun ./scripts/api-report.mjs",
 		"custom-elements-manifest": "bun ./scripts/custom-elements-manifest.mjs --write",
 		"check:custom-elements-manifest": "bun ./scripts/custom-elements-manifest.mjs",

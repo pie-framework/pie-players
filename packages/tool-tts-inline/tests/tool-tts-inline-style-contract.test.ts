@@ -71,11 +71,24 @@ describe("tool-tts-inline trigger styling contract", () => {
 		);
 	});
 
-	test("trigger reflects disclosure + toggle semantics onto its inner button", () => {
-		expect(triggerSnippet).toContain("use:reflectAria");
-		expect(triggerSnippet).toContain("'aria-expanded'");
-		expect(triggerSnippet).toContain("'aria-controls'");
-		expect(triggerSnippet).toContain("'aria-pressed'");
+	test("trigger passes disclosure + toggle semantics to its inner button", () => {
+		// NDS copies these three onto the inner <button>; only aria-busy, which it
+		// does not forward, is mirrored by hand.
+		expect(triggerSnippet).toContain("expanded={controlsVisible ? 'true' : 'false'}");
+		expect(triggerSnippet).toContain("controls={controlsVisible ? panelId : ''}");
+		expect(triggerSnippet).toContain(
+			"button-aria-pressed={controlsVisible ? 'true' : 'false'}",
+		);
+		expect(triggerSnippet).toContain("use:reflectAria={{ 'aria-busy':");
+		expect(triggerSnippet).not.toContain("'aria-expanded'");
+	});
+
+	test("trigger host carries the open state its accent rule keys off", () => {
+		// aria-expanded lands on the inner button, never on the host, so the NDS
+		// open-state rule needs a class on the host to match at all.
+		expect(triggerSnippet).toContain(
+			"class:pie-tool-tts-inline__trigger--open={controlsVisible}",
+		);
 	});
 
 	test("trigger glyphs are forced to the Solid FA weight (not thin outline)", () => {
@@ -364,7 +377,7 @@ describe("tool-tts-inline speed control accessibility contract", () => {
 		// the foreground hook applies, via the same --color-interactive-blue
 		// remap the base rule uses.
 		const body = cssRuleBody(
-			'.pie-tool-tts-inline__trigger:not(.pie-tool-tts-inline__trigger--plain)[aria-expanded="true"]',
+			".pie-tool-tts-inline__trigger--open:not(.pie-tool-tts-inline__trigger--plain)",
 		).replace(/\s+/g, "");
 
 		expect(body).toContain(

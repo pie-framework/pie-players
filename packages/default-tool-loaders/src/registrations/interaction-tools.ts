@@ -24,6 +24,7 @@ import {
 	syncButtonAndOverlayVisibility,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { resolveOverlayElement } from "./overlay-element-cache.js";
+import { resolveToolbarFaGlyph } from "./toolbar-glyphs.js";
 
 type EliminationStrategy = "strikethrough" | "mask";
 
@@ -244,10 +245,13 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 			),
 		);
 
+		const icon =
+			typeof this.icon === "function" ? this.icon(context) : this.icon;
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
-			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
+			icon,
+			faIconName: resolveToolbarFaGlyph(icon),
 			disabled: false,
 			ariaLabel: toolbarContext.i18n.t("tools.answerEliminator.buttonA11y"),
 			tooltip: toolbarContext.i18n.t("tools.answerEliminator.tooltip"),

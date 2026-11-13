@@ -1411,11 +1411,13 @@
 		"schemeParticipation": "optional",
 		"definedIn": [
 			"packages/tool-answer-eliminator/choice-toggle.ts",
+			"packages/assessment-toolkit/src/components/ItemToolBar.svelte",
 			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte",
 			"packages/theme/src/components.css"
 		],
 		"documentedIn": [
+			"packages/assessment-toolkit/README.md",
 			"packages/tool-tts-inline/README.md",
 			"packages/tool-calculator-inline-desmos/README.md",
 			"packages/tool-calculator-shared/README.md",
@@ -1432,11 +1434,13 @@
 		"schemeParticipation": "optional",
 		"definedIn": [
 			"packages/tool-answer-eliminator/choice-toggle.ts",
+			"packages/assessment-toolkit/src/components/ItemToolBar.svelte",
 			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte",
 			"packages/theme/src/components.css"
 		],
 		"documentedIn": [
+			"packages/assessment-toolkit/README.md",
 			"packages/tool-tts-inline/README.md",
 			"packages/tool-calculator-inline-desmos/README.md",
 			"packages/tool-calculator-shared/README.md",
@@ -1453,11 +1457,13 @@
 		"schemeParticipation": "optional",
 		"definedIn": [
 			"packages/tool-answer-eliminator/choice-toggle.ts",
+			"packages/assessment-toolkit/src/components/ItemToolBar.svelte",
 			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte",
 			"packages/theme/src/components.css"
 		],
 		"documentedIn": [
+			"packages/assessment-toolkit/README.md",
 			"packages/tool-tts-inline/README.md",
 			"packages/tool-calculator-inline-desmos/README.md",
 			"packages/tool-calculator-shared/README.md",

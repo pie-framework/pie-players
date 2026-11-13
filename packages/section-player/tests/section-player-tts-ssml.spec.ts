@@ -1619,7 +1619,7 @@ test.describe("section player demo tts-ssml", () => {
 			const expandedAfterHostStop = await passageInlineTts.evaluate(
 				(host) => {
 					// Disclosure semantics live on the focusable <button>: the NDS
-					// inner button (reflectAria targets it) when ndsIcons is on, or
+					// inner button (NDS copies `expanded` onto it) when ndsIcons is on, or
 					// the plain trigger button itself by default.
 					const trigger = host.shadowRoot?.querySelector(
 						".pie-tool-tts-inline__trigger button, button.pie-tool-tts-inline__trigger",

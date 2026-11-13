@@ -10,6 +10,7 @@ import {
 	SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
 } from "../src/index";
 import { assertPackagedCapabilityComposition } from "../src/packaged-capability-composition";
+import { resolveToolbarFaGlyph } from "../src/registrations/toolbar-glyphs";
 
 const collectPlacementIds = (
 	placement: Record<string, readonly string[]>,
@@ -49,6 +50,20 @@ describe("packaged capability composition", () => {
 			)
 			.map(({ toolId, icon }) => `${toolId}: ${String(icon)}`);
 		expect(buttons.length).toBeGreaterThan(10);
+		expect(missing).toEqual([]);
+	});
+
+	test("gives every packaged toolbar button a FontAwesome glyph", () => {
+		// A button without one keeps the toolbar's square button when the host
+		// enables NDS icons, beside the circular NDS buttons of the rest.
+		const missing = PACKAGED_TOOL_REGISTRATIONS.filter(
+			(registration) => registration.renderToolbar,
+		)
+			.filter(
+				({ icon }) =>
+					typeof icon !== "string" || resolveToolbarFaGlyph(icon) === undefined,
+			)
+			.map(({ toolId, icon }) => `${toolId}: ${String(icon)}`);
 		expect(missing).toEqual([]);
 	});
 

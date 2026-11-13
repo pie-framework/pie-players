@@ -27,6 +27,7 @@ import {
 	PACKAGED_CALCULATOR_PROVIDERS,
 } from "../calculator-providers/packaged-calculator-providers.js";
 import { resolveOverlayElement } from "./overlay-element-cache.js";
+import { resolveToolbarFaGlyph } from "./toolbar-glyphs.js";
 
 export type { CalculatorProviderDefinition };
 
@@ -249,14 +250,13 @@ export function createCalculatorToolRegistration(
 				calculatorConfig,
 			);
 
+			const icon =
+				typeof this.icon === "function" ? this.icon(context) : this.icon;
 			const button: ToolToolbarButtonDefinition = {
 				toolId: this.toolId,
 				label: displayName,
-				icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
-				// Routes this button through <pie-nds-icon-button> where the host enables NDS
-				// icons. Declared here because which capabilities render in the host's
-				// design system is a composition decision.
-				faIconName: "calculator",
+				icon,
+				faIconName: resolveToolbarFaGlyph(icon),
 				disabled: false,
 				// The name stays put across open and closed. The toolbar mirrors
 				// `active` onto the button as `aria-pressed`, so the state is already

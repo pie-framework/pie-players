@@ -1,5 +1,12 @@
 # @pie-players/pie-section-player-tools-shared
 
+## 1.0.0-beta.10
+
+### Patch Changes
+
+- cdedeb8: Every package now ships a `LICENSE` file, the published bundles keep the `@license` notices of the libraries they inline (DOMPurify, lit, MathJax, speech-rule-engine, MathLive, Compute Engine, JSXGraph), and every package that inlines third-party code ships a `THIRD-PARTY-LICENSES.txt` beside its bundles with each inlined package's version and full licence text; builds used to strip the notices. `@pie-players/pie-calculator-cortex`'s licence file is now the MIT text plus the third-party notices.
+- 3ac0dfe: `@pie-players/pie-section-player-tools-shared` is private and publishes no further versions; `1.0.0-beta.9` is the last. The event, instrumentation, PNP and session debuggers bundle it, so installing them is unchanged. A host that declares it directly can drop the dependency.
+
 ## 1.0.0-beta.9
 
 No changes in this release.

@@ -1,5 +1,35 @@
 # @pie-players/pie-item-list
 
+## 1.0.0-beta.10
+
+### Patch Changes
+
+- 022bb44: Players answer `interfaceLocaleContext` with the locale the host asked for, from the moment it is set, and `<pie-item-list>` and `<pie-item-summary>` forward `locale` so an explicit `en-US` is answered there too; a row or player handed a provider its owner already asked for that locale leaves it alone, so a failed catalog loads and reports once. The toolkit and section shell stamp `lang` and `dir` only once a host chose a locale. In the i18n engine, `getLocale()` names the locale actually served, a host override for `es-MX` layers over a shipped `es` catalog, and a host override of one plural category keeps the catalog's other forms instead of throwing.
+- cdedeb8: Every package now ships a `LICENSE` file, the published bundles keep the `@license` notices of the libraries they inline (DOMPurify, lit, MathJax, speech-rule-engine, MathLive, Compute Engine, JSXGraph), and every package that inlines third-party code ships a `THIRD-PARTY-LICENSES.txt` beside its bundles with each inlined package's version and full licence text; builds used to strip the notices. `@pie-players/pie-calculator-cortex`'s licence file is now the MIT text plus the third-party notices.
+- 80f5264: The section player's and item list's npm builds no longer inline `@pie-players/pie-assessment-toolkit`, `@pie-players/pie-players-shared` or `@pie-players/pie-context`. They import them from the host's `node_modules`, as every tool already does, so they share one copy of each with the toolkit and the tools. The item player still inlines its own players-shared and pie-context, since its one `dist` is also its CDN file. The section player's npm entry drops from about 1.1 MB to 330 KB and the item list's from 720 KB to 580 KB. `@pie-players/pie-context` moves to the section player's `dependencies`, and `speech-rule-engine` leaves them, since the toolkit owns that import. The `./browser` builds stay self-contained.
+- cdedeb8: Every `exports` entry of every published package now lists a `default` condition straight after `import`, with the same target. `require.resolve` and any resolver that matches neither `import` nor `types` used to fail with `ERR_PACKAGE_PATH_NOT_EXPORTED` and now land on the ESM file. The packages stay ESM-only; none ships CommonJS, and `docs/install/packages.md` says so.
+- ed88428: Published bundles are fully minified, whitespace included, about a fifth smaller across the suite; licence and `/*!` comments stay, and `/* @__PURE__ */` annotations go. The Cortex calculator ships one copy of Compute Engine, shared by the main bundle and its evaluation worker, which cuts the package from about 14 MB to 8.4 MB, and the worker keeps its blob wrapper for cross-origin pages. Packages publish only the declaration files a type entry reaches. `check:bundle-safety` fails any Vite bundle that is not minified, and `check:declaration-reachability` fails a package that ships an unreachable declaration.
+- c100692: The `@pie-players/pie-players-shared` root now lists its exports by name. The object helpers, attribute coercion and content styles are exported only from their subpaths (`/object`, `/ui/attribute-coercion`, `/ui/content-styles`), and the root no longer carries internal UI helpers that no published package or host imports from it: `createPointerRotateController`, `normalizeDegrees`, the safe-storage helpers, `isTabbable`, `scopeSelector`, the overlay geometry functions and placement step constants, and the pointer and overlay helper types. The test-only `resetContentStylesWarningForTesting` is gone from every entry.
+  
+  Every package exports `./package.json`, so a tool can read the installed version through the `exports` map.
+  
+  Only the four CDN entry points keep `unpkg` and `jsdelivr`. The section player's and the item list's now name their `dist/browser/` build, which is the file a CDN page loads; every other package drops both fields.
+- Updated dependencies [e566569]
+- Updated dependencies [022bb44]
+- Updated dependencies [e38d28c]
+- Updated dependencies [6ab52cc]
+- Updated dependencies [3c450db]
+- Updated dependencies [e3e6da5]
+- Updated dependencies [6d4cba0]
+- Updated dependencies [b8ba5f4]
+- Updated dependencies [cdedeb8]
+- Updated dependencies [cdedeb8]
+- Updated dependencies [da266bd]
+- Updated dependencies [ed88428]
+- Updated dependencies [c100692]
+  - @pie-players/pie-item-player@1.0.0-beta.10
+  - @pie-players/pie-players-shared@1.0.0-beta.10
+
 ## 1.0.0-beta.9
 
 ### Patch Changes

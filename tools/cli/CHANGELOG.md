@@ -1,5 +1,23 @@
 # @pie-players/pie-players-cli
 
+## 0.3.9-beta.10
+
+### Patch Changes
+
+- 269b6a4: A generated `@pie-players/pie-preloaded-player` build ships the item player's modules as the item player's build minified them, licence comments included, instead of re-printing them, which had made them larger.
+- Updated dependencies [e566569]
+- Updated dependencies [022bb44]
+- Updated dependencies [3c450db]
+- Updated dependencies [e3e6da5]
+- Updated dependencies [6d4cba0]
+- Updated dependencies [b8ba5f4]
+- Updated dependencies [cdedeb8]
+- Updated dependencies [cdedeb8]
+- Updated dependencies [da266bd]
+- Updated dependencies [ed88428]
+- Updated dependencies [c100692]
+  - @pie-players/pie-players-shared@1.0.0-beta.10
+
 ## 0.3.9-beta.9
 
 ### Patch Changes

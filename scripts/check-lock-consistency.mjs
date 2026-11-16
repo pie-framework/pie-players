@@ -12,10 +12,16 @@
  * test-dependency bump (#819) failed every preloaded item-player e2e that way.
  * Workspaces that declare different specifiers may resolve differently, so an
  * exact pin in a published package and `next` in a demo stay independent.
+ *
+ * It also resolves CI's Playwright browser image from the lock, which needs the
+ * hoisted `playwright` and `playwright-core` on the `@playwright/test` version.
+ * A peer-only `playwright-core` keeps its old entry through a Playwright bump,
+ * so that mismatch otherwise surfaces only in CI's Change Scope job.
  */
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { playwrightImage } from "./lib/playwright-ci.mjs";
 
 const LABEL = "[check-lock-consistency]";
 
@@ -90,9 +96,17 @@ export function collectLockFindings(lock) {
 
 function main() {
 	const lockPath = path.join(process.cwd(), "bun.lock");
-	const failures = collectLockFindings(
-		parseLock(readFileSync(lockPath, "utf8")),
-	);
+	const lock = parseLock(readFileSync(lockPath, "utf8"));
+	const failures = collectLockFindings(lock);
+
+	try {
+		playwrightImage(lock);
+	} catch (error) {
+		console.error(
+			`${LABEL} ${error.message} Set the hoisted entries in bun.lock to the @playwright/test version.`,
+		);
+		process.exit(1);
+	}
 
 	if (failures.length > 0) {
 		console.error(

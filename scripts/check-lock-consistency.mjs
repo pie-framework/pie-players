@@ -94,30 +94,33 @@ export function collectLockFindings(lock) {
 	return failures;
 }
 
-function main() {
-	const lockPath = path.join(process.cwd(), "bun.lock");
-	const lock = parseLock(readFileSync(lockPath, "utf8"));
-	const failures = collectLockFindings(lock);
-
+/** @returns {string[]} The error lines for every problem in the lock; empty when it is consistent. */
+export function lockReport(lock) {
+	const lines = [];
 	try {
 		playwrightImage(lock);
 	} catch (error) {
-		console.error(
+		lines.push(
 			`${LABEL} ${error.message} Set the hoisted entries in bun.lock to the @playwright/test version.`,
 		);
-		process.exit(1);
 	}
 
+	const failures = collectLockFindings(lock);
 	if (failures.length > 0) {
-		console.error(
+		lines.push(
 			`${LABEL} Workspaces declaring the same specifier resolve different versions:`,
-		);
-		for (const failure of failures) {
-			console.error(`- ${failure}`);
-		}
-		console.error(
+			...failures.map((failure) => `- ${failure}`),
 			`${LABEL} A regenerated lock re-resolved a dist tag for some workspaces only. Restore bun.lock from the base branch and redo just the intended change, so the lock moves nothing else.`,
 		);
+	}
+	return lines;
+}
+
+function main() {
+	const lockPath = path.join(process.cwd(), "bun.lock");
+	const lines = lockReport(parseLock(readFileSync(lockPath, "utf8")));
+	if (lines.length > 0) {
+		for (const line of lines) console.error(line);
 		process.exit(1);
 	}
 

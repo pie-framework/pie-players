@@ -64,7 +64,7 @@
 		"@biomejs/biome": "^2.6.4",
 		"@happy-dom/global-registrator": "^21.0.4",
 		"@pie-element/shared-math-rendering-mathjax": "0.1.8",
-		"@playwright/test": "^1.64.1",
+		"@playwright/test": "^1.65.0",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@types/node": "^26.6.6",
 		"esbuild": "^0.28.2",

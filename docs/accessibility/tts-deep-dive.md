@@ -1,7 +1,5 @@
 # TTS Deep Dive
 
-<!-- markdownlint-disable MD013 MD022 MD031 MD032 MD036 MD040 -->
-
 This document explains how text-to-speech (TTS) works across PIE Players at
 runtime. It is for host integrators and contributors who need the whole flow,
 from the button a student presses through provider selection, authored spoken

@@ -149,9 +149,9 @@ before opening or merging a release.
 | Scripts | `check:scripts` (unit tests for `scripts/`) |
 
 `check:pack-integrity:real` enforces the dist-only rules in
-[Library packaging strategy](./library-packaging-strategy.md#dist-only-publish-surface);
-`check:publish-surface`, which the pre-commit hook runs through
-`check:source-exports`, applies the same rules to a dry-run pack.
+[Library packaging strategy](./library-packaging-strategy.md#dist-only-publish-surface)
+against the real tarballs; `check:source-exports`, which the pre-commit hook runs,
+applies the same rules to a dry-run pack.
 
 ## Release intent in CI
 

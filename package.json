@@ -156,9 +156,9 @@
 		"turbo": "^2.11.10",
 		"typescript": "^5.9.3"
 	},
-	"packageManager": "bun@1.3.11",
+	"packageManager": "bun@1.4.4",
 	"engines": {
-		"bun": ">=1.3.11"
+		"bun": ">=1.4.4"
 	},
 	"overrides": {
 		"@tootallnate/once": "^3.0.1",

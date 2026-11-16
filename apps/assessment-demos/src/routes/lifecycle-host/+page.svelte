@@ -10,8 +10,6 @@
 		loadGeneratedCatalog,
 	} from "@pie-players/pie-i18n-generated";
 
-	export const ssr = false;
-
 	// The lifecycle spec drives `locale` programmatically on the host it mounts,
 	// and the assembly's navigation chrome can only serve what the composing
 	// host supplies — the bundled set is `en-US` alone. This fixture is the

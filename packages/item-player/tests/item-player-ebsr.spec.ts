@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
-// Pinned: the bundle service caches `@latest` per encoding, so unpinned runs
+// Pinned: the bundle host caches `@latest` per encoding, so unpinned runs
 // mix releases whose load-time session events differ.
 const EBSR_DELIVERY_PATH =
 	"/demo/ebsr-default/delivery?player=iife&pie-overrides%5Bpie-element%2Febsr%5D=15.0.3";

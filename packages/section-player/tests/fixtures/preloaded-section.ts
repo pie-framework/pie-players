@@ -17,7 +17,9 @@ const requireFromSectionDemos = createRequire(
 
 /** Loads the page and waits for its own section to render. */
 export async function openPreloadedBase(page: Page): Promise<void> {
-	await page.goto(PRELOADED_BASE_PATH, { waitUntil: "networkidle" });
+	// The rendered section is the signal; `networkidle` also waits on every
+	// image and lazy module the page's other samples fetch.
+	await page.goto(PRELOADED_BASE_PATH, { waitUntil: "domcontentloaded" });
 	await expect(
 		page.locator("pie-section-player-splitpane").getByRole("radio").first(),
 	).toBeVisible({ timeout: 30_000 });

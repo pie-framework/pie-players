@@ -6,7 +6,8 @@ the server runs each element controller's `model()` and `outcome()`, so the
 browser receives models filtered for the learner and never the answer key or the
 scoring code ([delivery integrity](../security/readme.md#delivery-integrity)). A
 host that has the item config and stores sessions itself sets `config` and
-`session` and leaves `backend` unset.
+`session` and leaves `backend` unset; the PIE API service serves such a host the
+item's [authored config](#authored-config).
 
 The built-in delivery client speaks the player routes of the PIE API service,
 PIE's server that stores items and sessions, runs element controllers and
@@ -214,6 +215,48 @@ score, `{ max, points, partialScoring, type }`, returned as sent
   "assignmentId": "assignment-1"
 }
 ```
+
+## Authored Config
+
+A host that scores in the browser reads the item from the PIE API service's
+`POST /api/player/config` and sets it as `config`, with `backend` unset, so the
+element controllers run in the browser and `provideScore()` scores there. The
+response carries the authored models, answer keys included: the exposure
+[delivery integrity](../security/readme.md#delivery-integrity) describes. The
+route creates no session, runs no controller and records
+nothing, so the host stores sessions and scores itself.
+
+```ts
+const response = await fetch(`${pieApiUrl}/api/player/config`, {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+    authorization: `Bearer ${jwt}`,
+  },
+  body: JSON.stringify({ itemId: "item-1" }),
+});
+if (!response.ok) throw new Error(`Config request failed: ${response.status}`);
+const { item, language } = await response.json();
+
+player.env = { mode: "gather", role: "student" };
+player.config = item;
+player.session = { id: "practice-session-1", data: [] };
+```
+
+The request names `itemId`, as `baseId` for the item's latest version or
+`baseId@version`, and takes the player routes' `overrides` and
+`applyRenderingDerivations`. The response's `item` has the shape a load returns:
+one config, or `{ pie, passage }` for an item with a passage, which `config`
+takes as is. Its element versions are the ones a new session gets, the
+organization's sanctioned versions with `overrides` applied. `language`, present
+when the item names one, is the `env.locale` the service runs the item's
+controllers under when a request names none.
+
+The service answers 403 unless the token holds `authoredConfig: true`, carries
+no `student` role, and has an `allowedItems` that names the item, as written or
+by its base id, when it sets one; the item must also be in a collection of the
+token's organization, which an admin token skips. It issues `authoredConfig` only to an API client whose
+record lists it. A missing item answers 404 and a malformed `itemId` 400.
 
 ## Section And Assessment Players
 

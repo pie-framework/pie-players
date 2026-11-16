@@ -1,5 +1,46 @@
 # @pie-players/pie-assessment-toolkit
 
+## 1.0.0-beta.10
+
+### Patch Changes
+
+- e566569: `pie-item-player` and `pie-assessment-toolkit` answer `interfaceLocaleContext` only once a host chooses a locale: `locale` set, or a supplied provider resolving a locale other than `en-US`. Before that a PIE element labels its chrome in the language its item declares, as on pie-elements, instead of in a default `en-US`; a host that wants English over the item's language sets `locale="en-US"`. `hostChoseInterfaceLocale` in `@pie-players/pie-players-shared/i18n` holds the rule.
+- 022bb44: Players answer `interfaceLocaleContext` with the locale the host asked for, from the moment it is set, and `<pie-item-list>` and `<pie-item-summary>` forward `locale` so an explicit `en-US` is answered there too; a row or player handed a provider its owner already asked for that locale leaves it alone, so a failed catalog loads and reports once. The toolkit and section shell stamp `lang` and `dir` only once a host chose a locale. In the i18n engine, `getLocale()` names the locale actually served, a host override for `es-MX` layers over a shipped `es` catalog, and a host override of one plural category keeps the catalog's other forms instead of throwing.
+- 3c450db: Nested `AssessmentSection.sections` now deliver. The assessment player's delivery plan walks test parts and top-level sections in document order and descends into nested sections, so a nested subtree becomes its own consecutive delivery steps instead of being silently dropped. Every section still becomes a step, including one that only groups its subsections, as content-less top-level sections always have.
+  
+  `AssessmentSession.completedAt` is stamped by the assessment player's `submit()` (first timestamp kept on a repeated submit) and the toolkit exports `markAssessmentSessionSubmitted` for hosts that roll their own submission flow.
+  
+  `TestPart.navigationMode` and `submissionMode` are optional: they are QTI 3.0 import metadata that no player reads, and requiring them made hosts author values the linear delivery cannot honor.
+- b8ba5f4: The vendored NDS icon button now registers as `<pie-nds-icon-button>`. On a page that also loads NDS, the shared `nds-icon-button` name left whichever copy defined second skipped or throwing, so PIE's toolbar, read-aloud and scroll-hint buttons could render with the host's version. The `./nds-icon-button` export path, the `nds-icons` opt-in and the `nds-icon-button__*` BEM classes are unchanged; a host stylesheet that selects the old element name must select `pie-nds-icon-button`.
+- 388d44c: A host can read aloud through its own `ITTSProvider`: `createTTSToolRegistration({ providers })` registers it under an id, and `tools.providers.textToSpeech.provider.id` selects it, with no `apiEndpoint` or server settings. `TTSToolProvider` takes the class as its `loadHostProvider` option. A config that names no registered host provider keeps its browser or server backend.
+- cdedeb8: Every package now ships a `LICENSE` file, the published bundles keep the `@license` notices of the libraries they inline (DOMPurify, lit, MathJax, speech-rule-engine, MathLive, Compute Engine, JSXGraph), and every package that inlines third-party code ships a `THIRD-PARTY-LICENSES.txt` beside its bundles with each inlined package's version and full licence text; builds used to strip the notices. `@pie-players/pie-calculator-cortex`'s licence file is now the MIT text plus the third-party notices.
+- cdedeb8: Every `exports` entry of every published package now lists a `default` condition straight after `import`, with the same target. `require.resolve` and any resolver that matches neither `import` nor `types` used to fail with `ERR_PACKAGE_PATH_NOT_EXPORTED` and now land on the ESM file. The packages stay ESM-only; none ships CommonJS, and `docs/install/packages.md` says so.
+- af92439: Every custom element these packages register now has a typed interface and an `HTMLElementTagNameMap` entry, so `document.querySelector("pie-item-scope")` and the like return the element's properties and methods instead of `HTMLElement`. The section player's kernel host, base, shell, passage shell, item and passage cards and the two panes, the toolkit's four elements, the four tools and the assessment player's shell are covered. `check:custom-elements:dist` now fails when a registered tag has no map entry reachable from a package's type entries.
+- da266bd: The content stylesheet no longer restyles a host page's own elements: the legacy content classes that are common words (`.abs`, `.variable`, `.whole`, `.noprint`, `.passage-title` and the rest) now match only inside `[data-pie-content]`, and only `kds-*`, `mjx-*`, `TEX-*` and `.frac` stay page-wide. Authored markup a host portals outside a `[data-pie-content]` subtree loses the confined rules.
+  
+  The item player and the print player adopt the content stylesheet into the ShadowRoot they sit in, through the new `adoptContentStylesInto` in `@pie-players/pie-players-shared/ui/content-styles`, so content mounted in a host's shadow tree is styled. The NDS icon button loads when `ndsIcons` is on instead of at import. The toolkit's CSS highlight names are now `pie-tts-word`, `pie-tts-sentence` and `pie-annotation-<colour>`, and the colour-scheme registry is shared across module copies on a page like the provider registry. `check:event-names` fails on a new event outside the `pie-` namespace.
+- ed88428: Published bundles are fully minified, whitespace included, about a fifth smaller across the suite; licence and `/*!` comments stay, and `/* @__PURE__ */` annotations go. The Cortex calculator ships one copy of Compute Engine, shared by the main bundle and its evaluation worker, which cuts the package from about 14 MB to 8.4 MB, and the worker keeps its blob wrapper for cross-origin pages. Packages publish only the declaration files a type entry reaches. `check:bundle-safety` fails any Vite bundle that is not minified, and `check:declaration-reachability` fails a package that ships an unreachable declaration.
+- c100692: The `@pie-players/pie-players-shared` root now lists its exports by name. The object helpers, attribute coercion and content styles are exported only from their subpaths (`/object`, `/ui/attribute-coercion`, `/ui/content-styles`), and the root no longer carries internal UI helpers that no published package or host imports from it: `createPointerRotateController`, `normalizeDegrees`, the safe-storage helpers, `isTabbable`, `scopeSelector`, the overlay geometry functions and placement step constants, and the pointer and overlay helper types. The test-only `resetContentStylesWarningForTesting` is gone from every entry.
+  
+  Every package exports `./package.json`, so a tool can read the installed version through the `exports` map.
+  
+  Only the four CDN entry points keep `unpkg` and `jsdelivr`. The section player's and the item list's now name their `dist/browser/` build, which is the file a CDN page loads; every other package drops both fields.
+- Updated dependencies [e566569]
+- Updated dependencies [022bb44]
+- Updated dependencies [3c450db]
+- Updated dependencies [e3e6da5]
+- Updated dependencies [6d4cba0]
+- Updated dependencies [b8ba5f4]
+- Updated dependencies [cdedeb8]
+- Updated dependencies [cdedeb8]
+- Updated dependencies [da266bd]
+- Updated dependencies [ed88428]
+- Updated dependencies [c100692]
+  - @pie-players/pie-players-shared@1.0.0-beta.10
+  - @pie-players/pie-context@1.0.0-beta.10
+  - @pie-players/pie-calculator@1.0.0-beta.10
+  - @pie-players/pie-tts@1.0.0-beta.10
+
 ## 1.0.0-beta.9
 
 ### Patch Changes

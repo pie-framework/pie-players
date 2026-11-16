@@ -298,24 +298,101 @@ A bundled copy has no npm root of its own, so the host passes the
 [MathJax asset root](./math-rendering.md#mathjax-assets) when it registers the
 elements.
 
+### npm elements or a generated build
+
+Two setups satisfy `strategy="preloaded"`. They differ in what the host's
+`package.json` declares and who registers the elements.
+
+| | npm elements | Generated build |
+| - | ------------ | --------------- |
+| `package.json` declares | `@pie-players/pie-item-player` and each `@pie-element/*` package, exact | `@pie-players/pie-preloaded-player`, exact, and nothing else |
+| Element set | Any pie-elements-ng package, all from one release | A set configured in pie-players |
+| Registration | The host calls `registerPreloadedElements` | The import registers |
+| Controllers | Registered per element; the player need not be hosted | None; the player must be hosted |
+| Upgrade | Reinstall every element package from the same dist-tag | Pin the next build version |
+| Status | The path for a new integration | Transitional |
+
 ### Registering elements from npm
 
 A host that installs element packages registers them with
 `registerPreloadedElements` from `@pie-players/pie-item-player/preloaded`,
 before the player renders. That entry defines no element and installs no
 stylesheet. It ships in `@pie-players/pie-item-player`, so the host declares that
-package and the element packages alone:
+package and the element packages alone. Install them exactly, the elements from
+one dist-tag:
+
+```bash
+npm install --save-exact @pie-players/pie-item-player@beta \
+  @pie-element/multiple-choice@next @pie-element/mc-populated-blank@next
+```
+
+```json
+{
+  "dependencies": {
+    "@pie-players/pie-item-player": "1.0.0-beta.10",
+    "@pie-element/multiple-choice": "14.0.8-next.20261116100657",
+    "@pie-element/mc-populated-blank": "0.3.8-next.20261110132055"
+  }
+}
+```
+
+One module registers the elements, and the page imports it before any player
+renders:
 
 ```ts
+// pie-elements.ts
+import "@pie-players/pie-item-player"; // defines <pie-item-player>
 import { registerPreloadedElements } from "@pie-players/pie-item-player/preloaded";
-import * as delivery from "@pie-element/multiple-choice/browser/delivery";
-import * as controller from "@pie-element/multiple-choice/browser/controller";
+import * as multipleChoice from "@pie-element/multiple-choice/browser/delivery";
+import * as multipleChoiceController from "@pie-element/multiple-choice/browser/controller";
+import * as mcPopulatedBlank from "@pie-element/mc-populated-blank/browser/delivery";
+import * as mcPopulatedBlankController from "@pie-element/mc-populated-blank/browser/controller";
 
-registerPreloadedElements([{ element: delivery, controller }], {
-  math: { assetRoot: "https://assets.example.com/npm" },
-});
-await import("@pie-players/pie-item-player");
+registerPreloadedElements(
+  [
+    { element: multipleChoice, controller: multipleChoiceController },
+    { element: mcPopulatedBlank, controller: mcPopulatedBlankController },
+  ],
+  { math: { assetRoot: "https://cdn.jsdelivr.net/npm" } },
+);
 ```
+
+```html
+<pie-item-player id="player" strategy="preloaded"></pie-item-player>
+<script type="module">
+  import "./pie-elements";
+  const player = document.getElementById("player");
+  player.env = { mode: "gather", role: "student" };
+  player.session = { id: "session-1", data: [] };
+  player.config = itemConfig; // authored at any version of these packages
+</script>
+```
+
+A Vite host needs no bundler configuration for the element packages
+([`apps/item-demos/vite.config.ts`](../../apps/item-demos/vite.config.ts) has
+none). The packages ship no declarations for `./browser/*`, so a TypeScript host
+adds `declare module` shims
+([`pie-element-browser-builds.d.ts`](../../apps/item-demos/src/pie-element-browser-builds.d.ts)).
+`math.assetRoot` names the npm root that serves MathJax's fonts and speech data
+([MathJax assets](./math-rendering.md#mathjax-assets)). The players are not
+hosted here, so each registration carries the controller whose `model()` the
+player runs; a hosted player takes the `hosted` attribute and omits the
+controllers.
+
+Demos that run this setup:
+
+- [`apps/item-demos/.../preloaded-npm/+page.svelte`](../../apps/item-demos/src/routes/preloaded-npm/+page.svelte)
+  (`/preloaded-npm`): the item player with two elements. Its registration passes
+  `tag`, `package` and `version` explicitly, the version read from each
+  package's own `package.json`.
+- [`apps/section-demos/.../preloaded-npm-elements/+page.svelte`](../../apps/section-demos/src/routes/%28demos%29/preloaded-npm-elements/+page.svelte)
+  (`/preloaded-npm-elements`): the section player with eight elements, the same
+  registration call, `?hosted=1` to drop the controllers, and items authored
+  under another base tag and at other versions. Its dependencies are in
+  [`apps/section-demos/package.json`](../../apps/section-demos/package.json).
+- `?player=preloaded` on any section or item demo registers every element the
+  demo content uses, through
+  [`apps/demo-ui/src/preloaded-elements.ts`](../../apps/demo-ui/src/preloaded-elements.ts).
 
 - `package` and `version` default to the `piePackage` the modules export, the
   `{ name, version }` of the package they were built from. A `package` or
@@ -332,6 +409,8 @@ await import("@pie-players/pie-item-player");
   exact pin keeps it equal to the installed package:
 
   ```ts
+  import * as delivery from "@pie-element/multiple-choice/browser/delivery";
+  import * as controller from "@pie-element/multiple-choice/browser/controller";
   import manifest from "../package.json"; // pins "@pie-element/multiple-choice" exactly
 
   registerPreloadedElements([
@@ -386,8 +465,34 @@ pie-elements-ng elements with the item player and the MathJax files they load,
 and register the elements at import, without controllers, so a hosted
 `<pie-item-player strategy="preloaded">` renders them without fetching. They
 are transitional: a new integration registers ESM builds itself, as above.
-[Preloaded player](../preloaded-player/readme.md) covers installing and
-upgrading them.
+
+The host declares the build alone, pinned exactly. It carries its own item
+player and the element set, so `@pie-players/pie-item-player` and the
+`@pie-element/*` packages are not dependencies:
+
+```json
+{
+  "dependencies": {
+    "@pie-players/pie-preloaded-player": "0.3.75-star-0326-ng.2"
+  }
+}
+```
+
+```html
+<script type="module">
+  import "@pie-players/pie-preloaded-player";
+</script>
+<pie-item-player strategy="preloaded" hosted config="..." env="..." session="...">
+</pie-item-player>
+```
+
+The player is hosted, so its models arrive server-processed
+([Models and scoring](../preloaded-player/readme.md#models-and-scoring)). No demo
+app installs the build. The
+[`item-player-generated-preloaded` spec](../../packages/item-player/tests/item-player-generated-preloaded.spec.ts)
+generates one, serves it and mounts a player on it.
+[Preloaded player](../preloaded-player/readme.md) covers the version scheme,
+dist-tags, bundler settings and upgrading from `pie-fixed-player-static`.
 
 ## Load completion
 

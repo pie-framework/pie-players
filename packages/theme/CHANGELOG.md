@@ -1,5 +1,21 @@
 # @pie-players/pie-theme
 
+## 1.0.0-beta.10
+
+### Patch Changes
+
+- cdedeb8: Every package now ships a `LICENSE` file, the published bundles keep the `@license` notices of the libraries they inline (DOMPurify, lit, MathJax, speech-rule-engine, MathLive, Compute Engine, JSXGraph), and every package that inlines third-party code ships a `THIRD-PARTY-LICENSES.txt` beside its bundles with each inlined package's version and full licence text; builds used to strip the notices. `@pie-players/pie-calculator-cortex`'s licence file is now the MIT text plus the third-party notices.
+- cdedeb8: Every `exports` entry of every published package now lists a `default` condition straight after `import`, with the same target. `require.resolve` and any resolver that matches neither `import` nor `types` used to fail with `ERR_PACKAGE_PATH_NOT_EXPORTED` and now land on the ESM file. The packages stay ESM-only; none ships CommonJS, and `docs/install/packages.md` says so.
+- da266bd: The content stylesheet no longer restyles a host page's own elements: the legacy content classes that are common words (`.abs`, `.variable`, `.whole`, `.noprint`, `.passage-title` and the rest) now match only inside `[data-pie-content]`, and only `kds-*`, `mjx-*`, `TEX-*` and `.frac` stay page-wide. Authored markup a host portals outside a `[data-pie-content]` subtree loses the confined rules.
+  
+  The item player and the print player adopt the content stylesheet into the ShadowRoot they sit in, through the new `adoptContentStylesInto` in `@pie-players/pie-players-shared/ui/content-styles`, so content mounted in a host's shadow tree is styled. The NDS icon button loads when `ndsIcons` is on instead of at import. The toolkit's CSS highlight names are now `pie-tts-word`, `pie-tts-sentence` and `pie-annotation-<colour>`, and the colour-scheme registry is shared across module copies on a page like the provider registry. `check:event-names` fails on a new event outside the `pie-` namespace.
+- ed88428: Published bundles are fully minified, whitespace included, about a fifth smaller across the suite; licence and `/*!` comments stay, and `/* @__PURE__ */` annotations go. The Cortex calculator ships one copy of Compute Engine, shared by the main bundle and its evaluation worker, which cuts the package from about 14 MB to 8.4 MB, and the worker keeps its blob wrapper for cross-origin pages. Packages publish only the declaration files a type entry reaches. `check:bundle-safety` fails any Vite bundle that is not minified, and `check:declaration-reachability` fails a package that ships an unreachable declaration.
+- c100692: The `@pie-players/pie-players-shared` root now lists its exports by name. The object helpers, attribute coercion and content styles are exported only from their subpaths (`/object`, `/ui/attribute-coercion`, `/ui/content-styles`), and the root no longer carries internal UI helpers that no published package or host imports from it: `createPointerRotateController`, `normalizeDegrees`, the safe-storage helpers, `isTabbable`, `scopeSelector`, the overlay geometry functions and placement step constants, and the pointer and overlay helper types. The test-only `resetContentStylesWarningForTesting` is gone from every entry.
+  
+  Every package exports `./package.json`, so a tool can read the installed version through the `exports` map.
+  
+  Only the four CDN entry points keep `unpkg` and `jsdelivr`. The section player's and the item list's now name their `dist/browser/` build, which is the file a CDN page loads; every other package drops both fields.
+
 ## 1.0.0-beta.9
 
 ### Patch Changes

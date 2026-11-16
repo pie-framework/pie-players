@@ -29,17 +29,17 @@ const demo: DemoInfo = {
 						{
 							id: "0",
 							value:
-								'<img alt="3x8 array" src="https://app.fluence.net/ia/image/3099cb73d5fe400b91b72f2606d1211c" />',
+								'<img alt="3x8 array" src="/demo-assets/drag-in-the-blank/array-3x8.svg" />',
 						},
 						{
 							id: "1",
 							value:
-								'<img alt="36÷9 array" src="https://app.fluence.net/ia/image/cc6e862dad4749d4a1ae6540ea775179" />',
+								'<img alt="36÷9 array" src="/demo-assets/drag-in-the-blank/array-36-div-9.svg" />',
 						},
 						{
 							id: "2",
 							value:
-								'<img alt="5x7 array" src="https://app.fluence.net/ia/image/ab3e342a466941a1a608f65eb7ec1c68" />',
+								'<img alt="5x7 array" src="/demo-assets/drag-in-the-blank/array-5x7.svg" />',
 						},
 					],
 					correctResponse: {

@@ -1,5 +1,34 @@
 # @pie-players/pie-tool-calculator-inline
 
+## 1.0.0-beta.10
+
+### Patch Changes
+
+- 5a750a2: Package descriptions now say what each package is: the two calculator packages are provider-neutral (the `desmos` in their names is historical) and `pie-tool-theme` is the color-scheme picker. Package names, tags and `dist` filenames are unchanged.
+- cdedeb8: Every package now ships a `LICENSE` file, the published bundles keep the `@license` notices of the libraries they inline (DOMPurify, lit, MathJax, speech-rule-engine, MathLive, Compute Engine, JSXGraph), and every package that inlines third-party code ships a `THIRD-PARTY-LICENSES.txt` beside its bundles with each inlined package's version and full licence text; builds used to strip the notices. `@pie-players/pie-calculator-cortex`'s licence file is now the MIT text plus the third-party notices.
+- cdedeb8: Every `exports` entry of every published package now lists a `default` condition straight after `import`, with the same target. `require.resolve` and any resolver that matches neither `import` nor `types` used to fail with `ERR_PACKAGE_PATH_NOT_EXPORTED` and now land on the ESM file. The packages stay ESM-only; none ships CommonJS, and `docs/install/packages.md` says so.
+- ed88428: Published bundles are fully minified, whitespace included, about a fifth smaller across the suite; licence and `/*!` comments stay, and `/* @__PURE__ */` annotations go. The Cortex calculator ships one copy of Compute Engine, shared by the main bundle and its evaluation worker, which cuts the package from about 14 MB to 8.4 MB, and the worker keeps its blob wrapper for cross-origin pages. Packages publish only the declaration files a type entry reaches. `check:bundle-safety` fails any Vite bundle that is not minified, and `check:declaration-reachability` fails a package that ships an unreachable declaration.
+- c100692: The `@pie-players/pie-players-shared` root now lists its exports by name. The object helpers, attribute coercion and content styles are exported only from their subpaths (`/object`, `/ui/attribute-coercion`, `/ui/content-styles`), and the root no longer carries internal UI helpers that no published package or host imports from it: `createPointerRotateController`, `normalizeDegrees`, the safe-storage helpers, `isTabbable`, `scopeSelector`, the overlay geometry functions and placement step constants, and the pointer and overlay helper types. The test-only `resetContentStylesWarningForTesting` is gone from every entry.
+  
+  Every package exports `./package.json`, so a tool can read the installed version through the `exports` map.
+  
+  Only the four CDN entry points keep `unpkg` and `jsdelivr`. The section player's and the item list's now name their `dist/browser/` build, which is the file a CDN page loads; every other package drops both fields.
+- Updated dependencies [e566569]
+- Updated dependencies [022bb44]
+- Updated dependencies [3c450db]
+- Updated dependencies [e3e6da5]
+- Updated dependencies [6d4cba0]
+- Updated dependencies [b8ba5f4]
+- Updated dependencies [388d44c]
+- Updated dependencies [cdedeb8]
+- Updated dependencies [cdedeb8]
+- Updated dependencies [af92439]
+- Updated dependencies [da266bd]
+- Updated dependencies [ed88428]
+- Updated dependencies [c100692]
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.10
+  - @pie-players/pie-players-shared@1.0.0-beta.10
+
 ## 1.0.0-beta.9
 
 ### Patch Changes

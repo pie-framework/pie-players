@@ -23,7 +23,7 @@ const demo: DemoInfo = {
 					element: "image-cloze-association",
 					prompt: "This is the question prompt",
 					image: {
-						src: "https://app.fluence.net/ia/image/6412223997a34018b15f8512bee6c04c",
+						src: "/demo-assets/image-cloze-association/tire-pieces-graph.svg",
 						width: 465,
 						scale: false,
 						height: 313,
@@ -65,8 +65,8 @@ const demo: DemoInfo = {
 						fontsize: "small",
 					},
 					possible_responses: [
-						'<img alt="" src="https://app.fluence.net/ia/image/9e5ed1d6762c4dac87b080e190af113d"/>',
-						'<img alt="" src="https://app.fluence.net/ia/image/729ca157d04c440ab7ae1c2abfb9c057"/>',
+						'<img alt="With tire recycling" src="/demo-assets/image-cloze-association/with-tire-recycling.svg"/>',
+						'<img alt="Without tire recycling" src="/demo-assets/image-cloze-association/without-tire-recycling.svg"/>',
 					],
 					validation: {
 						scoring_type: "exactMatch",
@@ -75,12 +75,12 @@ const demo: DemoInfo = {
 							value: [
 								{
 									images: [
-										'<img alt="" src="https://app.fluence.net/ia/image/729ca157d04c440ab7ae1c2abfb9c057"/>',
+										'<img alt="Without tire recycling" src="/demo-assets/image-cloze-association/without-tire-recycling.svg"/>',
 									],
 								},
 								{
 									images: [
-										'<img alt="" src="https://app.fluence.net/ia/image/9e5ed1d6762c4dac87b080e190af113d"/>',
+										'<img alt="With tire recycling" src="/demo-assets/image-cloze-association/with-tire-recycling.svg"/>',
 									],
 								},
 							],

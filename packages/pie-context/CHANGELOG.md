@@ -1,5 +1,19 @@
 # @pie-players/pie-context
 
+## 1.0.0-beta.10
+
+### Patch Changes
+
+- e566569: `pie-item-player` and `pie-assessment-toolkit` answer `interfaceLocaleContext` only once a host chooses a locale: `locale` set, or a supplied provider resolving a locale other than `en-US`. Before that a PIE element labels its chrome in the language its item declares, as on pie-elements, instead of in a default `en-US`; a host that wants English over the item's language sets `locale="en-US"`. `hostChoseInterfaceLocale` in `@pie-players/pie-players-shared/i18n` holds the rule.
+- 022bb44: Players answer `interfaceLocaleContext` with the locale the host asked for, from the moment it is set, and `<pie-item-list>` and `<pie-item-summary>` forward `locale` so an explicit `en-US` is answered there too; a row or player handed a provider its owner already asked for that locale leaves it alone, so a failed catalog loads and reports once. The toolkit and section shell stamp `lang` and `dir` only once a host chose a locale. In the i18n engine, `getLocale()` names the locale actually served, a host override for `es-MX` layers over a shipped `es` catalog, and a host override of one plural category keeps the catalog's other forms instead of throwing.
+- cdedeb8: Every package now ships a `LICENSE` file, the published bundles keep the `@license` notices of the libraries they inline (DOMPurify, lit, MathJax, speech-rule-engine, MathLive, Compute Engine, JSXGraph), and every package that inlines third-party code ships a `THIRD-PARTY-LICENSES.txt` beside its bundles with each inlined package's version and full licence text; builds used to strip the notices. `@pie-players/pie-calculator-cortex`'s licence file is now the MIT text plus the third-party notices.
+- cdedeb8: Every `exports` entry of every published package now lists a `default` condition straight after `import`, with the same target. `require.resolve` and any resolver that matches neither `import` nor `types` used to fail with `ERR_PACKAGE_PATH_NOT_EXPORTED` and now land on the ESM file. The packages stay ESM-only; none ships CommonJS, and `docs/install/packages.md` says so.
+- c100692: The `@pie-players/pie-players-shared` root now lists its exports by name. The object helpers, attribute coercion and content styles are exported only from their subpaths (`/object`, `/ui/attribute-coercion`, `/ui/content-styles`), and the root no longer carries internal UI helpers that no published package or host imports from it: `createPointerRotateController`, `normalizeDegrees`, the safe-storage helpers, `isTabbable`, `scopeSelector`, the overlay geometry functions and placement step constants, and the pointer and overlay helper types. The test-only `resetContentStylesWarningForTesting` is gone from every entry.
+  
+  Every package exports `./package.json`, so a tool can read the installed version through the `exports` map.
+  
+  Only the four CDN entry points keep `unpkg` and `jsdelivr`. The section player's and the item list's now name their `dist/browser/` build, which is the file a CDN page loads; every other package drops both fields.
+
 ## 1.0.0-beta.9
 
 No changes in this release.

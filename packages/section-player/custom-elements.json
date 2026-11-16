@@ -3028,6 +3028,7 @@
 								"text": "boolean"
 							},
 							"default": "false",
+							"description": "Whether this is the section's current item. Reflected as the `is-current` attribute, which is where hosts read it; the card sets no `aria-current`.",
 							"attribute": "is-current",
 							"reflects": true
 						},
@@ -3182,6 +3183,7 @@
 								"text": "boolean"
 							},
 							"default": "false",
+							"description": "Whether this is the section's current item. Reflected as the `is-current` attribute, which is where hosts read it; the card sets no `aria-current`.",
 							"fieldName": "isCurrent"
 						},
 						{

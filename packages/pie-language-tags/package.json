@@ -35,7 +35,7 @@
 		"test": "bun test"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.4",
+		"@biomejs/biome": "^2.6.8",
 		"typescript": "^5.9.3"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/pie-language-tags#readme",

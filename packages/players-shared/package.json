@@ -154,10 +154,10 @@
 		"scan-hardcoded": "bun run src/i18n/scripts/scan-hardcoded.ts"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.4",
+		"@biomejs/biome": "^2.6.8",
 		"@happy-dom/global-registrator": "^21.0.4",
 		"@pie-element/shared-math-rendering-mathjax": "0.1.8",
-		"@playwright/test": "^1.64.1",
+		"@playwright/test": "^1.65.1",
 		"@types/semver": "^7.8.0",
 		"es-module-shims": "^2.8.4",
 		"esbuild": "^0.28.2",

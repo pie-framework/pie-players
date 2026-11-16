@@ -46,7 +46,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^26.6.6",
-		"oclif": "^6.0.8",
+		"oclif": "^6.0.15",
 		"ts-node": "^10.9.2",
 		"typescript": "^5.9.3"
 	},

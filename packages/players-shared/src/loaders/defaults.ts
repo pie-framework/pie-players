@@ -1,5 +1,5 @@
 /**
- * Default PIE bundle service base URL. Exported so widgets can use it as
+ * Default bundle host base URL. Exported so widgets can use it as
  * the fallback when the host does not supply `loaderOptions.bundleHost`.
  */
 export const DEFAULT_BUNDLE_HOST = "https://proxy.pie-api.com/bundles/";

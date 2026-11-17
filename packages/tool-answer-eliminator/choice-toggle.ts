@@ -101,6 +101,11 @@ function createIcon(): SVGSVGElement {
 	return svg;
 }
 
+/**
+ * The plain toggle, which the theme stylesheet paints. Pressed, it takes the
+ * shared trigger tokens: `--pie-tool-trigger-active-background`,
+ * `--pie-tool-trigger-active-border-color` and `--pie-tool-trigger-active-color`.
+ */
 function createPlainToggle(
 	choiceId: string,
 	events: ToggleEvents,

@@ -108,6 +108,18 @@
 						{
 							"name": "--pie-answer-eliminator-strike-color",
 							"description": "Single colour for every part of an elimination: the text line-through, the diagonals over an image, and the line or diagonals over rendered math, so one choice reads as one treatment. Must fall back through canonical --pie-incorrect so a host that themes only the canonical feedback tokens still gets a coherent strike. Folds into --pie-incorrect by --pie-fixed-hue-collapse, so a colour scheme replaces a host strike colour and a Base Theme keeps it exactly."
+						},
+						{
+							"name": "--pie-tool-trigger-active-background",
+							"description": "Component trigger active/open background hook; falls back through existing semantic tokens and must preserve WCAG contrast when overridden by hosts."
+						},
+						{
+							"name": "--pie-tool-trigger-active-border-color",
+							"description": "Component trigger active/open border hook; falls back through existing semantic tokens."
+						},
+						{
+							"name": "--pie-tool-trigger-active-color",
+							"description": "Component trigger active/open foreground hook; hosts are responsible for preserving contrast with the active trigger background."
 						}
 					],
 					"x-pie": {

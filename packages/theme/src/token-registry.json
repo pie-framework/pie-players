@@ -1410,6 +1410,7 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
+			"packages/tool-answer-eliminator/choice-toggle.ts",
 			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte",
 			"packages/theme/src/components.css"
@@ -1430,6 +1431,7 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
+			"packages/tool-answer-eliminator/choice-toggle.ts",
 			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte",
 			"packages/theme/src/components.css"
@@ -1450,6 +1452,7 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
+			"packages/tool-answer-eliminator/choice-toggle.ts",
 			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte",
 			"packages/theme/src/components.css"

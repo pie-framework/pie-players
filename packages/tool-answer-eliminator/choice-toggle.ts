@@ -2,6 +2,7 @@ import {
 	applyNdsGlyphVariant,
 	installFontAwesomeInShadow,
 } from "@pie-players/pie-players-shared/ui/fontawesome";
+import { own } from "./owned-nodes.js";
 
 export const TOGGLE_CLASS = "pie-answer-eliminator-toggle";
 const ACTIVE_CLASS = "pie-answer-eliminator-toggle--active";
@@ -18,12 +19,14 @@ const SVG_NS = "http://www.w3.org/2000/svg";
  * inline because the toggle mounts in whatever tree the item renders into. The
  * accent stays the same when pressed, as in the NDS design: the turned glyph
  * and `aria-pressed` carry the state, and the button owns its fill, which the
- * pressed trigger tokens cannot reach.
+ * pressed trigger tokens cannot reach. Its fill, `--color-primary-white`, is the
+ * button background, which a host hands back to a colour scheme together with
+ * the button colour its glyph takes.
  */
 const NDS_PALETTE_BRIDGE = [
 	"--color-interactive-blue: var(--pie-button-color, var(--pie-text, #222));",
 	"--color-new-gray: var(--pie-background-dark, #f3f5f7);",
-	"--color-primary-white: var(--pie-white, #ffffff);",
+	"--color-primary-white: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-white, #ffffff)));",
 	"--color-primary-black: var(--pie-text, #000000);",
 	"--color-focus-blue: var(--pie-button-focus-outline, #2b87ff);",
 ].join(" ");
@@ -43,7 +46,6 @@ export interface ToggleEvents {
 /** One choice's toggle, a plain button or the NDS icon button. */
 export interface ChoiceToggle {
 	readonly element: HTMLElement;
-	readonly nds: boolean;
 	/** Appends the toggle as the container's last child. */
 	mount(container: HTMLElement): void;
 	setLabel(label: string, stamp: (element: Element) => void): void;
@@ -93,6 +95,15 @@ function activateOnClick(element: HTMLElement, events: ToggleEvents) {
 	});
 }
 
+const ICON_PRESENTATION = {
+	width: "0.875em",
+	height: "0.875em",
+	fill: "none",
+	stroke: "currentColor",
+	"stroke-width": "2",
+	"stroke-linecap": "round",
+};
+
 /** A plus, which the theme turns 45° to read as × until pressed. */
 function createIcon(): SVGSVGElement {
 	const svg = document.createElementNS(SVG_NS, "svg") as SVGSVGElement;
@@ -100,6 +111,10 @@ function createIcon(): SVGSVGElement {
 	svg.setAttribute("viewBox", "0 0 16 16");
 	svg.setAttribute("aria-hidden", "true");
 	svg.setAttribute("focusable", "false");
+	// Painted and sized without the theme too, which overrides all of these.
+	for (const [name, value] of Object.entries(ICON_PRESENTATION)) {
+		svg.setAttribute(name, value);
+	}
 	const path = document.createElementNS(SVG_NS, "path");
 	path.setAttribute("d", "M8 2.5v11M2.5 8h11");
 	svg.appendChild(path);
@@ -115,7 +130,7 @@ function createPlainToggle(
 	choiceId: string,
 	events: ToggleEvents,
 ): ChoiceToggle {
-	const button = document.createElement("button");
+	const button = own(document.createElement("button"));
 	button.type = "button";
 	button.className = `${TOGGLE_CLASS} ${PLAIN_CLASS}`;
 	button.setAttribute("aria-pressed", "false");
@@ -127,7 +142,6 @@ function createPlainToggle(
 
 	return {
 		element: button,
-		nds: false,
 		mount: (container) => container.appendChild(button),
 		setLabel(label, stamp) {
 			button.setAttribute("aria-label", label);
@@ -148,7 +162,7 @@ function createPlainToggle(
 
 function createNdsToggle(choiceId: string, events: ToggleEvents): ChoiceToggle {
 	// The literal tag lets check-theme-tokens find this mount and its bridge.
-	const host = document.createElement("pie-nds-icon-button");
+	const host = own(document.createElement("pie-nds-icon-button"));
 	host.className = `${TOGGLE_CLASS} ${NDS_CLASS}`;
 	host.style.cssText = NDS_PALETTE_BRIDGE;
 	host.setAttribute("type", "circle");
@@ -178,7 +192,6 @@ function createNdsToggle(choiceId: string, events: ToggleEvents): ChoiceToggle {
 
 	return {
 		element: host,
-		nds: true,
 		mount(container) {
 			container.appendChild(host);
 			installFontAwesomeInShadow(host);
@@ -200,7 +213,24 @@ function createNdsToggle(choiceId: string, events: ToggleEvents): ChoiceToggle {
 				host.toggleAttribute("disabled", !enabled);
 			}
 		},
-		focus: () => (inner() ?? host).focus({ preventScroll: true }),
+		// A toggle created this frame has no inner <button> until Lit's first
+		// update; the host itself is not focusable. Focus waits for it, unless
+		// focus has gone elsewhere by then.
+		focus() {
+			const button = inner();
+			if (button) {
+				button.focus({ preventScroll: true });
+				return;
+			}
+			const rendered =
+				(host as { updateComplete?: Promise<unknown> }).updateComplete ??
+				new Promise((resolve) => requestAnimationFrame(resolve));
+			void rendered.then(() => {
+				const active = document.activeElement;
+				if (active && active !== document.body) return;
+				inner()?.focus({ preventScroll: true });
+			});
+		},
 		destroy() {
 			ariaObserver.disconnect();
 			disconnectGlyph();

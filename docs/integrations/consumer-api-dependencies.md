@@ -521,7 +521,17 @@ every toggle now takes. Its learners see the restyled toggle. It reads the
 `--pie-button-*` tokens through the same chain as the inline tool triggers, so
 Host S's colour-scheme reset of `--pie-button-bg`, `--pie-button-color`,
 `--pie-button-border` and `--pie-button-background-color` reaches it, and
-`--pie-tool-trigger-active-*`, which Host S does not set.
+`--pie-tool-trigger-active-*`, which Host S does not set. That reset does not
+hand back `--pie-primary` or `--pie-white`, so a pressed toggle keeps the Base
+Theme's colours there, legible but off-scheme. The rework also draws the
+`strikethrough` strike as SVG marks in the container, in place of the CSS
+highlight, the `.pie-answer-eliminator-eliminated-fallback` class, the
+`span.pie-answer-eliminator-image-strike` wrapper and the math-strike classes;
+those names appear only in the player builds Hosts A, P and S vendor. Host A's
+tools branch is the one checkout that places the eliminator with `nds-icons`. Its
+reset hands back `--pie-button-bg` and `--pie-button-color`, which the NDS
+toggle's fill and glyph take through the palette bridge. Host C places no
+eliminator, and Host M's checkout holds only a build.
 
 The dictionary capabilities and the selection door onto them reach one consumer,
 found on the Host R re-derivation: that host serves a dictionary endpoint in the
@@ -2287,6 +2297,14 @@ guarded, the two globals keep their shape across releases in both directions,
 and either item-player build renders elements registered by the other. A shape
 change that ships in lockstep passes every in-repo test and breaks that host
 whenever its two halves are on different versions.
+
+The content stylesheet is cross-version there too. `installContentStyles`
+installs once per page, so when the preloaded build evaluates first, as on the
+fallback launch that appends the bundle late, its `components.css` styles the
+section player's tools. The answer eliminator sets its marks' layout and a
+fallback stroke inline, and its toggle icon's size and paint as attributes, so
+an older stylesheet leaves them in place; that stylesheet's own rules still
+apply as its version wrote them, such as a dim that reaches the toggle.
 
 ## Default section persistence key (Host S)
 

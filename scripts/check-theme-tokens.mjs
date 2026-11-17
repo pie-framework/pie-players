@@ -446,7 +446,7 @@ function checkSourceUsage(root, registry, failures) {
  */
 const NDS_BRIDGE_DECLARATIONS = [
 	"--color-new-gray: var(--pie-background-dark, #f3f5f7);",
-	"--color-primary-white: var(--pie-white, #ffffff);",
+	"--color-primary-white: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-white, #ffffff)));",
 	"--color-primary-black: var(--pie-text, #000000);",
 	"--color-focus-blue: var(--pie-button-focus-outline, #2b87ff);",
 ];

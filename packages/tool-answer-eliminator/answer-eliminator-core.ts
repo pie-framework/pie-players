@@ -23,6 +23,7 @@ import type {
 	ElementStateKeys,
 	EliminationStrategyName,
 } from "./element-props.js";
+import { isOwned } from "./owned-nodes.js";
 import { CrossStrategy } from "./strategies/cross-strategy.js";
 import type { EliminationStrategy } from "./strategies/elimination-strategy.js";
 import { MaskStrategy } from "./strategies/mask-strategy.js";
@@ -56,10 +57,6 @@ interface TrackedChoice {
 
 const STATE_TOOL_ID = "answerEliminator";
 
-// Strategy keys name page-global CSS highlights and style elements, so they are
-// unique across every core on the page, not just within one.
-let nextStrategyToken = 0;
-
 /**
  * Core engine for answer eliminator tool
  * Coordinates the choices elements supply, strategies, and state management
@@ -76,6 +73,7 @@ export class AnswerEliminatorCore {
 	// Strategy ids end up in CSS highlight names and attribute values, so they
 	// are opaque tokens that stay stable for this core's lifetime.
 	private strategyKeys = new Map<string, string>();
+	private nextStrategyToken = 0;
 	// Anonymous group tokens, local to this core.
 	private anonymousGroups = new WeakMap<Element, string>();
 	private nextToken = 0;
@@ -97,8 +95,11 @@ export class AnswerEliminatorCore {
 	private selectionChangeHandler: (() => void) | null = null;
 	private selectionObserver: MutationObserver | null = null;
 	private selectionRefreshFrame: number | null = null;
+	// Whether the element added or removed markup of its own since the last
+	// refresh, which may have brought new choices.
+	private structureChanged = false;
 	// The choice whose toggle has focus, kept when the toggle is removed with
-	// its choice so the rescan can hand focus to the replacement.
+	// its choice so a retrack can hand focus to the replacement.
 	private focusedKey: string | null = null;
 
 	private store: EliminatorStateStore | null = null;
@@ -107,8 +108,25 @@ export class AnswerEliminatorCore {
 	private elementIds: ReadonlySet<string> | null = null;
 
 	constructor(strategyType: EliminationStrategyName = "strikethrough") {
-		this.strategy = this.createStrategy(strategyType);
+		this.strategy = createStrategy(strategyType);
 		this.strategy.initialize();
+	}
+
+	/**
+	 * Paint eliminations with another strategy. Every elimination is repainted
+	 * in place, whether or not the tool is on: the toggles, the blocks and the
+	 * store stay as they are, and so does focus.
+	 */
+	setStrategy(strategyType: EliminationStrategyName): void {
+		const next = createStrategy(strategyType);
+		if (next.name === this.strategy.name) return;
+		this.strategy.destroy();
+		this.strategy = next;
+		next.initialize();
+		for (const key of this.eliminated) {
+			const tracked = this.choices.get(key);
+			if (tracked) this.paint(tracked);
+		}
 	}
 
 	/**
@@ -163,47 +181,16 @@ export class AnswerEliminatorCore {
 		);
 	}
 
-	private createStrategy(type: string): EliminationStrategy {
-		switch (type) {
-			case "mask":
-				return new MaskStrategy();
-			case "cross":
-				return new CrossStrategy();
-			default:
-				return new StrikethroughStrategy();
-		}
-	}
-
 	/**
-	 * Initialize eliminator for a question
+	 * Turn the tool on for a question. Keyed elements restore their eliminations
+	 * from the store; anything else keeps what this core held. A choice already
+	 * tracked, in the same markup, is left as it is, so turning the tool off and
+	 * on again asks no element to re-render. Choices an element renders later
+	 * are picked up as they appear.
 	 */
 	initializeForQuestion(questionRoot: HTMLElement): void {
 		this.active = true;
-
-		// Start from a clean slate: the previous question's strikes and
-		// disabled inputs must not outlive its choices.
-		const previous = new Set(this.eliminated);
-		this.restoreAllSelectable();
-		this.clearAllEliminations();
-		this.cleanupButtons();
-
-		for (const found of findChoiceTargets(questionRoot)) {
-			this.initializeChoice(found, questionRoot);
-		}
-
-		// Keyed elements restore from the store; anything else keeps what this
-		// core held before the re-initialization.
-		const persisted = this.readPersistedEliminations();
-		for (const [key, tracked] of this.choices) {
-			const restore = persisted.has(tracked.group)
-				? persisted.get(tracked.group)?.has(tracked.choiceId)
-				: previous.has(key);
-			if (restore) this.applyElimination(key, tracked);
-		}
-
-		// React to live selection changes so a selected choice's button is
-		// hidden (and a deselected choice's button restored) without needing a
-		// full re-initialization.
+		this.retrack(questionRoot, "store");
 		this.attachSelectionListener(questionRoot);
 	}
 
@@ -261,42 +248,10 @@ export class AnswerEliminatorCore {
 	private strategyKeyFor(key: string): string {
 		let strategyKey = this.strategyKeys.get(key);
 		if (!strategyKey) {
-			strategyKey = `choice-${nextStrategyToken++}`;
+			strategyKey = `choice-${this.nextStrategyToken++}`;
 			this.strategyKeys.set(key, strategyKey);
 		}
 		return strategyKey;
-	}
-
-	private initializeChoice(found: FoundChoice, questionRoot: HTMLElement): void {
-		// A tracked detached container sends every mutation to a rescan, which
-		// mounts toggles, which mutates: the rescan would never settle.
-		if (!found.target.container.isConnected) return;
-		if (!this.isEligible(found, questionRoot)) return;
-		const { target, owner } = found;
-		const choiceId = target.id;
-		const group = this.resolveGroup(found, questionRoot);
-		const key = this.trackingKey(group, choiceId);
-		const tracked: TrackedChoice = {
-			choiceId,
-			group,
-			strategyKey: this.strategyKeyFor(key),
-			target,
-			owner,
-			toggle: null,
-		};
-		this.choices.set(key, tracked);
-
-		const toggle = this.createToggle(key, tracked);
-		tracked.toggle = toggle;
-
-		// Apply the initial visibility rule (hidden if selected, or if the
-		// feature is off and this choice isn't struck). Kept in sync afterwards
-		// via the question-root `change` listener and toggle actions.
-		this.updateButtonVisibility(key);
-
-		// In flow as the container's last child: the element's own layout
-		// decides where it lands.
-		toggle.mount(target.container);
 	}
 
 	private createToggle(key: string, tracked: TrackedChoice): ChoiceToggle {
@@ -327,7 +282,12 @@ export class AnswerEliminatorCore {
 		if (this.eliminated.has(key)) {
 			// Where elimination is unavailable, as in evaluate mode, so is restoring.
 			if (!tracked.target.canEliminate()) return;
+			const focused =
+				tracked.toggle?.element.contains(document.activeElement) ?? false;
 			this.restoreChoice(key);
+			// With the tool off, the restored choice's toggle leaves the layout;
+			// focus goes to the choice instead of the page.
+			if (focused && !this.active) focusChoice(tracked);
 		} else {
 			if (!tracked.target.canEliminate()) {
 				console.warn(
@@ -356,12 +316,7 @@ export class AnswerEliminatorCore {
 	): boolean {
 		// Never strike a currently-selected choice.
 		if (tracked.target.isSelected()) return false;
-		const { container, content } = tracked.target;
-		if (!content.isConnected) return false;
-		const range = document.createRange();
-		range.selectNodeContents(content);
-
-		this.strategy.apply(tracked.strategyKey, { range, container, content });
+		if (!this.paint(tracked)) return false;
 		markEliminated(tracked.target, this.chrome());
 		this.eliminated.add(key);
 
@@ -374,6 +329,16 @@ export class AnswerEliminatorCore {
 		// A struck choice always keeps a visible button (even when the feature
 		// is toggled off) so it can be undone.
 		this.updateButtonVisibility(key);
+		return true;
+	}
+
+	/** Paints a choice eliminated; false when its content is detached. */
+	private paint(tracked: TrackedChoice): boolean {
+		const { container, content } = tracked.target;
+		if (!content.isConnected) return false;
+		const range = document.createRange();
+		range.selectNodeContents(content);
+		this.strategy.apply(tracked.strategyKey, { range, container, content });
 		return true;
 	}
 
@@ -455,13 +420,15 @@ export class AnswerEliminatorCore {
 	}
 
 	/**
-	 * Eliminated choice ids per keyed element present in this question, read
-	 * from the store. Empty when restoration is off or there is no store.
+	 * Eliminated choice ids per keyed element among `groups`, read from the
+	 * store. Empty when restoration is off or there is no store.
 	 */
-	private readPersistedEliminations(): Map<string, Set<string>> {
+	private readPersistedEliminations(
+		groups: Iterable<string>,
+	): Map<string, Set<string>> {
 		const persisted = new Map<string, Set<string>>();
 		if (!this.store || !this.shouldRestoreState) return persisted;
-		for (const { group } of this.choices.values()) {
+		for (const group of groups) {
 			if (persisted.has(group) || !Object.hasOwn(this.elementStateKeys, group))
 				continue;
 			try {
@@ -483,9 +450,8 @@ export class AnswerEliminatorCore {
 	}
 
 	/**
-	 * Re-enable selection for every currently-tracked struck choice.
-	 * Must run before the tracked choices are cleared, otherwise the inputs
-	 * would be left disabled after the tool is turned off.
+	 * Re-enable selection for every eliminated choice, before `destroy` forgets
+	 * them, so no input is left disabled.
 	 */
 	private restoreAllSelectable(): void {
 		for (const key of this.eliminated) {
@@ -495,8 +461,8 @@ export class AnswerEliminatorCore {
 	}
 
 	/**
-	 * Remove every elimination's paint and mark, as a re-initialization or a
-	 * rescan starts over. Selection is restored separately, by the caller.
+	 * Remove every elimination's paint and mark. Selection is restored
+	 * separately, by `restoreAllSelectable`.
 	 */
 	private clearAllEliminations(): void {
 		for (const key of this.eliminated) {
@@ -564,46 +530,118 @@ export class AnswerEliminatorCore {
 	}
 
 	/**
-	 * Track the choices again after an element replaced their markup, as one
-	 * rendering from an HTML string does on every change. Eliminations carry
-	 * over by choice id. The element that supplied a choice still holds it
-	 * eliminated and is not asked again, so an element that re-renders on every
-	 * `setEliminated` cannot loop; a new element instance, or a legacy choice,
-	 * is. A choice no longer supplied is restored in its element. Nothing is
-	 * saved: the store records the learner's toggles.
+	 * Track the choices under the question root again and reconcile their
+	 * eliminations, as the tool turns on, as an element replaces a choice's
+	 * markup (one rendering from an HTML string does on every change), or as an
+	 * element renders choices after the tool turned on.
+	 *
+	 * A choice in the markup already tracked, from the same element, keeps its
+	 * toggle, paint and block as they are. A replaced choice takes a new toggle,
+	 * and its elimination carries over by choice id: the element that supplied
+	 * it still holds it eliminated and is not asked again, so an element that
+	 * re-renders on every `setEliminated` cannot loop; a new element instance,
+	 * or a legacy choice, is. A choice no longer supplied is restored in its
+	 * element. Focus on a replaced toggle moves to its replacement.
+	 *
+	 * Keyed elements restore from the store: under `"store"` every one, under
+	 * `"new"` only those not tracked before. The rest keep what this core holds.
+	 * Nothing is saved: the store records the learner's toggles.
 	 */
-	private rescan(): void {
-		const questionRoot = this.questionRoot;
-		if (!questionRoot) return;
-
-		const refocus =
-			this.focusedKey !== null &&
-			!this.choices.get(this.focusedKey)?.toggle?.element.isConnected &&
-			(document.activeElement === null ||
-				document.activeElement === document.body)
-				? this.focusedKey
-				: null;
+	private retrack(questionRoot: HTMLElement, restore: "store" | "new"): void {
 		const previous = this.choices;
-		const eliminated = new Set(this.eliminated);
+		const held = new Set(this.eliminated);
+		const focusedKey = this.focusedKey;
+		const focusedToggle =
+			focusedKey === null ? null : (previous.get(focusedKey)?.toggle ?? null);
 
-		this.clearAllEliminations();
-		for (const { toggle } of previous.values()) toggle?.destroy();
-		this.choices = new Map();
-
+		const next = new Map<string, TrackedChoice>();
 		for (const found of findChoiceTargets(questionRoot)) {
-			this.initializeChoice(found, questionRoot);
-		}
-
-		for (const key of eliminated) {
+			// A tracked detached container sends every mutation to a rescan, which
+			// mounts toggles, which mutates: the rescan would never settle.
+			if (!found.target.container.isConnected) continue;
+			if (!this.isEligible(found, questionRoot)) continue;
+			const group = this.resolveGroup(found, questionRoot);
+			const key = this.trackingKey(group, found.target.id);
+			if (next.has(key)) continue;
 			const before = previous.get(key);
-			const tracked = this.choices.get(key);
-			const held = !!before?.owner && tracked?.owner === before.owner;
-			if (tracked && this.applyElimination(key, tracked, !held)) continue;
-			(tracked ?? before)?.target.setEliminated(false);
+			if (before && isSameChoice(before, found)) {
+				const relabel = before.target.label !== found.target.label;
+				// The latest target: an element's callbacks may close over a render.
+				before.target = found.target;
+				if (relabel && before.toggle) this.labelToggle(before.toggle, before);
+				next.set(key, before);
+				continue;
+			}
+			next.set(key, {
+				choiceId: found.target.id,
+				group,
+				strategyKey: this.strategyKeyFor(key),
+				target: found.target,
+				owner: found.owner,
+				toggle: null,
+			});
 		}
 
-		if (refocus) {
-			this.choices.get(refocus)?.toggle?.focus();
+		const trackedGroups = new Set(
+			Array.from(previous.values(), ({ group }) => group),
+		);
+		const persisted = this.readPersistedEliminations(
+			Array.from(next.values(), ({ group }) => group).filter(
+				(group) => restore === "store" || !trackedGroups.has(group),
+			),
+		);
+		this.choices = next;
+
+		for (const [key, before] of previous) {
+			if (next.get(key) === before) continue;
+			before.toggle?.destroy();
+			if (!this.eliminated.delete(key)) continue;
+			this.strategy.remove(before.strategyKey);
+			clearEliminated(before.target);
+			if (!next.has(key)) before.target.setEliminated(false);
+		}
+
+		for (const [key, tracked] of next) {
+			const wanted = persisted.has(tracked.group)
+				? persisted.get(tracked.group)?.has(tracked.choiceId) === true
+				: held.has(key);
+			const before = previous.get(key);
+			if (before === tracked) {
+				const toggle = tracked.toggle;
+				if (toggle && toggle.element.parentElement !== tracked.target.container) {
+					toggle.mount(tracked.target.container);
+				}
+				if (this.eliminated.has(key) === wanted) {
+					this.updateButtonVisibility(key);
+				} else if (wanted) {
+					this.applyElimination(key, tracked);
+				} else {
+					this.restoreChoice(key);
+				}
+				continue;
+			}
+			const toggle = this.createToggle(key, tracked);
+			tracked.toggle = toggle;
+			this.updateButtonVisibility(key);
+			// In flow as the container's last child: the element's own layout
+			// decides where it lands.
+			toggle.mount(tracked.target.container);
+			const ownerHolds =
+				held.has(key) && !!before?.owner && before.owner === tracked.owner;
+			if (wanted && this.applyElimination(key, tracked, !ownerHolds)) continue;
+			if (ownerHolds) tracked.target.setEliminated(false);
+		}
+
+		if (focusedKey !== null) {
+			const toggle = this.choices.get(focusedKey)?.toggle;
+			const active = document.activeElement;
+			if (
+				toggle &&
+				toggle !== focusedToggle &&
+				(active === null || active === document.body)
+			) {
+				toggle.focus();
+			}
 		}
 	}
 
@@ -612,13 +650,22 @@ export class AnswerEliminatorCore {
 	 * cancel-and-reschedule: a burst of mutations coalesces into one pending
 	 * refresh, and mutations in later frames each get their own refresh, so a
 	 * multi-render commit settles instead of being starved by continuous
-	 * churn (e.g. ripple animations).
+	 * churn (e.g. ripple animations). A structural change among them first
+	 * looks for choices the element has rendered since; the strategy then lays
+	 * its marks out again.
 	 */
 	private scheduleSelectionRefresh(): void {
 		if (this.selectionRefreshFrame !== null) return;
 		this.selectionRefreshFrame = requestAnimationFrame(() => {
 			this.selectionRefreshFrame = null;
+			const questionRoot = this.questionRoot;
+			if (this.structureChanged && questionRoot) {
+				this.structureChanged = false;
+				this.retrack(questionRoot, "new");
+			}
 			this.refreshSelectionState();
+			// The element's changes may have moved the struck content.
+			this.strategy.relayout?.();
 		});
 	}
 
@@ -630,8 +677,8 @@ export class AnswerEliminatorCore {
 	 * *property* on their own render — invisible to a MutationObserver and
 	 * later than the native `change` event — so we observe every DOM change
 	 * the widget makes (childList + attributes) and re-read on the next frame,
-	 * by which point the property has settled. Mutations inside our own
-	 * toggles are ignored so the refresh can't loop.
+	 * by which point the property has settled. Changes to the nodes the
+	 * eliminator added are ignored, so the refresh cannot loop.
 	 */
 	private attachSelectionListener(questionRoot: HTMLElement): void {
 		this.detachSelectionListener();
@@ -642,21 +689,18 @@ export class AnswerEliminatorCore {
 
 		if (typeof MutationObserver !== "undefined") {
 			this.selectionObserver = new MutationObserver((records) => {
-				const toggles: Element[] = [];
-				for (const { toggle } of this.choices.values()) {
-					if (toggle) toggles.push(toggle.element);
-				}
-				// Only react to changes outside our own toggles: the NDS button
-				// renders and restyles inside its host.
-				const relevant = records.some(
-					(record) =>
-						!toggles.some((toggle) => toggle.contains(record.target)),
-				);
-				if (!relevant) return;
+				const relevant = records.filter((record) => !isOwned(record.target));
+				if (relevant.length === 0) return;
 				// Rescanned at once, before paint, so replaced choices never show
 				// without their toggles and a focused toggle's successor takes focus.
-				if (this.hasDetachedChoice()) this.rescan();
-				else this.scheduleSelectionRefresh();
+				if (this.hasDetachedChoice()) {
+					this.retrack(questionRoot, "new");
+					return;
+				}
+				if (relevant.some(changesElementStructure)) {
+					this.structureChanged = true;
+				}
+				this.scheduleSelectionRefresh();
 			});
 			this.selectionObserver.observe(questionRoot, {
 				subtree: true,
@@ -671,6 +715,7 @@ export class AnswerEliminatorCore {
 			cancelAnimationFrame(this.selectionRefreshFrame);
 			this.selectionRefreshFrame = null;
 		}
+		this.structureChanged = false;
 		if (this.selectionObserver) {
 			this.selectionObserver.disconnect();
 			this.selectionObserver = null;
@@ -732,4 +777,65 @@ export class AnswerEliminatorCore {
 		this.cleanupButtons();
 		this.strategy.destroy();
 	}
+}
+
+function createStrategy(type: string): EliminationStrategy {
+	switch (type) {
+		case "mask":
+			return new MaskStrategy();
+		case "cross":
+			return new CrossStrategy();
+		default:
+			return new StrikethroughStrategy();
+	}
+}
+
+/** Whether a found choice is the tracked one, in the same markup. */
+function isSameChoice(tracked: TrackedChoice, found: FoundChoice): boolean {
+	return (
+		tracked.owner === found.owner &&
+		tracked.target.container === found.target.container &&
+		tracked.target.content === found.target.content
+	);
+}
+
+/** Whether a record adds or removes a node that is not the eliminator's. */
+function changesElementStructure(record: MutationRecord): boolean {
+	if (record.type !== "childList") return false;
+	for (const nodes of [record.addedNodes, record.removedNodes]) {
+		for (const node of nodes) {
+			if (!isOwned(node)) return true;
+		}
+	}
+	return false;
+}
+
+const FOCUSABLE =
+	'input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Moves focus to a choice's first focusable control outside its toggle. An
+ * element lifting its block on the next render gets one frame, unless focus
+ * has gone elsewhere by then.
+ */
+function focusChoice({ target, toggle }: TrackedChoice): void {
+	const focus = (): boolean => {
+		const { container } = target;
+		const candidates = [
+			...(container.matches(FOCUSABLE) ? [container] : []),
+			...container.querySelectorAll<HTMLElement>(FOCUSABLE),
+		];
+		const control = candidates.find(
+			(candidate) => !toggle?.element.contains(candidate),
+		);
+		control?.focus({ preventScroll: true });
+		return !!control && document.activeElement === control;
+	};
+	if (focus()) return;
+	requestAnimationFrame(() => {
+		const active = document.activeElement;
+		if (!active || active === document.body || toggle?.element.contains(active)) {
+			focus();
+		}
+	});
 }

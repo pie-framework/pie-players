@@ -23,6 +23,9 @@ export interface EliminationStrategy {
 
 	isEliminated(choiceId: string): boolean;
 
+	/** Repositions the marks after the content may have moved or reflowed. */
+	relayout?(): void;
+
 	clearAll(): void;
 
 	getEliminatedIds(): string[];
@@ -30,23 +33,4 @@ export interface EliminationStrategy {
 	initialize(): void;
 
 	destroy(): void;
-}
-
-/**
- * The resolved strike colour. A host's `--pie-answer-eliminator-strike-color`
- * folds into the scheme's `--pie-incorrect` by `--pie-fixed-hue-collapse`, so a
- * colour scheme replaces it and a Base Theme keeps it exactly.
- */
-export const STRIKE_PAINT =
-	"color-mix(in srgb, var(--pie-incorrect, #ff9800) var(--pie-fixed-hue-collapse, 0%), var(--pie-answer-eliminator-strike-color, var(--pie-incorrect, #ff9800)))";
-
-/**
- * Whether the page renders in forced colours, where Chromium paints every
- * custom highlight as a selection, so struck text would read as selected.
- */
-export function forcedColorsActive(): boolean {
-	return (
-		typeof matchMedia === "function" &&
-		matchMedia("(forced-colors: active)").matches
-	);
 }

@@ -33,18 +33,32 @@ const toggleNames = (item: Locator) =>
 		buttons.map((button) => button.getAttribute("aria-label")),
 	);
 
-/** Text of each non-empty eliminator highlight, by highlight name. */
-const eliminatorHighlights = (page: Page) =>
-	page.evaluate(() => {
-		const out: Record<string, string[]> = {};
-		for (const [name, highlight] of CSS.highlights) {
-			if (!name.startsWith("pie-answer-eliminated")) continue;
-			const ranges = [...(highlight as unknown as Set<Range>)].map((range) =>
-				range.toString().replace(/\s+/g, " "),
+/**
+ * The choices the strike marks lie over, by their labels' text. Each mark sits
+ * in the choice's container, outside the dimmed label, and over it.
+ */
+const struckChoices = (scope: Locator | Page) =>
+	scope.locator("[data-pie-answer-eliminator-strike]").evaluateAll((marks) => {
+		const struck: string[] = [];
+		for (const mark of marks) {
+			const label = mark.parentElement?.querySelector(
+				"[data-pie-answer-eliminator-label]",
 			);
-			if (ranges.length > 0) out[name] = ranges;
+			if (!label || label.contains(mark)) continue;
+			const m = mark.getBoundingClientRect();
+			const l = label.getBoundingClientRect();
+			const over =
+				m.left < l.right && l.left < m.right && m.top < l.bottom && l.top < m.bottom;
+			const copy = label.cloneNode(true) as Element;
+			for (const added of copy.querySelectorAll(
+				".pie-answer-eliminator-sr-announcement",
+			)) {
+				added.remove();
+			}
+			const text = (copy.textContent ?? "").replace(/\s+/g, " ").trim();
+			if (over && !struck.includes(text)) struck.push(text);
 		}
-		return out;
+		return struck;
 	});
 
 const controls = (page: Page) => page.getByTestId("answer-eliminator-controls");
@@ -79,16 +93,14 @@ test("a legacy multiple choice row ends with a toggle that strikes the choice ou
 	await expect(
 		item.getByRole("radio", { name: /Oxygen \(eliminated\)/ }),
 	).toBeDisabled();
-	await expect
-		.poll(async () => Object.values(await eliminatorHighlights(page)).flat())
-		.toEqual(["B. Oxygen"]);
+	await expect.poll(() => struckChoices(item)).toEqual(["B. Oxygen"]);
 
 	await toggle(item, "Oxygen").click();
 	await expect(toggle(item, "Oxygen")).toHaveAttribute("aria-pressed", "false");
 	await expect(item.locator(ELIMINATED_ROW)).toHaveCount(0);
 	await expect(item.locator(".pie-answer-eliminator-sr-announcement")).toHaveCount(0);
 	await expect(item.getByRole("radio", { name: /Oxygen/ })).toBeEnabled();
-	await expect.poll(() => eliminatorHighlights(page)).toEqual({});
+	await expect.poll(() => struckChoices(item)).toEqual([]);
 });
 
 test("EBSR takes toggles in both parts, and each item keeps its own strikes", async ({
@@ -120,23 +132,20 @@ test("EBSR takes toggles in both parts, and each item keeps its own strikes", as
 		ebsr.getByRole("checkbox", { name: /The nucleus stores DNA \(eliminated\)/ }),
 	).toBeDisabled();
 
-	// Each eliminator keys its own highlight, so the item's strike holds only its choice.
+	// Each item's marks lie over its own choices only.
+	await expect.poll(() => struckChoices(mc)).toEqual(["B. Oxygen"]);
 	await expect
-		.poll(async () => Object.values(await eliminatorHighlights(page)).flat().sort())
+		.poll(async () => (await struckChoices(ebsr)).sort())
 		.toEqual([
-			"B. Oxygen",
 			expect.stringContaining("The cell wall"),
 			expect.stringContaining("The nucleus stores DNA"),
 		]);
-	const highlights = Object.values(await eliminatorHighlights(page));
-	expect(highlights.find((ranges) => ranges.includes("B. Oxygen"))).toEqual([
-		"B. Oxygen",
-	]);
 
 	// Restoring one item's choice leaves the other item's strikes in place.
 	await toggle(mc, "Oxygen").click();
+	await expect.poll(() => struckChoices(mc)).toEqual([]);
 	await expect
-		.poll(async () => Object.values(await eliminatorHighlights(page)).flat().sort())
+		.poll(async () => (await struckChoices(ebsr)).sort())
 		.toEqual([
 			expect.stringContaining("The cell wall"),
 			expect.stringContaining("The nucleus stores DNA"),
@@ -179,7 +188,7 @@ test("switching the strategy mid-session redraws the elimination", async ({ page
 	await expect(masked).toHaveCount(1);
 	await expect(masked).toHaveCSS("opacity", "0.2");
 	await expect(toggle(item, "Oxygen")).toHaveAttribute("aria-pressed", "true");
-	await expect.poll(() => eliminatorHighlights(page)).toEqual({});
+	await expect.poll(() => struckChoices(item)).toEqual([]);
 
 	await controls(page).getByLabel("Cross", { exact: true }).check();
 	await expect(row.locator("svg.pie-answer-eliminator-cross")).toHaveCount(1);
@@ -188,9 +197,7 @@ test("switching the strategy mid-session redraws the elimination", async ({ page
 
 	await controls(page).getByLabel("Strike through", { exact: true }).check();
 	await expect(item.locator(".pie-answer-eliminator-cross")).toHaveCount(0);
-	await expect
-		.poll(async () => Object.values(await eliminatorHighlights(page)).flat())
-		.toEqual(["B. Oxygen"]);
+	await expect.poll(() => struckChoices(item)).toEqual(["B. Oxygen"]);
 });
 
 test("NDS icons replace every toggle mid-session and keep what is eliminated", async ({
@@ -259,4 +266,13 @@ test("the controls start from the URL, so a state can be linked", async ({ page 
 	await expect(controls(page).getByLabel("Cross", { exact: true })).toBeChecked();
 	await expect(controls(page).getByLabel("Evaluate", { exact: true })).toBeChecked();
 	await expect(controls(page).getByLabel("NDS icons")).toBeChecked();
+
+	// The linked state reaches the eliminator, not only the controls.
+	await page.goto("/answer-eliminator?strategy=cross&nds=1", { waitUntil: "networkidle" });
+	const item = await openEliminator(page, "ae-legacy-mc");
+	await expect(
+		item.locator("pie-nds-icon-button.pie-answer-eliminator-toggle--nds"),
+	).toHaveCount(4);
+	await toggle(item, "Oxygen").click();
+	await expect(item.locator(`${ELIMINATED_ROW} svg.pie-answer-eliminator-cross`)).toHaveCount(1);
 });

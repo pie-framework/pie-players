@@ -158,14 +158,15 @@ describe("content stylesheet theming", () => {
 		expect(collapsed).not.toContain("transition:all");
 	});
 
-	test("an eliminated choice is dimmed as well as struck, on every strike path", () => {
+	test("an eliminated choice is dimmed as well as struck, and the strike keeps its colour", () => {
 		// Redundant coding: elimination must survive a strike colour the learner
-		// cannot distinguish from the text.
+		// cannot distinguish from the text. The marks lie outside the dimmed
+		// content, painted in the resolved strike colour.
 		expect(collapsed).toContain(
-			".pie-answer-eliminator-eliminated-fallback{text-decoration:line-through",
+			".pie-answer-eliminator-strike-line{stroke:var(--pie-answer-eliminator-strike-paint);stroke-width:2;}",
 		);
-		// The dim is on the content, so the toggle and its focus ring keep their
-		// contrast; a highlight pseudo cannot carry `opacity` at all.
+		// The dim is on the content, so the toggle, its focus ring and the marks
+		// keep their contrast.
 		expect(collapsed).toContain(
 			'[data-pie-answer-eliminated="true"][data-pie-answer-eliminator-label="true"]{opacity:0.6;}',
 		);
@@ -191,21 +192,28 @@ describe("content stylesheet theming", () => {
 		);
 	});
 
-	test("hover rings the plain toggle in the hover colour", () => {
-		const hover = collapsed.slice(
-			collapsed.indexOf(".pie-answer-eliminator-toggle--plain:hover"),
+	test("hover rings the plain toggle in the hover border, and darkens a pressed one", () => {
+		const ruleAt = (selector: string) => {
+			const from = collapsed.slice(collapsed.indexOf(selector));
+			return from.slice(0, from.indexOf("}"));
+		};
+		// The hover border clears 3:1 against the page in every theme; the hover
+		// text colour is chosen against the hover fill.
+		const hover = ruleAt(".pie-answer-eliminator-toggle--plain:hover");
+		expect(hover).toContain("box-shadow:0001pxvar(--pie-button-hover-border,");
+		expect(hover).toContain("border-color:var(--pie-button-hover-border,");
+		expect(hover).toContain("color:var(--pie-button-hover-color,");
+		const pressed = ruleAt(
+			".pie-answer-eliminator-toggle--plain.pie-answer-eliminator-toggle--active:hover",
 		);
-		const rule = hover.slice(0, hover.indexOf("}"));
-		expect(rule).toContain("box-shadow:0001pxvar(--pie-button-hover-color,");
-		expect(rule).toContain("border-color:var(--pie-button-hover-color,");
-		expect(rule).toContain("color:var(--pie-button-hover-color,");
+		expect(pressed).toContain("var(--pie-primary-dark,");
 	});
 
 	test("a host strike colour collapses to the scheme's incorrect colour", () => {
 		expect(collapsed).toContain(
 			"--pie-answer-eliminator-strike-paint:color-mix(insrgb,var(--pie-incorrect,#ff9800)var(--pie-fixed-hue-collapse,0%),var(--pie-answer-eliminator-strike-color,var(--pie-incorrect,#ff9800)))",
 		);
-		// The maths cross is an SVG now: forced colours drop gradients.
+		// Every mark is an SVG stroke: forced colours drop gradients.
 		expect(collapsed).not.toContain("linear-gradient(tobottomright");
 	});
 

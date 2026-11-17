@@ -1,3 +1,5 @@
+import { own } from "../owned-nodes.js";
+
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 /** A corner-to-corner X, or one horizontal line through the middle. */
@@ -31,7 +33,7 @@ export function createStrikeMark(
 	shape: StrikeMarkShape,
 	classes: StrikeMarkClasses,
 ): SVGSVGElement {
-	const svg = document.createElementNS(SVG_NS, "svg") as SVGSVGElement;
+	const svg = own(document.createElementNS(SVG_NS, "svg") as SVGSVGElement);
 	svg.setAttribute("class", classes.mark);
 	svg.setAttribute("viewBox", "0 0 100 100");
 	svg.setAttribute("preserveAspectRatio", "none");
@@ -49,6 +51,12 @@ export function createStrikeMark(
 				line.setAttribute(name, value);
 			}
 			line.setAttribute("vector-effect", "non-scaling-stroke");
+			// Painted without the theme too, in the text colour; the theme's rules
+			// override it. A casing without the theme is not drawn.
+			if (className === classes.line) {
+				line.setAttribute("stroke", "currentColor");
+				line.setAttribute("stroke-width", "2");
+			}
 			svg.appendChild(line);
 		}
 	}

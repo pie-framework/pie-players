@@ -188,27 +188,29 @@ persist in the runtime context's element tool state store, under the key
 		});
 	});
 
-	// The toolbar owns this tool's coordinator entry and passes its visibility in
-	// `visible`. A strategy change rebuilds the core, which restores the
-	// question's eliminations from the store.
+	// One core for the component's life. The toolbar owns this tool's
+	// coordinator entry and passes its visibility in `visible`, which the effect
+	// below turns into initialization.
 	$effect(() => {
-		const next = new AnswerEliminatorCore(strategy);
-		untrack(() => {
-			next.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
-			next.setElementIds(elementIds ? [...elementIds] : null);
-			next.setInterfaceI18n(interfaceI18n);
-			next.setNdsIcons(useNdsIcons && ndsIconButtonReady);
-			core = next;
-			if (isActive) {
-				initializeForCurrentQuestion();
-			} else {
-				next.cleanup();
-			}
+		const next = untrack(() => {
+			const created = new AnswerEliminatorCore(strategy);
+			created.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
+			created.setElementIds(elementIds ? [...elementIds] : null);
+			created.setInterfaceI18n(interfaceI18n);
+			created.setNdsIcons(useNdsIcons && ndsIconButtonReady);
+			return created;
 		});
+		core = next;
 		return () => {
 			next.destroy();
 			if (core === next) core = null;
 		};
+	});
+
+	// Repainted in place, whether or not the tool is on, so every elimination,
+	// toggle and focus survives the change.
+	$effect(() => {
+		core?.setStrategy(strategy);
 	});
 
 	$effect(() => {
@@ -231,8 +233,7 @@ persist in the runtime context's element tool state store, under the key
 				core.enableStateRestoration();
 				initializeForCurrentQuestion();
 			} else {
-				// Hide all elimination buttons when tool is turned off
-				// This also disables state restoration
+				// Struck choices keep their toggles; the others leave the layout.
 				core.cleanup();
 			}
 		}

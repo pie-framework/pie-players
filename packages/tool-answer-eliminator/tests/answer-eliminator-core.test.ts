@@ -277,15 +277,19 @@ test("a choice with no text is named from the catalog", () => {
 });
 
 /** Stands in for the vendored Lit button: it renders an inner <button>. */
+/** Renders its inner <button> after its first update, as the Lit button does. */
 class FakeNdsIconButton extends HTMLElement {
+	updateComplete: Promise<void> = Promise.resolve();
 	connectedCallback() {
-		if (!this.querySelector("button")) {
-			this.appendChild(document.createElement("button"));
-		}
+		this.updateComplete = Promise.resolve().then(() => {
+			if (!this.querySelector("button")) {
+				this.appendChild(document.createElement("button"));
+			}
+		});
 	}
 }
 
-test("the toggles become NDS icon buttons once the tag is registered", () => {
+test("the toggles become NDS icon buttons once the tag is registered", async () => {
 	const root = document.createElement("multiple-choice");
 	root.innerHTML = choiceMarkup("a", "Alpha") + choiceMarkup("b", "Beta");
 	document.body.append(root);
@@ -298,6 +302,7 @@ test("the toggles become NDS icon buttons once the tag is registered", () => {
 		customElements.define("pie-nds-icon-button", FakeNdsIconButton);
 	}
 	core.setNdsIcons(true);
+	await nextFrame();
 
 	const nds = Array.from(root.querySelectorAll<HTMLElement>("pie-nds-icon-button"));
 	expect(nds).toHaveLength(2);
@@ -312,7 +317,7 @@ test("the toggles become NDS icon buttons once the tag is registered", () => {
 	);
 	// The button reads the NDS palette, bridged to the theme.
 	expect(nds[0].style.getPropertyValue("--color-primary-white")).toBe(
-		"var(--pie-white, #ffffff)",
+		"var(--pie-button-background-color, var(--pie-button-bg, var(--pie-white, #ffffff)))",
 	);
 	// The pressed state survives the swap, reflected onto the inner button.
 	expect(
@@ -399,6 +404,8 @@ test("a legacy choice struck before evaluate mode stays struck and unselectable 
 
 	expect(toggles()[0].disabled).toBe(true);
 	expect(toggles()[1].style.display).toBe("none");
+	// A browser sends no click to a disabled button; the core refuses one anyway.
+	toggles()[0].disabled = false;
 	toggles()[0].click();
 	expect(toggles()[0].getAttribute("aria-pressed")).toBe("true");
 	expect(inputs()).toEqual([true, true]);
@@ -424,20 +431,7 @@ test("a legacy re-render that lifts a struck choice's block is blocked again", a
 	expect(toggles()[1].style.display).toBe("");
 });
 
-test("two cores on one page keep their strike highlights apart", () => {
-	const originalCSS = globalThis.CSS;
-	class Highlight {
-		constructor(..._ranges: unknown[]) {}
-	}
-	const highlights = new Map<string, unknown>();
-	Object.defineProperty(globalThis, "Highlight", {
-		value: Highlight,
-		configurable: true,
-	});
-	Object.defineProperty(globalThis, "CSS", {
-		value: { highlights },
-		configurable: true,
-	});
+test("two cores on one page keep their eliminations apart", () => {
 	const second = new AnswerEliminatorCore();
 	try {
 		const first = document.createElement("multiple-choice");
@@ -454,18 +448,171 @@ test("two cores on one page keep their strike highlights apart", () => {
 		for (const root of [first, other]) {
 			root.querySelector<HTMLButtonElement>("button.pie-answer-eliminator-toggle")?.click();
 		}
-		expect(highlights.size).toBe(2);
+		expect([core.getEliminatedCount(), second.getEliminatedCount()]).toEqual([1, 1]);
 
 		first.querySelector<HTMLButtonElement>("button.pie-answer-eliminator-toggle")?.click();
-		expect(highlights.size).toBe(1);
-		expect(second.getEliminatedCount()).toBe(1);
+		expect([core.getEliminatedCount(), second.getEliminatedCount()]).toEqual([0, 1]);
+		expect(other.querySelector("[data-pie-answer-eliminated]")).not.toBe(null);
 	} finally {
 		second.destroy();
-		Object.defineProperty(globalThis, "CSS", {
-			value: originalCSS,
-			configurable: true,
-		});
-		delete (globalThis as { Highlight?: unknown }).Highlight;
-		document.head.replaceChildren();
 	}
+});
+
+test("every struck choice keeps a frozen toggle in evaluate mode", async () => {
+	const { root, toggles, inputs } = legacyPair();
+	for (const toggle of toggles()) toggle.click();
+
+	// With every input blocked, the inputs cannot show the mode; the model does.
+	(root as HTMLElement & { _model?: unknown })._model = { disabled: true };
+	renderMode(root, "evaluate");
+	await refreshed();
+
+	expect(toggles().map((toggle) => [toggle.style.display, toggle.disabled])).toEqual([
+		["", true],
+		["", true],
+	]);
+	for (const toggle of toggles()) {
+		toggle.disabled = false;
+		toggle.click();
+	}
+	expect(toggles().map((toggle) => toggle.getAttribute("aria-pressed"))).toEqual([
+		"true",
+		"true",
+	]);
+	expect(inputs()).toEqual([true, true]);
+});
+
+test("a legacy element's model holds its choices read-only", async () => {
+	const { root, toggles } = legacyPair();
+	toggles()[0].click();
+
+	(root as HTMLElement & { _model?: unknown })._model = { disabled: true };
+	root.dispatchEvent(new Event("change", { bubbles: true }));
+	await nextFrame();
+
+	expect(toggles()[0].disabled).toBe(true);
+	expect(toggles()[1].style.display).toBe("none");
+});
+
+test("a legacy element's session says which choice is selected", () => {
+	const root = document.createElement("multiple-choice") as HTMLElement & {
+		session?: unknown;
+	};
+	root.innerHTML = choiceMarkup("a", "Alpha") + choiceMarkup("b", "Beta");
+	root.session = { value: ["b"] };
+	// A shown correct answer checks its input and leaves the session as it was.
+	(root.querySelector('input[value="a"]') as HTMLInputElement).checked = true;
+	document.body.append(root);
+	core = new AnswerEliminatorCore();
+	core.disableStateRestoration();
+	core.initializeForQuestion(root);
+
+	const toggles = Array.from(
+		root.querySelectorAll<HTMLButtonElement>("button.pie-answer-eliminator-toggle"),
+	);
+	expect(toggles.map((toggle) => toggle.style.visibility)).toEqual(["", "hidden"]);
+	toggles[0].click();
+	expect(toggles[0].getAttribute("aria-pressed")).toBe("true");
+});
+
+test("a strategy change repaints the struck choices in place, with the tool off too", () => {
+	const root = document.createElement("multiple-choice");
+	root.innerHTML = choiceMarkup("a", "Alpha") + choiceMarkup("b", "Beta");
+	document.body.append(root);
+	core = new AnswerEliminatorCore();
+	core.disableStateRestoration();
+	core.initializeForQuestion(root);
+	const toggles = () =>
+		Array.from(
+			root.querySelectorAll<HTMLButtonElement>("button.pie-answer-eliminator-toggle"),
+		);
+	const [struck] = toggles();
+	struck.click();
+	struck.focus();
+	core.cleanup();
+
+	core.setStrategy("mask");
+
+	const labels = Array.from(root.querySelectorAll("label"));
+	const masked = () =>
+		labels.map((label) => label.classList.contains("pie-answer-eliminator-masked"));
+	expect(masked()).toEqual([true, false]);
+	expect(toggles()[0]).toBe(struck);
+	expect(document.activeElement).toBe(struck);
+	expect(struck.getAttribute("aria-pressed")).toBe("true");
+	expect(root.querySelector("input")?.disabled).toBe(true);
+	expect(toggles()[1].style.display).toBe("none");
+
+	core.setStrategy("strikethrough");
+	expect(masked()).toEqual([false, false]);
+	expect(core.getEliminatedCount()).toBe(1);
+});
+
+test("choices an element renders after the tool turns on get toggles", async () => {
+	const root = document.createElement("multiple-choice");
+	root.innerHTML = choiceMarkup("a", "Alpha");
+	document.body.append(root);
+	core = new AnswerEliminatorCore();
+	core.disableStateRestoration();
+	core.initializeForQuestion(root);
+	const toggles = () =>
+		Array.from(
+			root.querySelectorAll<HTMLButtonElement>("button.pie-answer-eliminator-toggle"),
+		);
+	const [first] = toggles();
+	first.click();
+
+	root.insertAdjacentHTML("beforeend", choiceMarkup("b", "Beta"));
+	await refreshed();
+
+	expect(toggles().map((toggle) => toggle.getAttribute("aria-label"))).toEqual([
+		"Eliminate Alpha",
+		"Eliminate Beta",
+	]);
+	// The choice already tracked keeps its toggle and its elimination.
+	expect(toggles()[0]).toBe(first);
+	expect(first.getAttribute("aria-pressed")).toBe("true");
+});
+
+test("restoring a choice with the tool off moves focus to its control", () => {
+	const root = document.createElement("multiple-choice");
+	root.innerHTML = choiceMarkup("a", "Alpha");
+	document.body.append(root);
+	core = new AnswerEliminatorCore();
+	core.disableStateRestoration();
+	core.initializeForQuestion(root);
+	const toggle = root.querySelector<HTMLButtonElement>(
+		"button.pie-answer-eliminator-toggle",
+	) as HTMLButtonElement;
+	toggle.click();
+	core.cleanup();
+
+	toggle.focus();
+	toggle.click();
+
+	expect(toggle.style.display).toBe("none");
+	expect(document.activeElement).toBe(root.querySelector("input"));
+});
+
+test("an NDS toggle created for a re-rendered choice takes focus once it renders", async () => {
+	if (!customElements.get("pie-nds-icon-button")) {
+		customElements.define("pie-nds-icon-button", FakeNdsIconButton);
+	}
+	const root = document.createElement("multiple-choice");
+	root.innerHTML = choiceMarkup("a", "Alpha");
+	document.body.append(root);
+	core = new AnswerEliminatorCore();
+	core.disableStateRestoration();
+	core.setNdsIcons(true);
+	core.initializeForQuestion(root);
+	await nextFrame();
+	(root.querySelector("pie-nds-icon-button button") as HTMLButtonElement).focus();
+
+	// The element replaces the choice's markup; its toggle goes with it.
+	root.innerHTML = choiceMarkup("a", "Alpha");
+	await refreshed();
+
+	const replacement = root.querySelector("pie-nds-icon-button button");
+	expect(replacement).not.toBe(null);
+	expect(document.activeElement).toBe(replacement);
 });

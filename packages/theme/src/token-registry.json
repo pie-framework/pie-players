@@ -7,8 +7,8 @@
 		"status": "active",
 		"schemeParticipation": "optional",
 		"definedIn": [
-			"packages/theme/src/components.css",
-			"packages/tool-answer-eliminator/strategies/elimination-strategy.ts"
+			"packages/tool-answer-eliminator/strategies/overlay-marks.ts",
+			"packages/theme/src/components.css"
 		],
 		"documentedIn": [
 			"packages/tool-answer-eliminator/README.md"

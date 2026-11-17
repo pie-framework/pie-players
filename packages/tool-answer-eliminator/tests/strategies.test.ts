@@ -10,60 +10,24 @@ const { StrikethroughStrategy } = await import(
 	"../strategies/strikethrough-strategy"
 );
 
-const FALLBACK_CLASS = "pie-answer-eliminator-eliminated-fallback";
-const originalCSS = globalThis.CSS;
-const originalMatchMedia = globalThis.matchMedia;
+const { own } = await import("../owned-nodes");
 
-// happy-dom has neither `Highlight` nor `CSS.highlights`.
-const stubHighlightApi = () => {
-	class Highlight {
-		constructor(..._ranges: unknown[]) {}
-	}
-	Object.defineProperty(globalThis, "Highlight", {
-		value: Highlight,
-		configurable: true,
-	});
-	Object.defineProperty(globalThis, "CSS", {
-		value: { highlights: new Map<string, unknown>() },
-		configurable: true,
-	});
-};
+const originalClientRects = Range.prototype.getClientRects;
+/** Each text node's line fragments: happy-dom lays no text out. */
+const textRects = new Map<Node, DOMRect[]>();
 
-/** A `(forced-colors: active)` query the test turns on and off. */
-const stubForcedColors = (active: boolean) => {
-	const listeners = new Set<() => void>();
-	const query = {
-		matches: active,
-		addEventListener: (_type: string, listener: () => void) =>
-			listeners.add(listener),
-		removeEventListener: (_type: string, listener: () => void) =>
-			listeners.delete(listener),
-	};
-	Object.defineProperty(globalThis, "matchMedia", {
-		value: () => query,
-		configurable: true,
-	});
-	return (next: boolean) => {
-		query.matches = next;
-		for (const listener of listeners) listener();
-	};
+Range.prototype.getClientRects = function (this: Range) {
+	return (textRects.get(this.startContainer) ?? []) as unknown as DOMRectList;
 };
 
 afterEach(() => {
-	Object.defineProperty(globalThis, "CSS", {
-		value: originalCSS,
-		configurable: true,
-	});
-	delete (globalThis as { Highlight?: unknown }).Highlight;
-	Object.defineProperty(globalThis, "matchMedia", {
-		value: originalMatchMedia,
-		configurable: true,
-	});
+	textRects.clear();
 	document.head.replaceChildren();
 	document.body.replaceChildren();
 });
 
 afterAll(() => {
+	Range.prototype.getClientRects = originalClientRects;
 	if (ownsDom && GlobalRegistrator.isRegistered) GlobalRegistrator.unregister();
 });
 
@@ -123,101 +87,149 @@ for (const Strategy of [StrikethroughStrategy, CrossStrategy, MaskStrategy]) {
 	});
 }
 
-test("strikethrough strikes text with a custom highlight where it can", () => {
-	stubHighlightApi();
-	const strategy = new StrikethroughStrategy();
-	strategy.initialize();
-	const a = choice("a");
+/** The text node of `element` that reads `text`. */
+function textNode(element: Element, text: string): Text {
+	const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+		if (node.nodeValue === text) return node as Text;
+	}
+	throw new Error(`no text node "${text}"`);
+}
 
-	strategy.apply("a", a.target);
-	expect(CSS.highlights.has("pie-answer-eliminated-a")).toBe(true);
-	expect(a.content.classList.contains(FALLBACK_CLASS)).toBe(false);
-	const rule = document.getElementById("pie-answer-eliminator-highlight-a");
-	expect(rule?.textContent).toContain("var(--pie-fixed-hue-collapse, 0%)");
+const position = (mark: SVGSVGElement) => [
+	mark.style.left,
+	mark.style.top,
+	mark.style.width,
+	mark.style.height,
+];
 
-	strategy.remove("a");
-	expect(CSS.highlights.has("pie-answer-eliminated-a")).toBe(false);
-	expect(document.getElementById("pie-answer-eliminator-highlight-a")).toBe(
-		null,
+const strikeMarks = (container: Element) =>
+	Array.from(
+		container.querySelectorAll<SVGSVGElement>(
+			"[data-pie-answer-eliminator-strike]",
+		),
 	);
-});
 
-test("strikethrough falls back to a class on the content without the API", () => {
-	Object.defineProperty(globalThis, "CSS", { value: {}, configurable: true });
+test("strikethrough draws a line through each line of text, outside the content", () => {
 	const strategy = new StrikethroughStrategy();
-	strategy.initialize();
-	const a = choice("a");
+	const a = choice("a", "Choice <b>a</b> wraps");
+	layOut(a.container, 300, 60);
+	textRects.set(textNode(a.content, "Choice "), [rect(10, 5, 50, 20)]);
+	textRects.set(textNode(a.content, "a"), [rect(60, 5, 10, 20)]);
+	textRects.set(textNode(a.content, " wraps"), [
+		rect(70, 5, 40, 20),
+		rect(10, 25, 30, 20),
+	]);
 
 	strategy.apply("a", a.target);
-	expect(a.content.classList.contains(FALLBACK_CLASS)).toBe(true);
-	expect(a.container.classList.contains(FALLBACK_CLASS)).toBe(false);
+	const marks = strikeMarks(a.container);
+	// A line's fragments join into one mark, across the element boundary.
+	expect(marks.map(position)).toEqual([
+		["10px", "5px", "100px", "20px"],
+		["10px", "25px", "30px", "20px"],
+	]);
+	for (const mark of marks) {
+		expect(mark.getAttribute("data-pie-answer-eliminator-strike")).toBe("line");
+		expect(mark.getAttribute("aria-hidden")).toBe("true");
+		expect(mark.parentElement).toBe(a.container);
+		expect(mark.querySelectorAll(".pie-answer-eliminator-strike-line")).toHaveLength(
+			1,
+		);
+	}
+	expect(a.container.lastElementChild).toBe(a.toggle);
+	// Outside the content, so its dim does not reach the strike, and the
+	// element's markup stays as it rendered it.
+	expect(a.content.innerHTML).toBe("Choice <b>a</b> wraps");
+
 	strategy.remove("a");
-	expect(a.content.classList.contains(FALLBACK_CLASS)).toBe(false);
+	expect(strikeMarks(a.container)).toEqual([]);
 });
 
-test("strikethrough leaves the highlight while forced colours are on", () => {
-	stubHighlightApi();
-	const setForcedColors = stubForcedColors(true);
+test("strikethrough crosses out images and stacked math, and strikes a row of math", () => {
 	const strategy = new StrikethroughStrategy();
-	strategy.initialize();
-	const a = choice("a");
+	const html =
+		'<img src="a.png" alt="A"><mjx-container><mjx-math><mjx-mfrac></mjx-mfrac></mjx-math><mjx-assistive-mml>1/2</mjx-assistive-mml></mjx-container><mjx-container><mjx-math></mjx-math></mjx-container>';
+	const a = choice("a", html);
+	layOut(a.container, 300, 60);
+	const [stacked, row] = Array.from(a.content.querySelectorAll("mjx-math"));
+	a.content.querySelector("img")!.getBoundingClientRect = () =>
+		rect(0, 0, 40, 40);
+	stacked.getBoundingClientRect = () => rect(50, 0, 20, 40);
+	row.getBoundingClientRect = () => rect(80, 10, 30, 20);
+	// MathJax's assistive MathML is visually hidden; the box is struck instead.
+	textRects.set(textNode(a.content, "1/2"), [rect(50, 0, 1, 1)]);
 
-	// Chromium paints a highlight as a selection in forced colours.
 	strategy.apply("a", a.target);
-	expect(CSS.highlights.has("pie-answer-eliminated-a")).toBe(false);
-	expect(a.content.classList.contains(FALLBACK_CLASS)).toBe(true);
-
-	setForcedColors(false);
-	expect(CSS.highlights.has("pie-answer-eliminated-a")).toBe(true);
-	expect(a.content.classList.contains(FALLBACK_CLASS)).toBe(false);
-
-	setForcedColors(true);
-	expect(CSS.highlights.has("pie-answer-eliminated-a")).toBe(false);
-	expect(a.content.classList.contains(FALLBACK_CLASS)).toBe(true);
-
-	strategy.destroy();
-	setForcedColors(false);
-	expect(CSS.highlights.has("pie-answer-eliminated-a")).toBe(false);
+	const marks = strikeMarks(a.container);
+	expect(
+		marks.map((mark) => [
+			mark.getAttribute("data-pie-answer-eliminator-strike"),
+			mark.querySelectorAll("line").length,
+			position(mark),
+		]),
+	).toEqual([
+		// The image's X lies over a casing that keeps it clear of dark artwork.
+		["cross", 4, ["0px", "0px", "40px", "40px"]],
+		// A fraction bar would read as part of a line, so the fraction is crossed.
+		["cross", 2, ["50px", "0px", "20px", "40px"]],
+		["line", 1, ["80px", "10px", "30px", "20px"]],
+	]);
+	expect(
+		marks[0].querySelectorAll(".pie-answer-eliminator-image-strike-casing"),
+	).toHaveLength(2);
+	expect(a.content.innerHTML).toBe(html);
 });
 
-test("strikethrough crosses out images and stacked math with SVG marks", () => {
-	Object.defineProperty(globalThis, "CSS", { value: {}, configurable: true });
+test("strikethrough strikes only text the learner sees", () => {
 	const strategy = new StrikethroughStrategy();
 	const a = choice(
 		"a",
-		'<img src="a.png" alt="A"><mjx-container><mjx-math><mjx-mfrac></mjx-mfrac></mjx-math></mjx-container><mjx-container><mjx-math></mjx-math></mjx-container>',
+		'Seen<span style="visibility: hidden">hidden</span><span style="opacity: 0">clear</span><span style="position: absolute; width: 1px; height: 1px; overflow: hidden">clipped</span><span class="added">added</span>',
 	);
+	own(a.content.querySelector(".added")!);
+	layOut(a.container, 300, 60);
+	for (const [text, left] of [
+		["Seen", 0],
+		["hidden", 40],
+		["clear", 80],
+		["clipped", 120],
+		["added", 160],
+	] as const) {
+		textRects.set(textNode(a.content, text), [rect(left, 30, 30, 20)]);
+	}
 
 	strategy.apply("a", a.target);
-	const wrapper = a.content.querySelector(".pie-answer-eliminator-image-strike");
-	expect(wrapper?.querySelector("img")).not.toBe(null);
-	const [stacked, row] = Array.from(a.content.querySelectorAll("mjx-math"));
-	expect(stacked.getAttribute("data-pie-answer-eliminator-math-strike")).toBe(
-		"cross",
-	);
-	expect(row.getAttribute("data-pie-answer-eliminator-math-strike")).toBe(
-		"line",
-	);
-	// Forced colours keep SVG strokes, where they drop gradients.
-	for (const mark of [
-		wrapper?.querySelector("svg"),
-		stacked.querySelector("svg"),
-	]) {
-		expect(mark?.getAttribute("aria-hidden")).toBe("true");
-		expect(mark?.querySelectorAll("line")).toHaveLength(
-			mark === stacked.querySelector("svg") ? 2 : 4,
-		);
-	}
-	expect(row.querySelector("svg")).toBe(null);
-
-	strategy.remove("a");
-	expect(a.content.innerHTML).toBe(
-		'<img src="a.png" alt="A"><mjx-container><mjx-math class=""><mjx-mfrac></mjx-mfrac></mjx-math></mjx-container><mjx-container><mjx-math class=""></mjx-math></mjx-container>',
-	);
+	expect(strikeMarks(a.container).map(position)).toEqual([
+		["0px", "30px", "30px", "20px"],
+	]);
 });
 
-test("mask dims the content through a class, which a highlight cannot carry", () => {
-	stubHighlightApi();
+test("strikethrough lays its marks out again as the content reflows", () => {
+	const strategy = new StrikethroughStrategy();
+	const a = choice("a", "A choice that wraps");
+	layOut(a.container, 300, 60);
+	const text = textNode(a.content, "A choice that wraps");
+	textRects.set(text, [rect(0, 0, 200, 20)]);
+
+	strategy.apply("a", a.target);
+	const [mark] = strikeMarks(a.container);
+
+	// Narrower: the same mark moves.
+	textRects.set(text, [rect(10, 0, 150, 20)]);
+	strategy.relayout();
+	expect(strikeMarks(a.container)).toEqual([mark]);
+	expect(position(mark)).toEqual(["10px", "0px", "150px", "20px"]);
+
+	// Wrapped onto a second line: a mark per line.
+	textRects.set(text, [rect(0, 0, 100, 20), rect(0, 20, 60, 20)]);
+	strategy.relayout();
+	expect(strikeMarks(a.container).map(position)).toEqual([
+		["0px", "0px", "100px", "20px"],
+		["0px", "20px", "60px", "20px"],
+	]);
+});
+
+test("mask dims the content through a class", () => {
 	const strategy = new MaskStrategy();
 	const a = choice("a");
 
@@ -225,14 +237,13 @@ test("mask dims the content through a class, which a highlight cannot carry", ()
 	expect(a.content.classList.contains("pie-answer-eliminator-masked")).toBe(
 		true,
 	);
-	expect(CSS.highlights.size).toBe(0);
 	strategy.remove("a");
 	expect(a.content.classList.contains("pie-answer-eliminator-masked")).toBe(
 		false,
 	);
 });
 
-test("cross draws an X over block content, after the toggle", () => {
+test("cross draws an X over block content, ahead of the toggle", () => {
 	const strategy = new CrossStrategy();
 	const a = choice("a", "Choice a", "div");
 	// happy-dom computes no default `position`.
@@ -241,9 +252,9 @@ test("cross draws an X over block content, after the toggle", () => {
 	a.content.getBoundingClientRect = () => rect(10, 5, 200, 30);
 
 	strategy.apply("a", a.target);
-	const mark = a.container.lastElementChild as SVGSVGElement;
+	const mark = a.toggle.previousElementSibling as SVGSVGElement;
+	expect(a.container.lastElementChild).toBe(a.toggle);
 	expect(mark.getAttribute("data-pie-answer-eliminator-cross")).toBe("cross");
-	expect(mark.previousElementSibling).toBe(a.toggle);
 	expect(mark.getAttribute("aria-hidden")).toBe("true");
 	expect(mark.classList.contains("pie-answer-eliminator-cross--wipe")).toBe(
 		true,
@@ -288,4 +299,34 @@ test("cross strikes each line box of inline content", () => {
 		["200px", "0px"],
 		["0px", "20px"],
 	]);
+});
+
+test("cross moves its marks with the content, wiping in only once", () => {
+	const strategy = new CrossStrategy();
+	const a = choice("a", "Choice a", "div");
+	layOut(a.container);
+	a.content.getBoundingClientRect = () => rect(10, 5, 200, 30);
+
+	strategy.apply("a", a.target);
+	a.content.getBoundingClientRect = () => rect(10, 5, 120, 30);
+	strategy.relayout();
+	const [mark] = Array.from(
+		a.container.querySelectorAll<SVGSVGElement>("[data-pie-answer-eliminator-cross]"),
+	);
+	expect(position(mark)).toEqual(["10px", "5px", "120px", "30px"]);
+
+	// Turned inline: a line per line box, which never wipes in again.
+	a.content.style.display = "inline";
+	a.content.getClientRects = () =>
+		[rect(10, 5, 100, 20), rect(0, 25, 40, 20)] as unknown as DOMRectList;
+	strategy.relayout();
+	const lines = Array.from(
+		a.container.querySelectorAll<SVGSVGElement>("[data-pie-answer-eliminator-cross]"),
+	);
+	expect(lines.map((line) => line.getAttribute("data-pie-answer-eliminator-cross"))).toEqual(
+		["line", "line"],
+	);
+	expect(
+		lines.some((line) => line.classList.contains("pie-answer-eliminator-cross--wipe")),
+	).toBe(false);
 });

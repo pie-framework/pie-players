@@ -257,10 +257,7 @@
 	.pie-tool-calculator-inline__button--active {
 		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1976d2));
 		background-color: var(--pie-tool-trigger-active-background, var(--pie-primary, #1976d2));
-		color: var(
-			--pie-tool-trigger-active-color,
-			color-mix(in srgb, var(--pie-background, #fff) var(--pie-fixed-hue-collapse, 0%), white)
-		);
+		color: var(--pie-tool-trigger-active-color, var(--pie-white, #fff));
 	}
 
 	.pie-tool-calculator-inline__button--active:hover:not(:disabled) {
@@ -273,10 +270,7 @@
 				var(--pie-primary-dark, #1565c0)
 			)
 		);
-		color: var(
-			--pie-tool-trigger-active-color,
-			color-mix(in srgb, var(--pie-background, #fff) var(--pie-fixed-hue-collapse, 0%), white)
-		);
+		color: var(--pie-tool-trigger-active-color, var(--pie-white, #fff));
 	}
 
 	.pie-tool-calculator-inline__button:disabled {

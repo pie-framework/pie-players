@@ -1,4 +1,16 @@
+import { accessibleText } from "../accessible-text.js";
 import type { ChoiceAdapter } from "./choice-adapter.js";
+
+/** What the legacy elements expose of their state: `_model` and `session`. */
+interface LegacyElementState {
+	_model?: { disabled?: unknown } | null;
+	session?: { value?: unknown } | null;
+}
+
+/** Sets an attribute unless it already has the value: each write is observed. */
+function setHook(element: Element, name: string): void {
+	if (element.getAttribute(name) !== "true") element.setAttribute(name, "true");
+}
 
 /**
  * Adapter for PIE multiple-choice elements
@@ -27,7 +39,7 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 	private static readonly BLOCK_ATTR = "data-pie-answer-eliminator-blocked";
 
 	findChoices(root: HTMLElement): HTMLElement[] {
-		root.setAttribute(MultipleChoiceAdapter.ROOT_HOOK_ATTR, "true");
+		setHook(root, MultipleChoiceAdapter.ROOT_HOOK_ATTR);
 		const choices = Array.from(
 			root.querySelectorAll<HTMLElement>(MultipleChoiceAdapter.CHOICE_SELECTOR),
 		);
@@ -67,24 +79,34 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 	}
 
 	/**
-	 * The prompt text alone: the label also holds the displayed key and its
-	 * screen-reader copy, which would name the choice "AA. …".
+	 * The prompt alone, as it is read: the label also holds the displayed key
+	 * and its screen-reader copy, which would name the choice "AA. …".
 	 */
 	getChoiceLabel(choice: HTMLElement): string {
 		const label =
 			choice.querySelector<HTMLElement>(".prompt-label") ??
 			this.resolveLabelElement(choice);
-		return label?.textContent?.trim() || "";
+		return label ? accessibleText(label) : "";
 	}
 
+	/**
+	 * Whether the learner chose it: the element's session holds the chosen
+	 * values. A shown correct answer renders its inputs checked and leaves the
+	 * session as the learner left it. Markup without a session falls back to the
+	 * input.
+	 */
 	isSelected(choice: HTMLElement): boolean {
 		const input = choice.querySelector<HTMLInputElement>(
-			'input[type="checkbox"], input[type="radio"]',
+			MultipleChoiceAdapter.INPUT_SELECTOR,
 		);
 		if (!input) return false;
 
-		// Prefer the live `checked` property (works for radio and checkbox);
-		// fall back to the aria-checked attribute for custom/ARIA widgets.
+		const chosen = this.elementState(choice)?.session?.value;
+		if (Array.isArray(chosen)) {
+			return chosen.some((value) => String(value) === input.value);
+		}
+		// The live `checked` property works for radio and checkbox; aria-checked
+		// covers custom/ARIA widgets.
 		return input.checked || input.getAttribute("aria-checked") === "true";
 	}
 
@@ -159,19 +181,29 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 	}
 
 	/**
-	 * Whether the element holds its choices read-only. Multiple choice disables
-	 * every input together outside gather mode, so one input disabled other
-	 * than by the eliminator is enough. The scope is the element, or the EBSR
-	 * part: the choice's nearest custom-element ancestor.
+	 * The choice's element, or its EBSR part: the nearest custom-element
+	 * ancestor, which holds `_model` and `session`.
+	 */
+	private elementOf(choice: HTMLElement): HTMLElement | null {
+		for (let node = choice.parentElement; node; node = node.parentElement) {
+			if (node.localName.includes("-")) return node;
+		}
+		return null;
+	}
+
+	private elementState(choice: HTMLElement): LegacyElementState | null {
+		return this.elementOf(choice) as LegacyElementState | null;
+	}
+
+	/**
+	 * Whether the element holds its choices read-only, as outside gather mode:
+	 * its model says so, or an input is disabled other than by the eliminator,
+	 * for markup without a model. Multiple choice disables every input
+	 * together, so one is enough.
 	 */
 	private isReadOnly(choice: HTMLElement): boolean {
-		let scope: HTMLElement = choice;
-		for (let node = choice.parentElement; node; node = node.parentElement) {
-			if (node.localName.includes("-")) {
-				scope = node;
-				break;
-			}
-		}
+		const scope = this.elementOf(choice) ?? choice;
+		if ((scope as LegacyElementState)._model?.disabled === true) return true;
 		return Array.from(
 			scope.querySelectorAll<HTMLInputElement>(
 				MultipleChoiceAdapter.INPUT_SELECTOR,
@@ -196,11 +228,9 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 	}
 
 	private annotateChoice(choice: HTMLElement): void {
-		choice.setAttribute(MultipleChoiceAdapter.CHOICE_HOOK_ATTR, "true");
+		setHook(choice, MultipleChoiceAdapter.CHOICE_HOOK_ATTR);
 		const label = this.resolveLabelElement(choice);
-		if (label) {
-			label.setAttribute(MultipleChoiceAdapter.LABEL_HOOK_ATTR, "true");
-		}
+		if (label) setHook(label, MultipleChoiceAdapter.LABEL_HOOK_ATTR);
 	}
 
 	/**
@@ -222,10 +252,7 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 		for (const feedbackTick of root.querySelectorAll<HTMLElement>(
 			".feedback-tick",
 		)) {
-			feedbackTick.setAttribute(
-				MultipleChoiceAdapter.FEEDBACK_HOOK_ATTR,
-				"true",
-			);
+			setHook(feedbackTick, MultipleChoiceAdapter.FEEDBACK_HOOK_ATTR);
 		}
 	}
 }

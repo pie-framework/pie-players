@@ -1,4 +1,5 @@
 import type { ChoiceTarget } from "./choice-targets.js";
+import { own } from "./owned-nodes.js";
 
 /** Interface-locale wording the eliminated state is announced with. */
 export interface EliminationChrome {
@@ -51,7 +52,7 @@ export function markEliminated(
 		labelAnnouncement(existing, chrome);
 		return;
 	}
-	const announcement = document.createElement("span");
+	const announcement = own(document.createElement("span"));
 	announcement.className = ANNOUNCEMENT_CLASS;
 	labelAnnouncement(announcement, chrome);
 	content.appendChild(announcement);

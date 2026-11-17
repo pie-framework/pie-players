@@ -398,6 +398,26 @@ test("eliminations outlive an element replacing its choices' markup", async () =
 	expect(core?.getEliminatedCount()).toBe(0);
 });
 
+test("turning the tool on again leaves tracked choices as they are", async () => {
+	const element = acmeChoices(["x", "y"]);
+	document.body.append(element);
+	start(element);
+	toggle(element, "x").click();
+	const before = toggles(element);
+	element.calls.length = 0;
+
+	core?.cleanup();
+	core?.initializeForQuestion(element);
+	// Markup beside the choices changes; the choices do not.
+	element.append(document.createElement("p"));
+	await settle();
+	await nextFrame();
+
+	expect(toggles(element)).toEqual(before);
+	expect(element.calls).toEqual([]);
+	expect(toggle(element, "x").getAttribute("aria-pressed")).toBe("true");
+});
+
 test("a choice its element stops supplying is restored there", async () => {
 	const element = acmeText(["x", "y"]);
 	document.body.append(element);
@@ -494,6 +514,8 @@ test("where elimination is unavailable, a struck choice keeps a disabled toggle"
 	expect(toggle(element, "y").style.display).toBe("none");
 
 	element.calls.length = 0;
+	// A browser sends no click to a disabled button; the core refuses one anyway.
+	toggle(element, "x").disabled = false;
 	toggle(element, "x").click();
 	expect(toggle(element, "x").getAttribute("aria-pressed")).toBe("true");
 	expect(element.calls).toEqual([]);
@@ -546,9 +568,12 @@ test("a detached container gets no toggle and does not keep the core rescanning"
 	start(element);
 	expect(toggles(element).map((button) => button.dataset.choiceId)).toEqual(["x"]);
 
+	// The element's own change is read once, for choices it rendered since; the
+	// detached choice never brings the core back.
 	const reads = element.reads;
 	element.append(document.createElement("span"));
 	for (let frame = 0; frame < 5; frame++) await settle();
 
-	expect(element.reads).toBe(reads);
+	expect(element.reads).toBe(reads + 1);
+	expect(toggles(element).map((button) => button.dataset.choiceId)).toEqual(["x"]);
 });

@@ -1,3 +1,4 @@
+import { accessibleText } from "./accessible-text.js";
 import type { ChoiceAdapter } from "./adapters/choice-adapter.js";
 import { EBSRAdapter } from "./adapters/ebsr-adapter.js";
 import { MultipleChoiceAdapter } from "./adapters/multiple-choice-adapter.js";
@@ -99,7 +100,7 @@ function declaredTarget(candidate: unknown): ChoiceTarget | null {
 	}
 	const target: ChoiceTarget = {
 		id,
-		label: label.trim() || content.textContent?.trim() || "",
+		label: label.trim() || accessibleText(content),
 		container,
 		content,
 		isSelected: () =>

@@ -1238,7 +1238,7 @@ the runtime context supplies a TTS service.
 		   a tertiary trigger kept a #f3f5f7 pill on every page — and once the
 		   glyph followed the theme, a light glyph landed on that light pill. */
 		--color-new-gray: var(--pie-background-dark, #f3f5f7);
-		--color-primary-white: var(--pie-white, #ffffff);
+		--color-primary-white: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-white, #ffffff)));
 		--color-primary-black: var(--pie-text, #000000);
 		--color-focus-blue: var(--pie-button-focus-outline, #2b87ff);
 	}

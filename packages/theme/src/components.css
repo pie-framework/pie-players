@@ -849,20 +849,26 @@ mjx-c.mjx-c27 {
 }
 
 /*
- * Hover rings the toggle in the hover colour, as the NDS toggle rings in its
- * accent: a hover fill alone is a step of a few percent in most themes.
+ * Hover rings the toggle in the toolbar's hover border, as the NDS toggle rings
+ * in its accent: a hover fill alone is a step of a few percent in most themes.
  */
 :where([data-pie-content])
 	.pie-answer-eliminator-toggle--plain:hover:not(
 		.pie-answer-eliminator-toggle--active
 	) {
-	border-color: var(--pie-button-hover-color, var(--pie-button-color, var(--pie-text, #333)));
+	border-color: var(
+		--pie-button-hover-border,
+		var(--pie-button-border, var(--pie-border, #c6c6c6))
+	);
 	background-color: var(
 		--pie-button-hover-background-color,
 		var(--pie-button-hover-bg, var(--pie-secondary-background, #f5f5f5))
 	);
 	box-shadow: 0 0 0 1px
-		var(--pie-button-hover-color, var(--pie-button-color, var(--pie-text, #333)));
+		var(
+			--pie-button-hover-border,
+			var(--pie-button-border, var(--pie-border, #c6c6c6))
+		);
 	color: var(--pie-button-hover-color, var(--pie-button-color, var(--pie-text, #333)));
 }
 
@@ -873,7 +879,11 @@ mjx-c.mjx-c27 {
 		color-mix(in srgb, var(--pie-button-focus-outline, #0066cc) 20%, transparent);
 }
 
-/* Pressed: the calculator trigger's active state and its fallbacks. */
+/*
+ * Pressed: the calculator trigger's active state. The glyph falls back to
+ * --pie-white, which every theme and scheme pairs with --pie-primary, as the
+ * toolbar's active button does; hover darkens the fill as both of them do.
+ */
 :where([data-pie-content]) .pie-answer-eliminator-toggle--plain.pie-answer-eliminator-toggle--active {
 	border-color: var(
 		--pie-tool-trigger-active-border-color,
@@ -883,12 +893,19 @@ mjx-c.mjx-c27 {
 		--pie-tool-trigger-active-background,
 		var(--pie-primary, #1976d2)
 	);
-	color: var(
-		--pie-tool-trigger-active-color,
+	color: var(--pie-tool-trigger-active-color, var(--pie-white, #fff));
+}
+
+:where([data-pie-content])
+	.pie-answer-eliminator-toggle--plain.pie-answer-eliminator-toggle--active:hover:not(
+		:disabled
+	) {
+	background-color: var(
+		--pie-tool-trigger-active-background,
 		color-mix(
 			in srgb,
-			var(--pie-background, #fff) var(--pie-fixed-hue-collapse, 0%),
-			white
+			var(--pie-primary, #1565c0) var(--pie-fixed-hue-collapse, 0%),
+			var(--pie-primary-dark, #1565c0)
 		)
 	);
 }
@@ -971,12 +988,6 @@ mjx-c.mjx-c27 {
 	opacity: 0.85;
 }
 
-:where([data-pie-content]) .pie-answer-eliminator-eliminated-fallback {
-	text-decoration: line-through;
-	text-decoration-thickness: 2px;
-	text-decoration-color: var(--pie-answer-eliminator-strike-paint);
-}
-
 /* Scoped to the eliminated choice and placed after the dim, which it replaces. */
 :where([data-pie-content])
 	[data-pie-answer-eliminated="true"]
@@ -985,27 +996,16 @@ mjx-c.mjx-c27 {
 	filter: blur(2px);
 }
 
-:where([data-pie-content]) .pie-answer-eliminator-image-strike {
-	position: relative;
-	display: inline-block;
-	max-width: 100%;
-	/*
-	 * Collapse the line-box strut so the wrapper hugs the image exactly (no
-	 * baseline descender gap under it) and the X cannot overhang the artwork.
-	 * It also keeps the image bottom on the text baseline, as an unwrapped
-	 * baseline-aligned image sits.
-	 */
-	line-height: 0;
-}
-
-:where([data-pie-content]) .pie-answer-eliminator-image-strike-overlay,
-:where([data-pie-content]) .pie-answer-eliminator-math-strike-overlay {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	overflow: visible;
-	pointer-events: none;
+/*
+ * The strikethrough strategy's marks: a line through each line of text and
+ * each single-row expression, an X over each image and each expression with
+ * rules of its own (a fraction or a table). The eliminator positions each mark
+ * in the container, outside the dimmed content, so the strike keeps its full
+ * colour.
+ */
+:where([data-pie-content]) .pie-answer-eliminator-strike-line {
+	stroke: var(--pie-answer-eliminator-strike-paint);
+	stroke-width: 2;
 }
 
 :where([data-pie-content]) .pie-answer-eliminator-image-strike-line {
@@ -1025,41 +1025,12 @@ mjx-c.mjx-c27 {
 }
 
 /*
- * Eliminated math: MathJax's rendered glyphs are generated content, so neither
- * `::highlight()` nor `text-decoration` reaches them. The eliminator marks the
- * rendered math box, in the same colour and weight as the text line-through. A
- * single row of symbols takes a line; a fraction or table, whose own rules sit
- * where a line would, takes an X the eliminator draws as an SVG.
- */
-:where([data-pie-content]) .pie-answer-eliminator-math-strike {
-	position: relative;
-}
-
-:where([data-pie-content]) .pie-answer-eliminator-math-strike--line::after {
-	content: "";
-	position: absolute;
-	left: 0;
-	right: 0;
-	top: 50%;
-	border-top: 2px solid var(--pie-answer-eliminator-strike-paint);
-	pointer-events: none;
-}
-
-:where([data-pie-content]) .pie-answer-eliminator-math-strike-line {
-	stroke: var(--pie-answer-eliminator-strike-paint);
-	stroke-width: 2;
-}
-
-/*
  * The cross strategy's marks: an X over block content, a line through each line
  * box of inline content. The eliminator positions each mark in the container,
  * outside the dimmed content. The casing, in the page colour, keeps the line
  * clear of the glyphs and imagery it crosses.
  */
 :where([data-pie-content]) .pie-answer-eliminator-cross {
-	position: absolute;
-	overflow: visible;
-	pointer-events: none;
 	color: var(--pie-answer-eliminator-strike-paint);
 }
 
@@ -1139,6 +1110,10 @@ mjx-c.mjx-c27 {
 @media (forced-colors: active) {
 	:where([data-pie-content])
 		.pie-answer-eliminator-toggle--plain.pie-answer-eliminator-toggle--active,
+	:where([data-pie-content])
+		.pie-answer-eliminator-toggle--plain.pie-answer-eliminator-toggle--active:hover:not(
+			:disabled
+		),
 	:where([data-pie-content])
 		.pie-answer-eliminator-toggle--nds.pie-answer-eliminator-toggle--active
 		.nds-icon-button {

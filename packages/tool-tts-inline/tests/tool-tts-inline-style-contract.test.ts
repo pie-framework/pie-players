@@ -144,7 +144,7 @@ describe("tool-tts-inline trigger styling contract", () => {
 			"--color-new-gray:var(--pie-background-dark,#f3f5f7)",
 		);
 		expect(declarations).toContain(
-			"--color-primary-white:var(--pie-white,#ffffff)",
+			"--color-primary-white:var(--pie-button-background-color,var(--pie-button-bg,var(--pie-white,#ffffff)))",
 		);
 		expect(declarations).toContain(
 			"--color-primary-black:var(--pie-text,#000000)",

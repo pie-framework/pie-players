@@ -388,7 +388,7 @@ const lo = {
 			description: "ຂີດເສັ້ນຂ້າມທາງເລືອກຄຳຕອບ",
 			buttonA11y: "ຂີດເສັ້ນຂ້າມ, ຕັດທາງເລືອກຄຳຕອບອອກ",
 			tooltip: "ຂີດເສັ້ນຂ້າມ",
-			toggleA11y: "ເປີດ ຫຼື ປິດການຕັດອອກສຳລັບ {choice}",
+			toggleA11y: "ຕັດ {choice} ອອກ",
 			eliminatedA11y: "(ຕັດອອກແລ້ວ)",
 			unlabeledChoice: "ທາງເລືອກບໍ່ມີຊື່",
 		},

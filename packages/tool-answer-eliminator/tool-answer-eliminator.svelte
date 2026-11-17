@@ -6,7 +6,6 @@
 			visible: { type: 'Boolean', attribute: 'visible' },
 			strategy: { type: 'String', attribute: 'strategy' },
 			alwaysOn: { type: 'Boolean', attribute: 'always-on' },
-			buttonAlignment: { type: 'String', attribute: 'button-alignment' },
 
 			// Store key per PIE element, by model id (JS property only)
 			elementStateKeys: { type: 'Object', reflect: false },
@@ -20,8 +19,9 @@
 <!--
 @component
 Process-of-elimination tool for the item in its enclosing `<pie-item-scope>`: it
-adds a toggle beside each choice an element supplies for `answer-masking` that
-strikes the choice through or masks it, per `strategy`. It renders nothing of
+adds a toggle to each choice an element supplies for `answer-masking` that
+strikes the choice through, crosses it out or masks it, per `strategy`. The
+toggle renders as the NDS icon button when the runtime context sets `ndsIcons`. It renders nothing of
 its own and is active while `visible` or `always-on` is set; `elementIds` limits
 the toggles to those elements' choices. Eliminations
 persist in the runtime context's element tool state store, under the key
@@ -35,7 +35,7 @@ persist in the runtime context's element tool state store, under the key
 
   **Interaction Pattern (Industry Standard):**
   - Student toggles tool ON via toolbar button
-  - Small elimination buttons (X) appear next to each answer choice
+  - A small toggle (×) appears in each answer choice
   - Student clicks X buttons to eliminate/restore choices
   - Tool can be toggled OFF to hide all elimination buttons
   - OR can be "always-on" via student profile (alwaysOn prop)
@@ -55,9 +55,13 @@ persist in the runtime context's element tool state store, under the key
 -->
 
 <script lang="ts">
-	import type { AnswerEliminatorProps, ElementStateKeys } from "./element-props.js";
+	import type {
+		AnswerEliminatorProps,
+		ElementStateKeys,
+	} from "./element-props.js";
 	import { coerceBooleanAttributes } from '@pie-players/pie-players-shared/ui/attribute-coercion';
 	import { resolveInterfaceI18n } from '@pie-players/pie-players-shared/i18n/provider';
+	import { ensureFontAwesome } from '@pie-players/pie-players-shared/ui/fontawesome';
 
 	import {
 		connectToolRuntimeContext,
@@ -74,12 +78,8 @@ persist in the runtime context's element tool state store, under the key
 
 	let {
 		visible = false,
-		strategy = 'strikethrough' as 'strikethrough' | 'mask',
+		strategy = 'strikethrough' as 'strikethrough' | 'cross' | 'mask',
 		alwaysOn = false, // Set true for profile-based accommodation
-		// Toggle placement: `inline` in the flow after the choice, or `start`/`end`
-		// beside it, mirrored under right-to-left content; `left` and `right`
-		// alias `start` and `end`.
-		buttonAlignment = 'inline' as 'start' | 'end' | 'inline' | 'left' | 'right',
 		elementStateKeys = {} as ElementStateKeys, // Store key per PIE element, by model id
 		elementIds = undefined as readonly string[] | undefined // Elements whose choices take a toggle; unset for all
 	}: AnswerEliminatorProps = $props();
@@ -92,6 +92,31 @@ persist in the runtime context's element tool state store, under the key
 	let core = $state<AnswerEliminatorCore | null>(null);
 	const interfaceI18n = $derived(resolveInterfaceI18n(runtimeContext));
 	let lastShellContextVersion = $state<number | null>(null);
+	// The toggles render as <pie-nds-icon-button> only when the host opts in
+	// (`ndsIcons === true`), and only once the tag is registered: created
+	// before, the element would take its attributes literally. The bundle loads
+	// the first time it is wanted, so a page that never sets `ndsIcons` neither
+	// loads it nor takes its tag. players-shared is external to this package's
+	// build, so the import stays a bare specifier in the published artifact.
+	const useNdsIcons = $derived(runtimeContext?.ndsIcons === true);
+	let ndsIconButtonReady = $state(
+		typeof customElements !== 'undefined' && !!customElements.get('pie-nds-icon-button')
+	);
+	$effect(() => {
+		if (!useNdsIcons || ndsIconButtonReady) return;
+		import('@pie-players/pie-players-shared/nds-icon-button').then(
+			() => {
+				ndsIconButtonReady = true;
+			},
+			(error) => {
+				console.warn('[AnswerEliminator] the NDS icon button failed to load; the toggles stay plain buttons', error);
+			}
+		);
+	});
+	// Every NDS glyph is FA Solid, which FA Free carries.
+	$effect(() => {
+		if (useNdsIcons) ensureFontAwesome(runtimeContext?.itemPlayer?.loaderOptions);
+	});
 
 	// Determine if tool should be active (either toggled on OR always-on mode)
 	let isActive = $derived(alwaysOn || visible);
@@ -140,6 +165,10 @@ persist in the runtime context's element tool state store, under the key
 		core?.setInterfaceI18n(interfaceI18n);
 	});
 
+	$effect(() => {
+		core?.setNdsIcons(useNdsIcons && ndsIconButtonReady);
+	});
+
 	// Update store integration when the store or the element keys change
 	$effect(() => {
 		core?.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
@@ -159,26 +188,29 @@ persist in the runtime context's element tool state store, under the key
 		});
 	});
 
-	// The toolbar owns this tool's coordinator entry and passes its visibility in
-	// `visible`. A strategy or alignment change rebuilds the core, which restores
-	// the question's eliminations from the store.
+	// One core for the component's life. The toolbar owns this tool's
+	// coordinator entry and passes its visibility in `visible`, which the effect
+	// below turns into initialization.
 	$effect(() => {
-		const next = new AnswerEliminatorCore(strategy, buttonAlignment);
-		untrack(() => {
-			next.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
-			next.setElementIds(elementIds ? [...elementIds] : null);
-			next.setInterfaceI18n(interfaceI18n);
-			core = next;
-			if (isActive) {
-				initializeForCurrentQuestion();
-			} else {
-				next.cleanup();
-			}
+		const next = untrack(() => {
+			const created = new AnswerEliminatorCore(strategy);
+			created.setStoreIntegration(elementToolStateStore, elementStateKeys ?? {});
+			created.setElementIds(elementIds ? [...elementIds] : null);
+			created.setInterfaceI18n(interfaceI18n);
+			created.setNdsIcons(useNdsIcons && ndsIconButtonReady);
+			return created;
 		});
+		core = next;
 		return () => {
 			next.destroy();
 			if (core === next) core = null;
 		};
+	});
+
+	// Repainted in place, whether or not the tool is on, so every elimination,
+	// toggle and focus survives the change.
+	$effect(() => {
+		core?.setStrategy(strategy);
 	});
 
 	$effect(() => {
@@ -201,8 +233,7 @@ persist in the runtime context's element tool state store, under the key
 				core.enableStateRestoration();
 				initializeForCurrentQuestion();
 			} else {
-				// Hide all elimination buttons when tool is turned off
-				// This also disables state restoration
+				// Struck choices keep their toggles; the others leave the layout.
 				core.cleanup();
 			}
 		}

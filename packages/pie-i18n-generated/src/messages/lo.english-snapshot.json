@@ -285,7 +285,7 @@
 	"tools.answerEliminator.description": "Strike through answer choices",
 	"tools.answerEliminator.buttonA11y": "Strike Through, eliminate answer choices",
 	"tools.answerEliminator.tooltip": "Strike Through",
-	"tools.answerEliminator.toggleA11y": "Toggle elimination for {choice}",
+	"tools.answerEliminator.toggleA11y": "Eliminate {choice}",
 	"tools.answerEliminator.eliminatedA11y": "(eliminated)",
 	"tools.answerEliminator.unlabeledChoice": "Unlabeled choice",
 	"tools.highlighter.name": "Highlighter",

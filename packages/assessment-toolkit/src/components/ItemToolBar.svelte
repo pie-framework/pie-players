@@ -2029,7 +2029,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 				'var(--pie-calculator-button-color, var(--pie-button-color, var(--pie-text, #222)))'
 			);
 			shellEl.style.setProperty('--color-new-gray', 'var(--pie-background-dark, #f3f5f7)');
-			shellEl.style.setProperty('--color-primary-white', 'var(--pie-white, #ffffff)');
+			shellEl.style.setProperty('--color-primary-white', 'var(--pie-button-background-color, var(--pie-button-bg, var(--pie-white, #ffffff)))');
 			shellEl.style.setProperty('--color-primary-black', 'var(--pie-text, #000000)');
 			shellEl.style.setProperty(
 				'--color-focus-blue',
@@ -2791,7 +2791,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		   kept a #f3f5f7 pill on every page — and once the glyph followed the
 		   theme, a light glyph landed on that light pill. */
 		--color-new-gray: var(--pie-background-dark, #f3f5f7);
-		--color-primary-white: var(--pie-white, #ffffff);
+		--color-primary-white: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-white, #ffffff)));
 		--color-primary-black: var(--pie-text, #000000);
 		--color-focus-blue: var(--pie-button-focus-outline, #2b87ff);
 	}

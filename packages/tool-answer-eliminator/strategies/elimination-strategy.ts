@@ -1,71 +1,36 @@
+/** What a strategy paints: one choice's content, inside its container. */
+export interface EliminationTarget {
+	/** Covers the content's nodes, for the CSS Custom Highlight API. */
+	range: Range;
+	/** Holds the content and the toggle; a strategy may overlay marks here. */
+	container: HTMLElement;
+	/** What is struck through, crossed out or masked. */
+	content: Element;
+}
+
 /**
- * Strategy interface for visual elimination styles
- * Uses CSS Custom Highlight API for zero DOM mutation
+ * How an eliminated choice is painted. The core owns the eliminated state and
+ * its announcement (see `eliminated-state.ts`); a strategy only paints, and
+ * paints nothing that reaches the toggle.
  */
 export interface EliminationStrategy {
-	/** Strategy name */
 	readonly name: string;
 
-	/**
-	 * Apply elimination visual to a choice
-	 * @param choiceId - Unique identifier for this choice
-	 * @param range - DOM Range covering the choice content
-	 */
-	apply(choiceId: string, range: Range): void;
+	/** Paints the choice eliminated. `choiceId` is an opaque, CSS-safe token. */
+	apply(choiceId: string, target: EliminationTarget): void;
 
-	/**
-	 * Remove elimination visual from a choice
-	 * @param choiceId - Unique identifier for this choice
-	 */
 	remove(choiceId: string): void;
 
-	/**
-	 * Check if a choice is currently eliminated
-	 * @param choiceId - Unique identifier for this choice
-	 */
 	isEliminated(choiceId: string): boolean;
 
-	/**
-	 * Clear all eliminations
-	 */
+	/** Repositions the marks after the content may have moved or reflowed. */
+	relayout?(): void;
+
 	clearAll(): void;
 
-	/**
-	 * Get all eliminated choice IDs
-	 */
 	getEliminatedIds(): string[];
 
-	/**
-	 * Initialize strategy (inject CSS, etc.)
-	 */
 	initialize(): void;
 
-	/**
-	 * Cleanup strategy (remove CSS, etc.)
-	 */
 	destroy(): void;
-
-	/**
-	 * Set the interface-language text and stamp for what the strategy adds for
-	 * assistive technology, relabelling what it has already added.
-	 */
-	setChrome?(chrome: EliminationChrome): void;
 }
-
-/** Interface-locale chrome a strategy announces with. */
-export interface EliminationChrome {
-	/** Announced after an eliminated choice's label. */
-	eliminatedText: string;
-	/** Stamps the interface `lang` and `dir` on an element the strategy adds. */
-	stamp(element: Element): void;
-}
-
-/**
- * The chrome a strategy announces with before the core applies the
- * interface-locale wording; the English default is the announcement the
- * strikethrough strategy has always made.
- */
-export const defaultEliminationChrome = (): EliminationChrome => ({
-	eliminatedText: "(eliminated)",
-	stamp: () => {},
-});

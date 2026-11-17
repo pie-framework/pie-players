@@ -371,7 +371,7 @@ const vi = {
 			description: "Gạch ngang các phương án trả lời",
 			buttonA11y: "Gạch ngang, loại bỏ các phương án trả lời",
 			tooltip: "Gạch ngang",
-			toggleA11y: "Bật hoặc tắt việc loại bỏ {choice}",
+			toggleA11y: "Loại bỏ {choice}",
 			eliminatedA11y: "(đã loại bỏ)",
 			unlabeledChoice: "Phương án không có nhãn",
 		},

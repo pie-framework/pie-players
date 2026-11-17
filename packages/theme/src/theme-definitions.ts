@@ -961,6 +961,20 @@ const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
 			role: "active button text",
 		},
 		{
+			// A pressed tool trigger's glyph, as on the answer eliminator's toggle,
+			// where the host sets no trigger tokens of its own.
+			foreground: "--pie-white",
+			background: "--pie-primary",
+			minimum: 3,
+			role: "pressed tool trigger glyph",
+		},
+		{
+			foreground: "--pie-white",
+			background: "--pie-primary-dark",
+			minimum: 3,
+			role: "hovered pressed tool trigger glyph",
+		},
+		{
 			foreground: "--pie-button-border",
 			background: "--pie-background",
 			minimum: 3,

@@ -21,6 +21,7 @@ The subpaths below are the package's `exports`; nothing else is importable.
 | `/security` | The item-markup sanitizer (`sanitizeItemMarkup`, `createDefaultItemMarkupSanitizer`, `buildAuthoringAllowList`), external-stylesheet URL validation, the SVG icon and `style` attribute sanitizers, and the wrappers that put overwide images and tables in a scrollable region |
 | `/security/private-hosts` | `isPrivateHostname` and `isCloudMetadataHostname`, the host classification for a URL a server fetches on someone else's behalf. Node-safe: it loads none of the markup sanitizers |
 | `/object` | `mergeObjectsIgnoringNullUndefined`, `cloneDeep`, `isPlainRecord` |
+| `/promise` | `settleAll`, the all-settled helper built without `Promise.allSettled`, for host pages whose `Promise` polyfill predates it |
 | `/types` | The shared types: item, passage, section and session entities, PIE models and controllers, accessibility catalogs, and the [media vocabulary](#media-validation) |
 | `/item-session-control` | [Item session control](#item-session-control) |
 | `/timed-media` | [Timed media](#timed-media) |

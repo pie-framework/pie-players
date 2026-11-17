@@ -78,6 +78,7 @@ and its [`loaderOptions`](../item-player/loading-strategies.md#loaderoptions).
 - **One directory per version when self-hosting.** Chunk names hash source paths, not contents, so two versions in one directory overwrite each other's chunks.
 - **Toolkit.** The toolkit has no build of its own. The section player's `toolkit-ready` event carries the `ToolkitCoordinator` it creates. A host that builds its own coordinator imports the toolkit from `https://cdn.jsdelivr.net/npm/@pie-players/pie-assessment-toolkit@x.y.z/+esm`, at the same version as the section player; the section player does not re-export the class, which would give npm hosts a second copy.
 - **Custom tools.** The build alone also exports `createPackagedToolRegistry`, `DEFAULT_TOOL_MODULE_LOADERS` and `createCalculatorToolRegistration`. A host that adds its own registration builds the packaged set with `createPackagedToolRegistry()`, registers on it and passes the result as `toolRegistry`; the packaged tools still load from the build's chunks.
+- **Placement and profile.** The build also exports `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT`, the packaged set's preferred `tools.placement`, and `createUniversalPersonalNeedsProfile()`, a fresh profile granting its universal capabilities. Read from the build, both describe the release the page renders.
 
 Outside this build, tools load through a bundler; the
 [assessment toolkit README](../../packages/assessment-toolkit/README.md) covers

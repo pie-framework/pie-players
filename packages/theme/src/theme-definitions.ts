@@ -15,7 +15,11 @@ type BuiltInColorSchemeDefinition = Readonly<{
 	variables: Readonly<ThemeVariables>;
 }>;
 
-type ThemeContrastRelationship = Readonly<{
+/**
+ * A pair of tokens the theme requires to meet a WCAG contrast minimum: 4.5 for
+ * text, 3 for non-text boundaries and glyphs. `role` names what the pair paints.
+ */
+export type ThemeContrastRelationship = Readonly<{
 	foreground: ThemeTokenName;
 	background: ThemeTokenName;
 	minimum: 3 | 4.5;
@@ -817,9 +821,11 @@ const REQUIRED_SCHEME_TOKENS = Object.freeze(
 
 /**
  * Named semantic relationships are the accessibility contract. Token names
- * alone do not say whether a color is text, a fill, or a boundary.
+ * alone do not say whether a color is text, a fill, or a boundary. Every
+ * built-in scheme meets each one, and `diagnoseThemeContrast` checks a palette
+ * against them; a host's token inspector reads the same list.
  */
-const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
+export const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
 	deepFreeze([
 		{
 			foreground: "--pie-text",

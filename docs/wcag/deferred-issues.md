@@ -57,7 +57,7 @@ next. It is not exhaustive.
 - **Verification**: the manual pass comes first; browser tests then automate the
   parts they can check reliably.
 
-## Source Fixes Awaiting Release
+## Source Fixes Shipped, Pending Host Verification
 
 ### Theme Picker: Visible Labels and Accessible Names
 
@@ -71,9 +71,10 @@ next. It is not exhaustive.
   unregistering a focused scheme. In the section demo, the open menu passed the
   scoped axe-core 4.14.0 `label-content-name-mismatch` check. Keyboard selection
   updated the current scheme's name; Escape returned focus to the toolbar.
-- **Release status**: a patch changeset is included. Published consumers still
-  need the released package and a check against their pinned bundle. This does
-  not close the manual assistive-technology evidence gap above.
+- **Release status**: shipped in `@pie-players/pie-tool-theme@1.0.0-beta.6`.
+  Hosts pinning an earlier bundle still need a check against their pinned
+  version. This does not close the manual assistive-technology evidence gap
+  above.
 
 ## Next Work
 

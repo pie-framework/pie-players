@@ -325,6 +325,8 @@ export class AnswerEliminatorCore {
 		if (!tracked) return;
 
 		if (this.eliminated.has(key)) {
+			// Where elimination is unavailable, as in evaluate mode, so is restoring.
+			if (!tracked.target.canEliminate()) return;
 			this.restoreChoice(key);
 		} else {
 			if (!tracked.target.canEliminate()) {
@@ -515,7 +517,7 @@ export class AnswerEliminatorCore {
 	 *   space so the choice does not reflow.
 	 * - A non-struck choice that cannot be eliminated otherwise, as in evaluate
 	 *   mode or a disabled element, has no toggle to offer, in the layout or the
-	 *   tab order.
+	 *   tab order. A struck one keeps its toggle there, disabled.
 	 */
 	private toggleVisibility(
 		key: string,
@@ -534,14 +536,22 @@ export class AnswerEliminatorCore {
 		const tracked = this.choices.get(key);
 		if (!tracked?.toggle) return;
 		tracked.toggle.setVisibility(this.toggleVisibility(key, tracked));
+		tracked.toggle.setEnabled(
+			!this.eliminated.has(key) || tracked.target.canEliminate(),
+		);
 	}
 
 	/**
 	 * Re-evaluate button visibility for every tracked choice. Driven by live
-	 * selection changes and by toggling the feature on/off.
+	 * selection changes and by toggling the feature on/off. A legacy element
+	 * re-rendering its inputs, as on a mode change, lifts their block, so a
+	 * struck legacy choice is blocked again; a declaring element holds its own.
 	 */
 	private refreshSelectionState(): void {
-		for (const key of this.choices.keys()) {
+		for (const [key, tracked] of this.choices) {
+			if (!tracked.owner && this.eliminated.has(key)) {
+				tracked.target.setEliminated(true);
+			}
 			this.updateButtonVisibility(key);
 		}
 	}

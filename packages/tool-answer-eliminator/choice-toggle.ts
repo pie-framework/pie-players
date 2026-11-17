@@ -49,6 +49,11 @@ export interface ChoiceToggle {
 	setLabel(label: string, stamp: (element: Element) => void): void;
 	setPressed(pressed: boolean): void;
 	setVisibility(visibility: ToggleVisibility): void;
+	/**
+	 * A disabled toggle shows its state and leaves the tab order, as an
+	 * eliminated choice's does where elimination is unavailable.
+	 */
+	setEnabled(enabled: boolean): void;
 	focus(): void;
 	destroy(): void;
 }
@@ -133,6 +138,9 @@ function createPlainToggle(
 			button.setAttribute("aria-pressed", String(pressed));
 		},
 		setVisibility: (visibility) => setVisibility(button, visibility),
+		setEnabled(enabled) {
+			if (button.disabled !== !enabled) button.disabled = !enabled;
+		},
 		focus: () => button.focus({ preventScroll: true }),
 		destroy: () => button.remove(),
 	};
@@ -186,6 +194,12 @@ function createNdsToggle(choiceId: string, events: ToggleEvents): ChoiceToggle {
 			reflectPressed();
 		},
 		setVisibility: (visibility) => setVisibility(host, visibility),
+		// The button reflects `disabled` onto its inner <button>.
+		setEnabled(enabled) {
+			if (host.hasAttribute("disabled") !== !enabled) {
+				host.toggleAttribute("disabled", !enabled);
+			}
+		},
 		focus: () => (inner() ?? host).focus({ preventScroll: true }),
 		destroy() {
 			ariaObserver.disconnect();

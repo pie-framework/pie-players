@@ -360,6 +360,70 @@ test("a legacy choice takes its toggle at the end of its row, named from the pro
 	expect(root.querySelector("input")?.disabled).toBe(true);
 });
 
+const nextFrame = () =>
+	new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+// The observer reports after the frame a test queues, so the core refreshes in the next.
+const refreshed = async () => {
+	await nextFrame();
+	await nextFrame();
+};
+
+/** Renders the inputs as legacy multiple choice does on a mode change. */
+const renderMode = (root: HTMLElement, mode: "gather" | "evaluate") => {
+	for (const input of root.querySelectorAll("input")) {
+		input.disabled = mode !== "gather";
+	}
+};
+
+const legacyPair = () => {
+	const root = document.createElement("multiple-choice");
+	root.innerHTML = legacyMuiChoice("a", "A", "Alpha") + legacyMuiChoice("b", "B", "Beta");
+	document.body.append(root);
+	core = new AnswerEliminatorCore();
+	core.disableStateRestoration();
+	core.initializeForQuestion(root);
+	const toggles = () =>
+		Array.from(
+			root.querySelectorAll<HTMLButtonElement>("button.pie-answer-eliminator-toggle"),
+		);
+	const inputs = () => Array.from(root.querySelectorAll("input"), (input) => input.disabled);
+	return { root, toggles, inputs };
+};
+
+test("a legacy choice struck before evaluate mode stays struck and unselectable there", async () => {
+	const { root, toggles, inputs } = legacyPair();
+	toggles()[0].click();
+
+	renderMode(root, "evaluate");
+	await refreshed();
+
+	expect(toggles()[0].disabled).toBe(true);
+	expect(toggles()[1].style.display).toBe("none");
+	toggles()[0].click();
+	expect(toggles()[0].getAttribute("aria-pressed")).toBe("true");
+	expect(inputs()).toEqual([true, true]);
+
+	// Restored programmatically, the input keeps the element's read-only state.
+	core?.resetAll();
+	expect(inputs()).toEqual([true, true]);
+});
+
+test("a legacy re-render that lifts a struck choice's block is blocked again", async () => {
+	const { root, toggles, inputs } = legacyPair();
+	toggles()[0].click();
+
+	renderMode(root, "evaluate");
+	await refreshed();
+	renderMode(root, "gather");
+	await refreshed();
+
+	expect(inputs()).toEqual([true, false]);
+	expect(toggles()[0].disabled).toBe(false);
+	toggles()[0].click();
+	expect(inputs()).toEqual([false, false]);
+	expect(toggles()[1].style.display).toBe("");
+});
+
 test("two cores on one page keep their strike highlights apart", () => {
 	const originalCSS = globalThis.CSS;
 	class Highlight {

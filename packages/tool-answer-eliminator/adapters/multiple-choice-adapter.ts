@@ -21,6 +21,10 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 	private static readonly MUI_BUTTON_SELECTOR =
 		".MuiButtonBase-root, .MuiRadio-root, .MuiCheckbox-root";
 	private static readonly MUI_DISABLED_CLASS = "Mui-disabled";
+	private static readonly INPUT_SELECTOR =
+		'input[type="checkbox"], input[type="radio"]';
+	// Marks an input the eliminator disabled, apart from one the element did.
+	private static readonly BLOCK_ATTR = "data-pie-answer-eliminator-blocked";
 
 	findChoices(root: HTMLElement): HTMLElement[] {
 		root.setAttribute(MultipleChoiceAdapter.ROOT_HOOK_ATTR, "true");
@@ -94,8 +98,8 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 		// 1. Already selected (checked)
 		if (this.isSelected(choice)) return false;
 
-		// 2. Disabled
-		if ((input as HTMLInputElement).disabled) return false;
+		// 2. Read-only, as outside gather mode
+		if (this.isReadOnly(choice)) return false;
 
 		// 3. In evaluate/view mode (has feedback tick)
 		const root =
@@ -111,18 +115,35 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 		return true;
 	}
 
+	/**
+	 * Blocks or lifts the eliminator's block on the choice's input. Every write
+	 * is skipped when it would change nothing, so the core can block a struck
+	 * choice again after each re-render without feeding its own observer. A
+	 * read-only element keeps a lifted input disabled, as it renders it.
+	 */
 	setSelectable(choice: HTMLElement, selectable: boolean): void {
 		const input = choice.querySelector<HTMLInputElement>(
-			'input[type="checkbox"], input[type="radio"]',
+			MultipleChoiceAdapter.INPUT_SELECTOR,
 		);
 		if (!input) return;
 
+		const blocked = input.hasAttribute(MultipleChoiceAdapter.BLOCK_ATTR);
+		if (selectable) {
+			// Not blocked here: an input the element rendered afresh is its own.
+			if (!blocked) return;
+			// Read while the mark is on, which keeps this input out of the count.
+			const readOnly = this.isReadOnly(choice);
+			input.removeAttribute(MultipleChoiceAdapter.BLOCK_ATTR);
+			input.removeAttribute("aria-disabled");
+			if (readOnly) return;
+		} else if (!blocked) {
+			input.setAttribute(MultipleChoiceAdapter.BLOCK_ATTR, "");
+		}
+
 		// Native `disabled` makes the control non-selectable and grays it out;
 		// aria-disabled keeps the state exposed to assistive tech.
-		input.disabled = !selectable;
-		if (selectable) {
-			input.removeAttribute("aria-disabled");
-		} else {
+		if (input.disabled !== !selectable) input.disabled = !selectable;
+		if (!selectable && input.getAttribute("aria-disabled") !== "true") {
 			input.setAttribute("aria-disabled", "true");
 		}
 
@@ -131,12 +152,34 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 		const muiButton = input.closest<HTMLElement>(
 			MultipleChoiceAdapter.MUI_BUTTON_SELECTOR,
 		);
-		if (muiButton) {
-			muiButton.classList.toggle(
-				MultipleChoiceAdapter.MUI_DISABLED_CLASS,
-				!selectable,
-			);
+		const muiDisabled = MultipleChoiceAdapter.MUI_DISABLED_CLASS;
+		if (muiButton && muiButton.classList.contains(muiDisabled) === selectable) {
+			muiButton.classList.toggle(muiDisabled, !selectable);
 		}
+	}
+
+	/**
+	 * Whether the element holds its choices read-only. Multiple choice disables
+	 * every input together outside gather mode, so one input disabled other
+	 * than by the eliminator is enough. The scope is the element, or the EBSR
+	 * part: the choice's nearest custom-element ancestor.
+	 */
+	private isReadOnly(choice: HTMLElement): boolean {
+		let scope: HTMLElement = choice;
+		for (let node = choice.parentElement; node; node = node.parentElement) {
+			if (node.localName.includes("-")) {
+				scope = node;
+				break;
+			}
+		}
+		return Array.from(
+			scope.querySelectorAll<HTMLInputElement>(
+				MultipleChoiceAdapter.INPUT_SELECTOR,
+			),
+		).some(
+			(input) =>
+				input.disabled && !input.hasAttribute(MultipleChoiceAdapter.BLOCK_ATTR),
+		);
 	}
 
 	private generateFallbackId(choice: HTMLElement): string {

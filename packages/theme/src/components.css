@@ -893,6 +893,15 @@ mjx-c.mjx-c27 {
 	);
 }
 
+/*
+ * Disabled, as a struck choice's toggle is where elimination is unavailable:
+ * the NDS icon button's disabled treatment, over the pressed state.
+ */
+:where([data-pie-content]) .pie-answer-eliminator-toggle--plain:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
 /* A plus, turned to read as × until the choice is eliminated. */
 :where([data-pie-content]) .pie-answer-eliminator-toggle-icon {
 	width: 0.875em;
@@ -1148,6 +1157,21 @@ mjx-c.mjx-c27 {
 		.nds-icon-button__icon {
 		forced-color-adjust: none;
 		color: HighlightText;
+	}
+
+	:where([data-pie-content]) .pie-answer-eliminator-toggle--plain:disabled,
+	:where([data-pie-content])
+		.pie-answer-eliminator-toggle--nds[disabled]
+		.nds-icon-button {
+		border-color: GrayText;
+		background-color: Canvas;
+		color: GrayText;
+	}
+
+	:where([data-pie-content])
+		.pie-answer-eliminator-toggle--nds[disabled]
+		.nds-icon-button__icon {
+		color: GrayText;
 	}
 
 	:where([data-pie-content]) [data-pie-answer-eliminated="true"] {

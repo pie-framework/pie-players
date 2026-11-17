@@ -213,28 +213,42 @@ test("NDS icons replace every toggle mid-session and keep what is eliminated", a
 	await expect(item.locator(ELIMINATED_ROW)).toHaveCount(1);
 });
 
-test("evaluate mode shows only the eliminated choice's toggle, and gather brings the rest back", async ({
+test("evaluate mode freezes the eliminated choice's toggle, and gather brings the rest back", async ({
 	page,
 }) => {
 	test.setTimeout(120_000);
 	await page.goto("/answer-eliminator", { waitUntil: "networkidle" });
 	const item = await openEliminator(page, "ae-legacy-mc");
 	await toggle(item, "Oxygen").click();
+	const oxygen = item.getByRole("radio", { name: /Oxygen/ });
 
 	await controls(page).getByLabel("Evaluate", { exact: true }).check();
 	await expect(page).toHaveURL(/mode=evaluate/);
 	await expect(toggle(item, "Oxygen")).toBeVisible();
 	await expect(toggle(item, "Oxygen")).toHaveAttribute("aria-pressed", "true");
+	await expect(toggle(item, "Oxygen")).toBeDisabled();
 	for (const choice of ["Carbon dioxide", "Nitrogen"]) {
 		await expect(toggle(item, choice)).toBeHidden();
 	}
+	// The NDS button is disabled the same way.
+	await controls(page).getByLabel("NDS icons").check();
+	await expect(item.locator("pie-nds-icon-button[disabled]")).toHaveCount(1);
+	await expect(toggle(item, "Oxygen")).toBeDisabled();
+	await controls(page).getByLabel("NDS icons").uncheck();
 
+	// The element re-renders its inputs for gather mode; the struck one stays blocked.
 	await controls(page).getByLabel("Gather", { exact: true }).check();
 	await expect(toggles(item)).toHaveCount(4);
 	for (const choice of ["Carbon dioxide", "Nitrogen"]) {
 		await expect(toggle(item, choice)).toBeVisible();
 	}
 	await expect(toggle(item, "Oxygen")).toHaveAttribute("aria-pressed", "true");
+	await expect(toggle(item, "Oxygen")).toBeEnabled();
+	await expect(oxygen).toBeDisabled();
+	await expect(item.getByRole("radio", { name: /Nitrogen/ })).toBeEnabled();
+
+	await toggle(item, "Oxygen").click();
+	await expect(oxygen).toBeEnabled();
 });
 
 test("the controls start from the URL, so a state can be linked", async ({ page }) => {

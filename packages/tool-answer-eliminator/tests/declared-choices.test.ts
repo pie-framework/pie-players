@@ -478,7 +478,7 @@ test("element ids reach legacy choices through their element's id", () => {
 const nextFrame = () =>
 	new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 
-test("a choice that cannot be eliminated has no toggle unless it is eliminated", async () => {
+test("where elimination is unavailable, a struck choice keeps a disabled toggle", async () => {
 	const element = acmeChoices(["x", "y"]);
 	document.body.append(element);
 	start(element);
@@ -490,10 +490,22 @@ test("a choice that cannot be eliminated has no toggle unless it is eliminated",
 	await nextFrame();
 
 	expect(toggle(element, "x").style.display).toBe("");
+	expect(toggle(element, "x").disabled).toBe(true);
 	expect(toggle(element, "y").style.display).toBe("none");
 
+	element.calls.length = 0;
 	toggle(element, "x").click();
-	expect(toggle(element, "x").style.display).toBe("none");
+	expect(toggle(element, "x").getAttribute("aria-pressed")).toBe("true");
+	expect(element.calls).toEqual([]);
+
+	// Back in gather mode, it restores.
+	element.locked = false;
+	element.dispatchEvent(new Event("change", { bubbles: true }));
+	await nextFrame();
+	expect(toggle(element, "x").disabled).toBe(false);
+	toggle(element, "x").click();
+	expect(toggle(element, "x").getAttribute("aria-pressed")).toBe("false");
+	expect(element.calls).toEqual([["x", false]]);
 });
 
 /** Supplies one choice whose container has left the document. */

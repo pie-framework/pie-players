@@ -15,6 +15,8 @@ toggle always sits in flow as the choice container's last child, and its
 colours come from the `--pie-button-*` and `--pie-tool-trigger-active-*` tokens.
 The toggle is named "Eliminate {choice}" in every locale, ends a legacy
 multiple-choice row ahead of its rationale, and is absent where a choice cannot
-be eliminated, as in evaluate mode. The NDS eliminator toggle and the NDS
-inline TTS trigger keep their accent when pressed, so
+be eliminated, as in evaluate mode. There an eliminated choice keeps its toggle,
+pressed and disabled, and a struck legacy multiple-choice choice stays
+unselectable when the element re-renders its inputs. The NDS eliminator toggle
+and the NDS inline TTS trigger keep their accent when pressed, so
 `--pie-tool-trigger-active-color` no longer recolours either.

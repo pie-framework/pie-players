@@ -34,18 +34,8 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 		return choices;
 	}
 
-	createChoiceRange(choice: HTMLElement): Range | null {
-		// Create range covering the label content
-		// Try multiple possible selectors for the label
-		const labelElement = this.resolveLabelElement(choice);
-
-		if (!labelElement) {
-			return null;
-		}
-
-		const range = document.createRange();
-		range.selectNodeContents(labelElement);
-		return range;
+	getChoiceContent(choice: HTMLElement): HTMLElement | null {
+		return this.resolveLabelElement(choice);
 	}
 
 	getChoiceId(choice: HTMLElement): string {

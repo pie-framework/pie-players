@@ -126,37 +126,86 @@ describe("content stylesheet theming", () => {
 
 	test("the eliminator toggle scales with the text around it", () => {
 		// A px box under PNP font scaling stays put while the text grows.
-		expect(collapsed).toContain("font-size:1.125em");
+		// `font: inherit` makes 1em the surrounding text, so the box needs no
+		// divisor for a glyph font-size of its own.
+		expect(collapsed).toContain(
+			".pie-answer-eliminator-toggle--plain{box-sizing:border-box;",
+		);
+		expect(collapsed).toContain("width:1.75em;height:1.75em;");
+		expect(collapsed).toContain("font:inherit;");
 		expect(collapsed).not.toContain("font-size:18px");
-
-		// The box is 1.75x the SURROUNDING text, so it divides by the glyph factor:
-		// `em` in a length resolves against this element's own font-size, and a bare
-		// 1.75em next to font-size:1.125em measures 31.5px at a 16px base, not the
-		// 28px the box is specified at.
-		expect(collapsed).toContain("width:calc(1.75em/1.125)");
-		expect(collapsed).toContain("height:calc(1.75em/1.125)");
-		expect(collapsed).not.toContain("width:1.75em");
-		const base = 16;
-		const box = (base * 1.125 * 1.75) / 1.125;
-		expect(box).toBeCloseTo(28, 5);
+		expect(collapsed).not.toContain("calc(1.75em/1.125)");
+		expect(16 * 1.75).toBe(28);
 		// SC 2.5.8's 24px minimum still clears at the smallest base PNP offers.
-		expect((14 * 1.125 * 1.75) / 1.125).toBeGreaterThanOrEqual(24);
+		expect(14 * 1.75).toBeGreaterThanOrEqual(24);
+		// The NDS button's px heights rescale to the same text.
+		expect(collapsed).toContain("--height-32:2em;");
 	});
 
-	test("an eliminated choice is dimmed as well as struck, on both strike paths", () => {
+	test("the eliminator toggle paints from the shared trigger tokens", () => {
+		expect(collapsed).toContain("var(--pie-button-background-color,");
+		expect(collapsed).toContain("var(--pie-button-hover-background-color,");
+		expect(collapsed).toContain(
+			"outline:2pxsolidvar(--pie-button-focus-outline,#0066cc)",
+		);
+		expect(collapsed).toContain("var(--pie-tool-trigger-active-background,");
+		expect(collapsed).toContain("var(--pie-tool-trigger-active-border-color,");
+		expect(collapsed).toContain("var(--pie-tool-trigger-active-color,");
+		// The eliminator-only colour and the stacking it needed while it was
+		// positioned over the choice are gone.
+		expect(collapsed).not.toContain("--pie-answer-eliminator-toggle-color");
+		expect(collapsed).not.toContain("z-index:10");
+		expect(collapsed).not.toContain("transition:all");
+	});
+
+	test("an eliminated choice is dimmed as well as struck, on every strike path", () => {
 		// Redundant coding: elimination must survive a strike colour the learner
-		// cannot distinguish from the text. Dropped by accident in the theming pass.
+		// cannot distinguish from the text.
 		expect(collapsed).toContain(
 			".pie-answer-eliminator-eliminated-fallback{text-decoration:line-through",
 		);
-		// The dim hangs off the attribute both strike paths set, not off the class
-		// only the no-Highlight-API path adds — and a highlight pseudo cannot carry
-		// `opacity`, so declaring it there dimmed nothing.
+		// The dim is on the content, so the toggle and its focus ring keep their
+		// contrast; a highlight pseudo cannot carry `opacity` at all.
 		expect(collapsed).toContain(
-			'[data-pie-answer-eliminated="true"]{opacity:0.6',
+			'[data-pie-answer-eliminated="true"][data-pie-answer-eliminator-label="true"]{opacity:0.6;}',
 		);
-		// And no longer on the class, where only one of the two paths reached it.
-		expect(collapsed).not.toContain("#ff9800));opacity:0.6");
+		expect(collapsed).not.toContain(
+			'[data-pie-answer-eliminated="true"]{opacity',
+		);
+		// A scheme certifies a contrast that a 0.6 dim breaks.
+		expect(collapsed).toContain(
+			'[data-pie-answer-eliminated="true"][data-pie-answer-eliminator-label="true"]:where([data-color-scheme]*){opacity:0.85;}',
+		);
+	});
+
+	test("a host strike colour collapses to the scheme's incorrect colour", () => {
+		expect(collapsed).toContain(
+			"--pie-answer-eliminator-strike-paint:color-mix(insrgb,var(--pie-incorrect,#ff9800)var(--pie-fixed-hue-collapse,0%),var(--pie-answer-eliminator-strike-color,var(--pie-incorrect,#ff9800)))",
+		);
+		// The maths cross is an SVG now: forced colours drop gradients.
+		expect(collapsed).not.toContain("linear-gradient(tobottomright");
+	});
+
+	test("eliminator motion runs only when the learner allows it", () => {
+		const block = collapsed.slice(
+			collapsed.indexOf(":where([data-pie-content]).pie-answer-eliminator-toggle{"),
+			collapsed.indexOf("@keyframespie-answer-eliminator-wipe{"),
+		);
+		const [unguarded, guarded] = block.split(
+			"@media(prefers-reduced-motion:no-preference)",
+		);
+		expect(unguarded).not.toMatch(/transition|animation/);
+		expect(guarded.match(/transition:|animation:/g)).toHaveLength(3);
+	});
+
+	test("eliminator states are restated in forced colours", () => {
+		expect(collapsed).toContain(
+			'@media(forced-colors:active){:where([data-pie-content]).pie-answer-eliminator-toggle--plain.pie-answer-eliminator-toggle--active,',
+		);
+		expect(collapsed).toContain("background-color:Highlight;color:HighlightText;");
+		expect(collapsed).toContain(
+			"--pie-answer-eliminator-strike-paint:CanvasText;",
+		);
 	});
 
 	test("centred content blocks drop their gutters at reflow width", () => {

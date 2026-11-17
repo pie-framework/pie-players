@@ -8,10 +8,25 @@ import {
 	type FoundChoice,
 	findChoiceTargets,
 } from "./choice-targets.js";
+import {
+	type ChoiceToggle,
+	createChoiceToggle,
+	ndsToggleAvailable,
+} from "./choice-toggle.js";
+import {
+	clearEliminated,
+	type EliminationChrome,
+	markEliminated,
+	relabelEliminated,
+} from "./eliminated-state.js";
+import type {
+	ElementStateKeys,
+	EliminationStrategyName,
+} from "./element-props.js";
+import { CrossStrategy } from "./strategies/cross-strategy.js";
 import type { EliminationStrategy } from "./strategies/elimination-strategy.js";
 import { MaskStrategy } from "./strategies/mask-strategy.js";
 import { StrikethroughStrategy } from "./strategies/strikethrough-strategy.js";
-import type { ElementStateKeys } from "./element-props.js";
 
 /**
  * Where eliminations persist: the toolkit's element tool state store, keyed per
@@ -20,33 +35,6 @@ import type { ElementStateKeys } from "./element-props.js";
 export interface EliminatorStateStore {
 	getState(globalElementId: string, toolId: string): unknown;
 	setState(globalElementId: string, toolId: string, state: unknown): void;
-}
-
-/**
- * Where a choice's toggle sits. `start` and `end` are logical: they resolve
- * against the choice's own direction, so they mirror under right-to-left
- * content. `inline` puts the toggle in the flow after the choice.
- */
-export type ButtonAlignment = "start" | "end" | "inline";
-
-/**
- * The accepted spellings: `left` and `right` are aliases of `start` and `end`,
- * kept for hosts that set the physical values before they became logical.
- */
-export type ButtonAlignmentInput = ButtonAlignment | "left" | "right";
-
-/** Resolve an attribute value to a placement; anything unknown is `inline`. */
-export function normalizeButtonAlignment(value: unknown): ButtonAlignment {
-	switch (value) {
-		case "start":
-		case "left":
-			return "start";
-		case "end":
-		case "right":
-			return "end";
-		default:
-			return "inline";
-	}
 }
 
 /** The interface-locale surface the eliminator's chrome reads. */
@@ -63,7 +51,7 @@ interface TrackedChoice {
 	target: ChoiceTarget;
 	/** The declaring element that supplied the choice, null for a legacy one. */
 	owner: HTMLElement | null;
-	button: HTMLButtonElement | null;
+	toggle: ChoiceToggle | null;
 }
 
 const STATE_TOOL_ID = "answerEliminator";
@@ -77,9 +65,6 @@ const STATE_TOOL_ID = "answerEliminator";
  * element.
  */
 export class AnswerEliminatorCore {
-	private static readonly TOGGLE_CLASS = "pie-answer-eliminator-toggle";
-	private static readonly TOGGLE_ACTIVE_CLASS =
-		"pie-answer-eliminator-toggle--active";
 	private strategy: EliminationStrategy;
 	// Keyed by `trackingKey(group, choiceId)`.
 	private choices = new Map<string, TrackedChoice>();
@@ -89,8 +74,9 @@ export class AnswerEliminatorCore {
 	private strategyKeys = new Map<string, string>();
 	private anonymousGroups = new WeakMap<Element, string>();
 	private nextToken = 0;
-	private buttonAlignment: ButtonAlignment = "inline";
-	// The interface locale, for the toggles' labels and the strategy's
+	// Whether the toggles render as the NDS icon button (`ndsIcons`).
+	private ndsIcons = false;
+	// The interface locale, for the toggles' labels and the eliminated
 	// announcement: both are chrome, so they speak the interface language.
 	private i18n: EliminatorI18n = resolveInterfaceI18n(null);
 	private shouldRestoreState: boolean = true;
@@ -115,14 +101,9 @@ export class AnswerEliminatorCore {
 	// Model ids of the elements whose choices take a toggle; null for every one.
 	private elementIds: ReadonlySet<string> | null = null;
 
-	constructor(
-		strategyType: "strikethrough" | "mask" = "strikethrough",
-		buttonAlignment: ButtonAlignmentInput = "inline",
-	) {
+	constructor(strategyType: EliminationStrategyName = "strikethrough") {
 		this.strategy = this.createStrategy(strategyType);
 		this.strategy.initialize();
-		this.applyStrategyChrome();
-		this.buttonAlignment = normalizeButtonAlignment(buttonAlignment);
 	}
 
 	/**
@@ -131,35 +112,58 @@ export class AnswerEliminatorCore {
 	 */
 	setInterfaceI18n(i18n: EliminatorI18n | null): void {
 		this.i18n = i18n ?? resolveInterfaceI18n(null);
-		for (const tracked of this.choices.values()) {
-			if (tracked.button) this.labelToggle(tracked.button, tracked);
+		const chrome = this.chrome();
+		for (const [key, tracked] of this.choices) {
+			if (tracked.toggle) this.labelToggle(tracked.toggle, tracked);
+			if (this.eliminated.has(key)) relabelEliminated(tracked.target, chrome);
 		}
-		this.applyStrategyChrome();
 	}
 
-	private applyStrategyChrome(): void {
-		this.strategy.setChrome?.({
+	/**
+	 * Render the toggles as the NDS icon button, or as plain buttons. Existing
+	 * toggles are replaced in place, keeping their state and focus. The button
+	 * is used only once `<pie-nds-icon-button>` is registered.
+	 */
+	setNdsIcons(enabled: boolean): void {
+		const next = enabled && ndsToggleAvailable();
+		if (next === this.ndsIcons) return;
+		this.ndsIcons = next;
+		for (const [key, tracked] of this.choices) {
+			const previous = tracked.toggle;
+			if (!previous) continue;
+			const focused = previous.element.contains(document.activeElement);
+			previous.destroy();
+			const toggle = this.createToggle(key, tracked);
+			tracked.toggle = toggle;
+			this.updateButtonVisibility(key);
+			toggle.mount(tracked.target.container);
+			if (focused) toggle.focus();
+		}
+	}
+
+	private chrome(): EliminationChrome {
+		return {
 			eliminatedText: this.i18n.t("tools.answerEliminator.eliminatedA11y"),
 			stamp: (element) => stampInterfaceLocale(element, this.i18n),
-		});
+		};
 	}
 
-	private labelToggle(button: HTMLButtonElement, tracked: TrackedChoice): void {
+	private labelToggle(toggle: ChoiceToggle, tracked: TrackedChoice): void {
 		const choice =
 			tracked.target.label ||
 			this.i18n.t("tools.answerEliminator.unlabeledChoice");
-		button.setAttribute(
-			"aria-label",
+		toggle.setLabel(
 			this.i18n.t("tools.answerEliminator.toggleA11y", { choice }),
+			(element) => stampInterfaceLocale(element, this.i18n),
 		);
-		stampInterfaceLocale(button, this.i18n);
 	}
 
 	private createStrategy(type: string): EliminationStrategy {
 		switch (type) {
 			case "mask":
 				return new MaskStrategy();
-			case "strikethrough":
+			case "cross":
+				return new CrossStrategy();
 			default:
 				return new StrikethroughStrategy();
 		}
@@ -175,8 +179,7 @@ export class AnswerEliminatorCore {
 		// disabled inputs must not outlive its choices.
 		const previous = new Set(this.eliminated);
 		this.restoreAllSelectable();
-		this.strategy.clearAll();
-		this.eliminated.clear();
+		this.clearAllEliminations();
 		this.cleanupButtons();
 
 		for (const found of findChoiceTargets(questionRoot)) {
@@ -271,81 +274,42 @@ export class AnswerEliminatorCore {
 			strategyKey: this.strategyKeyFor(key),
 			target,
 			owner,
-			button: null,
+			toggle: null,
 		};
 		this.choices.set(key, tracked);
 
-		const button = this.createToggleButton(
-			key,
-			tracked,
-			this.alignmentFor(target.container),
-		);
-		tracked.button = button;
+		const toggle = this.createToggle(key, tracked);
+		tracked.toggle = toggle;
 
 		// Apply the initial visibility rule (hidden if selected, or if the
 		// feature is off and this choice isn't struck). Kept in sync afterwards
 		// via the question-root `change` listener and toggle actions.
 		this.updateButtonVisibility(key);
 
-		target.container.style.position = "relative";
-		target.container.appendChild(button);
+		// In flow as the container's last child: the element's own layout
+		// decides where it lands.
+		toggle.mount(target.container);
 	}
 
-	/**
-	 * A choice laid out inline, such as a token in running text, takes the toggle
-	 * in the line: an absolute toggle would cover the choice's own text.
-	 */
-	private alignmentFor(container: HTMLElement): ButtonAlignment {
-		if (this.buttonAlignment === "inline") return "inline";
-		return getComputedStyle(container).display === "inline"
-			? "inline"
-			: this.buttonAlignment;
-	}
-
-	private createToggleButton(
-		key: string,
-		tracked: TrackedChoice,
-		alignment: ButtonAlignment,
-	): HTMLButtonElement {
-		const button = document.createElement("button");
-		button.type = "button";
-		button.className = AnswerEliminatorCore.TOGGLE_CLASS;
-		this.labelToggle(button, tracked);
-		button.setAttribute("aria-pressed", "false");
-		button.setAttribute("data-choice-id", tracked.choiceId);
-		// The glyph is decoration: the button is named by its aria-label, and an
-		// exposed glyph is spoken by read-aloud after every choice.
-		const glyph = document.createElement("span");
-		glyph.setAttribute("aria-hidden", "true");
-		glyph.textContent = "⊗";
-		button.appendChild(glyph);
-
-		this.applyButtonAlignment(button, alignment, tracked.target.container);
-
-		// Remember the visible `display` value chosen by the alignment (e.g.
-		// "inline-flex" for inline mode) so hide/show toggling can restore it
-		// instead of clobbering it with the CSS default.
-		button.dataset.pieShownDisplay = button.style.display;
-
-		button.addEventListener("click", (e) => {
-			e.preventDefault();
-			e.stopPropagation();
-			this.toggleElimination(key);
+	private createToggle(key: string, tracked: TrackedChoice): ChoiceToggle {
+		const toggle = createChoiceToggle(this.ndsIcons, tracked.choiceId, {
+			activate: () => this.toggleElimination(key),
+			focus: () => {
+				this.focusedKey = key;
+			},
+			// A browser may blur a focused toggle as it is removed; that toggle is
+			// disconnected by the time the microtask runs, and keeps the key.
+			blur: () => {
+				queueMicrotask(() => {
+					if (toggle.element.isConnected && this.focusedKey === key) {
+						this.focusedKey = null;
+					}
+				});
+			},
 		});
-		button.addEventListener("focus", () => {
-			this.focusedKey = key;
-		});
-		// A browser may blur a focused toggle as it is removed; that toggle is
-		// disconnected by the time the microtask runs, and keeps the key.
-		button.addEventListener("blur", () => {
-			queueMicrotask(() => {
-				if (button.isConnected && this.focusedKey === key) {
-					this.focusedKey = null;
-				}
-			});
-		});
-
-		return button;
+		this.labelToggle(toggle, tracked);
+		toggle.setPressed(this.eliminated.has(key));
+		return toggle;
 	}
 
 	private toggleElimination(key: string): void {
@@ -362,7 +326,7 @@ export class AnswerEliminatorCore {
 				return;
 			}
 			if (!this.applyElimination(key, tracked)) {
-				console.error("Failed to create range for choice");
+				console.error("Failed to eliminate the choice: its content is detached");
 				return;
 			}
 		}
@@ -371,9 +335,9 @@ export class AnswerEliminatorCore {
 	}
 
 	/**
-	 * Strike a choice through and make it non-selectable. Returns false when
-	 * no range could be built for it. `block` is false only when the choice's
-	 * element already blocks it.
+	 * Strike a choice through and make it non-selectable. Returns false when it
+	 * is selected or its content is detached. `block` is false only when the
+	 * choice's element already blocks it.
 	 */
 	private applyElimination(
 		key: string,
@@ -382,20 +346,20 @@ export class AnswerEliminatorCore {
 	): boolean {
 		// Never strike a currently-selected choice.
 		if (tracked.target.isSelected()) return false;
-		const range = tracked.target.createRange();
-		if (!range) return false;
+		const { container, content } = tracked.target;
+		if (!content.isConnected) return false;
+		const range = document.createRange();
+		range.selectNodeContents(content);
 
-		this.strategy.apply(tracked.strategyKey, range);
+		this.strategy.apply(tracked.strategyKey, { range, container, content });
+		markEliminated(tracked.target, this.chrome());
 		this.eliminated.add(key);
 
 		// A student must not be able to select an answer they have struck
 		// through.
 		if (block) tracked.target.setEliminated(true);
 
-		if (tracked.button) {
-			tracked.button.classList.add(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
-			tracked.button.setAttribute("aria-pressed", "true");
-		}
+		tracked.toggle?.setPressed(true);
 
 		// A struck choice always keeps a visible button (even when the feature
 		// is toggled off) so it can be undone.
@@ -409,14 +373,12 @@ export class AnswerEliminatorCore {
 		if (!tracked) return;
 
 		this.strategy.remove(tracked.strategyKey);
+		clearEliminated(tracked.target);
 
 		// Re-enable selection now that the choice is no longer struck through.
 		tracked.target.setEliminated(false);
 
-		if (tracked.button) {
-			tracked.button.classList.remove(AnswerEliminatorCore.TOGGLE_ACTIVE_CLASS);
-			tracked.button.setAttribute("aria-pressed", "false");
-		}
+		tracked.toggle?.setPressed(false);
 
 		// No longer struck: re-apply the visibility rule (hidden when the
 		// feature is off, or when the choice is selected).
@@ -523,38 +485,43 @@ export class AnswerEliminatorCore {
 	}
 
 	/**
-	 * Show or hide a choice's strikethrough button, preserving the visible
-	 * `display` value chosen by the alignment configuration.
+	 * Remove every elimination's paint and mark, as a re-initialization or a
+	 * rescan starts over. Selection is restored separately, by the caller.
 	 */
-	private setButtonHidden(button: HTMLButtonElement, hidden: boolean): void {
-		const next = hidden ? "none" : (button.dataset.pieShownDisplay ?? "");
-		// Avoid redundant writes so our own refresh doesn't churn the DOM.
-		if (button.style.display !== next) {
-			button.style.display = next;
+	private clearAllEliminations(): void {
+		for (const key of this.eliminated) {
+			const tracked = this.choices.get(key);
+			if (tracked) clearEliminated(tracked.target);
 		}
+		this.strategy.clearAll();
+		this.eliminated.clear();
 	}
 
 	/**
-	 * The single rule for whether a choice's eliminate button should be hidden:
-	 * - A struck-through choice always keeps its button (so it can be undone),
+	 * The single rule for a choice's toggle:
+	 * - A struck-through choice always keeps its toggle (so it can be undone),
 	 *   even when the feature is toggled off.
-	 * - When the feature is off, a non-struck choice hides its button.
-	 * - When the feature is on, a non-struck choice hides its button only while
-	 *   it is selected (a selected answer must not be eliminable).
+	 * - When the feature is off, a non-struck choice's toggle leaves the layout.
+	 * - When the feature is on, a non-struck choice hides its toggle while it
+	 *   is selected (a selected answer must not be eliminable), keeping its
+	 *   space so the choice does not reflow.
 	 */
-	private shouldHideButton(key: string, tracked: TrackedChoice): boolean {
-		if (this.eliminated.has(key)) return false;
-		if (!this.active) return true;
-		return tracked.target.isSelected();
+	private toggleVisibility(
+		key: string,
+		tracked: TrackedChoice,
+	): "shown" | "reserved" | "removed" {
+		if (this.eliminated.has(key)) return "shown";
+		if (!this.active) return "removed";
+		return tracked.target.isSelected() ? "reserved" : "shown";
 	}
 
 	/**
-	 * Re-apply the visibility rule to a single choice's button.
+	 * Re-apply the visibility rule to a single choice's toggle.
 	 */
 	private updateButtonVisibility(key: string): void {
 		const tracked = this.choices.get(key);
-		if (!tracked?.button) return;
-		this.setButtonHidden(tracked.button, this.shouldHideButton(key, tracked));
+		if (!tracked?.toggle) return;
+		tracked.toggle.setVisibility(this.toggleVisibility(key, tracked));
 	}
 
 	/**
@@ -589,7 +556,7 @@ export class AnswerEliminatorCore {
 
 		const refocus =
 			this.focusedKey !== null &&
-			!this.choices.get(this.focusedKey)?.button?.isConnected &&
+			!this.choices.get(this.focusedKey)?.toggle?.element.isConnected &&
 			(document.activeElement === null ||
 				document.activeElement === document.body)
 				? this.focusedKey
@@ -597,9 +564,8 @@ export class AnswerEliminatorCore {
 		const previous = this.choices;
 		const eliminated = new Set(this.eliminated);
 
-		this.strategy.clearAll();
-		this.eliminated.clear();
-		for (const { button } of previous.values()) button?.remove();
+		this.clearAllEliminations();
+		for (const { toggle } of previous.values()) toggle?.destroy();
 		this.choices = new Map();
 
 		for (const found of findChoiceTargets(questionRoot)) {
@@ -615,7 +581,7 @@ export class AnswerEliminatorCore {
 		}
 
 		if (refocus) {
-			this.choices.get(refocus)?.button?.focus({ preventScroll: true });
+			this.choices.get(refocus)?.toggle?.focus();
 		}
 	}
 
@@ -642,8 +608,8 @@ export class AnswerEliminatorCore {
 	 * *property* on their own render — invisible to a MutationObserver and
 	 * later than the native `change` event — so we observe every DOM change
 	 * the widget makes (childList + attributes) and re-read on the next frame,
-	 * by which point the property has settled. Mutations caused by our own
-	 * buttons are ignored so the refresh can't loop.
+	 * by which point the property has settled. Mutations inside our own
+	 * toggles are ignored so the refresh can't loop.
 	 */
 	private attachSelectionListener(questionRoot: HTMLElement): void {
 		this.detachSelectionListener();
@@ -654,13 +620,15 @@ export class AnswerEliminatorCore {
 
 		if (typeof MutationObserver !== "undefined") {
 			this.selectionObserver = new MutationObserver((records) => {
-				const ownButtons = new Set<Node>();
-				for (const { button } of this.choices.values()) {
-					if (button) ownButtons.add(button);
+				const toggles: Element[] = [];
+				for (const { toggle } of this.choices.values()) {
+					if (toggle) toggles.push(toggle.element);
 				}
-				// Only react to changes that aren't our own button toggling.
+				// Only react to changes outside our own toggles: the NDS button
+				// renders and restyles inside its host.
 				const relevant = records.some(
-					(record) => !ownButtons.has(record.target),
+					(record) =>
+						!toggles.some((toggle) => toggle.contains(record.target)),
 				);
 				if (!relevant) return;
 				// Rescanned at once, before paint, so replaced choices never show
@@ -699,45 +667,10 @@ export class AnswerEliminatorCore {
 		this.detachSelectionListener();
 		this.focusedKey = null;
 
-		for (const { button } of this.choices.values()) {
-			button?.remove();
+		for (const { toggle } of this.choices.values()) {
+			toggle?.destroy();
 		}
 		this.choices.clear();
-	}
-
-	private applyButtonAlignment(
-		button: HTMLButtonElement,
-		alignment: ButtonAlignment,
-		container: HTMLElement,
-	): void {
-		switch (alignment) {
-			case "start":
-			case "end": {
-				// Resolved to a physical side from the choice's own direction: the
-				// toggle carries the interface `dir`, which need not match the
-				// content it sits beside.
-				const rtl = getComputedStyle(container).direction === "rtl";
-				const side = (alignment === "end") === rtl ? "left" : "right";
-				Object.assign(button.style, {
-					position: "absolute",
-					[side]: "8px",
-					top: "50%",
-					transform: "translateY(-50%)",
-				});
-				break;
-			}
-
-			case "inline":
-				// Inline with checkbox - no absolute positioning
-				Object.assign(button.style, {
-					position: "relative",
-					marginLeft: "8px",
-					marginRight: "8px",
-					display: "inline-flex",
-					verticalAlign: "middle",
-				});
-				break;
-		}
 	}
 
 	/**
@@ -773,7 +706,7 @@ export class AnswerEliminatorCore {
 	 */
 	destroy(): void {
 		this.restoreAllSelectable();
-		this.eliminated.clear();
+		this.clearAllEliminations();
 		this.cleanupButtons();
 		this.strategy.destroy();
 	}

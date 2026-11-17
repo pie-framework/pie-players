@@ -5,7 +5,7 @@ Test-taking strategy tool that allows students to eliminate answer choices they 
 ## Features
 
 - **Element-Level State**: Answer eliminations tracked per PIE element (not per item)
-- **Visual Feedback**: Strikethrough styling for eliminated choices
+- **Visual Feedback**: Strikethrough, cross-out or mask styling for eliminated choices
 - **Global Uniqueness**: Uses composite keys for state management across sections
 - **Separate from session data**: Eliminations never enter the PIE session; the coordinator's `saveToolState` hook persists them ([Persistence Integration](#persistence-integration))
 - **ElementToolStateStore Integration**: Works with Assessment Toolkit's state management
@@ -88,8 +88,7 @@ For a custom layout inside the toolkit. The tool detects choices under the item 
 |----------|-----------|------|---------|-------------|
 | `visible` | `visible` | `boolean` | `false` | Shows the elimination buttons; the toolbar toggle sets it |
 | `alwaysOn` | `always-on` | `boolean` | `false` | Shows the buttons regardless of `visible`, for a profile-based accommodation |
-| `strategy` | `strategy` | `'strikethrough' \| 'mask'` | `'strikethrough'` | Elimination styling; any other value uses `strikethrough` |
-| `buttonAlignment` | `button-alignment` | `'start' \| 'end' \| 'inline'` | `'inline'` | Toggle placement: `inline` in the flow after the choice, or `start`/`end` beside it, resolved against the choice's own direction so they mirror under right-to-left content. `left` and `right` are aliases of `start` and `end`; any other value is `inline` |
+| `strategy` | `strategy` | `'strikethrough' \| 'cross' \| 'mask'` | `'strikethrough'` | Elimination styling ([Visual Feedback](#3-visual-feedback)); any other value uses `strikethrough` |
 | `elementStateKeys` | | `Record<string, string>` | `{}` | Composite key `assessmentId:sectionId:attemptId:itemId:elementId` per PIE element, by model id, into the runtime context's element tool state store. A choice is tracked under its nearest ancestor with a listed id and persists under that key; choices outside a listed element are kept in memory only |
 | `elementIds` | | `string[]` | unset | Model ids of the PIE elements whose choices take a toggle; unset, every element's do. A choice belongs to an element when that element or one of its ancestors up to the item has a listed id. The toolbar sets it from the host's element list |
 
@@ -210,9 +209,9 @@ Every field is required, and a choice missing one is skipped with a console warn
 | --- | --- |
 | `id` | Unique within the element and stable across renders: eliminations persist by it. |
 | `label` | The choice's accessible name; the toggle is announced as "Toggle elimination for `label`". |
-| `container` | Receives the toggle and the eliminated state. The tool sets `position: relative` on it. An inline container, such as a token in running text, takes the toggle in the line. |
-| `content` | The part that is struck through or masked. It must be inside `container`. |
-| `isSelected()` | Whether the learner has chosen it. A selected choice hides its toggle and is never eliminated. |
+| `container` | Takes the toggle as its last child, in flow, so the element's own layout places it, and carries `data-pie-answer-eliminated`. The `cross` strategy positions its marks in it, setting `position: relative` while a choice is crossed if the container is static. An inline container, such as a token in running text, takes the toggle in the line. |
+| `content` | What the strategy paints and the dim reaches: the choice's text and media, without the selection control or the toggle. It must be inside `container` and differ from it. |
+| `isSelected()` | Whether the learner has chosen it. A selected choice hides its toggle, keeping its space, and is never eliminated. |
 | `isEliminable()` | False in evaluate and view modes, and for disabled or selected choices. |
 | `setEliminated(eliminated)` | Blocks or restores the learner's selection of the choice. The element owns this: the tool never disables controls it did not render. A call with the value the choice already has changes nothing. |
 
@@ -252,33 +251,38 @@ Eliminated choices are stored by choice ID:
 
 ### 3. Visual Feedback
 
-Elimination styling is applied by a pluggable `EliminationStrategy` built on the **CSS Custom Highlight API** (zero DOM mutation, so the choice text and structure stay intact for screen readers). Two strategies ship today:
+The core owns the eliminated state: it sets `data-pie-answer-eliminated="true"` on the container and appends a visually hidden "(eliminated)" announcement, in the interface language, to the content. It sets no `aria-disabled`: the container holds the toggle, which stays operable, and the element blocks selection itself through `setEliminated`. The container is never `aria-hidden` either (WCAG 4.1.2). A pluggable `EliminationStrategy` only paints, and three ship:
 
-- `strikethrough` (default): a `::highlight(pie-answer-eliminated-<id>)` rule renders a line-through over the choice label.
-- `mask`: a `::highlight(pie-answer-masked-<id>)` rule dims and blurs the choice.
+| `strategy` | Paint |
+| --- | --- |
+| `strikethrough` (default) | A line through the text, an X over each image and a line or X over rendered math |
+| `cross` | An X corner to corner over block content, and a line through each line box of inline content |
+| `mask` | Dims and blurs the content |
 
-Images need separate treatment: they are replaced elements, so neither `::highlight()` nor `text-decoration` paints on them and a picture choice would look untouched. The `strikethrough` strategy therefore wraps each `img` in the eliminated choice in a `span.pie-answer-eliminator-image-strike` (marked with `data-pie-answer-eliminator-image-strike`) and overlays a decorative, `pointer-events: none` SVG that draws an X corner to corner — upper-left to lower-right and lower-left to upper-right. Restoring the choice unwraps the image and returns the DOM to its original shape. Each diagonal is painted over a wider light casing line (`--pie-answer-eliminator-image-strike-casing-color`, package-private with no compatibility guarantee) so it stays legible over dark artwork.
+Every strategy also dims the content, so elimination survives a strike colour the learner cannot tell from the text. The dim stops at the content, so the toggle and its focus ring keep their contrast; under a colour scheme it is lighter, since the scheme certifies a contrast a full dim breaks.
 
-MathJax-rendered math needs its own mark for the same reason. MathJax's CHTML output draws each glyph as an `mjx-c` element with empty `textContent` (the character comes from `::before` generated content, which belongs to no Range), and its SVG output has no text at all — so the highlight had nothing to decorate and a math-only choice looked untouched. For each `mjx-container` in the eliminated choice, the `strikethrough` strategy marks the inner `mjx-math` box with `pie-answer-eliminator-math-strike` plus one of two modifiers, and the theme paints it:
+`strikethrough` strikes text with the **CSS Custom Highlight API**, which leaves the choice's DOM intact. Where the browser lacks the API, and under forced colours, where Chromium paints a highlight as a selection, it puts `pie-answer-eliminator-eliminated-fallback` on the content instead, switching live when forced colours turn on or off.
+
+Images are replaced elements, so neither `::highlight()` nor `text-decoration` paints on them. `strikethrough` wraps each `img` in a `span.pie-answer-eliminator-image-strike` (marked `data-pie-answer-eliminator-image-strike`) holding a decorative SVG X; restoring the choice unwraps it. Each diagonal lies over a wider light casing (`--pie-answer-eliminator-image-strike-casing-color`, package-private with no compatibility guarantee) so it stays legible over dark artwork.
+
+MathJax output carries no text a Range reaches: CHTML draws each glyph from `::before` content and SVG output has no text at all. For each `mjx-container`, `strikethrough` marks the inner `mjx-math` box, which holds the whole expression where an inline container's rect is only its line box:
 
 | expression | mark | `data-pie-answer-eliminator-math-strike` |
 | --- | --- | --- |
-| single row of symbols | centered line-through, as the prose gets | `line` |
-| contains a fraction bar or table rule | diagonals, as an eliminated image gets | `cross` |
+| single row of symbols | centred line-through, as the prose gets | `line` |
+| contains a fraction bar or table rule | an SVG X, as an eliminated image gets | `cross` |
 
-A centered line on a fraction lands on the math axis — exactly where the fraction bar already sits — so it reads as a recolored bar rather than an elimination. The split is structural (`mjx-mfrac`, `mjx-mtable`), not height-based: an inline `a/b` is only 1.16× its font size, indistinguishable in height from a radical or a parenthesised row, yet it is precisely the colliding case. Radicals and stacked limits keep the line, since their bars sit at the top or the strike simply crosses the base.
+A centred line on a fraction lands on the fraction bar and reads as a recoloured bar. The split is structural (`mjx-mfrac`, `mjx-mtable`): an inline `a/b` is the height of a radical or a parenthesised row. Natively rendered MathML keeps real text, which the highlight strikes.
 
-The inner `mjx-math` box is the paint target, not the container: for inline math `mjx-container` is `display: inline`, so its rect is the surrounding line box while the expression itself overflows it — a fraction sticks out several pixels above and below.
+`cross` appends its marks to the container after the toggle, outside the dimmed content, and follows the content's layout through a `ResizeObserver`. Each mark wipes in from the inline start once, mirrored for right-to-left content.
 
-Only MathJax containers are marked: natively rendered MathML keeps real text in `mi`/`mn`/`mo`, so the highlight already strikes every token there.
-
-All three treatments — the text line-through, the diagonals over an image, the line over math — are drawn in one color, `--pie-answer-eliminator-strike-color` (a registered `component-public` token, defaulting to `--pie-incorrect`), so a choice mixing prose, pictures, and math reads as a single strike and can be restyled from one place.
-
-For browsers without the Highlight API, each strategy falls back to a class on the choice container. Either way the eliminated choice also receives ARIA hooks (`data-pie-answer-eliminated`, `aria-disabled`, and an offscreen "(eliminated)" announcement in the interface language) for assistive technology. The choice container is never `aria-hidden` — it hosts the strategy's toggle, which must stay reachable for screen-reader and keyboard users (WCAG 4.1.2).
+Every mark is SVG or a border, so forced colours keep it, repainted `CanvasText`. All of them take one colour, `--pie-answer-eliminator-strike-color` (`component-public`, defaulting to `--pie-incorrect`), so a choice mixing prose, pictures and math reads as one strike. It folds into the scheme's `--pie-incorrect` by `--pie-fixed-hue-collapse`: a colour scheme replaces a host strike colour, and a Base Theme keeps it exactly.
 
 ### 4. Toggle Behavior
 
-Each choice gets its own elimination toggle button (class `pie-answer-eliminator-toggle`, rendered as `⊗`) appended to its `container`. Clicking the button toggles that choice through the active strategy and calls `setEliminated`. Eliminating is blocked while `isEliminable()` returns false. An active button is marked with `pie-answer-eliminator-toggle--active` and `aria-pressed="true"`; clicking again restores the choice.
+Each choice gets a toggle (class `pie-answer-eliminator-toggle`) appended as its container's last child. Clicking it toggles the choice through the active strategy and calls `setEliminated`; eliminating is blocked while `isEliminable()` returns false. A pressed toggle has `pie-answer-eliminator-toggle--active` and `aria-pressed="true"`, and its plus turns from × to +; clicking again restores the choice.
+
+The plain toggle (`pie-answer-eliminator-toggle--plain`) is sized in `em` of the surrounding text, 28px at a 16px base, and paints from the shared trigger tokens: `--pie-button-background-color`, `--pie-button-hover-background-color`, `--pie-button-color`, `--pie-button-border` and `--pie-button-focus-outline` at rest, and, pressed, the calculator and TTS triggers' `--pie-tool-trigger-active-background`, `--pie-tool-trigger-active-border-color` and `--pie-tool-trigger-active-color`. With `ndsIcons` set in the runtime context, the `nds-icons` attribute on the players, the toggle is the NDS icon button (`pie-answer-eliminator-toggle--nds`), loaded on first use, with its palette bridged to the same tokens. Forced colours fill a pressed toggle with `Highlight`. The toggle's transitions and the cross wipe run only under `prefers-reduced-motion: no-preference`.
 
 The toggle's accessible name ("Toggle elimination for {choice}", with "Unlabeled choice" standing in for a choice without text) and the "(eliminated)" announcement come from the players' catalog under `tools.answerEliminator`, in the interface locale of the runtime context. Both carry that locale's `lang` and `dir` while the choice content keeps its own, and a locale change relabels them in place without dropping eliminations.
 

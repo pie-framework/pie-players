@@ -509,6 +509,20 @@ is unchanged, and the fix only shows for a host that drives
 too. Hosts A and V both load `components.css`; neither styles those hooks and the
 answer eliminator is placed in neither delivery.
 
+The answer eliminator's toggle rework was assessed on 2026-11-17 against Host S's
+branch and the Host A, P, R and V checkouts, and does not advance the
+verification date. It removes `button-alignment` (`buttonAlignment`), the
+`--pie-answer-eliminator-toggle-color` token and the `aria-disabled` an
+eliminated choice's container carried, moves the dim from the container to the
+content, and adds `cross` to `strategy`. No host source sets the attribute, the
+token or a strategy, or styles an eliminator hook. Host S places the eliminator
+through the toolbar, which set `button-alignment="inline"`: the in-flow placement
+every toggle now takes. Its learners see the restyled toggle. It reads the
+`--pie-button-*` tokens through the same chain as the inline tool triggers, so
+Host S's colour-scheme reset of `--pie-button-bg`, `--pie-button-color`,
+`--pie-button-border` and `--pie-button-background-color` reaches it, and
+`--pie-tool-trigger-active-*`, which Host S does not set.
+
 The dictionary capabilities and the selection door onto them reach one consumer,
 found on the Host R re-derivation: that host serves a dictionary endpoint in the
 shape `pie-tool-dictionary` reads, so the lookup wire contract is API to it. See

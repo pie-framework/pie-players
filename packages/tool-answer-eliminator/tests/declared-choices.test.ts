@@ -168,8 +168,7 @@ const toggles = (root: ParentNode) =>
 
 const start = (root: HTMLElement, keys: Record<string, string> = {}) => {
 	const states = new Map<string, unknown>();
-	// A side placement, so an inline choice's own fallback to `inline` shows.
-	core = new AnswerEliminatorCore("strikethrough", "end");
+	core = new AnswerEliminatorCore();
 	core.setStoreIntegration(
 		{
 			getState: (key, toolId) => states.get(`${key}|${toolId}`),
@@ -224,7 +223,9 @@ test("a choice the element reports as not eliminable stays in play", () => {
 	const warn = spyOn(console, "warn").mockImplementation(() => {});
 
 	start(element);
-	expect(toggles(element)[0].style.display).toBe("none");
+	// Hidden in place, so selecting a choice does not reflow its row.
+	expect(toggles(element)[0].style.visibility).toBe("hidden");
+	expect(toggles(element)[0].style.display).toBe("");
 
 	element.locked = true;
 	toggles(element)[1].click();
@@ -274,6 +275,8 @@ test("malformed or repeated choices are skipped and the rest kept", () => {
 		{ ...supplied[1], content: outside },
 		{ ...supplied[2], setEliminated: undefined },
 		{ ...supplied[0], label: "again" },
+		// The content would take the dim, and the toggle with it.
+		{ ...supplied[2], id: "w", content: supplied[2].container },
 		null,
 	];
 	document.body.append(element);
@@ -288,7 +291,7 @@ test("malformed or repeated choices are skipped and the rest kept", () => {
 	expect(toggles(element).map((toggle) => toggle.dataset.choiceId)).toEqual([
 		"x",
 	]);
-	expect(warnings).toBe(4);
+	expect(warnings).toBe(5);
 });
 
 test("the outermost declaring element supplies its parts' choices once", () => {
@@ -432,10 +435,11 @@ test("a choice laid out inline takes its toggle in the line", () => {
 
 	start(element);
 
+	// In flow as the container's last child, so the token's own layout places it.
 	const [button] = toggles(element);
 	expect(button.parentElement?.dataset.id).toBe("x");
-	expect(button.style.position).toBe("relative");
-	expect(button.style.display).toBe("inline-flex");
+	expect(button.parentElement?.lastElementChild).toBe(button);
+	expect(button.style.position).toBe("");
 });
 
 test("element ids limit the toggles to those elements' choices", () => {
@@ -445,7 +449,7 @@ test("element ids limit the toggles to those elements' choices", () => {
 	root.append(listed, unlisted);
 	document.body.append(root);
 
-	core = new AnswerEliminatorCore("strikethrough", "end");
+	core = new AnswerEliminatorCore();
 	core.setElementIds(["q1"]);
 	core.initializeForQuestion(root);
 	expect(toggles(root).map((button) => button.dataset.choiceId)).toEqual(["x", "y"]);
@@ -464,7 +468,7 @@ test("element ids reach legacy choices through their element's id", () => {
 	root.innerHTML = `<multiple-choice id="q1">${legacyChoice("a", "Alpha")}</multiple-choice><multiple-choice id="q2">${legacyChoice("b", "Beta")}</multiple-choice>`;
 	document.body.append(root);
 
-	core = new AnswerEliminatorCore("strikethrough", "end");
+	core = new AnswerEliminatorCore();
 	core.setElementIds(["q2"]);
 	core.initializeForQuestion(root);
 

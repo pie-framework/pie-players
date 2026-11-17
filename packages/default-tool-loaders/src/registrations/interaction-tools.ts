@@ -25,11 +25,11 @@ import {
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { resolveOverlayElement } from "./overlay-element-cache.js";
 
-type EliminationStrategy = "strikethrough" | "mask";
+type EliminationStrategy = "strikethrough" | "cross" | "mask";
 
 /** The policy parameters' `strategy`, defaulting to strikethrough. */
 const normalizeEliminationStrategy = (value: unknown): EliminationStrategy =>
-	value === "mask" ? "mask" : "strikethrough";
+	value === "cross" || value === "mask" ? value : "strikethrough";
 
 /** The AfA PNP 3.0 support term an element declares to take the eliminator. */
 const ANSWER_MASKING = "answer-masking";
@@ -236,7 +236,6 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 					elementIds?: readonly string[];
 				},
 		);
-		overlay.setAttribute("button-alignment", "inline");
 		overlay.setAttribute(
 			"strategy",
 			normalizeEliminationStrategy(

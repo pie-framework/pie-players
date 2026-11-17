@@ -6,8 +6,11 @@ export interface ChoiceAdapter {
 	/** Find all choice elements within the root */
 	findChoices(root: HTMLElement): HTMLElement[];
 
-	/** Create a Range covering the choice content (for CSS Highlight API) */
-	createChoiceRange(choice: HTMLElement): Range | null;
+	/**
+	 * The part of the choice that is struck through and dimmed, inside `choice`;
+	 * null when the choice has none, which leaves it without a toggle.
+	 */
+	getChoiceContent(choice: HTMLElement): HTMLElement | null;
 
 	/** Get unique identifier for this choice (for persistence) */
 	getChoiceId(choice: HTMLElement): string;

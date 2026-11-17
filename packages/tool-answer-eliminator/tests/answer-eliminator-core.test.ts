@@ -4,9 +4,7 @@ import { afterAll, afterEach, expect, test } from "bun:test";
 const ownsDom = typeof window === "undefined";
 if (ownsDom) GlobalRegistrator.register();
 
-const { AnswerEliminatorCore, normalizeButtonAlignment } = await import(
-	"../answer-eliminator-core"
-);
+const { AnswerEliminatorCore } = await import("../answer-eliminator-core");
 
 const choiceMarkup = (value: string, label: string) =>
 	`<div class="corespring-radio-button"><input type="radio" value="${value}"><label>${label}</label></div>`;
@@ -71,7 +69,61 @@ test("the toggle glyph is hidden from assistive technology and read-aloud", () =
 			(node as Element).getAttribute?.("aria-hidden") !== "true",
 	);
 	expect(exposedText).toHaveLength(0);
-	expect(toggle?.textContent).toBe("⊗");
+	expect(toggle?.textContent).toBe("");
+	expect(
+		toggle
+			?.querySelector("svg.pie-answer-eliminator-toggle-icon")
+			?.getAttribute("aria-hidden"),
+	).toBe("true");
+});
+
+test("the toggle sits in flow as the choice container's last child", () => {
+	const root = document.createElement("multiple-choice");
+	root.innerHTML = choiceMarkup("a", "Alpha");
+	document.body.append(root);
+	core = new AnswerEliminatorCore();
+	core.disableStateRestoration();
+	core.initializeForQuestion(root);
+
+	const container = root.querySelector<HTMLElement>(".corespring-radio-button");
+	const toggle = container?.lastElementChild as HTMLElement;
+	expect(toggle.classList.contains("pie-answer-eliminator-toggle")).toBe(true);
+	expect(toggle.classList.contains("pie-answer-eliminator-toggle--plain")).toBe(
+		true,
+	);
+	expect(toggle.getAttribute("style")).toBe(null);
+	expect(container?.getAttribute("style")).toBe(null);
+});
+
+test("an eliminated choice is announced on its content and never disabled", () => {
+	const root = document.createElement("multiple-choice");
+	root.innerHTML = choiceMarkup("a", "Alpha");
+	document.body.append(root);
+	core = new AnswerEliminatorCore();
+	core.disableStateRestoration();
+	core.initializeForQuestion(root);
+	const container = root.querySelector<HTMLElement>(".corespring-radio-button");
+	const label = root.querySelector("label");
+	const toggle = root.querySelector<HTMLButtonElement>(
+		"button.pie-answer-eliminator-toggle",
+	);
+
+	toggle?.click();
+	expect(container?.getAttribute("data-pie-answer-eliminated")).toBe("true");
+	// The container holds the toggle that restores the choice.
+	expect(container?.hasAttribute("aria-disabled")).toBe(false);
+	expect(container?.closest("[aria-hidden]")).toBe(null);
+	expect(label?.getAttribute("data-pie-answer-eliminator-label")).toBe("true");
+	expect(
+		label?.querySelector(":scope > .pie-answer-eliminator-sr-announcement")
+			?.textContent,
+	).toBe(" (eliminated)");
+
+	toggle?.click();
+	expect(container?.hasAttribute("data-pie-answer-eliminated")).toBe(false);
+	expect(root.querySelector(".pie-answer-eliminator-sr-announcement")).toBe(
+		null,
+	);
 });
 
 const twoMultipleChoiceElements = () => {
@@ -153,31 +205,11 @@ test("re-initializing leaves one button per choice and keeps unkeyed elimination
 	).toBe(true);
 });
 
-test("left and right alias start and end, and anything else is inline", () => {
-	expect(normalizeButtonAlignment("left")).toBe("start");
-	expect(normalizeButtonAlignment("right")).toBe("end");
-	expect(normalizeButtonAlignment("start")).toBe("start");
-	expect(normalizeButtonAlignment("end")).toBe("end");
-	expect(normalizeButtonAlignment("inline")).toBe("inline");
-	expect(normalizeButtonAlignment("center")).toBe("inline");
-	expect(normalizeButtonAlignment(undefined)).toBe("inline");
-});
-
-const singleToggle = (
-	alignment?: "start" | "end" | "left" | "right",
-	dir?: string,
-) => {
+const singleToggle = () => {
 	const root = document.createElement("multiple-choice");
-	if (dir) {
-		root.setAttribute("dir", dir);
-		// happy-dom applies no user-agent styles, so `dir` sets no direction.
-		root.style.direction = dir;
-	}
 	root.innerHTML = choiceMarkup("a", "Alpha");
 	document.body.append(root);
-	core = alignment
-		? new AnswerEliminatorCore("strikethrough", alignment)
-		: new AnswerEliminatorCore();
+	core = new AnswerEliminatorCore();
 	core.disableStateRestoration();
 	core.initializeForQuestion(root);
 	const toggle = root.querySelector<HTMLButtonElement>(
@@ -186,32 +218,6 @@ const singleToggle = (
 	if (!toggle) throw new Error("no toggle");
 	return { root, toggle };
 };
-
-test("the toggle sits inline by default", () => {
-	const { toggle } = singleToggle();
-	expect(toggle.style.position).toBe("relative");
-	expect(toggle.style.display).toBe("inline-flex");
-});
-
-test("start and end resolve against the choice's own direction", () => {
-	const placed = (
-		alignment: "start" | "end" | "left" | "right",
-		dir?: string,
-	) => {
-		const { toggle } = singleToggle(alignment, dir);
-		const sides = { left: toggle.style.left, right: toggle.style.right };
-		core?.destroy();
-		core = null;
-		document.body.replaceChildren();
-		return sides;
-	};
-	expect(placed("end")).toEqual({ left: "", right: "8px" });
-	expect(placed("start")).toEqual({ left: "8px", right: "" });
-	expect(placed("end", "rtl")).toEqual({ left: "8px", right: "" });
-	expect(placed("start", "rtl")).toEqual({ left: "", right: "8px" });
-	// The physical spellings mirror too: they are aliases, not sides.
-	expect(placed("right", "rtl")).toEqual({ left: "8px", right: "" });
-});
 
 const stubI18n = (
 	locale: string,
@@ -233,7 +239,7 @@ const arabic = stubI18n("ar", "rtl", {
 });
 
 test("the toggle and the eliminated announcement speak the interface locale", () => {
-	const { root, toggle } = singleToggle("end");
+	const { root, toggle } = singleToggle();
 	expect(toggle.getAttribute("lang")).toBe("en-US");
 	expect(toggle.getAttribute("dir")).toBe("ltr");
 
@@ -252,8 +258,6 @@ test("the toggle and the eliminated announcement speak the interface locale", ()
 	expect(toggle.getAttribute("aria-pressed")).toBe("true");
 	expect(announcement?.textContent).toBe(" (مشطوب)");
 	expect(announcement?.getAttribute("dir")).toBe("rtl");
-	// Placement follows the content, which stayed left-to-right.
-	expect(toggle.style.right).toBe("8px");
 });
 
 test("a choice with no text is named from the catalog", () => {
@@ -270,4 +274,61 @@ test("a choice with no text is named from the catalog", () => {
 			.querySelector("button.pie-answer-eliminator-toggle")
 			?.getAttribute("aria-label"),
 	).toBe("تبديل شطب خيار بلا تسمية");
+});
+
+/** Stands in for the vendored Lit button: it renders an inner <button>. */
+class FakeNdsIconButton extends HTMLElement {
+	connectedCallback() {
+		if (!this.querySelector("button")) {
+			this.appendChild(document.createElement("button"));
+		}
+	}
+}
+
+test("the toggles become NDS icon buttons once the tag is registered", () => {
+	const root = document.createElement("multiple-choice");
+	root.innerHTML = choiceMarkup("a", "Alpha") + choiceMarkup("b", "Beta");
+	document.body.append(root);
+	core = new AnswerEliminatorCore();
+	core.disableStateRestoration();
+	core.initializeForQuestion(root);
+	root.querySelector<HTMLButtonElement>("button.pie-answer-eliminator-toggle")?.click();
+
+	if (!customElements.get("pie-nds-icon-button")) {
+		customElements.define("pie-nds-icon-button", FakeNdsIconButton);
+	}
+	core.setNdsIcons(true);
+
+	const nds = Array.from(root.querySelectorAll<HTMLElement>("pie-nds-icon-button"));
+	expect(nds).toHaveLength(2);
+	expect(root.querySelectorAll("button.pie-answer-eliminator-toggle")).toHaveLength(0);
+	expect(nds.map((host) => host.parentElement?.lastElementChild === host)).toEqual([
+		true,
+		true,
+	]);
+	expect(nds[0].classList.contains("pie-answer-eliminator-toggle--nds")).toBe(true);
+	expect(nds[0].getAttribute("button-aria-label")).toBe(
+		"Toggle elimination for Alpha",
+	);
+	// The button reads the NDS palette, bridged to the theme.
+	expect(nds[0].style.getPropertyValue("--color-primary-white")).toBe(
+		"var(--pie-white, #ffffff)",
+	);
+	// The pressed state survives the swap, reflected onto the inner button.
+	expect(
+		nds.map((host) => host.querySelector("button")?.getAttribute("aria-pressed")),
+	).toEqual(["true", "false"]);
+
+	nds[1].querySelector("button")?.click();
+	expect(nds[1].querySelector("button")?.getAttribute("aria-pressed")).toBe("true");
+	expect(core.getEliminatedCount()).toBe(2);
+
+	core.setNdsIcons(false);
+	expect(root.querySelectorAll("pie-nds-icon-button")).toHaveLength(0);
+	expect(
+		Array.from(
+			root.querySelectorAll("button.pie-answer-eliminator-toggle"),
+			(toggle) => toggle.getAttribute("aria-pressed"),
+		),
+	).toEqual(["true", "true"]);
 });

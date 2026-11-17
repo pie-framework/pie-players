@@ -65,7 +65,6 @@ const PACKAGE_PRIVATE_SOURCE_TOKENS = new Set([
 	"--pie-annotation-yellow-highlight",
 	"--pie-answer-eliminator-image-strike-casing-color",
 	"--pie-answer-eliminator-strike-paint",
-	"--pie-answer-eliminator-toggle-color",
 	"--pie-calculator-button-color",
 	"--pie-calculator-button-size",
 	"--pie-calculator-button-size-lg",

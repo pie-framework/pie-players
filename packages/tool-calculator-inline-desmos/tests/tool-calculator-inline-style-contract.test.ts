@@ -127,14 +127,19 @@ describe("tool-calculator-inline active trigger styling contract", () => {
 		expect(contrastRatio("#ffffff", "#1268aa")).toBeGreaterThanOrEqual(4.5);
 	});
 
-	test("active trigger ink collapses to the page colour under a scheme", () => {
+	test("active trigger ink defaults to --pie-white, the page colour under a scheme", () => {
+		// Every colour scheme sets `--pie-white` to its page colour, and the theme
+		// checks it against `--pie-primary` and `--pie-primary-dark` as the pressed
+		// trigger glyph. A fixed white fails on a light primary, as in dark themes.
 		for (const selector of [
 			".pie-tool-calculator-inline__button--active",
 			".pie-tool-calculator-inline__button--active:hover:not(:disabled)",
 		]) {
 			const body = cssRuleBody(selector).replace(/\s+/g, "");
-			expect(body, selector).toContain("--pie-fixed-hue-collapse");
-			expect(body, selector).toContain("var(--pie-background");
+			expect(body, selector).toContain(
+				"color:var(--pie-tool-trigger-active-color,var(--pie-white,#fff))",
+			);
+			expect(body, selector).not.toMatch(/,white\)/);
 		}
 	});
 

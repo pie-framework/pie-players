@@ -447,7 +447,8 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-secondary": "#aa0055",
 				"--pie-secondary-light": "#ff99cc",
 				"--pie-secondary-dark": "#770033",
-				"--pie-tertiary": "#990044",
+				// #990044 darkened to hold link text on the raised surface (#ff88aa).
+				"--pie-tertiary": "#82003a",
 				"--pie-tertiary-light": "#ffaacc",
 				"--pie-background": "#ffccdd",
 				"--pie-background-dark": "#ffb3cc",
@@ -696,7 +697,8 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-secondary": "#6d1a7d",
 				"--pie-secondary-light": "#a95cb8",
 				"--pie-secondary-dark": "#4a1259",
-				"--pie-tertiary": "#4a1259",
+				// The scheme's primary-dark: #4a1259 was 3.82:1 on the mid-tone raised surface.
+				"--pie-tertiary": "#330d3f",
 				"--pie-tertiary-light": "#e2cbe8",
 				"--pie-background": "#d4a9de",
 				"--pie-background-dark": "#c795d3",
@@ -847,6 +849,14 @@ const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
 			background: "--pie-surface",
 			minimum: 4.5,
 			role: "raised surface control text",
+		},
+		{
+			// Links and disclosure toggles inside a raised panel, such as an element's
+			// evaluate tooltip, keep the link colour rather than falling back to ink.
+			foreground: "--pie-tertiary",
+			background: "--pie-surface",
+			minimum: 4.5,
+			role: "raised surface link text",
 		},
 		{
 			foreground: "--pie-button-focus-outline",

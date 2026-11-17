@@ -17,6 +17,7 @@ export {
 	elementForPackage,
 	makeUniqueTags,
 	modelsForPackage,
+	removeUndeclaredMarkupTags,
 	validatePieConfigContract,
 } from "./config.js";
 // Loaders — the deep `ElementLoader` primitive (async `ensureRegistered` /

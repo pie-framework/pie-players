@@ -7,7 +7,9 @@
 	 * players' `env`. Each control is mirrored in the URL, so a state can be
 	 * linked: `?strategy=mask&nds=1&mode=evaluate`.
 	 */
+	import { browser } from '$app/env';
 	import { afterNavigate, goto } from '$app/navigation';
+	import '@pie-players/pie-theme';
 	import '@pie-players/pie-assessment-toolkit/components/pie-assessment-toolkit-element';
 	import '@pie-players/pie-assessment-toolkit/components/item-scope-element';
 	import '@pie-players/pie-assessment-toolkit/components/item-toolbar-element';
@@ -15,7 +17,12 @@
 	import type { AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import { createSectionDemoToolRegistry } from '#lib/demo-runtime/default-tool-registry.js';
 	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
-	import { getUrlEnumParam } from '#lib/demo-runtime/demo-page-helpers.js';
+	import {
+		applyDaisyTheme,
+		DAISY_THEME_STORAGE_KEY,
+		DEFAULT_DAISY_THEME,
+		getUrlEnumParam
+	} from '#lib/demo-runtime/demo-page-helpers.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -51,6 +58,15 @@
 		url.searchParams.set('nds', ndsIcons ? '1' : '0');
 		if (url.href !== window.location.href) goto(url, { shallow: true, replace: true });
 	});
+	// The stored site theme, carried to `<pie-theme>` so the items' tokens follow
+	// it; the root layout applies it on load only, before a client navigation here.
+	$effect(() => {
+		if (!browser) return;
+		applyDaisyTheme(
+			window.localStorage.getItem(DAISY_THEME_STORAGE_KEY) || DEFAULT_DAISY_THEME,
+			() => {}
+		);
+	});
 
 	const items = $derived(
 		((data.section as any)?.assessmentItemRefs ?? []).map(
@@ -85,62 +101,65 @@
 	<title>{data.demo?.name || 'Answer Eliminator'} - PIE Section Demos</title>
 </svelte:head>
 
-<main class="answer-eliminator-page">
-	<h1>{data.demo?.name || 'Answer Eliminator'}</h1>
-	<p>{data.demo?.description}</p>
+<!-- svelte-ignore a11y_misplaced_scope -->
+<pie-theme scope="document" theme="light">
+	<main class="answer-eliminator-page">
+		<h1>{data.demo?.name || 'Answer Eliminator'}</h1>
+		<p>{data.demo?.description}</p>
 
-	<div class="answer-eliminator-controls" data-testid="answer-eliminator-controls">
-		<fieldset>
-			<legend>Strategy</legend>
-			{#each STRATEGIES as option (option.value)}
-				<label>
-					<input type="radio" name="answer-eliminator-strategy" value={option.value} bind:group={strategy} />
-					{option.label}
-				</label>
-			{/each}
-		</fieldset>
-		<fieldset>
-			<legend>Mode</legend>
-			{#each MODES as option (option.value)}
-				<label>
-					<input type="radio" name="answer-eliminator-mode" value={option.value} bind:group={mode} />
-					{option.label}
-				</label>
-			{/each}
-		</fieldset>
-		<fieldset>
-			<legend>Toggle</legend>
-			<label><input type="checkbox" bind:checked={ndsIcons} /> NDS icons</label>
-		</fieldset>
-	</div>
+		<div class="answer-eliminator-controls" data-testid="answer-eliminator-controls">
+			<fieldset>
+				<legend>Strategy</legend>
+				{#each STRATEGIES as option (option.value)}
+					<label>
+						<input type="radio" name="answer-eliminator-strategy" value={option.value} bind:group={strategy} />
+						{option.label}
+					</label>
+				{/each}
+			</fieldset>
+			<fieldset>
+				<legend>Mode</legend>
+				{#each MODES as option (option.value)}
+					<label>
+						<input type="radio" name="answer-eliminator-mode" value={option.value} bind:group={mode} />
+						{option.label}
+					</label>
+				{/each}
+			</fieldset>
+			<fieldset>
+				<legend>Toggle</legend>
+				<label><input type="checkbox" bind:checked={ndsIcons} /> NDS icons</label>
+			</fieldset>
+		</div>
 
-	<pie-assessment-toolkit
-		assessment-id={assessment.id}
-		{assessment}
-		{tools}
-		{toolRegistry}
-		nds-icons={ndsIcons}
-	>
-		{#each items as item (item.id)}
-			<pie-item-scope item-id={item.id} {item}>
-				<article class="answer-eliminator-item" data-testid={item.id}>
-					<header class="answer-eliminator-item-header">
-						<h2>{item.name}</h2>
-						<pie-item-toolbar></pie-item-toolbar>
-					</header>
-					<div data-region="content">
-						<pie-item-player
-							config={item.config}
-							{env}
-							session={sessionFor(item)}
-							loaderOptions={playerConfig.loaderOptions}
-						></pie-item-player>
-					</div>
-				</article>
-			</pie-item-scope>
-		{/each}
-	</pie-assessment-toolkit>
-</main>
+		<pie-assessment-toolkit
+			assessment-id={assessment.id}
+			{assessment}
+			{tools}
+			{toolRegistry}
+			nds-icons={ndsIcons}
+		>
+			{#each items as item (item.id)}
+				<pie-item-scope item-id={item.id} {item}>
+					<article class="answer-eliminator-item" data-testid={item.id}>
+						<header class="answer-eliminator-item-header">
+							<h2>{item.name}</h2>
+							<pie-item-toolbar></pie-item-toolbar>
+						</header>
+						<div data-region="content">
+							<pie-item-player
+								config={item.config}
+								{env}
+								session={sessionFor(item)}
+								loaderOptions={playerConfig.loaderOptions}
+							></pie-item-player>
+						</div>
+					</article>
+				</pie-item-scope>
+			{/each}
+		</pie-assessment-toolkit>
+	</main>
+</pie-theme>
 
 <style>
 	.answer-eliminator-page {

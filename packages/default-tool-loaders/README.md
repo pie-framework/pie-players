@@ -59,7 +59,7 @@ update replaces it.
 Desmos is the provider when none is configured, and it needs an API key: pass
 it through `provider.runtime.authFetcher`, a `provider.init.proxyEndpoint` that
 returns it, or `provider.init.apiKey` in development
-([Calculator with host auth](../../docs/tools-and-accomodations/tool_provider_system.md#calculator-with-host-auth)).
+([Calculator with host auth](../../docs/tools-and-accommodations/tool_provider_system.md#calculator-with-host-auth)).
 Without one the calculator fails to load. `provider.id: "calculator-geogebra"`
 selects GeoGebra, which needs no key.
 

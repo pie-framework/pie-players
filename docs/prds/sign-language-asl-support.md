@@ -170,7 +170,7 @@ has its video hidden by gating, an ASL item that shows no ASL.
   `ToolkitCoordinator.decideFeaturePolicy(featureId)` resolve one id through that
   precedence independent of placement, so no separate non-tool feature concept exists.
   Policy identity and rendering placement are separate; see
-  [What Counts As A Tool](../tools-and-accomodations/architecture.md#what-counts-as-a-tool).
+  [What Counts As A Tool](../tools-and-accommodations/architecture.md#what-counts-as-a-tool).
 - Public export path: `@pie-players/pie-tool-sign-language` for the registration, the
   card validators and the content resolver. The generic media-payload helpers
   (`applyMediaFragment`, `enforceMediaFragment` and the normalizers) belong to
@@ -371,7 +371,7 @@ Signing is available when **both** conditions hold: the content carries a matchi
 `sign-language` card, and policy grants eligibility. They are checked independently.
 
 The content condition is the DRD half of AfA's matching pair (see
-[What Counts As A Tool](../tools-and-accomodations/architecture.md#what-counts-as-a-tool)),
+[What Counts As A Tool](../tools-and-accommodations/architecture.md#what-counts-as-a-tool)),
 and it prevents a dead affordance on the large majority of items, which carry no
 signing video. The eligibility half follows the accommodation tier: not granted by
 default, because signing requires a documented need. The registration declares

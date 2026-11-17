@@ -72,4 +72,4 @@ The entry exports the type `CalculatorType` from `@pie-players/pie-calculator`.
 - [Calculator providers](../default-tool-loaders/README.md#calculator-providers)
 - [`@pie-players/pie-tool-calculator-inline-desmos`](../tool-calculator-inline-desmos/README.md),
   the item-header button that opens this calculator
-- [Tools and accommodations architecture](../../docs/tools-and-accomodations/architecture.md)
+- [Tools and accommodations architecture](../../docs/tools-and-accommodations/architecture.md)

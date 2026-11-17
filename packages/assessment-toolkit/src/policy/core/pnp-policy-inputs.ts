@@ -1,6 +1,6 @@
 /**
  * PNP/profile policy input detection. See
- * `docs/tools-and-accomodations/architecture.md`.
+ * `docs/tools-and-accommodations/architecture.md`.
  *
  * Pure helpers that decide whether policy inputs carry PNP/profile policy
  * material, which is what auto-mode `pnpEnforcement` turns on for. The engine

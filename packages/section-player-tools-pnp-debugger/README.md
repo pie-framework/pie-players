@@ -62,5 +62,5 @@ close control is used.
 ## Related documentation
 
 - [PNP configuration guide](../assessment-toolkit/docs/PNP_CONFIGURATION.md)
-- [Tool provider system](../../docs/tools-and-accomodations/tool_provider_system.md)
+- [Tool provider system](../../docs/tools-and-accommodations/tool_provider_system.md)
 - [Section player integration guide](../../docs/section-player/integration-guide.md)

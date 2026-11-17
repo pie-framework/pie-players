@@ -207,7 +207,7 @@ scope (`section`, `item`, `passage`), and
 `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` from
 `@pie-players/pie-default-tool-loaders` is the packaged opt-in. Section-level
 tools render only when `show-toolbar` is set. The
-[canonical tool ids](../../docs/tools-and-accomodations/tool_provider_system.md#canonical-tool-ids)
+[canonical tool ids](../../docs/tools-and-accommodations/tool_provider_system.md#canonical-tool-ids)
 are listed with the tool provider system. Tool configuration is validated when
 the toolkit initializes, toolbar overlays included, at the
 `tool-config-strictness` level. The text-to-speech provider is configured under

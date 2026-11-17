@@ -1,6 +1,6 @@
 /**
  * Compose-decision pipeline. See
- * `docs/tools-and-accomodations/architecture.md`.
+ * `docs/tools-and-accommodations/architecture.md`.
  *
  * Pure function: given a decision request, the host's tools config,
  * an optional PNP policy source, and the registered custom sources, returns

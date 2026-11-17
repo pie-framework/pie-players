@@ -1,6 +1,6 @@
 /**
  * Custom `PolicySource` extension point. See
- * `docs/tools-and-accomodations/architecture.md`.
+ * `docs/tools-and-accommodations/architecture.md`.
  *
  * Custom sources run in step 6 of the composition pipeline — *after*
  * placement membership, provider veto, host policy, and PNP/profile gates.

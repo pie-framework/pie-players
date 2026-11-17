@@ -61,6 +61,10 @@ export {
 	resolvePieTheme,
 } from "./color-schemes.js";
 export {
+	PIE_THEME_CONTRAST_RELATIONSHIPS,
+	type ThemeContrastRelationship,
+} from "./theme-definitions.js";
+export {
 	applyPieColorScheme,
 	resolvePieThemeHost,
 	type ApplyPieColorSchemeOptions,

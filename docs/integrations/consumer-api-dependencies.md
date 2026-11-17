@@ -533,6 +533,18 @@ reset hands back `--pie-button-bg` and `--pie-button-color`, which the NDS
 toggle's fill and glyph take through the palette bridge. Host C places no
 eliminator, and Host M's checkout holds only a build.
 
+On 2026-11-17 the section player's `./browser` build began exporting
+`SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` and
+`createUniversalPersonalNeedsProfile`, and `pie-theme` began exporting
+`PIE_THEME_CONTRAST_RELATIONSHIPS` with its `ThemeContrastRelationship` type.
+All three are additions, checked against every checkout the same day as a
+targeted lookup, so it does not advance the verification date. Host R is the one
+host that reads their equivalents: it builds its tool registry from the
+`./browser` build it loads by version, takes the universal profile from its npm
+install of the loaders, and keeps local copies of the placement preset and of the
+contrast pairs. Each now has an export in the release it loads; see Consumer-side
+defects.
+
 The dictionary capabilities and the selection door onto them reach one consumer,
 found on the Host R re-derivation: that host serves a dictionary endpoint in the
 shape `pie-tool-dictionary` reads, so the lookup wire contract is API to it. See
@@ -1205,6 +1217,7 @@ same PIE surface.
 | `@pie-players/pie-theme/token-registry.json` | R | Default import, cast to `PieThemeTokenRegistry`; the entry fields it reads are listed under theme tokens below |
 | `@pie-players/pie-section-player/components/section-player-splitpane-element` | A, R, S | |
 | `@pie-players/pie-section-player/item-section` | S | `sectionFromItem(item, { sectionId, itemVId })`, reading `section` and ignoring the returned session. Its declaration is local to the host, because the package's declarations import `pie-players-shared` subpaths its `node10` resolution cannot reach; see TypeScript resolution |
+| `@pie-players/pie-section-player/browser` | R | A type import, for the shape of the module it loads from a CDN by version and builds its tool registry from with `createPackagedToolRegistry`; see Direct `dist` path references |
 | `@pie-players/pie-section-player` | C, R | Root entry, for its layout elements' side-effect registration: C through a dynamic `import()`, which it also reads the `SectionPlayerCardTitleContext` type from |
 | `@pie-players/pie-assessment-toolkit` | R | Root entry, for values and types both |
 | `@pie-players/pie-default-tool-loaders` | R | |
@@ -2157,8 +2170,8 @@ same three things are API there, and the failure ends the same way, at its wait
 for `PiePlayerLoadEvent`.
 
 `@pie-players/pie-section-player@<version>/dist/browser/pie-section-player.js`,
-exported as `./browser`, is a self-contained build that no host loads yet. It
-becomes API in the same way once one does: the entry filename, and `dist/browser/`
+exported as `./browser`, is a self-contained build that Host R loads from a CDN
+by version. It is API in the same way: the entry filename, and `dist/browser/`
 as a tree whose imports are all relative — `chunks/`, and `assets/` once a
 packaged tool ships a file — so a host that copies it needs the whole
 directory, one per version. The npm entry `dist/pie-section-player.js` is
@@ -2869,10 +2882,20 @@ repo.
 - Host R declares its own local copy of the preferred tool-placement preset rather
   than importing the packaged `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT`, so a
   capability added to or removed from the packaged preset never reaches it. The
-  fork is now four capabilities behind at section level — the two dictionaries and
-  their Spanish variants — which is why that host serves a dictionary endpoint
-  and never shows a dictionary panel. Its item and passage lists still match. The
-  last surviving instance of the forking pattern its color schemes used to share.
+  fork is now five capabilities behind at section level — magnification, the two
+  dictionaries and their Spanish variants — which is why that host serves a
+  dictionary endpoint and never shows a dictionary panel. Its item and passage
+  lists still match. The last surviving instance of the forking pattern its color
+  schemes used to share. The `./browser` build it loads exports the preset from
+  2026-11-17 (checked on its `develop` that day).
+- Host R builds its tool registry from the `./browser` build it loads by version,
+  but takes `createUniversalPersonalNeedsProfile()` from its npm install of the
+  loaders, so the profile can grant a different release's universal set. The
+  build exports the function from 2026-11-17.
+- Host R's contrast inspector keeps its own fifteen pairs, so a relationship the
+  theme adds, such as the pressed trigger glyph's `--pie-white` on
+  `--pie-primary`, never reaches it. `pie-theme` exports the relationships its own
+  check measures as `PIE_THEME_CONTRAST_RELATIONSHIPS` from 2026-11-17.
 - Host R declares four `@pie-players` packages it imports nowhere:
   `pie-calculator-desmos`, `pie-tool-text-to-speech`,
   `pie-section-player-tools-shared`, `tts-client-server`. The packaged registry

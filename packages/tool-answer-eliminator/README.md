@@ -320,6 +320,7 @@ interface AnswerEliminatorState {
 
 See the [section-demos](../../apps/section-demos/) for complete examples:
 
+- [**Answer Eliminator**](../../apps/section-demos/src/routes/%28demos%29/answer-eliminator/+page.svelte): each path the eliminator takes choices from, legacy adapters included, with the strategy, toggle style and item mode switchable mid-session. The URL carries the state, as in `?strategy=mask&nds=1&mode=evaluate`
 - **Three Questions Demo**: Element-level answer eliminator with state persistence
 - **Two Passages Demo**: Multi-section assessment with cross-section state
 

@@ -1155,7 +1155,7 @@ trust model.
 | Specifier | Contents |
 | --- | --- |
 | `@pie-players/pie-section-player` | Registers every element. Exports `sectionFromItem`, `DEFAULT_SECTION_PLAYER_POLICIES` and the types `SectionPlayerRuntimeConfig`, `SectionPlayerRuntimePlayerConfig`, `SectionPlayerRuntimeHostContract`, `SectionPlayerSnapshot`, `SectionPlayerNavigationSnapshot`, `SectionPlayerPolicies`, `SectionPlayerHostHooks`, the card title context types, `SectionPlayerBackendResolver` and `SectionPlayerBackendResolverContext` |
-| `@pie-players/pie-section-player/browser` | The self-contained browser build, which also exports `createPackagedToolRegistry` and `DEFAULT_TOOL_MODULE_LOADERS` ([Loading from a CDN](../../docs/install/cdn.md#section-player-browser-build)) |
+| `@pie-players/pie-section-player/browser` | The self-contained browser build, which also exports `createPackagedToolRegistry`, `createCalculatorToolRegistration`, `DEFAULT_TOOL_MODULE_LOADERS`, `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` and `createUniversalPersonalNeedsProfile` ([Loading from a CDN](../../docs/install/cdn.md#section-player-browser-build)) |
 | `@pie-players/pie-section-player/components/section-player-splitpane-element` | An alias of the package root |
 | `@pie-players/pie-section-player/contracts/runtime-host-contract` | The host method types |
 | `@pie-players/pie-section-player/contracts/host-hooks` | `SectionPlayerHostHooks` |

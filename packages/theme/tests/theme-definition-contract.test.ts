@@ -7,6 +7,7 @@ import {
 	getDefaultColorSchemeDescriptor,
 	getRequiredSchemeTokens,
 	listBuiltInColorSchemeDefinitions,
+	PIE_THEME_CONTRAST_RELATIONSHIPS,
 } from "../src/theme-definitions.js";
 import { renderPieThemeCss } from "../src/theme-css.js";
 import { contrastRatio } from "../src/contrast.js";
@@ -73,6 +74,25 @@ describe("canonical theme definitions", () => {
 		}
 		for (const scheme of listBuiltInColorSchemeDefinitions()) {
 			expect(diagnoseThemeContrast(scheme.variables, scheme.id)).toEqual([]);
+		}
+	});
+
+	test("the published relationships are frozen and are the pairs the theme checks", () => {
+		expect(Object.isFrozen(PIE_THEME_CONTRAST_RELATIONSHIPS)).toBe(true);
+		expect(PIE_THEME_CONTRAST_RELATIONSHIPS.every(Object.isFrozen)).toBe(true);
+		// Each listed pair is one the diagnosis measures: painted alike, it fails.
+		for (const relationship of PIE_THEME_CONTRAST_RELATIONSHIPS) {
+			const diagnostics = diagnoseThemeContrast({
+				...getBaseThemeVariables("light"),
+				[relationship.foreground]: "#777777",
+				[relationship.background]: "#777777",
+			});
+			expect(
+				diagnostics.some((diagnostic) =>
+					diagnostic.message.startsWith(`${relationship.role} contrast is 1.00:1`),
+				),
+				relationship.role,
+			).toBe(true);
 		}
 	});
 

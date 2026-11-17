@@ -38,6 +38,18 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 		return this.resolveLabelElement(choice);
 	}
 
+	/**
+	 * The row that holds the control and the label, so the toggle ends it
+	 * instead of landing under the rationale and feedback; the choice itself
+	 * when the label is its direct child.
+	 */
+	getChoiceContainer(choice: HTMLElement): HTMLElement {
+		const content = this.resolveLabelElement(choice);
+		let row: HTMLElement | null = content;
+		while (row && row.parentElement !== choice) row = row.parentElement;
+		return row && row !== content && row.localName !== "label" ? row : choice;
+	}
+
 	getChoiceId(choice: HTMLElement): string {
 		// Get value from input element
 		const input = choice.querySelector(
@@ -50,8 +62,14 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 		);
 	}
 
+	/**
+	 * The prompt text alone: the label also holds the displayed key and its
+	 * screen-reader copy, which would name the choice "AA. …".
+	 */
 	getChoiceLabel(choice: HTMLElement): string {
-		const label = this.resolveLabelElement(choice);
+		const label =
+			choice.querySelector<HTMLElement>(".prompt-label") ??
+			this.resolveLabelElement(choice);
 		return label?.textContent?.trim() || "";
 	}
 
@@ -142,11 +160,16 @@ export class MultipleChoiceAdapter implements ChoiceAdapter {
 		}
 	}
 
+	/**
+	 * The label text: Material-UI's label span, which leaves out the radio or
+	 * checkbox its `<label>` wraps. Markup without it falls back to the label.
+	 */
 	private resolveLabelElement(choice: HTMLElement): HTMLElement | null {
 		return (
 			choice.querySelector<HTMLElement>(
 				`[${MultipleChoiceAdapter.LABEL_HOOK_ATTR}="true"]`,
 			) ||
+			choice.querySelector<HTMLElement>(".MuiFormControlLabel-label") ||
 			choice.querySelector<HTMLElement>("label") ||
 			choice.querySelector<HTMLElement>("span")
 		);

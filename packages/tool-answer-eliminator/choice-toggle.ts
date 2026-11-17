@@ -15,11 +15,11 @@ const SVG_NS = "http://www.w3.org/2000/svg";
  * NDS palette bridge, the mapping tool-tts-inline and the assessment-toolkit
  * ItemToolBar declare (asserted by scripts/check-theme-tokens.mjs). The
  * vendored button paints from the NDS palette, which no PIE theme sets. It is
- * inline because the toggle mounts in whatever tree the item renders into.
+ * inline because the toggle mounts in whatever tree the item renders into. The
+ * accent stays the same when pressed, as in the NDS design: the turned glyph
+ * and `aria-pressed` carry the state, and the button owns its fill, which the
+ * pressed trigger tokens cannot reach.
  */
-const NDS_IDLE_ACCENT = "var(--pie-button-color, var(--pie-text, #222))";
-const NDS_ACTIVE_ACCENT =
-	"var(--pie-tool-trigger-active-color, var(--pie-button-color, var(--pie-text, #222)))";
 const NDS_PALETTE_BRIDGE = [
 	"--color-interactive-blue: var(--pie-button-color, var(--pie-text, #222));",
 	"--color-new-gray: var(--pie-background-dark, #f3f5f7);",
@@ -178,10 +178,6 @@ function createNdsToggle(choiceId: string, events: ToggleEvents): ChoiceToggle {
 		setPressed(next) {
 			pressed = next;
 			host.classList.toggle(ACTIVE_CLASS, next);
-			host.style.setProperty(
-				"--color-interactive-blue",
-				next ? NDS_ACTIVE_ACCENT : NDS_IDLE_ACCENT,
-			);
 			reflectPressed();
 		},
 		setVisibility: (visibility) => setVisibility(host, visibility),

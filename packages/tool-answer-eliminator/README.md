@@ -208,7 +208,7 @@ Every field is required, and a choice missing one is skipped with a console warn
 | Field | Contract |
 | --- | --- |
 | `id` | Unique within the element and stable across renders: eliminations persist by it. |
-| `label` | The choice's accessible name; the toggle is announced as "Toggle elimination for `label`". |
+| `label` | The choice's accessible name; the toggle is named "Eliminate `label`". |
 | `container` | Takes the toggle as its last child, in flow, so the element's own layout places it, and carries `data-pie-answer-eliminated`. The `cross` strategy positions its marks in it, setting `position: relative` while a choice is crossed if the container is static. An inline container, such as a token in running text, takes the toggle in the line. |
 | `content` | What the strategy paints and the dim reaches: the choice's text and media, without the selection control or the toggle. It must be inside `container` and differ from it. |
 | `isSelected()` | Whether the learner has chosen it. A selected choice hides its toggle, keeping its space, and is never eliminated. |
@@ -221,7 +221,7 @@ An element may replace its choices' markup on any render, as select-text does. W
 
 The outermost declaring element under the item owns its subtree: an element composed of declaring parts answers for them, prefixing ids with the part where they would collide, as EBSR does with `a-` and `b-`. Eliminations persist under the key of the nearest element listed in `elementStateKeys`, starting from the declaring element.
 
-Elements that declare nothing fall back to the multiple-choice and EBSR markup this package reads (`.corespring-checkbox` and `.corespring-radio-button` choices, and the `ebsr-multiple-choice` parts with ids `a` and `b`). That fallback serves legacy pie-elements and pie-elements-ng releases from before elements declared their supports, and never runs inside a declaring element.
+Elements that declare nothing fall back to the multiple-choice and EBSR markup this package reads (`.corespring-checkbox` and `.corespring-radio-button` choices, and the `ebsr-multiple-choice` parts with ids `a` and `b`). That fallback serves legacy pie-elements and pie-elements-ng releases from before elements declared their supports, and never runs inside a declaring element. Its container is the row that holds the control and the label, so the toggle ends that row ahead of any rationale or feedback; its content is the label text, and the choice is named from the prompt alone.
 
 ### Host element list
 
@@ -280,11 +280,11 @@ Every mark is SVG or a border, so forced colours keep it, repainted `CanvasText`
 
 ### 4. Toggle Behavior
 
-Each choice gets a toggle (class `pie-answer-eliminator-toggle`) appended as its container's last child. Clicking it toggles the choice through the active strategy and calls `setEliminated`; eliminating is blocked while `isEliminable()` returns false. A pressed toggle has `pie-answer-eliminator-toggle--active` and `aria-pressed="true"`, and its plus turns from × to +; clicking again restores the choice.
+Each choice gets a toggle (class `pie-answer-eliminator-toggle`) appended as its container's last child. Clicking it toggles the choice through the active strategy and calls `setEliminated`; eliminating is blocked while `isEliminable()` returns false. A pressed toggle has `pie-answer-eliminator-toggle--active` and `aria-pressed="true"`, and its plus turns from × to +; clicking again restores the choice. A selected choice hides its toggle and keeps its space, so selecting does not reflow it. A choice that is not eliminated and cannot be, as in evaluate mode or a disabled element, has no toggle in the layout or the tab order.
 
-The plain toggle (`pie-answer-eliminator-toggle--plain`) is sized in `em` of the surrounding text, 28px at a 16px base, and paints from the shared trigger tokens: `--pie-button-background-color`, `--pie-button-hover-background-color`, `--pie-button-color`, `--pie-button-border` and `--pie-button-focus-outline` at rest, and, pressed, the calculator and TTS triggers' `--pie-tool-trigger-active-background`, `--pie-tool-trigger-active-border-color` and `--pie-tool-trigger-active-color`. With `ndsIcons` set in the runtime context, the `nds-icons` attribute on the players, the toggle is the NDS icon button (`pie-answer-eliminator-toggle--nds`), loaded on first use, with its palette bridged to the same tokens. Forced colours fill a pressed toggle with `Highlight`. The toggle's transitions and the cross wipe run only under `prefers-reduced-motion: no-preference`.
+The plain toggle (`pie-answer-eliminator-toggle--plain`) is sized in `em` of the surrounding text, 28px at a 16px base, and paints from the shared trigger tokens: `--pie-button-background-color`, `--pie-button-color`, `--pie-button-border` and `--pie-button-focus-outline` at rest, `--pie-button-hover-background-color` and a ring in `--pie-button-hover-color` on hover, and, pressed, the calculator and TTS triggers' `--pie-tool-trigger-active-background`, `--pie-tool-trigger-active-border-color` and `--pie-tool-trigger-active-color`. With `ndsIcons` set in the runtime context, the `nds-icons` attribute on the players, the toggle is the NDS icon button (`pie-answer-eliminator-toggle--nds`), loaded on first use, with its palette bridged to the same tokens. It keeps its accent when pressed, as in the NDS design: the turned glyph and `aria-pressed` carry the state, and the button owns the fill the pressed tokens are chosen against. Forced colours fill a pressed toggle with `Highlight`. The toggle's transitions and the cross wipe run only under `prefers-reduced-motion: no-preference`.
 
-The toggle's accessible name ("Toggle elimination for {choice}", with "Unlabeled choice" standing in for a choice without text) and the "(eliminated)" announcement come from the players' catalog under `tools.answerEliminator`, in the interface locale of the runtime context. Both carry that locale's `lang` and `dir` while the choice content keeps its own, and a locale change relabels them in place without dropping eliminations.
+The toggle's accessible name ("Eliminate {choice}", the same pressed or not, with "Unlabeled choice" standing in for a choice without text) and the "(eliminated)" announcement come from the players' catalog under `tools.answerEliminator`, in the interface locale of the runtime context. Both carry that locale's `lang` and `dir` while the choice content keeps its own, and a locale change relabels them in place without dropping eliminations.
 
 ## Cleanup
 

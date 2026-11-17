@@ -428,7 +428,7 @@ const it = {
 			description: "Barrare le opzioni di risposta",
 			buttonA11y: "Barrare, escludere le opzioni di risposta",
 			tooltip: "Barrare",
-			toggleA11y: "Attivare o disattivare l'esclusione di {choice}",
+			toggleA11y: "Escludere {choice}",
 			// Agrees with "opzione", the choice's own grammatical gender.
 			eliminatedA11y: "(barrata)",
 			unlabeledChoice: "Opzione senza etichetta",

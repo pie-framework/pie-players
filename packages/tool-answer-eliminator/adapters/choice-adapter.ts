@@ -12,6 +12,9 @@ export interface ChoiceAdapter {
 	 */
 	getChoiceContent(choice: HTMLElement): HTMLElement | null;
 
+	/** What takes the toggle as its last child: `choice` or an element in it. */
+	getChoiceContainer(choice: HTMLElement): HTMLElement;
+
 	/** Get unique identifier for this choice (for persistence) */
 	getChoiceId(choice: HTMLElement): string;
 

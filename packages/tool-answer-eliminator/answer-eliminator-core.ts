@@ -56,6 +56,10 @@ interface TrackedChoice {
 
 const STATE_TOOL_ID = "answerEliminator";
 
+// Strategy keys name page-global CSS highlights and style elements, so they are
+// unique across every core on the page, not just within one.
+let nextStrategyToken = 0;
+
 /**
  * Core engine for answer eliminator tool
  * Coordinates the choices elements supply, strategies, and state management
@@ -72,6 +76,7 @@ export class AnswerEliminatorCore {
 	// Strategy ids end up in CSS highlight names and attribute values, so they
 	// are opaque tokens that stay stable for this core's lifetime.
 	private strategyKeys = new Map<string, string>();
+	// Anonymous group tokens, local to this core.
 	private anonymousGroups = new WeakMap<Element, string>();
 	private nextToken = 0;
 	// Whether the toggles render as the NDS icon button (`ndsIcons`).
@@ -256,13 +261,16 @@ export class AnswerEliminatorCore {
 	private strategyKeyFor(key: string): string {
 		let strategyKey = this.strategyKeys.get(key);
 		if (!strategyKey) {
-			strategyKey = `choice-${this.nextToken++}`;
+			strategyKey = `choice-${nextStrategyToken++}`;
 			this.strategyKeys.set(key, strategyKey);
 		}
 		return strategyKey;
 	}
 
 	private initializeChoice(found: FoundChoice, questionRoot: HTMLElement): void {
+		// A tracked detached container sends every mutation to a rescan, which
+		// mounts toggles, which mutates: the rescan would never settle.
+		if (!found.target.container.isConnected) return;
 		if (!this.isEligible(found, questionRoot)) return;
 		const { target, owner } = found;
 		const choiceId = target.id;
@@ -505,6 +513,9 @@ export class AnswerEliminatorCore {
 	 * - When the feature is on, a non-struck choice hides its toggle while it
 	 *   is selected (a selected answer must not be eliminable), keeping its
 	 *   space so the choice does not reflow.
+	 * - A non-struck choice that cannot be eliminated otherwise, as in evaluate
+	 *   mode or a disabled element, has no toggle to offer, in the layout or the
+	 *   tab order.
 	 */
 	private toggleVisibility(
 		key: string,
@@ -512,7 +523,8 @@ export class AnswerEliminatorCore {
 	): "shown" | "reserved" | "removed" {
 		if (this.eliminated.has(key)) return "shown";
 		if (!this.active) return "removed";
-		return tracked.target.isSelected() ? "reserved" : "shown";
+		if (tracked.target.isSelected()) return "reserved";
+		return tracked.target.canEliminate() ? "shown" : "removed";
 	}
 
 	/**

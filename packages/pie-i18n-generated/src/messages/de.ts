@@ -419,7 +419,7 @@ const de = {
 			description: "Antwortmöglichkeiten durchstreichen",
 			buttonA11y: "Durchstreichen, Antwortmöglichkeiten ausschließen",
 			tooltip: "Durchstreichen",
-			toggleA11y: "Durchstreichen für {choice} ein- oder ausschalten",
+			toggleA11y: "{choice} durchstreichen",
 			eliminatedA11y: "(durchgestrichen)",
 			unlabeledChoice: "Antwortmöglichkeit ohne Beschriftung",
 		},

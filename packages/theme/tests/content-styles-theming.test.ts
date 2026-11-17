@@ -178,6 +178,29 @@ describe("content stylesheet theming", () => {
 		);
 	});
 
+	test("the mask replaces the dim on an eliminated choice", () => {
+		const mask =
+			'[data-pie-answer-eliminated="true"].pie-answer-eliminator-masked{opacity:0.2;filter:blur(2px);}';
+		// Equal specificity to both dims, so it has to come after them.
+		expect(collapsed).toContain(mask);
+		expect(collapsed.indexOf(mask)).toBeGreaterThan(
+			collapsed.lastIndexOf('[data-pie-answer-eliminator-label="true"]:where'),
+		);
+		expect(collapsed).not.toContain(
+			":where([data-pie-content]).pie-answer-eliminator-masked{",
+		);
+	});
+
+	test("hover rings the plain toggle in the hover colour", () => {
+		const hover = collapsed.slice(
+			collapsed.indexOf(".pie-answer-eliminator-toggle--plain:hover"),
+		);
+		const rule = hover.slice(0, hover.indexOf("}"));
+		expect(rule).toContain("box-shadow:0001pxvar(--pie-button-hover-color,");
+		expect(rule).toContain("border-color:var(--pie-button-hover-color,");
+		expect(rule).toContain("color:var(--pie-button-hover-color,");
+	});
+
 	test("a host strike colour collapses to the scheme's incorrect colour", () => {
 		expect(collapsed).toContain(
 			"--pie-answer-eliminator-strike-paint:color-mix(insrgb,var(--pie-incorrect,#ff9800)var(--pie-fixed-hue-collapse,0%),var(--pie-answer-eliminator-strike-color,var(--pie-incorrect,#ff9800)))",
@@ -205,6 +228,10 @@ describe("content stylesheet theming", () => {
 		expect(collapsed).toContain("background-color:Highlight;color:HighlightText;");
 		expect(collapsed).toContain(
 			"--pie-answer-eliminator-strike-paint:CanvasText;",
+		);
+		// The NDS glyph is icon-font text, which forced colours would backplate.
+		expect(collapsed).toContain(
+			".pie-answer-eliminator-toggle--nds.pie-answer-eliminator-toggle--active.nds-icon-button__icon{forced-color-adjust:none;color:HighlightText;}",
 		);
 	});
 

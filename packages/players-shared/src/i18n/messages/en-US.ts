@@ -481,8 +481,12 @@ const enUS = {
 			description: "Strike through answer choices",
 			buttonA11y: "Strike Through, eliminate answer choices",
 			tooltip: "Strike Through",
-			/** A choice's toggle; `{choice}` is the choice's own accessible name. */
-			toggleA11y: "Toggle elimination for {choice}",
+			/**
+			 * A choice's toggle button; `{choice}` is the choice's own accessible
+			 * name. The name is the action alone and reads the same in both states:
+			 * `aria-pressed` carries whether the choice is eliminated.
+			 */
+			toggleA11y: "Eliminate {choice}",
 			/** Appended to an eliminated choice's label for assistive technology. */
 			eliminatedA11y: "(eliminated)",
 			/** Stands in for `{choice}` when a choice has no text of its own. */

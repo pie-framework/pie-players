@@ -399,7 +399,7 @@ const ro = {
 			description: "Barează variantele de răspuns",
 			buttonA11y: "Barează, elimină variante de răspuns",
 			tooltip: "Barează",
-			toggleA11y: "Barează sau restabilește {choice}",
+			toggleA11y: "Barează {choice}",
 			eliminatedA11y: "(eliminată)",
 			unlabeledChoice: "Variantă fără etichetă",
 		},

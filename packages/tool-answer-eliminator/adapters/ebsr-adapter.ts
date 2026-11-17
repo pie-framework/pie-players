@@ -57,6 +57,10 @@ export class EBSRAdapter implements ChoiceAdapter {
 		return this.mcAdapter.getChoiceContent(choice);
 	}
 
+	getChoiceContainer(choice: HTMLElement): HTMLElement {
+		return this.mcAdapter.getChoiceContainer(choice);
+	}
+
 	getChoiceId(choice: HTMLElement): string {
 		// Prefix with part ID (a or b)
 		const part = findClosestEbsrMultipleChoicePart(choice)?.id || "unknown";

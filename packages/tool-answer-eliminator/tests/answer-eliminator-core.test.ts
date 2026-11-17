@@ -61,7 +61,7 @@ test("the toggle glyph is hidden from assistive technology and read-aloud", () =
 		"button.pie-answer-eliminator-toggle",
 	);
 	expect(toggle?.getAttribute("aria-label")).toBe(
-		"Toggle elimination for Alpha",
+		"Eliminate Alpha",
 	);
 	const exposedText = Array.from(toggle?.childNodes ?? []).filter(
 		(node) =>
@@ -233,7 +233,7 @@ const stubI18n = (
 });
 
 const arabic = stubI18n("ar", "rtl", {
-	"tools.answerEliminator.toggleA11y": "تبديل شطب {choice}",
+	"tools.answerEliminator.toggleA11y": "شطب {choice}",
 	"tools.answerEliminator.eliminatedA11y": "(مشطوب)",
 	"tools.answerEliminator.unlabeledChoice": "خيار بلا تسمية",
 });
@@ -252,7 +252,7 @@ test("the toggle and the eliminated announcement speak the interface locale", ()
 
 	// A locale change relabels in place and keeps the elimination.
 	core?.setInterfaceI18n(arabic);
-	expect(toggle.getAttribute("aria-label")).toBe("تبديل شطب Alpha");
+	expect(toggle.getAttribute("aria-label")).toBe("شطب Alpha");
 	expect(toggle.getAttribute("lang")).toBe("ar");
 	expect(toggle.getAttribute("dir")).toBe("rtl");
 	expect(toggle.getAttribute("aria-pressed")).toBe("true");
@@ -273,7 +273,7 @@ test("a choice with no text is named from the catalog", () => {
 		root
 			.querySelector("button.pie-answer-eliminator-toggle")
 			?.getAttribute("aria-label"),
-	).toBe("تبديل شطب خيار بلا تسمية");
+	).toBe("شطب خيار بلا تسمية");
 });
 
 /** Stands in for the vendored Lit button: it renders an inner <button>. */
@@ -308,7 +308,7 @@ test("the toggles become NDS icon buttons once the tag is registered", () => {
 	]);
 	expect(nds[0].classList.contains("pie-answer-eliminator-toggle--nds")).toBe(true);
 	expect(nds[0].getAttribute("button-aria-label")).toBe(
-		"Toggle elimination for Alpha",
+		"Eliminate Alpha",
 	);
 	// The button reads the NDS palette, bridged to the theme.
 	expect(nds[0].style.getPropertyValue("--color-primary-white")).toBe(
@@ -331,4 +331,77 @@ test("the toggles become NDS icon buttons once the tag is registered", () => {
 			(toggle) => toggle.getAttribute("aria-pressed"),
 		),
 	).toEqual(["true", "true"]);
+});
+
+/** The markup legacy pie-elements multiple choice renders for one choice. */
+const legacyMuiChoice = (value: string, key: string, prompt: string) =>
+	`<div class="corespring-radio-button choice-input"><div class="row"><div class="checkbox-holder"><label class="MuiFormControlLabel-root"><span class="sr-only">${key}</span><span class="MuiRadio-root MuiButtonBase-root"><input type="radio" value="${value}"></span><span class="MuiFormControlLabel-label"><span><span aria-hidden="true">${key}. </span><span class="prompt-label">${prompt}</span></span></span></label></div></div><div class="rationale">Rationale</div></div>`;
+
+test("a legacy choice takes its toggle at the end of its row, named from the prompt", () => {
+	const root = document.createElement("multiple-choice");
+	root.innerHTML = legacyMuiChoice("a", "A", "Alpha");
+	document.body.append(root);
+	core = new AnswerEliminatorCore();
+	core.disableStateRestoration();
+	core.initializeForQuestion(root);
+
+	const choice = root.querySelector<HTMLElement>(".corespring-radio-button");
+	const row = root.querySelector<HTMLElement>(".row");
+	const toggle = row?.lastElementChild as HTMLButtonElement;
+	expect(toggle.classList.contains("pie-answer-eliminator-toggle")).toBe(true);
+	expect(choice?.lastElementChild?.className).toBe("rationale");
+	expect(toggle.getAttribute("aria-label")).toBe("Eliminate Alpha");
+	// The struck and dimmed content leaves out the radio.
+	const content = root.querySelector("[data-pie-answer-eliminator-label]");
+	expect(content?.className).toBe("MuiFormControlLabel-label");
+
+	toggle.click();
+	expect(row?.getAttribute("data-pie-answer-eliminated")).toBe("true");
+	expect(root.querySelector("input")?.disabled).toBe(true);
+});
+
+test("two cores on one page keep their strike highlights apart", () => {
+	const originalCSS = globalThis.CSS;
+	class Highlight {
+		constructor(..._ranges: unknown[]) {}
+	}
+	const highlights = new Map<string, unknown>();
+	Object.defineProperty(globalThis, "Highlight", {
+		value: Highlight,
+		configurable: true,
+	});
+	Object.defineProperty(globalThis, "CSS", {
+		value: { highlights },
+		configurable: true,
+	});
+	const second = new AnswerEliminatorCore();
+	try {
+		const first = document.createElement("multiple-choice");
+		const other = document.createElement("multiple-choice");
+		first.innerHTML = choiceMarkup("a", "Alpha");
+		other.innerHTML = choiceMarkup("a", "Apple");
+		document.body.append(first, other);
+		core = new AnswerEliminatorCore();
+		core.disableStateRestoration();
+		core.initializeForQuestion(first);
+		second.disableStateRestoration();
+		second.initializeForQuestion(other);
+
+		for (const root of [first, other]) {
+			root.querySelector<HTMLButtonElement>("button.pie-answer-eliminator-toggle")?.click();
+		}
+		expect(highlights.size).toBe(2);
+
+		first.querySelector<HTMLButtonElement>("button.pie-answer-eliminator-toggle")?.click();
+		expect(highlights.size).toBe(1);
+		expect(second.getEliminatedCount()).toBe(1);
+	} finally {
+		second.destroy();
+		Object.defineProperty(globalThis, "CSS", {
+			value: originalCSS,
+			configurable: true,
+		});
+		delete (globalThis as { Highlight?: unknown }).Highlight;
+		document.head.replaceChildren();
+	}
 });

@@ -404,7 +404,7 @@ const ht = {
 			description: "Bare chwa repons yo",
 			buttonA11y: "Bare, eliminen chwa repons yo",
 			tooltip: "Bare",
-			toggleA11y: "Chanje bare pou {choice}",
+			toggleA11y: "Bare {choice}",
 			eliminatedA11y: "(bare)",
 			unlabeledChoice: "Chwa san etikèt",
 		},

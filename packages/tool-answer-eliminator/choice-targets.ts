@@ -181,7 +181,7 @@ function legacyTarget(
 	return {
 		id: adapter.getChoiceId(choice),
 		label: adapter.getChoiceLabel(choice),
-		container: choice,
+		container: adapter.getChoiceContainer(choice),
 		content,
 		isSelected: () => adapter.isSelected(choice),
 		canEliminate: () => adapter.canEliminate(choice),

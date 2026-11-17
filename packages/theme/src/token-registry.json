@@ -1452,8 +1452,7 @@
 		"definedIn": [
 			"packages/tool-calculator-shared/CalculatorInlineTool.svelte",
 			"packages/tool-tts-inline/tool-tts-inline.svelte",
-			"packages/theme/src/components.css",
-			"packages/tool-answer-eliminator/choice-toggle.ts"
+			"packages/theme/src/components.css"
 		],
 		"documentedIn": [
 			"packages/tool-tts-inline/README.md",

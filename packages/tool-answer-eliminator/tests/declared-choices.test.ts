@@ -195,7 +195,7 @@ test("a declaring element gets a toggle in each container it supplies", () => {
 		"y",
 	]);
 	expect(toggles(element)[0].getAttribute("aria-label")).toBe(
-		"Toggle elimination for Choice x",
+		"Eliminate Choice x",
 	);
 });
 
@@ -473,4 +473,70 @@ test("element ids reach legacy choices through their element's id", () => {
 	core.initializeForQuestion(root);
 
 	expect(toggles(root).map((button) => button.dataset.choiceId)).toEqual(["b"]);
+});
+
+const nextFrame = () =>
+	new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+
+test("a choice that cannot be eliminated has no toggle unless it is eliminated", async () => {
+	const element = acmeChoices(["x", "y"]);
+	document.body.append(element);
+	start(element);
+	toggle(element, "x").click();
+
+	// Evaluate mode, as an element reports it after its next render.
+	element.locked = true;
+	element.dispatchEvent(new Event("change", { bubbles: true }));
+	await nextFrame();
+
+	expect(toggle(element, "x").style.display).toBe("");
+	expect(toggle(element, "y").style.display).toBe("none");
+
+	toggle(element, "x").click();
+	expect(toggle(element, "x").style.display).toBe("none");
+});
+
+/** Supplies one choice whose container has left the document. */
+class AcmeDetached extends HTMLElement {
+	static pieSupports = ["answer-masking"];
+	reads = 0;
+	private readonly detached = document.createElement("div");
+
+	connectedCallback() {
+		this.innerHTML = `<div class="row"><span class="text">Choice x</span></div>`;
+		this.detached.innerHTML = `<span class="text">Choice y</span>`;
+	}
+
+	pieSupportTargets() {
+		// A core that keeps rescanning never yields; past the cap it gets nothing
+		// to track, so the loop ends and the test fails instead of hanging.
+		if (++this.reads > 20) return [];
+		const target = (container: HTMLElement, id: string) => ({
+			id,
+			label: `Choice ${id}`,
+			container,
+			content: container.querySelector(".text") as Element,
+			isSelected: () => false,
+			isEliminable: () => true,
+			setEliminated: () => {},
+		});
+		return [
+			target(this.querySelector(".row") as HTMLElement, "x"),
+			target(this.detached, "y"),
+		];
+	}
+}
+customElements.define("acme-detached", AcmeDetached);
+
+test("a detached container gets no toggle and does not keep the core rescanning", async () => {
+	const element = document.createElement("acme-detached") as AcmeDetached;
+	document.body.append(element);
+	start(element);
+	expect(toggles(element).map((button) => button.dataset.choiceId)).toEqual(["x"]);
+
+	const reads = element.reads;
+	element.append(document.createElement("span"));
+	for (let frame = 0; frame < 5; frame++) await settle();
+
+	expect(element.reads).toBe(reads);
 });

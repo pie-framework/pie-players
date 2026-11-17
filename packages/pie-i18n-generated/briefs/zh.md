@@ -64,7 +64,7 @@ it. Content flavour is **Simplified Chinese**; a Traditional-Chinese host
 | sign language | 手语 | |
 | audio transcript | 文字稿 | |
 | strike through | 划掉 | the answer-eliminator action |
-| eliminated-choice toggle | 切换{choice}的划除状态 | the possessive reading, not the verb pile-up 切换划除{choice} |
+| eliminated-choice toggle | 划除{choice} | the action alone, pairing with `（已划除）`; `aria-pressed` carries the state, so no 切换 or 状态 (2026-11-17) |
 | placement | 放置位置 | a tool's placement, not 摆放位置 |
 | host surface | 宿主界面 | UI Chinese; 表面 is a physical-word calque |
 | provenance | 溯源 | the tech word for data/policy provenance, not 来源 |

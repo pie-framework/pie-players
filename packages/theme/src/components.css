@@ -848,14 +848,22 @@ mjx-c.mjx-c27 {
 	cursor: pointer;
 }
 
+/*
+ * Hover rings the toggle in the hover colour, as the NDS toggle rings in its
+ * accent: a hover fill alone is a step of a few percent in most themes.
+ */
 :where([data-pie-content])
 	.pie-answer-eliminator-toggle--plain:hover:not(
 		.pie-answer-eliminator-toggle--active
 	) {
+	border-color: var(--pie-button-hover-color, var(--pie-button-color, var(--pie-text, #333)));
 	background-color: var(
 		--pie-button-hover-background-color,
 		var(--pie-button-hover-bg, var(--pie-secondary-background, #f5f5f5))
 	);
+	box-shadow: 0 0 0 1px
+		var(--pie-button-hover-color, var(--pie-button-color, var(--pie-text, #333)));
+	color: var(--pie-button-hover-color, var(--pie-button-color, var(--pie-text, #333)));
 }
 
 :where([data-pie-content]) .pie-answer-eliminator-toggle--plain:focus-visible {
@@ -960,7 +968,10 @@ mjx-c.mjx-c27 {
 	text-decoration-color: var(--pie-answer-eliminator-strike-paint);
 }
 
-:where([data-pie-content]) .pie-answer-eliminator-masked {
+/* Scoped to the eliminated choice and placed after the dim, which it replaces. */
+:where([data-pie-content])
+	[data-pie-answer-eliminated="true"]
+	.pie-answer-eliminator-masked {
 	opacity: 0.2;
 	filter: blur(2px);
 }
@@ -1049,9 +1060,10 @@ mjx-c.mjx-c27 {
 	stroke-linecap: round;
 }
 
+/* Half a pixel each side of the line, so it separates without erasing glyphs. */
 :where([data-pie-content]) .pie-answer-eliminator-cross-casing {
-	stroke: color-mix(in srgb, var(--pie-background, #fff) 85%, transparent);
-	stroke-width: 4;
+	stroke: color-mix(in srgb, var(--pie-background, #fff) 70%, transparent);
+	stroke-width: 3;
 	stroke-linecap: round;
 }
 
@@ -1128,6 +1140,14 @@ mjx-c.mjx-c27 {
 
 	:where([data-pie-content]) .pie-answer-eliminator-toggle--nds .nds-icon-button {
 		border: 1px solid ButtonText;
+	}
+
+	/* The glyph is icon-font text, which would otherwise get a Canvas backplate. */
+	:where([data-pie-content])
+		.pie-answer-eliminator-toggle--nds.pie-answer-eliminator-toggle--active
+		.nds-icon-button__icon {
+		forced-color-adjust: none;
+		color: HighlightText;
 	}
 
 	:where([data-pie-content]) [data-pie-answer-eliminated="true"] {

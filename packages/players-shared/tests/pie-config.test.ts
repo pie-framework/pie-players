@@ -4,6 +4,7 @@ import {
 	assertPieConfigContract,
 	elementForPackage,
 	makeUniqueTags,
+	removeUndeclaredMarkupTags,
 	validatePieConfigContract,
 } from "../src/pie/config";
 import type { ConfigContainerEntity } from "../src/types";
@@ -452,18 +453,33 @@ describe("validatePieConfigContract", () => {
 		expect(result.bindingWarnings).toEqual([]);
 	});
 
-	test("fails when custom tags in markup are not declared in elements", () => {
+	test("warns when custom tags in markup are not declared in elements", () => {
 		const result = validatePieConfigContract({
-			markup: '<pie-missing id="x"></pie-missing>',
+			markup:
+				'<pie-mc id="m1"></pie-mc><pp-pie-element-rubric id="r1"></pp-pie-element-rubric>',
 			elements: {
 				"pie-mc": "@pie-element/multiple-choice@1.0.0",
 			},
 			models: [{ id: "m1", element: "pie-mc" }],
 		});
+		expect(result.valid).toBe(true);
+		expect(result.errors).toHaveLength(0);
+		expect(result.warnings).toEqual([
+			'Markup tag "pp-pie-element-rubric" is not declared in `elements`; the player removes the tag and keeps its content.',
+		]);
+	});
+
+	test("fails once, as a model error, when a model's markup tag is not declared", () => {
+		const result = validatePieConfigContract({
+			markup: '<pie-missing id="m1"></pie-missing>',
+			elements: {},
+			models: [{ id: "m1", element: "pie-missing" }],
+		});
 		expect(result.valid).toBe(false);
-		expect(result.errors.join(" | ")).toContain(
-			'Markup tag "pie-missing" is not declared in `elements`.',
-		);
+		expect(result.errors).toEqual([
+			'Model element "pie-missing" is not declared in `elements`.',
+		]);
+		expect(result.warnings).toEqual([]);
 	});
 
 	test("warns when declared elements are not referenced by models or markup", () => {
@@ -513,5 +529,45 @@ describe("validatePieConfigContract", () => {
 				models: [],
 			}),
 		).not.toThrow();
+	});
+});
+
+describe("removeUndeclaredMarkupTags", () => {
+	const elements = { "pie-mc": "@pie-element/multiple-choice@1.0.0" };
+	const models = [{ id: "m1", element: "pie-mc" }];
+
+	test("returns the same config when every markup tag is declared", () => {
+		const config = {
+			markup: '<div><pie-mc id="m1"></pie-mc></div>',
+			elements,
+			models,
+		};
+		expect(removeUndeclaredMarkupTags(config)).toBe(config);
+	});
+
+	test("removes undeclared tags, keeps their content and leaves the authored config alone", () => {
+		const markup = [
+			'<pie-mc id="m1"></pie-mc>',
+			'<pp-pie-element-rubric id="r1"></pp-pie-element-rubric>',
+			"<pie-other data-x=\"a > b\" class='c'><p>kept</p></pie-other >",
+			"<pie-self/>",
+			"<pie-mc-extra>x</pie-mc-extra>",
+		].join("");
+		const config = { markup, elements, models };
+		const result = removeUndeclaredMarkupTags(config);
+		expect(result.markup).toBe('<pie-mc id="m1"></pie-mc><p>kept</p>x');
+		expect(result).not.toBe(config);
+		expect(config.markup).toBe(markup);
+		expect(result.elements).toBe(elements);
+		expect(result.models).toBe(models);
+	});
+
+	test("leaves a declared tag that shares a prefix with an undeclared one", () => {
+		const result = removeUndeclaredMarkupTags({
+			markup: '<pie-mc-x></pie-mc-x><pie-mc id="m1"></pie-mc>',
+			elements,
+			models,
+		});
+		expect(result.markup).toBe('<pie-mc id="m1"></pie-mc>');
 	});
 });

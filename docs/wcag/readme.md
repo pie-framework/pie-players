@@ -59,7 +59,7 @@ product behavior:
 - [`../accessibility/tts-deep-dive.md`](../accessibility/tts-deep-dive.md)
 - [`../accessibility/tts-architecture.md`](../accessibility/tts-architecture.md)
 - [`../accessibility/tts-authoring-guide.md`](../accessibility/tts-authoring-guide.md)
-- [`../tools-and-accomodations/architecture.md`](../tools-and-accomodations/architecture.md)
+- [`../tools-and-accommodations/architecture.md`](../tools-and-accommodations/architecture.md)
 - [`../architecture/pie-727-theming-wcag-matrix.md`](../architecture/pie-727-theming-wcag-matrix.md) - WCAG 2.2 AA coverage for every themed surface
 
 Playwright tests and manual assistive-technology review are evidence for a

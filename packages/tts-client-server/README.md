@@ -227,7 +227,7 @@ server that fall outside a trusted origin set.
   bearer token.
 
 See
-[`docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers`](../../docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers)
+[`docs/tools-and-accommodations/tool_host_contract.md#backend-endpoints-for-tool-providers`](../../docs/tools-and-accommodations/tool_host_contract.md#backend-endpoints-for-tool-providers)
 for the host-wide contract this provider fits into.
 
 ## How It Works

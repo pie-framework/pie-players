@@ -13,7 +13,7 @@ describe("isDocumentationPath", () => {
 		"docs/item-player/loading-strategies.md",
 		"docs/adr/0003-elements-read-accessibility-settings-from-a-host-neutral-context.md",
 		"docs/img/architecture.png",
-		"docs/tools-and-accomodations/assets/schoolcity-gap-analysis/gap.jpg",
+		"docs/tools-and-accommodations/assets/schoolcity-gap-analysis/gap.jpg",
 		".agents/skills/releases-and-changesets/SKILL.md",
 		".claude/skills/releases-and-changesets/SKILL.md",
 		".claude/launch.json",

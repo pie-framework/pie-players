@@ -53,7 +53,7 @@ The item player loads element code in one of three ways, and the section and ass
 
 ## Tools and accommodations
 
-An assessment screen carries passages, answer eliminators, calculators, rulers, protractors, line readers, read-aloud controls and the color-scheme tool at item, passage and section level. The assessment toolkit gives them one runtime model: a coordinator owns the shared services for text-to-speech, tool visibility and stacking, highlighting, accessibility catalogs and element-level tool state, and a policy engine resolves which of the placed tools a learner receives from the district, test-administration, item and Personal Needs and Preferences (PNP) settings the host supplies. [Tools and accommodations](./tools-and-accomodations/architecture.md) describes the model.
+An assessment screen carries passages, answer eliminators, calculators, rulers, protractors, line readers, read-aloud controls and the color-scheme tool at item, passage and section level. The assessment toolkit gives them one runtime model: a coordinator owns the shared services for text-to-speech, tool visibility and stacking, highlighting, accessibility catalogs and element-level tool state, and a policy engine resolves which of the placed tools a learner receives from the district, test-administration, item and Personal Needs and Preferences (PNP) settings the host supplies. [Tools and accommodations](./tools-and-accommodations/architecture.md) describes the model.
 
 ## Instrumentation
 

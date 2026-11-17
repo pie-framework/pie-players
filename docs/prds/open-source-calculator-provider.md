@@ -21,8 +21,8 @@ owns the module boundaries, the worker protocol and the failure model.
 Related architecture:
 
 - [Open-source calculator provider implementation](../architecture/open-source-calculator-provider-implementation.md)
-- [Tool provider system](../tools-and-accomodations/tool_provider_system.md)
-- [Tool host contract](../tools-and-accomodations/tool_host_contract.md)
+- [Tool provider system](../tools-and-accommodations/tool_provider_system.md)
+- [Tool host contract](../tools-and-accommodations/tool_host_contract.md)
 
 Integrator guide: the
 [`@pie-players/pie-calculator-cortex` README](../../packages/calculator-cortex/README.md).

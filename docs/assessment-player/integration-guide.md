@@ -339,7 +339,7 @@ The coordinator places the color-scheme tool (`theme`) with the other tools;
 theme tokens come from `<pie-theme>` ([theme package README](../../packages/theme/README.md)).
 Desmos is the default calculator, and a licensed deployment supplies its key
 through `authFetcher`
-([calculator with host auth](../tools-and-accomodations/tool_provider_system.md#calculator-with-host-auth)).
+([calculator with host auth](../tools-and-accommodations/tool_provider_system.md#calculator-with-host-auth)).
 Desmos's documented browser integration puts the key in the script URL, so
 runtime delivery keeps it out of the static bundle without making it secret.
 Use a key whose Trial or Commercial Tier covers the deployment; see the

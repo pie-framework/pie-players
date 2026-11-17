@@ -4,7 +4,7 @@ The calculator adapter for the Desmos Four Function, Scientific and Graphing
 Calculator APIs. It implements the provider contract from
 [`@pie-players/pie-calculator`](../calculator/README.md) and is the toolkit's
 calculator when no `provider.id` is set; toolkit hosts supply the key as
-[Calculator with host auth](../../docs/tools-and-accomodations/tool_provider_system.md#calculator-with-host-auth)
+[Calculator with host auth](../../docs/tools-and-accommodations/tool_provider_system.md#calculator-with-host-auth)
 describes. Hosts that mount a calculator themselves use
 `DesmosCalculatorProvider` directly. The [Cortex](../calculator-cortex/README.md)
 adapter needs no key, and the [GeoGebra](../calculator-geogebra/README.md)

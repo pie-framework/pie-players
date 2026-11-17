@@ -171,7 +171,7 @@ tools: {
 
 Its defaults, `apiEndpoint: '/api/tts'` and the voices probe, match the routes
 above; [Minimal Server-Backed TTS Config](../../assessment-toolkit/README.md#minimal-server-backed-tts-config)
-lists them, and [Configuring Tools](../../../docs/tools-and-accomodations/tool_provider_system.md)
+lists them, and [Configuring Tools](../../../docs/tools-and-accommodations/tool_provider_system.md)
 covers provider configuration in general. A host without the toolkit constructs
 `ServerTTSProvider` directly, as the
 [client README](../../tts-client-server/README.md#basic-setup) shows.
@@ -428,6 +428,6 @@ The section-demos app serves Polly and Google through one synthesize route, plus
 the voices routes the probe reads, in
 [`apps/section-demos/src/routes/api/tts/`](../../../apps/section-demos/src/routes/api/tts/).
 Those routes are unauthenticated and serve local development only
-([Demo endpoints](../../../docs/tools-and-accomodations/tool_host_contract.md#demo-endpoints)).
+([Demo endpoints](../../../docs/tools-and-accommodations/tool_host_contract.md#demo-endpoints)).
 [`sveltekit/`](./sveltekit/) holds standalone synthesize and voices routes with
 the guards inlined.

@@ -132,7 +132,7 @@ unbuilt framework-completing capabilities.
   Embedded dictation, an accommodation that writes the response, and the
   element-facing insertion contract it needs. Integrator guide for the
   supported non-embedded form:
-  [Non-embedded dictation](../tools-and-accomodations/non-embedded-dictation.md).
+  [Non-embedded dictation](../tools-and-accommodations/non-embedded-dictation.md).
 - [`open-source-calculator-provider.md`](./open-source-calculator-provider.md) -
   `Accepted`. A fully bundled basic, scientific, and focused graphing provider
   built from MathLive, CortexJS Compute Engine, and JSXGraph, selected

@@ -16,17 +16,17 @@ evaluators comparing PIE with other delivery systems.
 
 Related architecture:
 
-- [What Counts As A Tool](../tools-and-accomodations/architecture.md#what-counts-as-a-tool) — the
+- [What Counts As A Tool](../tools-and-accommodations/architecture.md#what-counts-as-a-tool) — the
   eligibility / content-dependency / placement split this PRD applies to an input-side capability
-- [Capability Ownership Layers](../tools-and-accomodations/architecture.md#capability-ownership-layers) —
+- [Capability Ownership Layers](../tools-and-accommodations/architecture.md#capability-ownership-layers) —
   why this capability ships as its own package and stays out of the packaged registry
-- [PIE Element Integration](../tools-and-accomodations/architecture.md#pie-element-integration) — the
+- [PIE Element Integration](../tools-and-accommodations/architecture.md#pie-element-integration) — the
   data-attribute mechanism the dictation target reuses
 - [Sign Language (ASL) Support](./sign-language-asl-support.md) and
   [Audio Accommodations](./audio-accommodations.md) — the two shipped accommodations whose shape this
   one deliberately breaks from
 
-Integrator guide: [Non-embedded dictation](../tools-and-accomodations/non-embedded-dictation.md),
+Integrator guide: [Non-embedded dictation](../tools-and-accommodations/non-embedded-dictation.md),
 for the form PIE supports today: what platform dictation into a PIE response surface is verified to
 do, and its blur commit boundary.
 
@@ -60,7 +60,7 @@ PIE also has a capability **for free** that it could lose without noticing. Plat
 ChromeOS Dictation, Windows Voice Access, macOS Dictation, Dragon — writes into the focused editable
 as if typed, so it already flows through the editor's input pipeline and the element's change
 handler. State programs call that *non-embedded* speech-to-text, and Learnosity relies on it.
-[Non-embedded dictation](../tools-and-accomodations/non-embedded-dictation.md) documents it as
+[Non-embedded dictation](../tools-and-accommodations/non-embedded-dictation.md) documents it as
 supported and `packages/item-player/tests/item-player-dictation.spec.ts` keeps it working.
 
 ## Comparables
@@ -403,7 +403,7 @@ Hosts own:
   is a disruption to the student least able to absorb it.
 - `allow="microphone"` on any iframe the player is embedded in. PIE renders no iframes; hosts do.
 - Any remote STT backend, under the same session boundary and rate limiting as the rest of the
-  assessment, per the [tool host contract](../tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers).
+  assessment, per the [tool host contract](../tools-and-accommodations/tool_host_contract.md#backend-endpoints-for-tool-providers).
 - Retention of audio, if a remote provider is used. The recommendation is none: transcribe and
   discard.
 - Secure-browser posture, and whether platform dictation is permitted inside it.
@@ -483,7 +483,7 @@ Playwright specs run outside the sandbox.
      ProseMirror honors an untrusted `beforeinput` decides which mode is the default and how much of
      the rest is buildable.
   2. **Land the non-embedded guarantee.** Done:
-     [non-embedded dictation](../tools-and-accomodations/non-embedded-dictation.md) and
+     [non-embedded dictation](../tools-and-accommodations/non-embedded-dictation.md) and
      `packages/item-player/tests/item-player-dictation.spec.ts`. It established the commit boundary
      the rest of this PRD designs around: a constructed response reaches the session on blur, so a
      dictation affordance that keeps focus in the editor keeps the response out of the session while

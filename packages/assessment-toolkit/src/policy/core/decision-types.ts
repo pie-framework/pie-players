@@ -6,7 +6,7 @@
  * composition pipeline that produces the response, lives in sibling
  * modules.
  *
- * `docs/tools-and-accomodations/architecture.md` covers the engine shape,
+ * `docs/tools-and-accommodations/architecture.md` covers the engine shape,
  * the composition rule, and the provenance contract.
  */
 

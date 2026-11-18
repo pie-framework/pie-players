@@ -708,7 +708,7 @@ export interface AssessmentSettings {
  */
 export interface ToolParameterMap {
 	calculator: { type?: "basic" | "scientific" | "graphing" };
-	answerEliminator: { strategy?: "strikethrough" | "mask" };
+	answerEliminator: { strategy?: "strikethrough" | "cross" | "mask" };
 	signLanguage: { signLang?: string };
 	/**
 	 * `language` is the BCP 47 content language the learner reads items in. A

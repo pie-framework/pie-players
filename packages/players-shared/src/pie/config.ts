@@ -153,10 +153,15 @@ export const validatePieConfigContract = (
 		}
 	}
 
+	// A markup tag no model references and `elements` does not declare renders
+	// nothing of its own, and the players drop it (`removeUndeclaredMarkupTags`).
+	// A model's undeclared element is the error above.
 	const markupElementTags = collectMarkupElementTags(markup as string);
 	for (const tagName of markupElementTags) {
-		if (!(tagName in elementMap)) {
-			errors.push(`Markup tag "${tagName}" is not declared in \`elements\`.`);
+		if (!(tagName in elementMap) && !modelElementTags.has(tagName)) {
+			warnings.push(
+				`Markup tag "${tagName}" is not declared in \`elements\`; the player removes the tag and keeps its content.`,
+			);
 		}
 	}
 
@@ -184,6 +189,40 @@ export const assertPieConfigContract = (config: unknown): void => {
 	const result = validatePieConfigContract(config);
 	if (result.valid) return;
 	throw new Error(`Invalid PIE config contract: ${result.errors.join(" | ")}`);
+};
+
+const escapeRegExp = (value: string): string =>
+	value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Removes every opening and closing tag of a markup custom element that
+ * `elements` does not declare, keeping the content between them, as the
+ * default markup sanitizer does with any tag it does not allow. Such a tag has
+ * no package behind it, and removing it keeps it from upgrading an element
+ * that another item registered under the same name. Returns `config` itself
+ * when every markup tag is declared, and otherwise a copy with new markup;
+ * the authored config is never changed.
+ */
+export const removeUndeclaredMarkupTags = <T extends ConfigEntity>(
+	config: T,
+): T => {
+	if (typeof config?.markup !== "string" || !config.elements) return config;
+	const undeclared = [...collectMarkupElementTags(config.markup)].filter(
+		(tagName) => !(tagName in config.elements),
+	);
+	if (undeclared.length === 0) return config;
+	const markup = undeclared.reduce(
+		(current, tagName) =>
+			current.replace(
+				new RegExp(
+					`<\\/?${escapeRegExp(tagName)}(?=[\\t\\n\\f\\r />])(?:[^>"']|"[^"]*"|'[^']*')*>`,
+					"g",
+				),
+				"",
+			),
+		config.markup,
+	);
+	return { ...config, markup };
 };
 
 /**
@@ -307,8 +346,6 @@ export const makeUniqueTags = <T extends ConfigContainerEntity>(
 	// Transform exact opening/closing tags only. Element names may contain
 	// regexp-significant characters, and prefix tags (pie-foo/pie-foo-bar)
 	// are separate authored-content contracts.
-	const escapeRegExp = (value: string): string =>
-		value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 	const replaceMarkupTag = (
 		markup: string,
 		originalName: string,

@@ -110,7 +110,9 @@ Important current limits:
   contract](../prds/item-session-control-contract.md) derives a four-valued
   correctness per Try, always browser-derived and carrying no provenance or
   authority. A general score projection must stay able to express it, including
-  its "excluded because not auto-scorable" state.
+  its "excluded because not auto-scorable" state. The section player's mastery
+  rollup (`rollupMastery`, emitted as `section-mastery-changed`) folds those
+  outcomes into a delivery signal; it too carries no provenance or authority.
 - Item and section completion aggregation exist today. Assessment-player exposes
   routing, progress, submission state, and per-section snapshots, but not an
   accepted assessment-completion or assessment-score rollup.

@@ -396,7 +396,7 @@ const pl = {
 			description: "Przekreślanie opcji odpowiedzi",
 			buttonA11y: "Przekreślanie, odrzucanie opcji odpowiedzi",
 			tooltip: "Przekreśl",
-			toggleA11y: "Przełącz przekreślenie odpowiedzi: {choice}",
+			toggleA11y: "Przekreśl odpowiedź: {choice}",
 			eliminatedA11y: "(przekreślona)",
 			unlabeledChoice: "Odpowiedź bez etykiety",
 		},

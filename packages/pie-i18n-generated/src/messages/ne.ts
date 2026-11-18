@@ -396,7 +396,7 @@ const ne = {
 			description: "उत्तर विकल्पहरूमा काट्नु",
 			buttonA11y: "काट्नु, उत्तर विकल्पहरू हटाउनुहोस्",
 			tooltip: "काट्नु",
-			toggleA11y: "{choice}को काट्ने अवस्था फेर्नुहोस्",
+			toggleA11y: "{choice} काट्नुहोस्",
 			eliminatedA11y: "(काटिएको)",
 			unlabeledChoice: "नाम नभएको विकल्प",
 		},

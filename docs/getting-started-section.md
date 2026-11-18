@@ -144,7 +144,7 @@ The section lists its items in `assessmentItemRefs`, each an `identifier` and an
 
 ## Tool placement
 
-`tools.placement` lists tool ids for each level. Section tools sit on the section toolbar, which renders only with `show-toolbar`; item and passage tools sit in each card's header. Placement is empty by default, and validation reports a tool placed at a level it does not support: `calculator` and `answerEliminator` are item tools, and `theme`, the color-scheme tool, works at assessment and section level only. [Configuring tools](tools-and-accomodations/tool_provider_system.md#canonical-tool-ids) lists every tool id.
+`tools.placement` lists tool ids for each level. Section tools sit on the section toolbar, which renders only with `show-toolbar`; item and passage tools sit in each card's header. Placement is empty by default, and validation reports a tool placed at a level it does not support: `calculator` and `answerEliminator` are item tools, and `theme`, the color-scheme tool, works at assessment and section level only. [Configuring tools](tools-and-accommodations/tool_provider_system.md#canonical-tool-ids) lists every tool id.
 
 Item and passage toolbars show a placed tool only where the content calls for it. Strike Through (`answerEliminator`) appears on the multiple-choice item alone, since the essay has no choices, and the calculator appears on neither item, since neither holds math, until the learner profile grants it. Section tools skip this filter. `calculator-cortex` is the open-source calculator; the default provider, Desmos, needs an API key.
 
@@ -182,7 +182,7 @@ A first section emits `pie-stage-change` `composed`, `runtime-ready`, `toolkit-r
 - An integration end to end, from runtime configuration to persistence strategies: the [section player integration guide](section-player/integration-guide.md).
 - Host-built layouts: [custom layouts](section-player/custom-layouts.md).
 - Practice sections, where the learner checks an answer, sees feedback and tries again: [item session control](section-player/item-session-control.md).
-- Which tools each learner receives: [tools and accommodations](tools-and-accomodations/architecture.md).
+- Which tools each learner receives: [tools and accommodations](tools-and-accommodations/architecture.md).
 - Tool providers, text-to-speech and the coordinator API: the [assessment toolkit](../packages/assessment-toolkit/README.md).
 - Colors, fonts and dark mode: [theming](theming/how-theming-works.md).
 - Read-aloud, accessibility catalogs and sign language: [accessibility](accessibility/README.md).

@@ -388,7 +388,7 @@ const he = {
 			description: "סימון אפשרויות תשובה בקו חוצה",
 			buttonA11y: "קו חוצה, השמטת אפשרויות תשובה",
 			tooltip: "קו חוצה",
-			toggleA11y: "החלפת מצב ההשמטה של {choice}",
+			toggleA11y: "להשמיט את {choice}",
 			eliminatedA11y: "(הושמטה)",
 			unlabeledChoice: "אפשרות ללא תווית",
 		},

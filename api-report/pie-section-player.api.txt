@@ -53,6 +53,7 @@
   type PieSectionPlayerPassagesPaneElement
   type PieSectionPlayerShellElement
   type PieSectionPlayerSplitPaneElement
+  SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT
   type SectionPlayerBackendResolver
   type SectionPlayerBackendResolverContext
   type SectionPlayerCardTitleContext
@@ -74,6 +75,7 @@
   type SectionPlayerTelemetryPolicy
   createCalculatorToolRegistration
   createPackagedToolRegistry
+  createUniversalPersonalNeedsProfile
   sectionFromItem
 
 ./components/section-player-splitpane-element

@@ -89,7 +89,7 @@ For package- and feature-level work, scope is usually centered on:
 The [project surface map](./project-surface-map.md) names the criteria per
 surface. These docs describe the surfaces:
 
-- [`../tools-and-accomodations/architecture.md`](../tools-and-accomodations/architecture.md)
+- [`../tools-and-accommodations/architecture.md`](../tools-and-accommodations/architecture.md)
 - [`../section-player/integration-guide.md`](../section-player/integration-guide.md)
 - [`../../packages/section-player/README.md`](../../packages/section-player/README.md)
 

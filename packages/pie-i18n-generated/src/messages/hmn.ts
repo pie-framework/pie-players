@@ -389,7 +389,7 @@ const hmn = {
 			description: "Ua kab hla cov xaiv lus teb",
 			buttonA11y: "Ua kab hla, tshem cov xaiv lus teb",
 			tooltip: "Ua Kab Hla",
-			toggleA11y: "Hloov kev tshem rau {choice}",
+			toggleA11y: "Tshem {choice}",
 			eliminatedA11y: "(tshem lawm)",
 			unlabeledChoice: "Xaiv uas tsis muaj npe",
 		},

@@ -121,7 +121,8 @@ for a vanilla element; call it from whatever already re-runs on a locale change
 and a catalog load.
 
 For a capability registration, `ToolbarContext.i18n` carries the same provider;
-`interfaceI18n(toolbarContext)` in `default-tool-loaders` applies the fallback.
+`resolveInterfaceI18n(...)` from `@pie-players/pie-players-shared/i18n/provider`
+applies the fallback, and the toolkit reads it when it renders tool chrome.
 
 ## Adding a key
 

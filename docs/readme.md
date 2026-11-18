@@ -60,16 +60,16 @@ toolkit; the assessment player is a reference assembly
 
 ## Tools and accommodations
 
-- [Tools and accommodations](./tools-and-accomodations/architecture.md): placement, scopes, the policy ladder and learner profiles
+- [Tools and accommodations](./tools-and-accommodations/architecture.md): placement, scopes, the policy ladder and learner profiles
 - [Assessment toolkit README](../packages/assessment-toolkit/README.md): `ToolkitCoordinator`, its services, `<pie-assessment-toolkit>` and `<pie-item-scope>`
-- [Configuring tools](./tools-and-accomodations/tool_provider_system.md): placement, provider configuration, host resolvers and the section player boundary
+- [Configuring tools](./tools-and-accommodations/tool_provider_system.md): placement, provider configuration, host resolvers and the section player boundary
 - [PNP configuration](../packages/assessment-toolkit/docs/PNP_CONFIGURATION.md): learner profiles and how they grant and withdraw tools
 - [Item feature decisions](./architecture/item-feature-decisions.md): how a feature decision reaches element models through the item player, and adding a feature
 - [Default tool loaders](../packages/default-tool-loaders/README.md): the packaged tool set, calculator providers and the tools a program grants to everyone
-- [Safe custom tool configuration](./tools-and-accomodations/safe-custom-tool-config.md): validating and sanitizing a custom tool's configuration
-- [Framework-owned error handling](./tools-and-accomodations/framework-owned-error-handling.md): how configuration and initialization failures reach the host
-- [Dictionary languages and services](./tools-and-accomodations/dictionary-languages-and-services.md): which service answers a lookup, and offering more than one language
-- [Non-embedded dictation](./tools-and-accomodations/non-embedded-dictation.md): platform dictation into PIE response surfaces
+- [Safe custom tool configuration](./tools-and-accommodations/safe-custom-tool-config.md): validating and sanitizing a custom tool's configuration
+- [Framework-owned error handling](./tools-and-accommodations/framework-owned-error-handling.md): how configuration and initialization failures reach the host
+- [Dictionary languages and services](./tools-and-accommodations/dictionary-languages-and-services.md): which service answers a lookup, and offering more than one language
+- [Non-embedded dictation](./tools-and-accommodations/non-embedded-dictation.md): platform dictation into PIE response surfaces
 - [Sign language](../packages/tool-sign-language/README.md): the sign-language video accommodation
 
 ## Accessibility and read-aloud
@@ -94,7 +94,7 @@ toolkit; the assessment player is a reference assembly
 ## Extending
 
 - [Tool registry](../packages/assessment-toolkit/docs/TOOL_REGISTRY.md): registering a tool, its host surfaces and its content dependencies
-- [Tool host contract](./tools-and-accomodations/tool_host_contract.md): the runtime guarantees between a tool and its host
+- [Tool host contract](./tools-and-accommodations/tool_host_contract.md): the runtime guarantees between a tool and its host
 - [TTS provider contracts](../packages/tts/README.md) and [calculator provider contracts](../packages/calculator/README.md): the interfaces a custom provider implements; the [calculator adapters](../packages/default-tool-loaders/src/calculator-providers/README.md) are the packaged implementations
 - [Shared player runtime](../packages/players-shared/README.md): the element loaders, item session control, timed media and media validation the players share
 - [Context protocol](../packages/pie-context/README.md), [composition context](./architecture/composition-context.md) and [ADR 0003](./adr/0003-elements-read-accessibility-settings-from-a-host-neutral-context.md): how elements read settings from their container

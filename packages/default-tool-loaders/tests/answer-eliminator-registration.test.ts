@@ -77,6 +77,7 @@ test("the answer eliminator's button draws its registration's icon", () => {
 
 test("the answer eliminator takes its strategy from its policy parameters", () => {
 	expect(renderStrategy({ strategy: "mask" })).toBe("mask");
+	expect(renderStrategy({ strategy: "cross" })).toBe("cross");
 	expect(renderStrategy({ strategy: "erase" })).toBe("strikethrough");
 	expect(renderStrategy(null)).toBe("strikethrough");
 });

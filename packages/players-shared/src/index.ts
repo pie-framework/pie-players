@@ -2,9 +2,7 @@
 // root only by a deliberate edit here. Helpers with a subpath of their own
 // (`./object`, `./ui/attribute-coercion`, `./ui/content-styles`) are exported
 // only there.
-export {
-	BUILDER_BUNDLE_URL,
-} from "./config/profile.js";
+export { BUILDER_BUNDLE_URL } from "./config/profile.js";
 export {
 	BaseInstrumentationProvider,
 	CompositeInstrumentationProvider,
@@ -217,6 +215,7 @@ export {
 	pieElementContextsWithin,
 	pieRegistry,
 	projectSessionIntoHostContainer,
+	removeUndeclaredMarkupTags,
 	resolveConfigureConfiguration,
 	resolveInstrumentationProvider,
 	runtimeElementTags,
@@ -275,9 +274,7 @@ export {
 	collectFocusable,
 	isProgrammaticFocusTarget,
 } from "./ui/first-focusable.js";
-export {
-	isComposingKeyEvent,
-} from "./ui/ime.js";
+export { isComposingKeyEvent } from "./ui/ime.js";
 export {
 	DEFAULT_CONTAINMENT_GUTTER,
 	clampPointWithinBlock,
@@ -293,12 +290,6 @@ export {
 	createOverlayPlacement,
 	dockUprightControls,
 } from "./ui/overlay-placement.js";
-export {
-	createPointerDragController,
-} from "./ui/pointer-drag.js";
-export {
-	createPointerGesture,
-} from "./ui/pointer-gesture.js";
-export {
-	scopeStylesheetCss,
-} from "./ui/scope-css.js";
+export { createPointerDragController } from "./ui/pointer-drag.js";
+export { createPointerGesture } from "./ui/pointer-gesture.js";
+export { scopeStylesheetCss } from "./ui/scope-css.js";

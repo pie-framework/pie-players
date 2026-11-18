@@ -53,8 +53,12 @@ export class EBSRAdapter implements ChoiceAdapter {
 	}
 
 	// Delegate all other methods to MultipleChoiceAdapter
-	createChoiceRange(choice: HTMLElement): Range | null {
-		return this.mcAdapter.createChoiceRange(choice);
+	getChoiceContent(choice: HTMLElement): HTMLElement | null {
+		return this.mcAdapter.getChoiceContent(choice);
+	}
+
+	getChoiceContainer(choice: HTMLElement): HTMLElement {
+		return this.mcAdapter.getChoiceContainer(choice);
 	}
 
 	getChoiceId(choice: HTMLElement): string {

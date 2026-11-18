@@ -1,550 +1,200 @@
-import {
-	defaultEliminationChrome,
-	type EliminationChrome,
-	type EliminationStrategy,
+import { isOwned } from "../owned-nodes.js";
+import type {
+	EliminationStrategy,
+	EliminationTarget,
 } from "./elimination-strategy.js";
+import { type Box, isDrawn, type Mark, OverlayMarks } from "./overlay-marks.js";
+
+const LINE_CLASSES = {
+	mark: "pie-answer-eliminator-strike",
+	line: "pie-answer-eliminator-strike-line",
+};
+// The casing under each line keeps the X visible over dark or red imagery
+// (WCAG 1.4.11).
+const IMAGE_CLASSES = {
+	mark: "pie-answer-eliminator-strike",
+	line: "pie-answer-eliminator-image-strike-line",
+	casing: "pie-answer-eliminator-image-strike-casing",
+};
+// MathJax's rendered box, for both its CHTML and SVG output. Its glyphs are
+// generated content or SVG paths, so it is struck as one box; the assistive
+// MathML inside it is visually hidden. Natively rendered MathML keeps real
+// text, which is struck as text.
+const MATH_SELECTOR = "mjx-container";
+// For inline math the `mjx-container` is `display: inline`, so its rect is the
+// surrounding line box while the expression overflows it; `mjx-math` is the
+// inline-block that bounds the glyphs.
+const MATH_BOX_SELECTOR = "mjx-math";
+// MathJax names its CHTML boxes after the MathML they render. A line is
+// ambiguous exactly where the expression draws horizontal rules of its own —
+// fraction bars and table rules — so those two get crossed out instead.
+// Radicals and stacked limits keep the line: their bars sit at the top, or the
+// line crosses the base, and neither reads as part of the notation.
+const MATH_STACKED_SELECTOR = "mjx-mfrac, mjx-mtable";
+// Text that is not struck as text: math is struck as a box, and these hold no
+// rendered text of their own.
+const UNSTRUCK_TEXT_SELECTOR = `${MATH_SELECTOR}, svg, script, style, template, noscript, select, textarea`;
+// Fragments of one line: their boxes sit on the same middle and touch.
+const LINE_TOLERANCE = 1;
 
 /**
- * Strikethrough strategy using CSS Custom Highlight API
- *
- * Text is struck by a browser-native highlight, so its nodes stay unchanged for
- * screen readers. The choice container carries the eliminated attributes and
- * an announcement; images and rendered math get their own strike (see
- * `strikeImages` and `strikeMath`).
- * WCAG Compliance: Maintains info structure (1.3.1), no layout shift (2.4.3)
+ * Strikes the content through with SVG marks in its container: a line through
+ * each line of text and each single-row expression, and an X over each image
+ * and each expression that draws rules of its own. Text decoration and the CSS
+ * Highlight API paint inside the content, under its dim; they also reach no
+ * image, and no MathJax glyph.
  */
 export class StrikethroughStrategy implements EliminationStrategy {
-	private static readonly HIGHLIGHT_STYLE_PREFIX =
-		"pie-answer-eliminator-highlight-";
-	private static readonly HIGHLIGHT_NAME_PREFIX = "pie-answer-eliminated-";
-	private static readonly FALLBACK_CLASS =
-		"pie-answer-eliminator-eliminated-fallback";
-	private static readonly SR_CLASS = "pie-answer-eliminator-sr-announcement";
-	private static readonly CHOICE_HOOK_ATTR =
-		"data-pie-answer-eliminator-choice";
-	private static readonly LABEL_HOOK_ATTR = "data-pie-answer-eliminator-label";
-	private static readonly ELIMINATED_ATTR = "data-pie-answer-eliminated";
-	private static readonly ELIMINATED_ID_ATTR = "data-pie-answer-eliminated-id";
-	private static readonly IMAGE_WRAPPER_CLASS =
-		"pie-answer-eliminator-image-strike";
-	private static readonly IMAGE_WRAPPER_ATTR =
-		"data-pie-answer-eliminator-image-strike";
-	private static readonly IMAGE_OVERLAY_CLASS =
-		"pie-answer-eliminator-image-strike-overlay";
-	private static readonly IMAGE_LINE_CLASS =
-		"pie-answer-eliminator-image-strike-line";
-	private static readonly IMAGE_CASING_CLASS =
-		"pie-answer-eliminator-image-strike-casing";
-	private static readonly MATH_STRIKE_CLASS =
-		"pie-answer-eliminator-math-strike";
-	private static readonly MATH_STRIKE_LINE_CLASS =
-		"pie-answer-eliminator-math-strike--line";
-	private static readonly MATH_STRIKE_CROSS_CLASS =
-		"pie-answer-eliminator-math-strike--cross";
-	private static readonly MATH_STRIKE_ATTR =
-		"data-pie-answer-eliminator-math-strike";
-	// MathJax names its CHTML boxes after the MathML they render. A horizontal
-	// strike is ambiguous exactly where the expression draws horizontal rules of
-	// its own — fraction bars and table rules — so those two get crossed out
-	// instead. Radicals and stacked limits keep the line: their bars sit at the
-	// top or the strike simply crosses the base, neither of which reads as part of
-	// the notation.
-	private static readonly MATH_STACKED_SELECTOR = "mjx-mfrac, mjx-mtable";
-	// The box MathJax gives the rendered expression. It matters which one is
-	// measured and painted: for inline math the `mjx-container` is `display:
-	// inline`, so its rect is the surrounding line box (a constant ~1.16x font
-	// size) while the expression itself overflows it — a fraction sticks out 3px
-	// above and 8px below. `mjx-math` is the inline-block that actually bounds the
-	// glyphs.
-	private static readonly MATH_BOX_SELECTOR = "mjx-math";
-	// MathJax's rendered box, for both its CHTML and SVG output. Deliberately not
-	// `math`: natively rendered MathML keeps real text nodes in `mi`/`mn`/`mo`, so
-	// the highlight already strikes every token there (verified in Chromium), and
-	// adding a second line over the same expression only doubles up.
-	private static readonly MATH_SELECTOR = "mjx-container";
-	private static readonly SVG_NS = "http://www.w3.org/2000/svg";
-	// Displays that make the image a block-level box; an inline-block wrapper
-	// around one of those would change how the choice lays out.
-	private static readonly BLOCK_DISPLAYS = new Set([
-		"block",
-		"flex",
-		"grid",
-		"table",
-		"flow-root",
-		"list-item",
-	]);
-
 	readonly name = "strikethrough";
 
-	private highlights = new Map<string, Highlight>();
-	private ranges = new Map<string, Range>();
-	private fallbackContainers = new Map<string, HTMLElement>();
-	private imageWrappers = new Map<string, HTMLElement[]>();
-	private mathTargets = new Map<string, HTMLElement[]>();
-	private chrome: EliminationChrome = defaultEliminationChrome();
+	private readonly marks = new OverlayMarks({
+		measure,
+		shapeAttribute: "data-pie-answer-eliminator-strike",
+	});
 
-	initialize(): void {
-		if (!this.isSupported()) {
-			console.warn("CSS Custom Highlight API not supported, using fallback");
-		}
-	}
+	initialize(): void {}
 
 	destroy(): void {
 		this.clearAll();
 	}
 
-	setChrome(chrome: EliminationChrome): void {
-		this.chrome = chrome;
-		const containers = [
-			...Array.from(this.ranges.values(), (range) =>
-				this.findChoiceContainer(range),
-			),
-			...this.fallbackContainers.values(),
-		];
-		for (const container of containers) {
-			const announcement = container?.querySelector(
-				`.${StrikethroughStrategy.SR_CLASS}`,
-			);
-			if (announcement) this.labelAnnouncement(announcement);
-		}
-	}
-
-	private labelAnnouncement(announcement: Element): void {
-		// The leading space separates it from the label text it follows; the
-		// stamp's `dir` isolates it from that text's direction.
-		announcement.textContent = ` ${this.chrome.eliminatedText}`;
-		this.chrome.stamp(announcement);
-	}
-
-	apply(choiceId: string, range: Range): void {
-		if (this.isSupported()) {
-			this.injectHighlightCSS(choiceId);
-
-			const highlight = new Highlight(range);
-			CSS.highlights.set(
-				`${StrikethroughStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}`,
-				highlight,
-			);
-
-			this.highlights.set(choiceId, highlight);
-			this.ranges.set(choiceId, range);
-
-			this.addAriaAttributes(range);
-		} else {
-			this.applyFallback(choiceId, range);
-		}
-
-		// Text decoration cannot reach replaced content, so an image-only choice
-		// would otherwise look untouched: overlay each image with a diagonal X.
-		this.strikeImages(choiceId, range);
-
-		// Rendered math is not text either (see `strikeMath`), so it needs its
-		// own line-through.
-		this.strikeMath(choiceId, range);
+	apply(choiceId: string, target: EliminationTarget): void {
+		this.marks.apply(choiceId, target);
 	}
 
 	remove(choiceId: string): void {
-		this.unstrikeImages(choiceId);
-		this.unstrikeMath(choiceId);
+		this.marks.remove(choiceId);
+	}
 
-		if (!this.isSupported()) {
-			this.removeFallback(choiceId);
-			return;
-		}
-
-		CSS.highlights.delete(
-			`${StrikethroughStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}`,
-		);
-		this.removeHighlightCSS(choiceId);
-
-		const range = this.ranges.get(choiceId);
-		if (range) {
-			this.removeAriaAttributes(range);
-		}
-
-		this.highlights.delete(choiceId);
-		this.ranges.delete(choiceId);
-		this.fallbackContainers.delete(choiceId);
+	relayout(): void {
+		this.marks.relayout();
 	}
 
 	isEliminated(choiceId: string): boolean {
-		return (
-			this.highlights.has(choiceId) || this.fallbackContainers.has(choiceId)
-		);
+		return this.marks.has(choiceId);
 	}
 
 	clearAll(): void {
-		// Snapshot first: `remove()` mutates every map it is tracked in, and a
-		// choice can be tracked only in the fallback/image maps.
-		const choiceIds = new Set([
-			...this.highlights.keys(),
-			...this.fallbackContainers.keys(),
-			...this.imageWrappers.keys(),
-			...this.mathTargets.keys(),
-		]);
-		for (const choiceId of choiceIds) {
-			this.remove(choiceId);
-		}
-		this.fallbackContainers.clear();
-		this.imageWrappers.clear();
-		this.mathTargets.clear();
+		this.marks.clearAll();
 	}
 
 	getEliminatedIds(): string[] {
-		return Array.from(
-			new Set([...this.highlights.keys(), ...this.fallbackContainers.keys()]),
-		);
+		return this.marks.ids();
 	}
+}
 
-	private isSupported(): boolean {
-		return typeof CSS !== "undefined" && "highlights" in CSS;
+function measure({ content }: EliminationTarget): Mark[] {
+	const hidden = new HiddenCheck(content);
+	const marks: Mark[] = textLines(content, hidden).map((box) => ({
+		shape: "line",
+		classes: LINE_CLASSES,
+		box,
+	}));
+	for (const image of within(content, "img")) {
+		if (hidden.covers(image)) continue;
+		const box = image.getBoundingClientRect();
+		if (isDrawn(box)) marks.push({ shape: "cross", classes: IMAGE_CLASSES, box });
 	}
-
-	private injectHighlightCSS(choiceId: string): void {
-		const styleId = `${StrikethroughStrategy.HIGHLIGHT_STYLE_PREFIX}${choiceId}`;
-		if (document.getElementById(styleId)) return;
-
-		const style = document.createElement("style");
-		style.id = styleId;
-		// No `opacity` here: a highlight pseudo honours only the properties
-		// CSS Highlight API allows — colour, background, text-decoration,
-		// text-shadow — so the dim that pairs with the strike would silently do
-		// nothing. It comes from the eliminated choice's own element instead, via
-		// `[data-pie-answer-eliminated]` in the shared content stylesheet, which is
-		// the one rule both this path and the fallback path share.
-		style.textContent = `
-      ::highlight(${StrikethroughStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}) {
-        text-decoration: line-through;
-        text-decoration-thickness: 2px;
-        text-decoration-color: var(--pie-answer-eliminator-strike-color, var(--pie-incorrect, #ff9800));
-      }
-    `;
-		document.head.appendChild(style);
+	for (const math of within(content, MATH_SELECTOR)) {
+		if (hidden.covers(math)) continue;
+		const box = (
+			math.querySelector(MATH_BOX_SELECTOR) ?? math
+		).getBoundingClientRect();
+		if (!isDrawn(box)) continue;
+		const stacked = Boolean(math.querySelector(MATH_STACKED_SELECTOR));
+		marks.push({ shape: stacked ? "cross" : "line", classes: LINE_CLASSES, box });
 	}
+	return marks;
+}
 
-	private removeHighlightCSS(choiceId: string): void {
-		document
-			.getElementById(
-				`${StrikethroughStrategy.HIGHLIGHT_STYLE_PREFIX}${choiceId}`,
-			)
-			?.remove();
-	}
-
-	private addAriaAttributes(range: Range): void {
-		const container = this.findChoiceContainer(range);
-		if (!container) return;
-
-		container.setAttribute(StrikethroughStrategy.ELIMINATED_ATTR, "true");
-		container.setAttribute("aria-disabled", "true");
-
-		const label = this.resolveLabelElement(container);
-		if (label && !label.querySelector(`.${StrikethroughStrategy.SR_CLASS}`)) {
-			const announcement = document.createElement("span");
-			announcement.className = StrikethroughStrategy.SR_CLASS;
-			this.labelAnnouncement(announcement);
-			label.appendChild(announcement);
+/** The line boxes the content's text renders in. */
+function textLines(content: Element, hidden: HiddenCheck): Box[] {
+	const lines: Box[] = [];
+	const range = document.createRange();
+	const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT);
+	for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+		const parent = node.parentElement;
+		if (!parent || hidden.covers(parent)) continue;
+		const unstruck = parent.closest(UNSTRUCK_TEXT_SELECTOR);
+		if (unstruck && (unstruck === content || content.contains(unstruck))) {
+			continue;
+		}
+		range.selectNodeContents(node);
+		for (const rect of Array.from(range.getClientRects?.() ?? [])) {
+			if (isDrawn(rect)) addFragment(lines, rect);
 		}
 	}
+	return lines;
+}
 
-	private removeAriaAttributes(range: Range): void {
-		const container = this.findChoiceContainer(range);
-		if (!container) return;
+/** Joins a text fragment to the line it continues, or starts a line. */
+function addFragment(lines: Box[], fragment: Box): void {
+	const middle = fragment.top + fragment.height / 2;
+	const line = lines.find(
+		(box) =>
+			Math.abs(box.top + box.height / 2 - middle) <= LINE_TOLERANCE &&
+			fragment.left <= box.left + box.width + LINE_TOLERANCE &&
+			box.left <= fragment.left + fragment.width + LINE_TOLERANCE,
+	);
+	if (!line) {
+		lines.push({
+			left: fragment.left,
+			top: fragment.top,
+			width: fragment.width,
+			height: fragment.height,
+		});
+		return;
+	}
+	const right = Math.max(line.left + line.width, fragment.left + fragment.width);
+	const bottom = Math.max(line.top + line.height, fragment.top + fragment.height);
+	line.left = Math.min(line.left, fragment.left);
+	line.top = Math.min(line.top, fragment.top);
+	line.width = right - line.left;
+	line.height = bottom - line.top;
+}
 
-		container.removeAttribute(StrikethroughStrategy.ELIMINATED_ATTR);
-		container.removeAttribute("aria-disabled");
+function within(content: Element, selector: string): Element[] {
+	const found = Array.from(content.querySelectorAll(selector));
+	return content.matches(selector) ? [content, ...found] : found;
+}
 
-		const announcement = container.querySelector(
-			`.${StrikethroughStrategy.SR_CLASS}`,
-		);
-		announcement?.remove();
+/**
+ * Whether a node of the content renders invisibly, so a mark over it would
+ * strike nothing the learner sees: what the eliminator added, `visibility`
+ * hiding, a transparent ancestor, or a visually hidden one, clipped to a pixel
+ * the way screen-reader-only text is.
+ */
+class HiddenCheck {
+	private readonly verdicts = new Map<Element, boolean>();
+
+	constructor(private readonly content: Element) {}
+
+	covers(element: Element): boolean {
+		if (isOwned(element)) return true;
+		const { visibility } = getComputedStyle(element);
+		if (visibility === "hidden" || visibility === "collapse") return true;
+		return this.clippedOrTransparent(element);
 	}
 
-	private findChoiceContainer(range: Range): HTMLElement | null {
-		let element: HTMLElement | null = range.startContainer as HTMLElement;
-		if (element.nodeType === Node.TEXT_NODE) {
-			element = element.parentElement;
+	private clippedOrTransparent(element: Element): boolean {
+		const known = this.verdicts.get(element);
+		if (known !== undefined) return known;
+		const style = getComputedStyle(element);
+		let verdict = style.opacity === "0" || clipsAway(element, style);
+		const parent = element.parentElement;
+		if (!verdict && element !== this.content && parent) {
+			verdict = this.clippedOrTransparent(parent);
 		}
-
-		while (element && element !== document.body) {
-			if (
-				element.getAttribute(StrikethroughStrategy.CHOICE_HOOK_ATTR) === "true"
-			) {
-				return element;
-			}
-			element = element.parentElement;
-		}
-
-		return null;
+		this.verdicts.set(element, verdict);
+		return verdict;
 	}
+}
 
-	// Fallback for browsers without CSS Highlight API
-	private applyFallback(choiceId: string, range: Range): void {
-		const container = this.findChoiceContainer(range);
-		if (!container) return;
-
-		container.classList.add(StrikethroughStrategy.FALLBACK_CLASS);
-		container.setAttribute(StrikethroughStrategy.ELIMINATED_ATTR, "true");
-		container.setAttribute(StrikethroughStrategy.ELIMINATED_ID_ATTR, choiceId);
-		this.fallbackContainers.set(choiceId, container);
-		this.addAriaAttributes(range);
-	}
-
-	private removeFallback(choiceId: string): void {
-		const container = this.fallbackContainers.get(choiceId);
-		if (!container) return;
-
-		container.classList.remove(StrikethroughStrategy.FALLBACK_CLASS);
-		container.removeAttribute(StrikethroughStrategy.ELIMINATED_ATTR);
-		container.removeAttribute(StrikethroughStrategy.ELIMINATED_ID_ATTR);
-
-		// Create fake range for aria removal
-		const range = document.createRange();
-		range.selectNodeContents(container);
-		this.removeAriaAttributes(range);
-		this.fallbackContainers.delete(choiceId);
-	}
-
-	/**
-	 * Overlay every image in the eliminated choice with a diagonal X, drawn in
-	 * the same strike colour as the text line-through.
-	 *
-	 * Images are replaced elements: `line-through` (and `::highlight()`) never
-	 * paints on them, and they cannot carry a pseudo-element, so each image is
-	 * wrapped in a positioned span that hosts an absolutely-positioned overlay.
-	 * Wrapping keeps the overlay glued to the image through any later reflow —
-	 * responsive resizing, late image `load`, zoom — with no observers.
-	 */
-	private strikeImages(choiceId: string, range: Range): void {
-		const scope = this.resolveImageScope(range);
-		if (!scope) return;
-
-		const wrappers: HTMLElement[] = [];
-		for (const image of Array.from(scope.querySelectorAll("img"))) {
-			const wrapper = this.wrapImage(image);
-			if (wrapper) wrappers.push(wrapper);
-		}
-
-		if (wrappers.length > 0) {
-			this.imageWrappers.set(choiceId, wrappers);
-		}
-	}
-
-	private unstrikeImages(choiceId: string): void {
-		const wrappers = this.imageWrappers.get(choiceId);
-		if (!wrappers) return;
-
-		for (const wrapper of wrappers) {
-			this.unwrapImage(wrapper);
-		}
-
-		this.imageWrappers.delete(choiceId);
-	}
-
-	/**
-	 * Give MathJax-rendered math the same line-through the choice's text gets.
-	 *
-	 * `::highlight()` cannot reach it: MathJax's CHTML output draws every visible
-	 * glyph as an `mjx-c` element with empty `textContent`, the character coming
-	 * from `::before` generated content — which is part of no Range. (Its only
-	 * real text is the `mjx-assistive-mml` copy of the source MathML, clipped to
-	 * 1px for assistive tech, so the highlight paints it invisibly.) Its SVG
-	 * output has no text at all. A math-only choice therefore looked identical to
-	 * an un-eliminated one.
-	 *
-	 * Unlike an image, the rendered math box is a normal element that can carry a
-	 * pseudo-element, so this only adds a class and lets CSS paint it — no
-	 * wrapper, nothing restructured, and MathJax's own layout left alone.
-	 *
-	 * A single row of symbols gets the line-through the prose gets. An expression
-	 * that draws horizontal rules of its own gets diagonals instead: a line
-	 * centred on a fraction lands on the math axis, which is exactly where the
-	 * fraction bar already sits, so it reads as a recoloured bar rather than as an
-	 * elimination.
-	 */
-	private strikeMath(choiceId: string, range: Range): void {
-		const scope = this.resolveImageScope(range);
-		if (!scope) return;
-
-		const targets: HTMLElement[] = [];
-		for (const container of scope.querySelectorAll<HTMLElement>(
-			StrikethroughStrategy.MATH_SELECTOR,
-		)) {
-			const box =
-				container.querySelector<HTMLElement>(
-					StrikethroughStrategy.MATH_BOX_SELECTOR,
-				) ?? container;
-			const stacked = Boolean(
-				box.querySelector(StrikethroughStrategy.MATH_STACKED_SELECTOR),
-			);
-
-			box.classList.add(
-				StrikethroughStrategy.MATH_STRIKE_CLASS,
-				stacked
-					? StrikethroughStrategy.MATH_STRIKE_CROSS_CLASS
-					: StrikethroughStrategy.MATH_STRIKE_LINE_CLASS,
-			);
-			box.setAttribute(
-				StrikethroughStrategy.MATH_STRIKE_ATTR,
-				stacked ? "cross" : "line",
-			);
-			targets.push(box);
-		}
-
-		if (targets.length > 0) {
-			this.mathTargets.set(choiceId, targets);
-		}
-	}
-
-	private unstrikeMath(choiceId: string): void {
-		const targets = this.mathTargets.get(choiceId);
-		if (!targets) return;
-
-		for (const target of targets) {
-			target.classList.remove(
-				StrikethroughStrategy.MATH_STRIKE_CLASS,
-				StrikethroughStrategy.MATH_STRIKE_LINE_CLASS,
-				StrikethroughStrategy.MATH_STRIKE_CROSS_CLASS,
-			);
-			target.removeAttribute(StrikethroughStrategy.MATH_STRIKE_ATTR);
-		}
-
-		this.mathTargets.delete(choiceId);
-	}
-
-	/**
-	 * The element whose images belong to this elimination. Adapters build the
-	 * range over the choice's own content (label or choice node), so its common
-	 * ancestor is the right scope; the choice container is the fallback.
-	 */
-	private resolveImageScope(range: Range): HTMLElement | null {
-		const node = range.commonAncestorContainer;
-		const element =
-			node.nodeType === Node.TEXT_NODE
-				? node.parentElement
-				: (node as HTMLElement);
-		return element ?? this.findChoiceContainer(range);
-	}
-
-	private wrapImage(image: HTMLImageElement): HTMLElement | null {
-		const parent = image.parentElement;
-		if (!parent) return null;
-
-		// Already struck (e.g. state restore re-applying over live DOM): reuse
-		// the existing wrapper so it stays tracked and is undone once.
-		if (
-			parent.classList.contains(StrikethroughStrategy.IMAGE_WRAPPER_CLASS) ||
-			parent.hasAttribute(StrikethroughStrategy.IMAGE_WRAPPER_ATTR)
-		) {
-			return parent;
-		}
-
-		const wrapper = document.createElement("span");
-		wrapper.className = StrikethroughStrategy.IMAGE_WRAPPER_CLASS;
-		wrapper.setAttribute(StrikethroughStrategy.IMAGE_WRAPPER_ATTR, "true");
-
-		// Preserve the image's box model so wrapping never shifts the layout, and
-		// keep the wrapper hugging the image so the X never overhangs it.
-		if (this.fillsParentWidth(image, parent)) {
-			// Fluid (e.g. percentage-width) image: it already spans the parent, and
-			// a shrink-to-fit wrapper would collapse it to its intrinsic size.
-			wrapper.style.display = "block";
-		} else if (
-			StrikethroughStrategy.BLOCK_DISPLAYS.has(getComputedStyle(image).display)
-		) {
-			// Block-level image: keep it on its own line, but only as wide as the
-			// image itself rather than the full width a block wrapper would take.
-			wrapper.style.display = "block";
-			wrapper.style.width = "fit-content";
-		}
-
-		parent.insertBefore(wrapper, image);
-		wrapper.appendChild(image);
-		wrapper.appendChild(this.createImageStrikeOverlay());
-
-		return wrapper;
-	}
-
-	private fillsParentWidth(
-		image: HTMLImageElement,
-		parent: HTMLElement,
-	): boolean {
-		const imageWidth = image.getBoundingClientRect().width;
-		const parentWidth = parent.clientWidth;
-		if (imageWidth === 0 || parentWidth === 0) return false;
-		// Sub-pixel rounding: treat "within 1px of the parent" as filling it.
-		return imageWidth >= parentWidth - 1;
-	}
-
-	private unwrapImage(wrapper: HTMLElement): void {
-		wrapper
-			.querySelector(`.${StrikethroughStrategy.IMAGE_OVERLAY_CLASS}`)
-			?.remove();
-
-		const parent = wrapper.parentElement;
-		if (!parent) return;
-
-		// Restore the original DOM shape: move the image (and anything else the
-		// wrapper picked up) back out, then drop the wrapper.
-		while (wrapper.firstChild) {
-			parent.insertBefore(wrapper.firstChild, wrapper);
-		}
-		wrapper.remove();
-	}
-
-	/**
-	 * Corner-to-corner X sized to the wrapper. `preserveAspectRatio="none"`
-	 * stretches the 100x100 viewBox onto any aspect ratio, and
-	 * `vector-effect="non-scaling-stroke"` keeps both lines an even screen-space
-	 * thickness under that non-uniform scale. The wider casing line under each
-	 * red line keeps the X visible over dark or red imagery (WCAG 1.4.11).
-	 */
-	private createImageStrikeOverlay(): SVGSVGElement {
-		const svg = document.createElementNS(
-			StrikethroughStrategy.SVG_NS,
-			"svg",
-		) as SVGSVGElement;
-		svg.setAttribute("class", StrikethroughStrategy.IMAGE_OVERLAY_CLASS);
-		svg.setAttribute("viewBox", "0 0 100 100");
-		svg.setAttribute("preserveAspectRatio", "none");
-		// Decorative: the eliminated state is already announced on the label.
-		svg.setAttribute("aria-hidden", "true");
-		svg.setAttribute("focusable", "false");
-
-		const diagonals = [
-			// upper left -> lower right
-			{ x1: "0", y1: "0", x2: "100", y2: "100" },
-			// lower left -> upper right
-			{ x1: "0", y1: "100", x2: "100", y2: "0" },
-		];
-
-		// Casings first so the red lines paint unbroken on top of both of them.
-		for (const className of [
-			StrikethroughStrategy.IMAGE_CASING_CLASS,
-			StrikethroughStrategy.IMAGE_LINE_CLASS,
-		]) {
-			for (const { x1, y1, x2, y2 } of diagonals) {
-				const line = document.createElementNS(
-					StrikethroughStrategy.SVG_NS,
-					"line",
-				);
-				line.setAttribute("class", className);
-				line.setAttribute("x1", x1);
-				line.setAttribute("y1", y1);
-				line.setAttribute("x2", x2);
-				line.setAttribute("y2", y2);
-				line.setAttribute("vector-effect", "non-scaling-stroke");
-				svg.appendChild(line);
-			}
-		}
-
-		return svg;
-	}
-
-	private resolveLabelElement(container: HTMLElement): HTMLElement | null {
-		return (
-			container.querySelector<HTMLElement>(
-				`[${StrikethroughStrategy.LABEL_HOOK_ATTR}="true"]`,
-			) || container.querySelector<HTMLElement>("label")
-		);
-	}
+function clipsAway(element: Element, style: CSSStyleDeclaration): boolean {
+	const positioned = style.position === "absolute" || style.position === "fixed";
+	if (positioned && style.clip && style.clip !== "auto") return true;
+	if (style.display === "contents") return false;
+	if (style.overflow === "visible" || style.overflow === "") return false;
+	const { width, height } = element.getBoundingClientRect();
+	return width <= 1 || height <= 1;
 }

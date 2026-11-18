@@ -20,8 +20,8 @@ different palettes.
 `--pie-surface` is a registered, public `canonical-semantic` token for raised
 surfaces such as answer pools and inline TTS panels. Its scheme participation is
 `required`: it has values in both base themes, every built-in scheme and the
-DaisyUI adapter. It is distinct from the page role `--pie-background`, and text
-and controls on it must keep their contrast. Hosts override it through
+DaisyUI adapter. It is distinct from the page role `--pie-background`, and text,
+links (`--pie-tertiary`) and controls on it must keep their contrast. Hosts override it through
 `variables`, or through the normal cascade in stylesheet-only delivery.
 
 Contents:

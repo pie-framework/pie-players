@@ -58,6 +58,17 @@ precedence is covered by local browser tests. This is an impact assessment, not
 a downstream refresh: those checkouts remain unavailable and all row
 verification dates above remain unchanged.
 
+The 2026-11-17 "raised surface link text" relationship (`--pie-tertiary` on
+`--pie-surface`, 4.5:1) was checked against the recorded theme rows. It adds,
+removes or renames no token; it moves one value in two built-in schemes, Black
+on Rose (`#990044` to `#82003a`) and Black on Violet (`#4a1259` to `#330d3f`).
+Host R's `[data-color-scheme]` rule maps `--pie-tertiary` onto its own palette
+(see theme tokens below), so that slot of its chrome repaints darker under those
+two schemes. No other recorded host sets or reads the name directly. Both values only
+darken against light pages and surfaces, so every recorded pair gains contrast.
+This is an impact assessment, not a downstream refresh: all row verification
+dates above remain unchanged.
+
 The 2026-10-02 scoping of `components.css` to `[data-pie-content]`, the root each
 player renders content into, was checked against all four checkouts. Host V's
 `@scope` root is an ancestor of `pie-item-player`, so its copy still matches and

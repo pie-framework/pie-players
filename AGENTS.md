@@ -174,9 +174,9 @@ build.
 ### Decision Records
 
 `docs/adr/` holds one file per decision that is hard to reverse or surprising without
-its context. `docs/adr/README.md` sets the bar and the numbering. Records are
-append-only: a superseded one keeps its number and gains a `Superseded by` line
-instead of being edited into agreement.
+its context. `docs/adr/README.md` sets the bar and the numbering. Records are edited
+in place to stay accurate: numbers are permanent, and a substantive edit keeps its
+provenance through a dated `Update` section or a `Superseded by` line.
 
 Rules from those records bind new code directly. From ADR 0002:
 

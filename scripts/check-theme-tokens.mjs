@@ -65,7 +65,6 @@ const PACKAGE_PRIVATE_SOURCE_TOKENS = new Set([
 	"--pie-annotation-yellow-highlight",
 	"--pie-answer-eliminator-image-strike-casing-color",
 	"--pie-answer-eliminator-strike-paint",
-	"--pie-answer-eliminator-toggle-color",
 	"--pie-calculator-button-color",
 	"--pie-calculator-button-size",
 	"--pie-calculator-button-size-lg",
@@ -447,7 +446,7 @@ function checkSourceUsage(root, registry, failures) {
  */
 const NDS_BRIDGE_DECLARATIONS = [
 	"--color-new-gray: var(--pie-background-dark, #f3f5f7);",
-	"--color-primary-white: var(--pie-white, #ffffff);",
+	"--color-primary-white: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-white, #ffffff)));",
 	"--color-primary-black: var(--pie-text, #000000);",
 	"--color-focus-blue: var(--pie-button-focus-outline, #2b87ff);",
 ];

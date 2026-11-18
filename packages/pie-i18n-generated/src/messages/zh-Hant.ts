@@ -374,7 +374,7 @@ const zhHant = {
 			description: "劃掉答案選項",
 			buttonA11y: "劃記，劃掉答案選項",
 			tooltip: "劃記",
-			toggleA11y: "切換{choice}的劃記狀態",
+			toggleA11y: "劃掉{choice}",
 			eliminatedA11y: "（已劃掉）",
 			unlabeledChoice: "未標示選項",
 		},

@@ -97,7 +97,7 @@ The `strategy` attribute sets where the player gets element code. The default, `
 ## Next steps
 
 - A passage and its items in one layout, with tools and a saved section session: [a section with tools](getting-started-section.md), then the [section player integration guide](section-player/integration-guide.md).
-- Calculators, text-to-speech, the line reader and other tools: the [assessment toolkit](../packages/assessment-toolkit/README.md), and [tools and accommodations](tools-and-accomodations/architecture.md) for which tools each learner receives.
+- Calculators, text-to-speech, the line reader and other tools: the [assessment toolkit](../packages/assessment-toolkit/README.md), and [tools and accommodations](tools-and-accommodations/architecture.md) for which tools each learner receives.
 - Colors, fonts and dark mode: [theming](theming/how-theming-works.md).
 - Authoring: `mode="author"` on the same player renders each element's configuration UI and emits `model-updated` as the author edits; see [authoring configuration](../packages/item-player/README.md#authoring-configuration).
 - Moving from `@pie-framework/pie-player-components`: the [migration guide](item-player/migration-from-pie-player-components.md).

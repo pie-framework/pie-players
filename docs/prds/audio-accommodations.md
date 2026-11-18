@@ -22,7 +22,7 @@ accessibility pipeline and for content producers that emit transcript cards.
 
 Related architecture:
 
-- [What Counts As A Tool](../tools-and-accomodations/architecture.md#what-counts-as-a-tool) — the eligibility / content-dependency / placement split this PRD applies to audio
+- [What Counts As A Tool](../tools-and-accommodations/architecture.md#what-counts-as-a-tool) — the eligibility / content-dependency / placement split this PRD applies to audio
 - [Sign Language (ASL) Support](./sign-language-asl-support.md) — the same three-part shape; this PRD is its second instance
 - [Accessibility Catalogs Integration Guide](../accessibility/accessibility-catalogs-integration-guide.md)
 - [Accessibility runtime patterns](./shared-contracts/accessibility-runtime-patterns.md)
@@ -326,7 +326,7 @@ Playwright-backed tests must run outside the sandbox.
   `transcript` in the affected students' profiles. The class no longer delivers
   anything.
 - Documentation: the integrator guides linked at the top, the
-  [tools and accommodations architecture](../tools-and-accomodations/architecture.md),
+  [tools and accommodations architecture](../tools-and-accommodations/architecture.md),
   the [accessibility catalogs quick start](../accessibility/accessibility-catalogs-quick-start.md)
   and the [integration guide](../accessibility/accessibility-catalogs-integration-guide.md).
 - Release risk: both failure directions are silent, a missing transcript for a

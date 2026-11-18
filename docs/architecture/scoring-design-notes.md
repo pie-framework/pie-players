@@ -19,6 +19,10 @@ controller, so an item-level rule never splits them.
 Section-level item session control aggregates element outcomes by the service's
 default policy and records a four-valued correctness instead of a score
 ([item session control contract](../prds/item-session-control-contract.md)).
+The section player folds that correctness into a section mastery summary —
+`rollupMastery` in `@pie-players/pie-players-shared/item-session-control`,
+emitted as `section-mastery-changed`. It is a delivery-progress signal over the
+same four-valued outcomes, not a score, and carries no provenance or authority.
 
 ## Render and Score Path
 

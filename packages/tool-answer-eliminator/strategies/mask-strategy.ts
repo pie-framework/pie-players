@@ -1,228 +1,47 @@
-import {
-	defaultEliminationChrome,
-	type EliminationChrome,
-	type EliminationStrategy,
+import type {
+	EliminationStrategy,
+	EliminationTarget,
 } from "./elimination-strategy.js";
 
+const MASK_CLASS = "pie-answer-eliminator-masked";
+
 /**
- * Mask strategy using CSS Custom Highlight API
- * Partially hides/grays eliminated choices
- *
- * WCAG Compliance: the masked content stays in the accessibility tree — the
- * dim-and-blur is a degraded view, not a removal — announced with the same
- * interface-locale eliminated text the strikethrough strategy announces. The
- * choice container must never be `aria-hidden`: it also hosts the strategy's
- * toggle button, and hiding the container hides the undo control from
- * assistive technology along with the answer (WCAG 4.1.2).
+ * Dims and blurs the content. A class on the content does it, because a CSS
+ * custom highlight honours neither `opacity` nor `filter`. The content stays in
+ * the accessibility tree: the mask degrades the view, and the core announces
+ * the eliminated state as it does for every strategy.
  */
 export class MaskStrategy implements EliminationStrategy {
-	private static readonly HIGHLIGHT_STYLE_PREFIX =
-		"pie-answer-eliminator-mask-highlight-";
-	private static readonly HIGHLIGHT_NAME_PREFIX = "pie-answer-masked-";
-	private static readonly FALLBACK_CLASS = "pie-answer-masked-fallback";
-	private static readonly SR_CLASS = "pie-answer-eliminator-sr-announcement";
-	private static readonly CHOICE_HOOK_ATTR =
-		"data-pie-answer-eliminator-choice";
-	private static readonly LABEL_HOOK_ATTR = "data-pie-answer-eliminator-label";
-	private static readonly ELIMINATED_ATTR = "data-pie-answer-eliminated";
-	private static readonly ELIMINATED_ID_ATTR = "data-pie-answer-eliminated-id";
-
 	readonly name = "mask";
 
-	private highlights = new Map<string, Highlight>();
-	private ranges = new Map<string, Range>();
-	private fallbackContainers = new Map<string, HTMLElement>();
-	private chrome: EliminationChrome = defaultEliminationChrome();
+	private masked = new Map<string, Element>();
 
-	initialize(): void {
-		// No-op: shared fallback styles are owned by @pie-players/pie-theme/components.css.
-	}
-
-	setChrome(chrome: EliminationChrome): void {
-		this.chrome = chrome;
-		const containers = [
-			...Array.from(this.ranges.values(), (range) =>
-				this.findChoiceContainer(range),
-			),
-			...this.fallbackContainers.values(),
-		];
-		for (const container of containers) {
-			const announcement = container?.querySelector(
-				`.${MaskStrategy.SR_CLASS}`,
-			);
-			if (announcement) this.labelAnnouncement(announcement);
-		}
-	}
-
-	private labelAnnouncement(announcement: Element): void {
-		// The leading space separates it from the label text it follows; the
-		// stamp's `dir` isolates it from that text's direction.
-		announcement.textContent = ` ${this.chrome.eliminatedText}`;
-		this.chrome.stamp(announcement);
-	}
+	initialize(): void {}
 
 	destroy(): void {
 		this.clearAll();
 	}
 
-	apply(choiceId: string, range: Range): void {
-		if (!this.isSupported()) {
-			this.applyFallback(choiceId, range);
-			return;
-		}
-
-		this.injectHighlightCSS(choiceId);
-
-		const highlight = new Highlight(range);
-		CSS.highlights.set(
-			`${MaskStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}`,
-			highlight,
-		);
-
-		this.highlights.set(choiceId, highlight);
-		this.ranges.set(choiceId, range);
-
-		this.addAriaAttributes(range);
+	apply(choiceId: string, { content }: EliminationTarget): void {
+		this.remove(choiceId);
+		content.classList.add(MASK_CLASS);
+		this.masked.set(choiceId, content);
 	}
 
 	remove(choiceId: string): void {
-		if (!this.isSupported()) {
-			this.removeFallback(choiceId);
-			return;
-		}
-
-		CSS.highlights.delete(`${MaskStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}`);
-		this.removeHighlightCSS(choiceId);
-
-		const range = this.ranges.get(choiceId);
-		if (range) {
-			this.removeAriaAttributes(range);
-		}
-
-		this.highlights.delete(choiceId);
-		this.ranges.delete(choiceId);
-		this.fallbackContainers.delete(choiceId);
+		this.masked.get(choiceId)?.classList.remove(MASK_CLASS);
+		this.masked.delete(choiceId);
 	}
 
 	isEliminated(choiceId: string): boolean {
-		return (
-			this.highlights.has(choiceId) || this.fallbackContainers.has(choiceId)
-		);
+		return this.masked.has(choiceId);
 	}
 
 	clearAll(): void {
-		for (const choiceId of this.getEliminatedIds()) {
-			this.remove(choiceId);
-		}
-		this.fallbackContainers.clear();
+		for (const choiceId of this.getEliminatedIds()) this.remove(choiceId);
 	}
 
 	getEliminatedIds(): string[] {
-		return Array.from(
-			new Set([...this.highlights.keys(), ...this.fallbackContainers.keys()]),
-		);
-	}
-
-	private isSupported(): boolean {
-		return typeof CSS !== "undefined" && "highlights" in CSS;
-	}
-
-	private injectHighlightCSS(choiceId: string): void {
-		const styleId = `${MaskStrategy.HIGHLIGHT_STYLE_PREFIX}${choiceId}`;
-		if (document.getElementById(styleId)) return;
-
-		const style = document.createElement("style");
-		style.id = styleId;
-		style.textContent = `
-      ::highlight(${MaskStrategy.HIGHLIGHT_NAME_PREFIX}${choiceId}) {
-        opacity: 0.2;
-        filter: blur(2px);
-      }
-    `;
-		document.head.appendChild(style);
-	}
-
-	private removeHighlightCSS(choiceId: string): void {
-		document
-			.getElementById(`${MaskStrategy.HIGHLIGHT_STYLE_PREFIX}${choiceId}`)
-			?.remove();
-	}
-
-	private addAriaAttributes(range: Range): void {
-		const container = this.findChoiceContainer(range);
-		if (!container) return;
-
-		container.setAttribute(MaskStrategy.ELIMINATED_ATTR, "true");
-		container.setAttribute("aria-disabled", "true");
-
-		const label = this.resolveLabelElement(container);
-		if (label && !label.querySelector(`.${MaskStrategy.SR_CLASS}`)) {
-			const announcement = document.createElement("span");
-			announcement.className = MaskStrategy.SR_CLASS;
-			this.labelAnnouncement(announcement);
-			label.appendChild(announcement);
-		}
-	}
-
-	private removeAriaAttributes(range: Range): void {
-		const container = this.findChoiceContainer(range);
-		if (!container) return;
-
-		container.removeAttribute(MaskStrategy.ELIMINATED_ATTR);
-		container.removeAttribute("aria-disabled");
-
-		const announcement = container.querySelector(
-			`.${MaskStrategy.SR_CLASS}`,
-		);
-		announcement?.remove();
-	}
-
-	private resolveLabelElement(container: HTMLElement): HTMLElement | null {
-		return (
-			container.querySelector<HTMLElement>(
-				`[${MaskStrategy.LABEL_HOOK_ATTR}="true"]`,
-			) || container.querySelector<HTMLElement>("label")
-		);
-	}
-
-	private findChoiceContainer(range: Range): HTMLElement | null {
-		let element: HTMLElement | null = range.startContainer as HTMLElement;
-		if (element.nodeType === Node.TEXT_NODE) {
-			element = element.parentElement;
-		}
-
-		while (element && element !== document.body) {
-			if (element.getAttribute(MaskStrategy.CHOICE_HOOK_ATTR) === "true") {
-				return element;
-			}
-			element = element.parentElement;
-		}
-
-		return null;
-	}
-
-	private applyFallback(choiceId: string, range: Range): void {
-		const container = this.findChoiceContainer(range);
-		if (!container) return;
-
-		container.classList.add(MaskStrategy.FALLBACK_CLASS);
-		container.setAttribute(MaskStrategy.ELIMINATED_ATTR, "true");
-		container.setAttribute(MaskStrategy.ELIMINATED_ID_ATTR, choiceId);
-		this.fallbackContainers.set(choiceId, container);
-		this.addAriaAttributes(range);
-	}
-
-	private removeFallback(choiceId: string): void {
-		const container = this.fallbackContainers.get(choiceId);
-		if (!container) return;
-
-		container.classList.remove(MaskStrategy.FALLBACK_CLASS);
-		container.removeAttribute(MaskStrategy.ELIMINATED_ATTR);
-		container.removeAttribute(MaskStrategy.ELIMINATED_ID_ATTR);
-
-		const range = document.createRange();
-		range.selectNodeContents(container);
-		this.removeAriaAttributes(range);
-		this.fallbackContainers.delete(choiceId);
+		return Array.from(this.masked.keys());
 	}
 }

@@ -60,4 +60,4 @@ in the integration guide's
 ## Related documentation
 
 - [Section player integration guide](../../docs/section-player/integration-guide.md)
-- [Framework-owned error handling](../../docs/tools-and-accomodations/framework-owned-error-handling.md)
+- [Framework-owned error handling](../../docs/tools-and-accommodations/framework-owned-error-handling.md)

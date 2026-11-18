@@ -403,7 +403,7 @@ const so = {
 			description: "Khad ku dhaaf ikhtiyaarada jawaabaha",
 			buttonA11y: "Khad Ku Dhaaf, ka saar ikhtiyaarada jawaabaha",
 			tooltip: "Khad Ku Dhaaf",
-			toggleA11y: "Beddel ka-saarista {choice}",
+			toggleA11y: "Ka saar {choice}",
 			eliminatedA11y: "(la saaray)",
 			unlabeledChoice: "Ikhtiyaar aan magac lahayn",
 		},

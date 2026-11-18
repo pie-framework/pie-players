@@ -366,7 +366,7 @@ Tool parameters are feature parameters keyed by support id, from three layers: t
 | Support id | Parameter | Effect |
 | --- | --- | --- |
 | `calculator` | `type` | The flavor it opens: `basic`, `scientific` or `graphing` |
-| `answerEliminator` | `strategy` | `strikethrough` or `mask` |
+| `answerEliminator` | `strategy` | `strikethrough`, `cross` or `mask` |
 | `itemTranslation` | `language` | The language the learner reads items in; a host passes it to delivery as `requestedLanguages` |
 | `signLanguage` | `signLang` | The requested sign language |
 | `textToSpeech` | `rate` | Multiplies every speed the control offers; 1 is normal |

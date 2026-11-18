@@ -58,6 +58,17 @@ precedence is covered by local browser tests. This is an impact assessment, not
 a downstream refresh: those checkouts remain unavailable and all row
 verification dates above remain unchanged.
 
+The 2026-11-17 "raised surface link text" relationship (`--pie-tertiary` on
+`--pie-surface`, 4.5:1) was checked against the recorded theme rows. It adds,
+removes or renames no token; it moves one value in two built-in schemes, Black
+on Rose (`#990044` to `#82003a`) and Black on Violet (`#4a1259` to `#330d3f`).
+Host R's `[data-color-scheme]` rule maps `--pie-tertiary` onto its own palette
+(see theme tokens below), so that slot of its chrome repaints darker under those
+two schemes. No other recorded host sets or reads the name directly. Both values only
+darken against light pages and surfaces, so every recorded pair gains contrast.
+This is an impact assessment, not a downstream refresh: all row verification
+dates above remain unchanged.
+
 The 2026-10-02 scoping of `components.css` to `[data-pie-content]`, the root each
 player renders content into, was checked against all four checkouts. Host V's
 `@scope` root is an ancestor of `pie-item-player`, so its copy still matches and
@@ -508,6 +519,42 @@ is unchanged, and the fix only shows for a host that drives
 `[data-pie-answer-eliminated="true"]`, so it reaches the CSS Highlight API path
 too. Hosts A and V both load `components.css`; neither styles those hooks and the
 answer eliminator is placed in neither delivery.
+
+The answer eliminator's toggle rework was assessed on 2026-11-17 against Host S's
+branch and the Host A, P, R and V checkouts, and does not advance the
+verification date. It removes `button-alignment` (`buttonAlignment`), the
+`--pie-answer-eliminator-toggle-color` token and the `aria-disabled` an
+eliminated choice's container carried, moves the dim from the container to the
+content, and adds `cross` to `strategy`. No host source sets the attribute, the
+token or a strategy, or styles an eliminator hook. Host S places the eliminator
+through the toolbar, which set `button-alignment="inline"`: the in-flow placement
+every toggle now takes. Its learners see the restyled toggle. It reads the
+`--pie-button-*` tokens through the same chain as the inline tool triggers, so
+Host S's colour-scheme reset of `--pie-button-bg`, `--pie-button-color`,
+`--pie-button-border` and `--pie-button-background-color` reaches it, and
+`--pie-tool-trigger-active-*`, which Host S does not set. That reset does not
+hand back `--pie-primary` or `--pie-white`, so a pressed toggle keeps the Base
+Theme's colours there, legible but off-scheme. The rework also draws the
+`strikethrough` strike as SVG marks in the container, in place of the CSS
+highlight, the `.pie-answer-eliminator-eliminated-fallback` class, the
+`span.pie-answer-eliminator-image-strike` wrapper and the math-strike classes;
+those names appear only in the player builds Hosts A, P and S vendor. Host A's
+tools branch is the one checkout that places the eliminator with `nds-icons`. Its
+reset hands back `--pie-button-bg` and `--pie-button-color`, which the NDS
+toggle's fill and glyph take through the palette bridge. Host C places no
+eliminator, and Host M's checkout holds only a build.
+
+On 2026-11-17 the section player's `./browser` build began exporting
+`SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` and
+`createUniversalPersonalNeedsProfile`, and `pie-theme` began exporting
+`PIE_THEME_CONTRAST_RELATIONSHIPS` with its `ThemeContrastRelationship` type.
+All three are additions, checked against every checkout the same day as a
+targeted lookup, so it does not advance the verification date. Host R is the one
+host that reads their equivalents: it builds its tool registry from the
+`./browser` build it loads by version, takes the universal profile from its npm
+install of the loaders, and keeps local copies of the placement preset and of the
+contrast pairs. Each now has an export in the release it loads; see Consumer-side
+defects.
 
 The dictionary capabilities and the selection door onto them reach one consumer,
 found on the Host R re-derivation: that host serves a dictionary endpoint in the
@@ -1181,6 +1228,7 @@ same PIE surface.
 | `@pie-players/pie-theme/token-registry.json` | R | Default import, cast to `PieThemeTokenRegistry`; the entry fields it reads are listed under theme tokens below |
 | `@pie-players/pie-section-player/components/section-player-splitpane-element` | A, R, S | |
 | `@pie-players/pie-section-player/item-section` | S | `sectionFromItem(item, { sectionId, itemVId })`, reading `section` and ignoring the returned session. Its declaration is local to the host, because the package's declarations import `pie-players-shared` subpaths its `node10` resolution cannot reach; see TypeScript resolution |
+| `@pie-players/pie-section-player/browser` | R | A type import, for the shape of the module it loads from a CDN by version and builds its tool registry from with `createPackagedToolRegistry`; see Direct `dist` path references |
 | `@pie-players/pie-section-player` | C, R | Root entry, for its layout elements' side-effect registration: C through a dynamic `import()`, which it also reads the `SectionPlayerCardTitleContext` type from |
 | `@pie-players/pie-assessment-toolkit` | R | Root entry, for values and types both |
 | `@pie-players/pie-default-tool-loaders` | R | |
@@ -2133,8 +2181,8 @@ same three things are API there, and the failure ends the same way, at its wait
 for `PiePlayerLoadEvent`.
 
 `@pie-players/pie-section-player@<version>/dist/browser/pie-section-player.js`,
-exported as `./browser`, is a self-contained build that no host loads yet. It
-becomes API in the same way once one does: the entry filename, and `dist/browser/`
+exported as `./browser`, is a self-contained build that Host R loads from a CDN
+by version. It is API in the same way: the entry filename, and `dist/browser/`
 as a tree whose imports are all relative — `chunks/`, and `assets/` once a
 packaged tool ships a file — so a host that copies it needs the whole
 directory, one per version. The npm entry `dist/pie-section-player.js` is
@@ -2273,6 +2321,14 @@ guarded, the two globals keep their shape across releases in both directions,
 and either item-player build renders elements registered by the other. A shape
 change that ships in lockstep passes every in-repo test and breaks that host
 whenever its two halves are on different versions.
+
+The content stylesheet is cross-version there too. `installContentStyles`
+installs once per page, so when the preloaded build evaluates first, as on the
+fallback launch that appends the bundle late, its `components.css` styles the
+section player's tools. The answer eliminator sets its marks' layout and a
+fallback stroke inline, and its toggle icon's size and paint as attributes, so
+an older stylesheet leaves them in place; that stylesheet's own rules still
+apply as its version wrote them, such as a dim that reaches the toggle.
 
 ## Default section persistence key (Host S)
 
@@ -2837,10 +2893,20 @@ repo.
 - Host R declares its own local copy of the preferred tool-placement preset rather
   than importing the packaged `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT`, so a
   capability added to or removed from the packaged preset never reaches it. The
-  fork is now four capabilities behind at section level — the two dictionaries and
-  their Spanish variants — which is why that host serves a dictionary endpoint
-  and never shows a dictionary panel. Its item and passage lists still match. The
-  last surviving instance of the forking pattern its color schemes used to share.
+  fork is now five capabilities behind at section level — magnification, the two
+  dictionaries and their Spanish variants — which is why that host serves a
+  dictionary endpoint and never shows a dictionary panel. Its item and passage
+  lists still match. The last surviving instance of the forking pattern its color
+  schemes used to share. The `./browser` build it loads exports the preset from
+  2026-11-17 (checked on its `develop` that day).
+- Host R builds its tool registry from the `./browser` build it loads by version,
+  but takes `createUniversalPersonalNeedsProfile()` from its npm install of the
+  loaders, so the profile can grant a different release's universal set. The
+  build exports the function from 2026-11-17.
+- Host R's contrast inspector keeps its own fifteen pairs, so a relationship the
+  theme adds, such as the pressed trigger glyph's `--pie-white` on
+  `--pie-primary`, never reaches it. `pie-theme` exports the relationships its own
+  check measures as `PIE_THEME_CONTRAST_RELATIONSHIPS` from 2026-11-17.
 - Host R declares four `@pie-players` packages it imports nowhere:
   `pie-calculator-desmos`, `pie-tool-text-to-speech`,
   `pie-section-player-tools-shared`, `tts-client-server`. The packaged registry

@@ -37,6 +37,9 @@ describe("EBSRAdapter", () => {
 			"a-1",
 			"b-1",
 		]);
+		expect(
+			choices.map((choice) => adapter.getChoiceContent(choice)?.localName),
+		).toEqual(["label", "label"]);
 	});
 
 	test("ignores an element whose base tag only starts with the part tag", () => {

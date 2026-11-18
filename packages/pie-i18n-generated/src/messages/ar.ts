@@ -396,7 +396,7 @@ const ar = {
 			description: "شطب خيارات الإجابة",
 			buttonA11y: "شطب، استبعاد خيارات الإجابة",
 			tooltip: "شطب",
-			toggleA11y: "تبديل شطب {choice}",
+			toggleA11y: "شطب {choice}",
 			eliminatedA11y: "(مشطوب)",
 			unlabeledChoice: "خيار بلا تسمية",
 		},

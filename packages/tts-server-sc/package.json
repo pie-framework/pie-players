@@ -41,7 +41,7 @@
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/tts-server-core": "workspace:*",
 		"jose": "^6.2.14",
-		"tldts": "^7.4.19"
+		"tldts": "^7.5.2"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.3",

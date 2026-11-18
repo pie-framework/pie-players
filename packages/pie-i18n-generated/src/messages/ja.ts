@@ -380,7 +380,7 @@ const ja = {
 			description: "選択肢に取り消し線を引く",
 			buttonA11y: "取り消し線、選択肢を除外",
 			tooltip: "取り消し線",
-			toggleA11y: "{choice} の取り消し線を切り替え",
+			toggleA11y: "{choice} に取り消し線を引く",
 			eliminatedA11y: "（除外済み）",
 			unlabeledChoice: "ラベルのない選択肢",
 		},

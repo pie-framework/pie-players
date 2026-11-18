@@ -397,7 +397,7 @@ const nlNL = {
 			description: "Antwoordopties doorstrepen",
 			buttonA11y: "Doorstrepen, antwoordopties wegstrepen",
 			tooltip: "Doorstrepen",
-			toggleA11y: "Wegstrepen aan/uit voor {choice}",
+			toggleA11y: "{choice} wegstrepen",
 			eliminatedA11y: "(weggestreept)",
 			unlabeledChoice: "Keuze zonder label",
 		},

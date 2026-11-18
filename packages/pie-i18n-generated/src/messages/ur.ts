@@ -384,7 +384,7 @@ const ur = {
 			description: "جواب کے انتخاب کو لکیر کشی سے کاٹنا",
 			buttonA11y: "لکیر کشی، جواب کے انتخاب کاٹنا",
 			tooltip: "لکیر کشی",
-			toggleA11y: "{choice} کو کاٹنا تبدیل کریں",
+			toggleA11y: "{choice} کو کاٹیں",
 			eliminatedA11y: "(کاٹا گیا)",
 			unlabeledChoice: "بغیر نام کا انتخاب",
 		},

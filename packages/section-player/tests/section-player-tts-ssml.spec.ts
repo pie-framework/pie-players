@@ -1891,7 +1891,7 @@ test.describe("section player demo tts-ssml", () => {
 			"true",
 		);
 		await expect(
-			q1.getByRole("button", { name: /toggle elimination for/i }).first(),
+			q1.getByRole("button", { name: /^eliminate /i }).first(),
 		).toBeVisible();
 
 		// Annotation toolbar should be owned by the toolkit placement, not by

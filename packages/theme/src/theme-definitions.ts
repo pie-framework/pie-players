@@ -15,7 +15,11 @@ type BuiltInColorSchemeDefinition = Readonly<{
 	variables: Readonly<ThemeVariables>;
 }>;
 
-type ThemeContrastRelationship = Readonly<{
+/**
+ * A pair of tokens the theme requires to meet a WCAG contrast minimum: 4.5 for
+ * text, 3 for non-text boundaries and glyphs. `role` names what the pair paints.
+ */
+export type ThemeContrastRelationship = Readonly<{
 	foreground: ThemeTokenName;
 	background: ThemeTokenName;
 	minimum: 3 | 4.5;
@@ -447,7 +451,8 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-secondary": "#aa0055",
 				"--pie-secondary-light": "#ff99cc",
 				"--pie-secondary-dark": "#770033",
-				"--pie-tertiary": "#990044",
+				// #990044 darkened to hold link text on the raised surface (#ff88aa).
+				"--pie-tertiary": "#82003a",
 				"--pie-tertiary-light": "#ffaacc",
 				"--pie-background": "#ffccdd",
 				"--pie-background-dark": "#ffb3cc",
@@ -696,7 +701,8 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-secondary": "#6d1a7d",
 				"--pie-secondary-light": "#a95cb8",
 				"--pie-secondary-dark": "#4a1259",
-				"--pie-tertiary": "#4a1259",
+				// The scheme's primary-dark: #4a1259 was 3.82:1 on the mid-tone raised surface.
+				"--pie-tertiary": "#330d3f",
 				"--pie-tertiary-light": "#e2cbe8",
 				"--pie-background": "#d4a9de",
 				"--pie-background-dark": "#c795d3",
@@ -817,9 +823,11 @@ const REQUIRED_SCHEME_TOKENS = Object.freeze(
 
 /**
  * Named semantic relationships are the accessibility contract. Token names
- * alone do not say whether a color is text, a fill, or a boundary.
+ * alone do not say whether a color is text, a fill, or a boundary. Every
+ * built-in scheme meets each one, and `diagnoseThemeContrast` checks a palette
+ * against them; a host's token inspector reads the same list.
  */
-const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
+export const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
 	deepFreeze([
 		{
 			foreground: "--pie-text",
@@ -847,6 +855,14 @@ const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
 			background: "--pie-surface",
 			minimum: 4.5,
 			role: "raised surface control text",
+		},
+		{
+			// Links and disclosure toggles inside a raised panel, such as an element's
+			// evaluate tooltip, keep the link colour rather than falling back to ink.
+			foreground: "--pie-tertiary",
+			background: "--pie-surface",
+			minimum: 4.5,
+			role: "raised surface link text",
 		},
 		{
 			foreground: "--pie-button-focus-outline",
@@ -959,6 +975,20 @@ const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationship[] =
 			background: "--pie-button-active-bg",
 			minimum: 4.5,
 			role: "active button text",
+		},
+		{
+			// A pressed tool trigger's glyph, as on the answer eliminator's toggle,
+			// where the host sets no trigger tokens of its own.
+			foreground: "--pie-white",
+			background: "--pie-primary",
+			minimum: 3,
+			role: "pressed tool trigger glyph",
+		},
+		{
+			foreground: "--pie-white",
+			background: "--pie-primary-dark",
+			minimum: 3,
+			role: "hovered pressed tool trigger glyph",
 		},
 		{
 			foreground: "--pie-button-border",

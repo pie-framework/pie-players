@@ -7,9 +7,13 @@ export type ElementStateKeys = Readonly<Record<string, string>>;
 /** Inputs shared by the component and its native element declaration. */
 export interface AnswerEliminatorProps {
 	visible?: boolean;
-	strategy?: 'strikethrough' | 'mask';
+	/**
+	 * How an eliminated choice is painted: `strikethrough` strikes its text and
+	 * crosses out its images and math, `cross` draws an X over block content and
+	 * a line through inline content, and `mask` dims and blurs it.
+	 */
+	strategy?: 'strikethrough' | 'cross' | 'mask';
 	alwaysOn?: boolean;
-	buttonAlignment?: 'start' | 'end' | 'inline' | 'left' | 'right';
 	elementStateKeys?: ElementStateKeys;
 	/**
 	 * Model ids of the PIE elements whose choices take a toggle. Unset, every
@@ -17,3 +21,5 @@ export interface AnswerEliminatorProps {
 	 */
 	elementIds?: readonly string[];
 }
+
+export type EliminationStrategyName = NonNullable<AnswerEliminatorProps['strategy']>;

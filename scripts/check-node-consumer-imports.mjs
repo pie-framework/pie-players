@@ -248,8 +248,7 @@ const periodic: PieToolPeriodicTableElement = document.createElement("pie-tool-p
 periodic.visible = true;
 periodic.toolId = "periodicTable";
 const eliminator: PieToolAnswerEliminatorElement = document.createElement("pie-tool-answer-eliminator");
-eliminator.strategy = "mask";
-eliminator.buttonAlignment = "inline";
+eliminator.strategy = "cross";
 eliminator.elementStateKeys = {};
 // @ts-expect-error Only supported eliminator strategies are accepted.
 eliminator.strategy = "hide";

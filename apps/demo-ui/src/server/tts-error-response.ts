@@ -3,7 +3,7 @@
  *
  * The demo TTS routes are intentionally unauthenticated for local development
  * and e2e specs — see "Demo endpoints are not production-grade" in
- * `docs/tools-and-accomodations/tool_host_contract.md`. That is deliberate;
+ * `docs/tools-and-accommodations/tool_host_contract.md`. That is deliberate;
  * echoing internal error text is not. AWS and Google SDK error strings can name
  * the region, an ARN, or the shape of the credential that failed, so the detail
  * belongs in the server log and the caller receives a status and a generic

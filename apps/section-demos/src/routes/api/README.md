@@ -54,7 +54,7 @@ calculator cannot load.
 > key out of static bundles but cannot hide it from the browser, because Desmos
 > requires it in the CDN URL. Do not proxy or self-host `calculator.js` unless a
 > Desmos partner agreement grants that right. See
-> [`docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers`](../../../../../docs/tools-and-accomodations/tool_host_contract.md#backend-endpoints-for-tool-providers).
+> [`docs/tools-and-accommodations/tool_host_contract.md#backend-endpoints-for-tool-providers`](../../../../../docs/tools-and-accommodations/tool_host_contract.md#backend-endpoints-for-tool-providers).
 
 ### Dictionary And Picture Dictionary
 

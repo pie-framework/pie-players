@@ -144,7 +144,7 @@ describe("tool-tts-inline trigger styling contract", () => {
 			"--color-new-gray:var(--pie-background-dark,#f3f5f7)",
 		);
 		expect(declarations).toContain(
-			"--color-primary-white:var(--pie-white,#ffffff)",
+			"--color-primary-white:var(--pie-button-background-color,var(--pie-button-bg,var(--pie-white,#ffffff)))",
 		);
 		expect(declarations).toContain(
 			"--color-primary-black:var(--pie-text,#000000)",
@@ -358,20 +358,16 @@ describe("tool-tts-inline speed control accessibility contract", () => {
 		);
 	});
 
-	test("remaps the NDS trigger accent rather than painting a box it lacks", () => {
-		// The NDS button owns its own surface; setting background/border on the
-		// host element would paint a box the tertiary button does not have. Only
-		// the foreground hook applies, via the same --color-interactive-blue
-		// remap the base rule uses.
-		const body = cssRuleBody(
-			'.pie-tool-tts-inline__trigger:not(.pie-tool-tts-inline__trigger--plain)[aria-expanded="true"]',
-		).replace(/\s+/g, "");
-
-		expect(body).toContain(
+	test("keeps the NDS trigger accent while open", () => {
+		// The NDS button owns its fill, so a host's active foreground would land
+		// on the page rather than on the active background it was chosen for.
+		const styles = source.slice(source.indexOf("<style"));
+		expect(styles).not.toMatch(
+			/\.pie-tool-tts-inline__trigger:not\(\.pie-tool-tts-inline__trigger--plain\)\[aria-expanded/,
+		);
+		expect(styles.replace(/\s+/g, "")).not.toContain(
 			"--color-interactive-blue:var(--pie-tool-trigger-active-color,",
 		);
-		expect(body).not.toContain("background:");
-		expect(body).not.toContain("border-color:");
 	});
 });
 

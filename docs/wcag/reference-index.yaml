@@ -302,8 +302,8 @@ project-surfaces:
     tags: [toolbar, floating-tools, coordination]
     docs:
       - "./project-surface-map.md"
-      - "../tools-and-accomodations/tool_provider_system.md"
-      - "../tools-and-accomodations/tool_host_contract.md"
+      - "../tools-and-accommodations/tool_provider_system.md"
+      - "../tools-and-accommodations/tool_host_contract.md"
   - id: section-player
     tags: [landmarks, layout, split-pane, repeated-cards]
     docs:
@@ -314,7 +314,7 @@ project-surfaces:
     tags: [tts, line-reader, annotation, calculator, ruler, protractor, graph, periodic-table]
     docs:
       - "./project-surface-map.md"
-      - "../tools-and-accomodations/architecture.md"
+      - "../tools-and-accommodations/architecture.md"
       - "../accessibility/tts-deep-dive.md"
   - id: item-player
     tags: [single-item, response-controls, session-events]
@@ -358,4 +358,4 @@ project-surfaces:
     tags: [dictation, label-in-name, assistive-technology]
     docs:
       - "./project-surface-map.md"
-      - "../tools-and-accomodations/non-embedded-dictation.md"
+      - "../tools-and-accommodations/non-embedded-dictation.md"

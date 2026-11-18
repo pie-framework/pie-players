@@ -20,8 +20,8 @@ different palettes.
 `--pie-surface` is a registered, public `canonical-semantic` token for raised
 surfaces such as answer pools and inline TTS panels. Its scheme participation is
 `required`: it has values in both base themes, every built-in scheme and the
-DaisyUI adapter. It is distinct from the page role `--pie-background`, and text
-and controls on it must keep their contrast. Hosts override it through
+DaisyUI adapter. It is distinct from the page role `--pie-background`, and text,
+links (`--pie-tertiary`) and controls on it must keep their contrast. Hosts override it through
 `variables`, or through the normal cascade in stylesheet-only delivery.
 
 Contents:
@@ -233,7 +233,10 @@ remove that newer definition.
 Validation returns structured diagnostics and warns concisely by default; it
 does not throw for ordinary invalid input. Contrast diagnostics inspect the
 affected semantic relationships in the fully resolved custom palette and stay
-non-blocking, because that palette is host-owned.
+non-blocking, because that palette is host-owned. The package exports those
+relationships as `PIE_THEME_CONTRAST_RELATIONSHIPS`, each a `foreground` and a
+`background` token, the WCAG `minimum` and the `role` the pair paints, so a
+host's token inspector measures the pairs the theme checks.
 
 Use the final `variables` property for deliberate per-instance overrides, and a
 CSS selector keyed by `data-color-scheme` only for a deliberate CSS-only scheme,

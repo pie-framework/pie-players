@@ -809,98 +809,207 @@ mjx-c.mjx-c27 {
 
 /* ANSWER ELIMINATOR */
 
+/*
+ * The toggle sits in flow as the choice container's last child, so the
+ * element's own layout places it. Every toggle carries this class; the plain
+ * button adds `--plain` and the NDS icon button `--nds`.
+ */
 :where([data-pie-content]) .pie-answer-eliminator-toggle {
-	/* em, not px: PNP font scaling raises the surrounding text size without
-	   touching px boxes, which left a fixed 28px control under grown text. The
-	   box is 1.75x the surrounding text and the glyph 1.125x — the 28px/18px the
-	   control used to pin at a 16px base — and the box stays past SC 2.5.8's 24px
-	   minimum for any base at or above 14px. The box divides by the glyph factor
-	   because `em` in a length resolves against this element's own font-size, not
-	   the parent's; a bare 1.75em here measures 31.5px, not 28px. */
-	width: calc(1.75em / 1.125);
-	height: calc(1.75em / 1.125);
-	padding: 0;
-	border: 1px solid var(--pie-border, #ccc);
-	border-radius: 4px;
-	background: var(--pie-white, #fff);
-	cursor: pointer;
-	font-size: 1.125em;
-	line-height: 1;
+	flex: none;
+	margin-inline-start: 0.5em;
+	vertical-align: middle;
+}
+
+/*
+ * The plain toggle takes the shared trigger tokens: the button fill, glyph and
+ * border, their hover fill, the focus ring and the pressed state the calculator
+ * and TTS triggers use. em, not px: PNP font scaling raises the surrounding
+ * text without touching px boxes. `font: inherit` makes 1em the surrounding
+ * text, so the box is 28px at a 16px base and clears SC 2.5.8's 24px for any
+ * base at or above 14px.
+ */
+:where([data-pie-content]) .pie-answer-eliminator-toggle--plain {
+	box-sizing: border-box;
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	color: var(
-		--pie-answer-eliminator-toggle-color,
-		var(--pie-button-color, #8c8c8c)
+	width: 1.75em;
+	height: 1.75em;
+	padding: 0;
+	border: 1px solid var(--pie-button-border, var(--pie-border, #c6c6c6));
+	border-radius: 50%;
+	background-color: var(
+		--pie-button-background-color,
+		var(--pie-button-bg, var(--pie-white, #fff))
 	);
-	transition: all 0.2s ease;
-	z-index: 10;
+	color: var(--pie-button-color, var(--pie-text, #333));
+	font: inherit;
+	line-height: 1;
+	cursor: pointer;
 }
 
-:where([data-pie-content]) .pie-answer-eliminator-toggle:hover {
-	background: var(--pie-secondary-background, #f0f0f0);
-	border-color: var(--pie-border-dark, #999);
-	color: var(--pie-text, #333);
+/*
+ * Hover rings the toggle in the toolbar's hover border, as the NDS toggle rings
+ * in its accent: a hover fill alone is a step of a few percent in most themes.
+ */
+:where([data-pie-content])
+	.pie-answer-eliminator-toggle--plain:hover:not(
+		.pie-answer-eliminator-toggle--active
+	) {
+	border-color: var(
+		--pie-button-hover-border,
+		var(--pie-button-border, var(--pie-border, #c6c6c6))
+	);
+	background-color: var(
+		--pie-button-hover-background-color,
+		var(--pie-button-hover-bg, var(--pie-secondary-background, #f5f5f5))
+	);
+	box-shadow: 0 0 0 1px
+		var(
+			--pie-button-hover-border,
+			var(--pie-button-border, var(--pie-border, #c6c6c6))
+		);
+	color: var(--pie-button-hover-color, var(--pie-button-color, var(--pie-text, #333)));
 }
 
-:where([data-pie-content]) .pie-answer-eliminator-toggle--active,
-:where([data-pie-content]) .pie-answer-eliminator-toggle--active:hover {
-	background: var(--pie-incorrect, #ff9800);
-	border-color: var(--pie-incorrect, #ff9800);
-	color: var(--pie-white, #fff);
+:where([data-pie-content]) .pie-answer-eliminator-toggle--plain:focus-visible {
+	outline: 2px solid var(--pie-button-focus-outline, #0066cc);
+	outline-offset: 2px;
+	box-shadow: 0 0 0 4px
+		color-mix(in srgb, var(--pie-button-focus-outline, #0066cc) 20%, transparent);
 }
 
-:where([data-pie-content]) .pie-answer-eliminator-eliminated-fallback {
-	text-decoration: line-through;
-	text-decoration-thickness: 2px;
-	text-decoration-color: var(
-		--pie-answer-eliminator-strike-color,
-		var(--pie-incorrect, #ff9800)
+/*
+ * Pressed: the calculator trigger's active state. The glyph falls back to
+ * --pie-white, which every theme and scheme pairs with --pie-primary, as the
+ * toolbar's active button does; hover darkens the fill as both of them do.
+ */
+:where([data-pie-content]) .pie-answer-eliminator-toggle--plain.pie-answer-eliminator-toggle--active {
+	border-color: var(
+		--pie-tool-trigger-active-border-color,
+		var(--pie-primary, #1976d2)
+	);
+	background-color: var(
+		--pie-tool-trigger-active-background,
+		var(--pie-primary, #1976d2)
+	);
+	color: var(--pie-tool-trigger-active-color, var(--pie-white, #fff));
+}
+
+:where([data-pie-content])
+	.pie-answer-eliminator-toggle--plain.pie-answer-eliminator-toggle--active:hover:not(
+		:disabled
+	) {
+	background-color: var(
+		--pie-tool-trigger-active-background,
+		color-mix(
+			in srgb,
+			var(--pie-primary, #1565c0) var(--pie-fixed-hue-collapse, 0%),
+			var(--pie-primary-dark, #1565c0)
+		)
 	);
 }
 
 /*
- * Dims the choice as well as striking it, so elimination survives a strike
- * colour the learner cannot distinguish. Kept at 0.6 rather than lower: the text
- * stays readable, because eliminating a choice is reversible and the learner has
- * to be able to reconsider it.
- *
- * Keyed on the attribute rather than on the fallback class, because the class is
- * added only by the path for browsers without the CSS Highlight API. The
- * attribute is set by both paths, and a highlight pseudo cannot carry `opacity`
- * at all — declaring it there dimmed nothing, so the modern path shipped the
- * strike as its only cue.
+ * Disabled, as a struck choice's toggle is where elimination is unavailable:
+ * the NDS icon button's disabled treatment, over the pressed state.
+ */
+:where([data-pie-content]) .pie-answer-eliminator-toggle--plain:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+/* A plus, turned to read as × until the choice is eliminated. */
+:where([data-pie-content]) .pie-answer-eliminator-toggle-icon {
+	width: 0.875em;
+	height: 0.875em;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 2;
+	stroke-linecap: round;
+	transform: rotate(45deg);
+}
+
+/*
+ * The NDS icon button paints its own shape and states from the palette its
+ * mount bridges to --pie-* tokens. Sized in em for font scaling, as the plain
+ * toggle is; the inner button inherits the text size, which a button does not
+ * by default.
+ */
+:where([data-pie-content]) .pie-answer-eliminator-toggle--nds {
+	--height-32: 2em;
+	--nds-icon-small: 1em;
+}
+
+:where([data-pie-content]) .pie-answer-eliminator-toggle--nds .nds-icon-button {
+	font-size: inherit;
+}
+
+:where([data-pie-content]) .pie-answer-eliminator-toggle--nds .nds-icon-button__icon {
+	transform: rotate(45deg);
+}
+
+:where([data-pie-content])
+	.pie-answer-eliminator-toggle--active
+	:is(.pie-answer-eliminator-toggle-icon, .nds-icon-button__icon) {
+	transform: rotate(180deg);
+}
+
+/*
+ * The resolved strike colour, shared by every mark below. A host's strike
+ * colour folds into the scheme's --pie-incorrect by --pie-fixed-hue-collapse,
+ * so a colour scheme replaces it and a Base Theme keeps it exactly. Internal:
+ * set --pie-answer-eliminator-strike-color.
  */
 :where([data-pie-content]) [data-pie-answer-eliminated="true"] {
+	--pie-answer-eliminator-strike-paint: color-mix(
+		in srgb,
+		var(--pie-incorrect, #ff9800) var(--pie-fixed-hue-collapse, 0%),
+		var(--pie-answer-eliminator-strike-color, var(--pie-incorrect, #ff9800))
+	);
+}
+
+/*
+ * The dim, so elimination survives a strike colour the learner cannot tell
+ * from the text. On the content only: the container also holds the toggle,
+ * which has to keep its contrast and its focus ring. 0.6 keeps the text
+ * readable, because elimination is reversible. A colour scheme certifies a
+ * two-colour contrast that a 0.6 dim breaks, so it dims less.
+ */
+:where([data-pie-content])
+	[data-pie-answer-eliminated="true"]
+	[data-pie-answer-eliminator-label="true"] {
 	opacity: 0.6;
 }
 
-:where([data-pie-content]) .pie-answer-eliminator-image-strike {
-	position: relative;
-	display: inline-block;
-	max-width: 100%;
-	/*
-	 * Collapse the line-box strut so the wrapper hugs the image exactly (no
-	 * baseline descender gap under it) and the X cannot overhang the artwork.
-	 * It also keeps the image bottom on the text baseline, as an unwrapped
-	 * baseline-aligned image sits.
-	 */
-	line-height: 0;
+:where([data-pie-content])
+	[data-pie-answer-eliminated="true"]
+	[data-pie-answer-eliminator-label="true"]:where([data-color-scheme] *) {
+	opacity: 0.85;
 }
 
-:where([data-pie-content]) .pie-answer-eliminator-image-strike-overlay {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
-	pointer-events: none;
+/* Scoped to the eliminated choice and placed after the dim, which it replaces. */
+:where([data-pie-content])
+	[data-pie-answer-eliminated="true"]
+	.pie-answer-eliminator-masked {
+	opacity: 0.2;
+	filter: blur(2px);
+}
+
+/*
+ * The strikethrough strategy's marks: a line through each line of text and
+ * each single-row expression, an X over each image and each expression with
+ * rules of its own (a fraction or a table). The eliminator positions each mark
+ * in the container, outside the dimmed content, so the strike keeps its full
+ * colour.
+ */
+:where([data-pie-content]) .pie-answer-eliminator-strike-line {
+	stroke: var(--pie-answer-eliminator-strike-paint);
+	stroke-width: 2;
 }
 
 :where([data-pie-content]) .pie-answer-eliminator-image-strike-line {
-	stroke: var(
-		--pie-answer-eliminator-strike-color,
-		var(--pie-incorrect, #ff9800)
-	);
+	stroke: var(--pie-answer-eliminator-strike-paint);
 	stroke-width: 3;
 	stroke-linecap: square;
 }
@@ -916,77 +1025,138 @@ mjx-c.mjx-c27 {
 }
 
 /*
- * Eliminated math: MathJax's rendered glyphs are generated content, so neither
- * `::highlight()` nor `text-decoration` reaches them. The eliminator marks the
- * rendered math box instead and the paint happens here, in the same colour and
- * weight as the text line-through so a choice mixing prose and math reads as one
- * strike. Which mark it gets depends on the shape of the expression — the tool
- * measures the box and picks `--line` or `--cross`.
+ * The cross strategy's marks: an X over block content, a line through each line
+ * box of inline content. The eliminator positions each mark in the container,
+ * outside the dimmed content. The casing, in the page colour, keeps the line
+ * clear of the glyphs and imagery it crosses.
  */
-:where([data-pie-content]) .pie-answer-eliminator-math-strike {
-	position: relative;
-	/*
-	 * Internal: the resolved strike paint, so the rules below need not repeat the
-	 * fallback chain. Not a themeable knob — set --pie-answer-eliminator-strike-color.
-	 */
-	--pie-answer-eliminator-strike-paint: var(
-		--pie-answer-eliminator-strike-color,
-		var(--pie-incorrect, #ff9800)
-	);
+:where([data-pie-content]) .pie-answer-eliminator-cross {
+	color: var(--pie-answer-eliminator-strike-paint);
 }
 
-/* A single row of symbols takes the same line-through as the surrounding prose. */
-:where([data-pie-content]) .pie-answer-eliminator-math-strike--line::after {
-	content: "";
+:where([data-pie-content]) .pie-answer-eliminator-cross-line {
+	stroke: currentColor;
+	stroke-width: 2;
+	stroke-linecap: round;
+}
+
+/* Half a pixel each side of the line, so it separates without erasing glyphs. */
+:where([data-pie-content]) .pie-answer-eliminator-cross-casing {
+	stroke: color-mix(in srgb, var(--pie-background, #fff) 70%, transparent);
+	stroke-width: 3;
+	stroke-linecap: round;
+}
+
+/* Visually hidden; clipped in place, so no direction scrolls to it. */
+:where([data-pie-content]) .pie-answer-eliminator-sr-announcement {
 	position: absolute;
-	left: 0;
-	right: 0;
-	top: 50%;
-	border-top: 2px solid var(--pie-answer-eliminator-strike-paint);
-	pointer-events: none;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	border: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+	:where([data-pie-content]) .pie-answer-eliminator-toggle--plain {
+		transition:
+			background-color 0.2s ease,
+			border-color 0.2s ease,
+			color 0.2s ease;
+	}
+
+	:where([data-pie-content])
+		.pie-answer-eliminator-toggle
+		:is(.pie-answer-eliminator-toggle-icon, .nds-icon-button__icon) {
+		transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	:where([data-pie-content]) .pie-answer-eliminator-cross--wipe {
+		animation: pie-answer-eliminator-wipe 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+	}
+
+	:where([data-pie-content]) .pie-answer-eliminator-cross--wipe[dir="rtl"] {
+		animation-name: pie-answer-eliminator-wipe-rtl;
+	}
+}
+
+@keyframes pie-answer-eliminator-wipe {
+	from {
+		clip-path: inset(0 100% 0 0);
+	}
+	to {
+		clip-path: inset(0);
+	}
+}
+
+@keyframes pie-answer-eliminator-wipe-rtl {
+	from {
+		clip-path: inset(0 0 0 100%);
+	}
+	to {
+		clip-path: inset(0);
+	}
 }
 
 /*
- * A stacked 2D layout (fraction, radical, matrix) takes the diagonals instead.
- * A centred line would land on the math axis — precisely where the fraction bar
- * already is — and read as a recoloured bar rather than an elimination, so the
- * expression is crossed out the way an eliminated image is. Corner keywords make
- * each gradient's transition run exactly corner to corner at any aspect ratio,
- * with a 1px feather either side of the 1px core for a smooth 2px line.
+ * Forced colours drop box shadows and gradients and repaint colours, so every
+ * state is restated in system colours: pressed toggles fill with Highlight, and
+ * the marks keep CanvasText lines on Canvas casings.
  */
-:where([data-pie-content]) .pie-answer-eliminator-math-strike--cross::after {
-	content: "";
-	position: absolute;
-	inset: 0;
-	pointer-events: none;
-	background-image:
-		linear-gradient(
-			to bottom right,
-			transparent calc(50% - 1.5px),
-			var(--pie-answer-eliminator-strike-paint) calc(50% - 0.5px),
-			var(--pie-answer-eliminator-strike-paint) calc(50% + 0.5px),
-			transparent calc(50% + 1.5px)
+@media (forced-colors: active) {
+	:where([data-pie-content])
+		.pie-answer-eliminator-toggle--plain.pie-answer-eliminator-toggle--active,
+	:where([data-pie-content])
+		.pie-answer-eliminator-toggle--plain.pie-answer-eliminator-toggle--active:hover:not(
+			:disabled
 		),
-		linear-gradient(
-			to bottom left,
-			transparent calc(50% - 1.5px),
-			var(--pie-answer-eliminator-strike-paint) calc(50% - 0.5px),
-			var(--pie-answer-eliminator-strike-paint) calc(50% + 0.5px),
-			transparent calc(50% + 1.5px)
-		);
-}
+	:where([data-pie-content])
+		.pie-answer-eliminator-toggle--nds.pie-answer-eliminator-toggle--active
+		.nds-icon-button {
+		border-color: Highlight;
+		background-color: Highlight;
+		color: HighlightText;
+	}
 
-:where([data-pie-content]) .pie-answer-masked-fallback {
-	opacity: 0.2;
-	filter: blur(2px);
-}
+	:where([data-pie-content]) .pie-answer-eliminator-toggle--nds .nds-icon-button {
+		border: 1px solid ButtonText;
+	}
 
-:where([data-pie-content]) .pie-answer-eliminator-sr-announcement {
-	position: absolute;
-	left: -10000px;
-	width: 1px;
-	height: 1px;
-	overflow: hidden;
+	/* The glyph is icon-font text, which would otherwise get a Canvas backplate. */
+	:where([data-pie-content])
+		.pie-answer-eliminator-toggle--nds.pie-answer-eliminator-toggle--active
+		.nds-icon-button__icon {
+		forced-color-adjust: none;
+		color: HighlightText;
+	}
+
+	:where([data-pie-content]) .pie-answer-eliminator-toggle--plain:disabled,
+	:where([data-pie-content])
+		.pie-answer-eliminator-toggle--nds[disabled]
+		.nds-icon-button {
+		border-color: GrayText;
+		background-color: Canvas;
+		color: GrayText;
+	}
+
+	:where([data-pie-content])
+		.pie-answer-eliminator-toggle--nds[disabled]
+		.nds-icon-button__icon {
+		color: GrayText;
+	}
+
+	:where([data-pie-content]) [data-pie-answer-eliminated="true"] {
+		--pie-answer-eliminator-strike-paint: CanvasText;
+	}
+
+	:where([data-pie-content]) .pie-answer-eliminator-image-strike-casing,
+	:where([data-pie-content]) .pie-answer-eliminator-cross-casing {
+		stroke: Canvas;
+	}
 }
 
 /* AUTHORED COLOURS

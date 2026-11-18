@@ -502,6 +502,18 @@
 						{
 							"name": "--pie-section-player-card-header-background",
 							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+						},
+						{
+							"name": "--pie-tool-trigger-active-background",
+							"description": "Component trigger active/open background hook; falls back through existing semantic tokens and must preserve WCAG contrast when overridden by hosts."
+						},
+						{
+							"name": "--pie-tool-trigger-active-border-color",
+							"description": "Component trigger active/open border hook; falls back through existing semantic tokens."
+						},
+						{
+							"name": "--pie-tool-trigger-active-color",
+							"description": "Component trigger active/open foreground hook; hosts are responsible for preserving contrast with the active trigger background."
 						}
 					],
 					"x-pie": {
@@ -1314,6 +1326,18 @@
 						{
 							"name": "--pie-section-player-card-header-background",
 							"description": "Public card header background hook; defaults to transparent and hosts must preserve contrast with card header content."
+						},
+						{
+							"name": "--pie-tool-trigger-active-background",
+							"description": "Component trigger active/open background hook; falls back through existing semantic tokens and must preserve WCAG contrast when overridden by hosts."
+						},
+						{
+							"name": "--pie-tool-trigger-active-border-color",
+							"description": "Component trigger active/open border hook; falls back through existing semantic tokens."
+						},
+						{
+							"name": "--pie-tool-trigger-active-color",
+							"description": "Component trigger active/open foreground hook; hosts are responsible for preserving contrast with the active trigger background."
 						}
 					],
 					"x-pie": {

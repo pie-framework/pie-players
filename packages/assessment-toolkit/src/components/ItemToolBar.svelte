@@ -170,32 +170,6 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		return { destroy: applyNdsGlyphVariant(node, 'fa-light') };
 	};
 
-	// <pie-nds-icon-button> exposes only `button-aria-label` on its inner light-DOM
-	// <button> — no `aria-pressed`. Toolbar tool buttons are toggles (calculator
-	// open/closed, line reader on/off, …), so mirror the pressed state onto that
-	// inner button to keep the toggle semantics exposed to assistive tech. The
-	// button is created by Lit after the element's first update, so we watch for
-	// it and re-apply whenever nds re-renders its subtree.
-	const reflectToggleState = (node: HTMLElement, pressed: boolean) => {
-		let current = pressed;
-		const apply = () => {
-			const inner = node.querySelector('button');
-			if (inner) inner.setAttribute('aria-pressed', current ? 'true' : 'false');
-		};
-		apply();
-		const observer = new MutationObserver(apply);
-		observer.observe(node, { childList: true, subtree: true });
-		return {
-			update(next: boolean) {
-				current = next;
-				apply();
-			},
-			destroy() {
-				observer.disconnect();
-			},
-		};
-	};
-
 	// <pie-nds-icon-button> renders FontAwesome glyphs via `icon-name` only (no slot).
 	// Which items route through it is declared by whoever owns the capability —
 	// `faIconName` on the registration's button definition, or on a host-contributed
@@ -2566,17 +2540,18 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 						? resolveFaIconName(item)
 						: null}
 				{#if faIconName}
-					<!-- NDS circular icon button. Active tools use the filled `primary`
-					     variant; inactive use `ghost`. The click bubbles out of the
-					     component's inner <button>, so `onclick` still invokes onClick.
-					     `reflectToggleState` mirrors the pressed state onto that inner
-					     button since nds has no native aria-pressed. -->
+					<!-- NDS circular icon button, `tertiary` whether on or off: NDS has no
+					     pressed look, so `--active` repaints it through the same active
+					     chain as the plain button. The click bubbles out of the
+					     component's inner <button>, so `onclick` still invokes onClick;
+					     `button-aria-pressed` is copied onto that inner button. -->
 					<span class="item-toolbar__nds-button-zoom">
 						<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 						<pie-nds-icon-button
 							use:ndsIconButtonAction
-							use:reflectToggleState={isToolbarItemActive(item)}
 							class="item-toolbar__nds-button"
+							class:item-toolbar__nds-button--active={isToolbarItemActive(item)}
+							button-aria-pressed={isToolbarItemActive(item) ? 'true' : 'false'}
 							type="circle"
 							size="small"
 							variant="tertiary"
@@ -2841,14 +2816,32 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 		box-shadow: none;
 	}
 
+	/* The on state of a toggle tool. Its three hooks are the open-state ones the
+	   inline tools' triggers honour, so a host styles every open tool with one
+	   set; unset, each falls back to the pair this button always painted, which
+	   every Base Theme and colour scheme sets. */
 	.item-toolbar__button--active {
-		background-color: var(--pie-primary, #1976d2);
-		color: var(--pie-white, #fff);
-		border-color: var(--pie-primary, #1976d2);
+		background-color: var(--pie-tool-trigger-active-background, var(--pie-primary, #1976d2));
+		color: var(--pie-tool-trigger-active-color, var(--pie-white, #fff));
+		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1976d2));
 	}
 
+	/* Restates the ink and the border: the generic hover rule above outranks
+	   `--active` and would otherwise paint the off-state hover ink on the filled
+	   on-state button. */
 	.item-toolbar__button--active:hover:not(:disabled) {
-		background-color: var(--pie-primary-dark, #1565c0);
+		background-color: var(--pie-tool-trigger-active-background, var(--pie-primary-dark, #1565c0));
+		color: var(--pie-tool-trigger-active-color, var(--pie-white, #fff));
+		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary-dark, #1565c0));
+	}
+
+	/* NDS has no pressed look, and `tertiary` paints on and off alike, so the open
+	   state was exposed to assistive tech only. This repaints the NDS fill and
+	   glyph from the same pair as the plain button's on state. Its hover ring
+	   derives from the glyph colour, so it stays visible on the filled button. */
+	.item-toolbar pie-nds-icon-button.item-toolbar__nds-button--active {
+		--color-new-gray: var(--pie-tool-trigger-active-background, var(--pie-primary, #1976d2));
+		--color-interactive-blue: var(--pie-tool-trigger-active-color, var(--pie-white, #fff));
 	}
 
 	.item-toolbar__button:focus-visible {

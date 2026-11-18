@@ -109,10 +109,9 @@ the runtime context supplies a TTS service.
 		};
 	};
 
-	// <pie-nds-icon-button> only exposes `button-aria-label` on its inner light-DOM
-	// <button>. Reflect any additional ARIA relationships (expanded / controls /
-	// pressed / haspopup) onto that inner button so the trigger keeps its
-	// disclosure + toggle semantics. The button is created by Lit after the
+	// <pie-nds-icon-button> copies `expanded`, `controls` and `button-aria-pressed`
+	// onto its inner light-DOM <button>, but not `aria-busy`. Reflect what it does
+	// not forward onto that inner button. The button is created by Lit after the
 	// element's first update, so we watch for it and re-apply on re-render.
 	const reflectAria = (node: HTMLElement, attrs: Record<string, string | null>) => {
 		let current = attrs;
@@ -1027,17 +1026,16 @@ the runtime context supplies a TTS service.
 				{#if useNdsIcons && ndsIconButtonReady}
 				<!-- NDS circular icon button. The native click bubbles out of the
 					     component's inner <button>, so `onclick` still runs
-					     handlePlayPause. `reflectAria` mirrors the disclosure/toggle
-					     relationships onto that inner button (nds exposes only aria-label). -->
+					     handlePlayPause. NDS copies `expanded`, `controls` and
+					     `button-aria-pressed` onto that inner button; `reflectAria`
+					     adds `aria-busy`, which it does not forward. -->
 					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 					<pie-nds-icon-button
 						use:ndsIconButtonAction
-						use:reflectAria={{
-							'aria-expanded': controlsVisible ? 'true' : 'false',
-							'aria-controls': controlsVisible ? panelId : null,
-							'aria-pressed': controlsVisible ? 'true' : 'false',
-							'aria-busy': playbackStartInFlight ? 'true' : null,
-						}}
+						use:reflectAria={{ 'aria-busy': playbackStartInFlight ? 'true' : null }}
+						expanded={controlsVisible ? 'true' : 'false'}
+						controls={controlsVisible ? panelId : ''}
+						button-aria-pressed={controlsVisible ? 'true' : 'false'}
 						class="pie-tool-tts-inline__trigger {sizeClass}"
 						type="circle"
 						size="small"

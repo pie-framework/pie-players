@@ -1212,6 +1212,23 @@ the five inline on the document element. Inline styles outrank any author
 selector, so a host override takes `!important` and owns the contrast the
 derivation was maintaining, across every scheme it ships.
 
+### Item toolbar button tokens
+
+`<pie-item-toolbar>` paints an open tool's button through the same three
+`component-public` hooks the inline tools' triggers honour, so a host styles
+every open tool with one set:
+
+| Custom property | Default | Paints |
+| --- | --- | --- |
+| `--pie-tool-trigger-active-background` | `--pie-primary` | Fill of an open tool's button |
+| `--pie-tool-trigger-active-color` | `--pie-white` | Its glyph |
+| `--pie-tool-trigger-active-border-color` | `--pie-primary` | Its border (plain buttons only) |
+
+Every Base Theme and colour scheme sets the defaults as a contrast-checked pair.
+A host that sets the fill owns the glyph's contrast against it. The buttons
+`<pie-nds-icon-button>` renders when the host enables `ndsIcons` have no border,
+so they take the first two.
+
 ### AccessibilityCatalogResolver
 
 ```typescript

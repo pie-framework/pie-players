@@ -109,6 +109,30 @@ describe("calculator pie-nds-icon-button styling contract", () => {
 		expect(source).toContain('variant="tertiary"');
 	});
 
+	test("an open tool's NDS button passes its pressed state natively", () => {
+		expect(source).toContain(
+			"button-aria-pressed={isToolbarItemActive(item) ? 'true' : 'false'}",
+		);
+		expect(source).not.toContain("reflectToggleState");
+	});
+
+	test("an open tool's NDS button is visibly on, through the active hooks", () => {
+		// `tertiary` paints on and off alike and NDS has no pressed look, so
+		// without this the open state reached assistive tech only.
+		expect(source).toContain(
+			"class:item-toolbar__nds-button--active={isToolbarItemActive(item)}",
+		);
+		expect(stripped).toContain(
+			".item-toolbarpie-nds-icon-button.item-toolbar__nds-button--active{--color-new-gray:var(--pie-tool-trigger-active-background,var(--pie-primary,#1976d2));--color-interactive-blue:var(--pie-tool-trigger-active-color,var(--pie-white,#fff));}",
+		);
+	});
+
+	test("plain and NDS buttons share the active hooks the inline triggers honour", () => {
+		expect(stripped).toContain(
+			".item-toolbar__button--active{background-color:var(--pie-tool-trigger-active-background,var(--pie-primary,#1976d2));color:var(--pie-tool-trigger-active-color,var(--pie-white,#fff));border-color:var(--pie-tool-trigger-active-border-color,var(--pie-primary,#1976d2));}",
+		);
+	});
+
 	test("calculator glyph colour is the settable --pie-calculator-button-color", () => {
 		expect(stripped).toContain(
 			"--color-interactive-blue:var(--pie-calculator-button-color,var(--pie-button-color,var(--pie-text,#222)))",

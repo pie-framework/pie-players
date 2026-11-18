@@ -71,11 +71,16 @@ describe("tool-tts-inline trigger styling contract", () => {
 		);
 	});
 
-	test("trigger reflects disclosure + toggle semantics onto its inner button", () => {
-		expect(triggerSnippet).toContain("use:reflectAria");
-		expect(triggerSnippet).toContain("'aria-expanded'");
-		expect(triggerSnippet).toContain("'aria-controls'");
-		expect(triggerSnippet).toContain("'aria-pressed'");
+	test("trigger passes disclosure + toggle semantics to its inner button", () => {
+		// NDS copies these three onto the inner <button>; only aria-busy, which it
+		// does not forward, is mirrored by hand.
+		expect(triggerSnippet).toContain("expanded={controlsVisible ? 'true' : 'false'}");
+		expect(triggerSnippet).toContain("controls={controlsVisible ? panelId : ''}");
+		expect(triggerSnippet).toContain(
+			"button-aria-pressed={controlsVisible ? 'true' : 'false'}",
+		);
+		expect(triggerSnippet).toContain("use:reflectAria={{ 'aria-busy':");
+		expect(triggerSnippet).not.toContain("'aria-expanded'");
 	});
 
 	test("trigger glyphs are forced to the Solid FA weight (not thin outline)", () => {

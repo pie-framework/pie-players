@@ -110,10 +110,10 @@ the runtime context supplies a TTS service.
 	};
 
 	// <pie-nds-icon-button> copies `expanded`, `controls` and `button-aria-pressed`
-	// onto its inner light-DOM <button>, but not `aria-busy`. Reflect what it does
-	// not forward onto that inner button. The button is created by Lit after the
+	// onto its inner light-DOM <button>, but not `aria-busy` or `title`. Reflect
+	// what it does not forward onto that inner button. The button is created by Lit after the
 	// element's first update, so we watch for it and re-apply on re-render.
-	const reflectAria = (node: HTMLElement, attrs: Record<string, string | null>) => {
+	const reflectToInnerButton = (node: HTMLElement, attrs: Record<string, string | null>) => {
 		let current = attrs;
 		const apply = () => {
 			const inner = node.querySelector('button');
@@ -1027,12 +1027,16 @@ the runtime context supplies a TTS service.
 				<!-- NDS circular icon button. The native click bubbles out of the
 					     component's inner <button>, so `onclick` still runs
 					     handlePlayPause. NDS copies `expanded`, `controls` and
-					     `button-aria-pressed` onto that inner button; `reflectAria`
-					     adds `aria-busy`, which it does not forward. -->
+					     `button-aria-pressed` onto that inner button;
+					     `reflectToInnerButton` adds `aria-busy` and the hover `title`,
+					     which it does not forward. -->
 					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 					<pie-nds-icon-button
 						use:ndsIconButtonAction
-						use:reflectAria={{ 'aria-busy': playbackStartInFlight ? 'true' : null }}
+						use:reflectToInnerButton={{
+							'aria-busy': playbackStartInFlight ? 'true' : null,
+							title: interfaceI18n.t(triggerLabelKey),
+						}}
 						expanded={controlsVisible ? 'true' : 'false'}
 						controls={controlsVisible ? panelId : ''}
 						button-aria-pressed={controlsVisible ? 'true' : 'false'}
@@ -1058,6 +1062,7 @@ the runtime context supplies a TTS service.
 					aria-controls={controlsVisible ? panelId : undefined}
 					aria-pressed={controlsVisible ? 'true' : 'false'}
 					aria-label={interfaceI18n.t(triggerLabelKey)}
+					title={interfaceI18n.t(triggerLabelKey)}
 					aria-busy={playbackStartInFlight ? 'true' : undefined}
 					disabled={!ttsService}
 					onclick={handlePlayPause}
@@ -1112,6 +1117,7 @@ the runtime context supplies a TTS service.
 									onkeydown={(event) => handleClusterKeydown(SPEED_RADIO_SELECTOR, event)}
 									tabindex={playbackRate === option.rate ? 0 : -1}
 									aria-label={option.ariaLabel}
+									title={option.ariaLabel}
 									aria-checked={playbackRate === option.rate}
 									disabled={!ttsService}
 								>
@@ -1130,6 +1136,7 @@ the runtime context supplies a TTS service.
 						onclick={handleSeekBackward}
 						onkeydown={(event) => handleClusterKeydown(MEDIA_BUTTON_SELECTOR, event)}
 						aria-label={interfaceI18n.t('tools.textToSpeech.inline.rewindA11y')}
+						title={interfaceI18n.t('tools.textToSpeech.inline.rewindA11y')}
 						disabled={!ttsService || !speaking}
 					>
 						<i class="fa-solid fa-backward pie-tool-tts-inline__icon" aria-hidden="true"></i>
@@ -1144,6 +1151,7 @@ the runtime context supplies a TTS service.
 						onclick={handleSeekForward}
 						onkeydown={(event) => handleClusterKeydown(MEDIA_BUTTON_SELECTOR, event)}
 						aria-label={interfaceI18n.t('tools.textToSpeech.inline.fastForwardA11y')}
+						title={interfaceI18n.t('tools.textToSpeech.inline.fastForwardA11y')}
 						disabled={!ttsService || !speaking}
 					>
 						<i class="fa-solid fa-forward pie-tool-tts-inline__icon" aria-hidden="true"></i>
@@ -1163,6 +1171,7 @@ the runtime context supplies a TTS service.
 						onclick={handleStop}
 						onkeydown={(event) => handleClusterKeydown(MEDIA_BUTTON_SELECTOR, event)}
 						aria-label={interfaceI18n.t('tools.textToSpeech.inline.stopA11y')}
+						title={interfaceI18n.t('tools.textToSpeech.inline.stopA11y')}
 						disabled={!ttsService}
 					>
 						<i class="fa-solid fa-stop pie-tool-tts-inline__icon" aria-hidden="true"></i>

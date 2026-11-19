@@ -1,5 +1,9 @@
 # @pie-players/pie-print-player
 
+## 1.0.0-beta.11
+
+No changes in this release.
+
 ## 1.0.0-beta.10
 
 ### Patch Changes

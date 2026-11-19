@@ -1,5 +1,12 @@
 # @pie-players/tts-server-core
 
+## 1.0.0-beta.11
+
+### Patch Changes
+
+- Updated dependencies [87a1e3a]
+  - @pie-players/pie-tts@1.0.0-beta.11
+
 ## 1.0.0-beta.10
 
 ### Patch Changes

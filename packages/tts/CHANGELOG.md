@@ -1,5 +1,11 @@
 # @pie-players/pie-tts
 
+## 1.0.0-beta.11
+
+### Patch Changes
+
+- 87a1e3a: `resolveSpeedRateBucket` maps rates from 1.05 up to `fast`, mirroring the 0.95 slow edge, so the inline TTS tool's default Fast choice (1.25) asks the custom transport for `fast` instead of `medium` (PIE-1545). Hosts A, R and S read aloud through the custom transport with the default speed choices, so their Fast button now changes speed.
+
 ## 1.0.0-beta.10
 
 ### Patch Changes

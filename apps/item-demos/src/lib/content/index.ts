@@ -54,6 +54,7 @@ import quadraticEquation from "./quadratic-equation";
 import rubricDefault from "./rubric-default";
 import selectTextDefault from "./select-text-default";
 import solarSystemMoons from "./solar-system-moons";
+import vennClassificationDefault from "./venn-classification-default";
 import waterCyclePassage from "./water-cycle-passage";
 
 const publicDemos: DemoInfo[] = [
@@ -108,6 +109,7 @@ const publicDemos: DemoInfo[] = [
 	rubricDefault,
 	selectTextDefault,
 	solarSystemMoons,
+	vennClassificationDefault,
 	waterCyclePassage,
 ].sort((a, b) => {
 	const pkg = a.sourcePackage.localeCompare(b.sourcePackage);

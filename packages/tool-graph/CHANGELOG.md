@@ -1,5 +1,16 @@
 # @pie-players/pie-tool-graph
 
+## 1.0.0-beta.11
+
+### Patch Changes
+
+- Updated dependencies [3b47fd3]
+- Updated dependencies [677f1e3]
+- Updated dependencies [66477a7]
+- Updated dependencies [a6f323c]
+  - @pie-players/pie-players-shared@1.0.0-beta.11
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.11
+
 ## 1.0.0-beta.10
 
 ### Patch Changes

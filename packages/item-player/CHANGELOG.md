@@ -1,5 +1,22 @@
 # @pie-players/pie-item-player
 
+## 1.0.0-beta.11
+
+### Patch Changes
+
+- a6f323c: A markup custom-element tag that `elements` does not declare and no model
+  references is a config-contract warning instead of an error, so items that
+  carry one, such as a leftover rubric tag, render again in the item and section
+  players. The item player removes such tags from its runtime copy of the markup
+  and keeps their content, through the new `removeUndeclaredMarkupTags`, so an
+  undeclared tag never upgrades an element another item registered. A model whose
+  element is undeclared still fails validation.
+- Updated dependencies [3b47fd3]
+- Updated dependencies [677f1e3]
+- Updated dependencies [66477a7]
+- Updated dependencies [a6f323c]
+  - @pie-players/pie-players-shared@1.0.0-beta.11
+
 ## 1.0.0-beta.10
 
 ### Patch Changes

@@ -1028,11 +1028,13 @@ describe("ServerTTSProvider", () => {
 		} as any);
 
 		await impl.speak("Read this text");
-		// 1.25 sits inside the shared 0.95-1.5 "medium" tolerance band
-		// (resolveSpeedRateBucket in @pie-players/tts-server-core), so use a
-		// rate clearly above it to exercise an actual bucket change.
-		impl.updateSettings({ rate: 1.6 } as any);
+		// The inline tool's default Fast (1.25) and Slow (0.8), then Normal.
+		impl.updateSettings({ rate: 1.25 } as any);
 		await impl.speak("Read this text again");
+		impl.updateSettings({ rate: 0.8 } as any);
+		await impl.speak("Read this text slowly");
+		impl.updateSettings({ rate: 1 } as any);
+		await impl.speak("Read this text normally");
 
 		const synthesisBodies = fetchMock.mock.calls
 			.filter(([input]) => String(input) === "https://tts.custom.example/v1")
@@ -1040,6 +1042,8 @@ describe("ServerTTSProvider", () => {
 		expect(synthesisBodies.map((body) => body.speedRate)).toEqual([
 			"medium",
 			"fast",
+			"slow",
+			"medium",
 		]);
 	});
 

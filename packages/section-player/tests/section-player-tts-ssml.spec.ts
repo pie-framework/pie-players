@@ -2057,6 +2057,7 @@ test.describe("section player demo tts-ssml", () => {
 		page,
 	}) => {
 		await suppressAudibleBrowserTts(page);
+		await installHoldingServerAudio(page);
 		await gotoDemo(page);
 		await openSessionPanel(page);
 		await forceBrowserTtsRuntime(page);
@@ -2139,6 +2140,69 @@ test.describe("section player demo tts-ssml", () => {
 		await expect(
 			passagePanel.getByRole("button", { name: "Stop reading" }),
 		).toBeVisible();
+		await passagePanel.getByRole("button", { name: "Stop reading" }).click();
+		await expect(passagePanel).toHaveCount(0);
+
+		// The custom transport, set up the way Quiz Engine hosts set it, sends a
+		// distinct speed bucket for the default Fast choice (PIE-1545).
+		const customSynthesisBodies: Array<{ speedRate?: unknown }> = [];
+		await page.route("**/api/tts/sc", async (route) => {
+			customSynthesisBodies.push(
+				JSON.parse(route.request().postData() || "{}"),
+			);
+			await route.fulfill({
+				status: 200,
+				contentType: "application/json",
+				body: JSON.stringify({
+					audioContent: `${new URL(route.request().url()).origin}/mock-tts/speed.mp3`,
+					speechMarks: [],
+				}),
+			});
+		});
+		await page.route("**/mock-tts/speed.mp3", (route) =>
+			route.fulfill({ status: 200, contentType: "audio/mpeg", body: "mp3" }),
+		);
+		await page
+			.locator("pie-section-player-tools-session-debugger")
+			.evaluate(async (element) => {
+				const coordinator = (element as any).toolkitCoordinator;
+				if (!coordinator?.updateToolConfig) return;
+				coordinator.updateToolConfig("textToSpeech", {
+					enabled: true,
+					backend: "server",
+					serverProvider: "custom",
+					transportMode: "custom",
+					endpointMode: "rootPost",
+					endpointValidationMode: "none",
+					apiEndpoint: "/api/tts/sc",
+					lang_id: "en-US",
+					speedRate: "medium",
+					cache: true,
+					includeAuthOnAssetFetch: false,
+					speedOptions: undefined,
+				});
+				await coordinator?.ensureTTSReady?.();
+			});
+		await passageInlineTts
+			.getByRole("button", { name: "Play reading" })
+			.click();
+		await expect(passagePanel).toBeVisible();
+		await expect
+			.poll(() => customSynthesisBodies.at(-1)?.speedRate)
+			.toBe("medium");
+		// The fake audio ends the read after a second; the panel stays open.
+		await expect(
+			passageInlineTts.getByRole("button", { name: "Play reading" }),
+		).toBeVisible();
+		const fastSpeed = passagePanel.getByRole("radio", { name: "Fast speed" });
+		await fastSpeed.click();
+		await expect(fastSpeed).toHaveAttribute("aria-checked", "true");
+		await passageInlineTts
+			.getByRole("button", { name: "Play reading" })
+			.click();
+		await expect
+			.poll(() => customSynthesisBodies.at(-1)?.speedRate)
+			.toBe("fast");
 		await passagePanel.getByRole("button", { name: "Stop reading" }).click();
 		await expect(passagePanel).toHaveCount(0);
 	});

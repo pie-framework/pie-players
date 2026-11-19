@@ -71,11 +71,17 @@ describe("tool-tts-inline trigger styling contract", () => {
 		);
 	});
 
-	test("trigger reflects disclosure + toggle semantics onto its inner button", () => {
-		expect(triggerSnippet).toContain("use:reflectAria");
-		expect(triggerSnippet).toContain("'aria-expanded'");
-		expect(triggerSnippet).toContain("'aria-controls'");
-		expect(triggerSnippet).toContain("'aria-pressed'");
+	test("trigger passes disclosure + toggle semantics to its inner button", () => {
+		// NDS copies these three onto the inner <button>; aria-busy and the hover
+		// title, which it does not forward, are mirrored by hand.
+		expect(triggerSnippet).toContain("expanded={controlsVisible ? 'true' : 'false'}");
+		expect(triggerSnippet).toContain("controls={controlsVisible ? panelId : ''}");
+		expect(triggerSnippet).toContain(
+			"button-aria-pressed={controlsVisible ? 'true' : 'false'}",
+		);
+		expect(triggerSnippet).toContain("use:reflectToInnerButton={{");
+		expect(triggerSnippet).toContain("title: interfaceI18n.t(triggerLabelKey),");
+		expect(triggerSnippet).not.toContain("'aria-expanded'");
 	});
 
 	test("trigger glyphs are forced to the Solid FA weight (not thin outline)", () => {
@@ -144,7 +150,7 @@ describe("tool-tts-inline trigger styling contract", () => {
 			"--color-new-gray:var(--pie-background-dark,#f3f5f7)",
 		);
 		expect(declarations).toContain(
-			"--color-primary-white:var(--pie-white,#ffffff)",
+			"--color-primary-white:var(--pie-button-background-color,var(--pie-button-bg,var(--pie-white,#ffffff)))",
 		);
 		expect(declarations).toContain(
 			"--color-primary-black:var(--pie-text,#000000)",
@@ -358,20 +364,16 @@ describe("tool-tts-inline speed control accessibility contract", () => {
 		);
 	});
 
-	test("remaps the NDS trigger accent rather than painting a box it lacks", () => {
-		// The NDS button owns its own surface; setting background/border on the
-		// host element would paint a box the tertiary button does not have. Only
-		// the foreground hook applies, via the same --color-interactive-blue
-		// remap the base rule uses.
-		const body = cssRuleBody(
-			'.pie-tool-tts-inline__trigger:not(.pie-tool-tts-inline__trigger--plain)[aria-expanded="true"]',
-		).replace(/\s+/g, "");
-
-		expect(body).toContain(
+	test("keeps the NDS trigger accent while open", () => {
+		// The NDS button owns its fill, so a host's active foreground would land
+		// on the page rather than on the active background it was chosen for.
+		const styles = source.slice(source.indexOf("<style"));
+		expect(styles).not.toMatch(
+			/\.pie-tool-tts-inline__trigger:not\(\.pie-tool-tts-inline__trigger--plain\)\[aria-expanded/,
+		);
+		expect(styles.replace(/\s+/g, "")).not.toContain(
 			"--color-interactive-blue:var(--pie-tool-trigger-active-color,",
 		);
-		expect(body).not.toContain("background:");
-		expect(body).not.toContain("border-color:");
 	});
 });
 
@@ -444,7 +446,7 @@ describe("tool-tts-inline keyboard order contract", () => {
 		// with it — Stop can still halt playback / dismiss the panel, and staying
 		// enabled is what lets it keep focus it already had.
 		expect(source).toContain(
-			"aria-label={interfaceI18n.t('tools.textToSpeech.inline.stopA11y')}\n\t\t\t\t\t\tdisabled={!ttsService}",
+			"title={interfaceI18n.t('tools.textToSpeech.inline.stopA11y')}\n\t\t\t\t\t\tdisabled={!ttsService}",
 		);
 		// Rewind / fast-forward correctly go inactive with `speaking`.
 		expect(source).toContain("disabled={!ttsService || !speaking}");

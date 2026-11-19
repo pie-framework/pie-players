@@ -18,7 +18,6 @@
 	],
 	"scripts": {
 		"build": "tsc",
-		"dev": "tsc --watch",
 		"test": "vitest run"
 	},
 	"keywords": [
@@ -42,11 +41,11 @@
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/tts-server-core": "workspace:*",
 		"jose": "^6.2.14",
-		"tldts": "^7.4.19"
+		"tldts": "^7.5.2"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.3",
-		"vitest": "^5.0.5"
+		"vitest": "^5.1.0"
 	},
 	"sideEffects": false,
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/tts-server-sc#readme",

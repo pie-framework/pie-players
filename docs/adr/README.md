@@ -8,12 +8,13 @@ message (why this change).
 A decision earns a record when a reader who finds the code later would otherwise
 ask "why not the obvious thing?" and have nowhere to look.
 
-Records are append-only. A superseded record keeps its number, gains a
-`Superseded by` line, and is not edited into agreement with the newer one — the
-sequence is the value. A record that reality later corrects in part gains a dated
-`Update` section, and a `Read with:` line under its status names each update and
-what it changes, so a reader who stops early still learns the body is not the
-whole record.
+Records are edited in place rather than frozen: a record that reality or a later
+decision corrects is updated to state the decision as it now stands. Numbering is
+permanent, so a reference to a record never breaks. An edit keeps its provenance:
+a partial correction gains a dated `Update` section, and a `Read with:` line under
+the status names each update and what it changes, so a reader who stops early
+still learns what moved. A record replaced by a different decision gains a
+`Superseded by` line pointing at the replacement.
 
 Numbering is sequential from `0001`. The filename is
 `NNNN-<kebab-case-decision>.md`.

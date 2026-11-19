@@ -28,14 +28,10 @@
 	],
 	"scripts": {
 		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun ../../scripts/prune-unreachable-declarations.mjs",
-		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
-		"lint": "biome lint .",
-		"test": "bun test",
-		"check-catalogs": "bun run scripts/check-catalogs.ts"
+		"test": "bun test"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.4",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"typescript": "^5.9.3"
 	},

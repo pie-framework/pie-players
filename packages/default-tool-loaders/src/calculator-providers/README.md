@@ -6,7 +6,7 @@ adapter when it initializes and hands it to the provider-neutral
 `<pie-tool-calculator>` element. Host configuration (provider selection, the
 Desmos key, adding a backend) is documented in the package README's
 [Calculator providers](../../README.md#calculator-providers) section and in
-[Calculator with host auth](../../../../docs/tools-and-accomodations/tool_provider_system.md#calculator-with-host-auth).
+[Calculator with host auth](../../../../docs/tools-and-accommodations/tool_provider_system.md#calculator-with-host-auth).
 
 ## Providers
 

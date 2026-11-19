@@ -216,7 +216,9 @@ component-scoped variables instead of overriding broad semantic tokens such as
 --pie-tool-trigger-active-border-color: Active/open trigger border
 ```
 
-These three are registered `component-public` tokens.
+These three are registered `component-public` tokens. They style the plain
+trigger; the NDS trigger (`nds-icons`) keeps its accent while open, because its
+button owns the fill the pair is chosen against.
 
 If unset, the trigger looks the same open as closed: each hook falls back to the
 value the control already resolves to — background through

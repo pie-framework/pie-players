@@ -425,6 +425,34 @@ test("a host adds its own tool and a calculator backend to the packaged set from
   expect(failures).toEqual([]);
 });
 
+test("the browser build exports the packaged set's preferred placement and universal profile", async ({
+  page,
+}) => {
+  await page.goto(hostOrigin);
+  const exported = await page.evaluate(async (url) => {
+    const build = await import(/* @vite-ignore */ url);
+    const registry = build.createPackagedToolRegistry();
+    const placement: Record<string, string[]> = build.SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT;
+    const profile = build.createUniversalPersonalNeedsProfile();
+    return {
+      levels: Object.keys(placement).sort(),
+      unregisteredPlaced: Object.values(placement)
+        .flat()
+        .filter((toolId) => !registry.has(toolId)),
+      supports: profile.supports as string[],
+      unregisteredSupports: (profile.supports as string[]).filter((toolId) => !registry.has(toolId)),
+      prohibitedSupports: profile.prohibitedSupports,
+      fresh: build.createUniversalPersonalNeedsProfile().supports !== profile.supports,
+    };
+  }, `${packageOrigin}${SECTION_ENTRY}`);
+  expect(exported.levels).toEqual(["item", "passage", "section"]);
+  expect(exported.unregisteredPlaced).toEqual([]);
+  expect(exported.supports.length).toBeGreaterThan(0);
+  expect(exported.unregisteredSupports).toEqual([]);
+  expect(exported.prohibitedSupports).toEqual([]);
+  expect(exported.fresh).toBe(true);
+});
+
 test("the npm entry is byte-identical with and without the browser build", async () => {
   test.setTimeout(120_000);
   const outDir = join(scratch, "npm-only");

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import {
+	assertPublishablePackagesChecked,
 	collectDeclaredTargets,
 	defaultConditionViolations,
 	getImportTarget,
@@ -59,6 +60,34 @@ describe("pack inspection helpers", () => {
 			"package.json",
 			"src/Component.svelte",
 		]);
+	});
+
+	test("reads top-level entry fields with or without ./ and exports only with it", () => {
+		// npm and Node resolve `main`, `types` and the other entry fields against
+		// the package root either way. Only `exports` requires `./`.
+		const targets = collectDeclaredTargets(
+			{
+				main: "dist/index.js",
+				types: "./dist/index.d.ts",
+				customElements: "custom-elements.json",
+				exports: { ".": "./dist/index.js", "./bare": "dist/bare.js" },
+			},
+			["main", "types", "customElements"],
+		);
+
+		expect([...targets].sort()).toEqual([
+			"custom-elements.json",
+			"dist/index.d.ts",
+			"dist/index.js",
+		]);
+		expect([...collectDeclaredTargets({ main: "", types: "./" })]).toEqual([]);
+	});
+
+	test("fails closed when no publishable packages were checked", () => {
+		expect(() => assertPublishablePackagesChecked(0)).toThrow(
+			/no publishable packages discovered/,
+		);
+		expect(() => assertPublishablePackagesChecked(1)).not.toThrow();
 	});
 
 	test("parses npm pack json even when npm writes surrounding text", () => {

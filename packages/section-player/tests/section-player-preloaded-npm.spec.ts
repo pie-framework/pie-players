@@ -266,11 +266,12 @@ async function drag(page: Page, source: Locator, target: Locator) {
 }
 
 const draggables = (element: Locator) => element.locator('[aria-roledescription="draggable"]');
-// A button that is not a draggable, or, in a categorize build that groups its
-// drop zones instead, a category's group.
+// A button that is not a draggable, or, in builds that group their drop zones
+// instead, a categorize category's group or an image-cloze response area: a
+// labelled group holding no draggable, which leaves the choice bank out.
 const dropTargets = (element: Locator) =>
 	element.locator(
-		'[role="button"]:not([aria-roledescription="draggable"]), [data-category-id] > [role="group"]',
+		'[role="button"]:not([aria-roledescription="draggable"]), [data-category-id] > [role="group"], [role="group"][aria-label]:not(:has([aria-roledescription="draggable"]))',
 	);
 
 /** Click a choice, then wait for the element's re-render to check it. */

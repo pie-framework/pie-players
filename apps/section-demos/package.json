@@ -27,7 +27,6 @@
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-calculator-cortex": "workspace:*",
 		"@pie-players/pie-calculator-geogebra": "workspace:*",
-		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-default-tool-loaders": "workspace:*",
 		"@pie-players/pie-i18n-generated": "workspace:*",
 		"@pie-players/pie-item-player": "workspace:*",
@@ -44,8 +43,6 @@
 		"@pie-players/pie-tool-annotation-toolbar": "workspace:*",
 		"@pie-players/pie-tool-answer-eliminator": "workspace:*",
 		"@pie-players/pie-tool-calculator-desmos": "workspace:*",
-		"@pie-players/pie-tool-dictionary": "workspace:*",
-		"@pie-players/pie-tool-picture-dictionary": "workspace:*",
 		"@pie-players/pie-tool-sign-language": "workspace:*",
 		"@pie-players/pie-tool-tts-inline": "workspace:*",
 		"@pie-players/tts-client-server": "workspace:*",
@@ -53,22 +50,22 @@
 		"@pie-players/tts-server-google": "workspace:*",
 		"@pie-players/tts-server-polly": "workspace:*",
 		"@pie-players/tts-server-sc": "workspace:*",
-		"dotenv": "^18.0.7"
+		"dotenv": "^18.0.10"
 	},
 	"devDependencies": {
-		"@playwright/test": "^1.64.1",
-		"@sveltejs/adapter-node": "^6.0.1",
-		"@sveltejs/kit": "^3.1.1",
+		"@playwright/test": "^1.65.1",
+		"@sveltejs/adapter-node": "^6.0.2",
+		"@sveltejs/kit": "^3.2.0",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@tailwindcss/vite": "^4.3.4",
 		"@types/bun": "^1.4.4",
 		"@types/node": "^26.6.6",
-		"daisyui": "^5.7.50",
+		"daisyui": "^5.8.1",
 		"svelte": "^5.57.3",
 		"svelte-check": "^4.7.8",
 		"tailwindcss": "^4.2.2",
 		"typescript": "^6.0.0",
-		"vite": "^8.3.3"
+		"vite": "^8.3.8"
 	},
 	"license": "MIT",
 	"imports": {

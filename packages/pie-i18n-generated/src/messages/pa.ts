@@ -389,7 +389,7 @@ const pa = {
 			description: "ਉੱਤਰ ਦੇ ਵਿਕਲਪਾਂ 'ਤੇ ਕੱਟ ਲਗਾਓ",
 			buttonA11y: "ਕੱਟੋ, ਉੱਤਰ ਦੇ ਵਿਕਲਪ ਹਟਾਓ",
 			tooltip: "ਕੱਟੋ",
-			toggleA11y: "{choice} ਦੀ ਹਟਾਉਣ ਦੀ ਸਥਿਤੀ ਟੌਗਲ ਕਰੋ",
+			toggleA11y: "{choice} ਹਟਾਓ",
 			eliminatedA11y: "(ਹਟਾਇਆ ਗਿਆ)",
 			unlabeledChoice: "ਬਿਨਾਂ-ਨਾਮ ਵਿਕਲਪ",
 		},

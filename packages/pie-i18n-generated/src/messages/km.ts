@@ -387,7 +387,7 @@ const km = {
 			description: "គូសបន្ទាត់ឆ្លងកាត់ជម្រើសចម្លើយ",
 			buttonA11y: "គូសបន្ទាត់ឆ្លងកាត់, ដកជម្រើសចម្លើយចេញ",
 			tooltip: "គូសបន្ទាត់ឆ្លងកាត់",
-			toggleA11y: "បើក ឬ បិទការដកចេញសម្រាប់ {choice}",
+			toggleA11y: "ដក {choice} ចេញ",
 			eliminatedA11y: "(បានដកចេញ)",
 			unlabeledChoice: "ជម្រើសគ្មានឈ្មោះ",
 		},

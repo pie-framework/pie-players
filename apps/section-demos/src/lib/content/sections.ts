@@ -10,6 +10,7 @@ import { demo8ToolVisibilitySection } from "./demo8-tool-visibility";
 import { demoGeoGebraCalculatorSection } from "./demo-geogebra-calculators";
 import { demoCortexCalculatorSection } from "./demo-cortex-calculators";
 import { demoCalculatorPnpSection } from "./demo-calculator-pnp";
+import { demoAnswerEliminatorSection } from "./demo-answer-eliminator";
 import { demoDesmosCalculatorSection } from "./demo-desmos-calculators";
 import { demo10TtsGeneratedSsmlSection } from "./demo10-tts-generated-ssml";
 import { demo11TtsToggleSpeedSection } from "./demo11-tts-toggle-speed";
@@ -852,6 +853,23 @@ export const sectionDemos: Record<string, SectionDemoInfo> = {
 			"Changing the option rebinds `assessment`; the resolver re-runs on the policy change, so the button and an open calculator follow without a reload.",
 		],
 		section: demoCalculatorPnpSection,
+	},
+	"answer-eliminator": {
+		id: "answer-eliminator",
+		name: "Answer Eliminator",
+		description:
+			"The answer eliminator on every path it takes choices from, with its strategy, toggle style and the item mode switchable",
+		integrationLevel: 4,
+		integrationTheme: "Profile-driven tool selection",
+		focus:
+			"Composes `<pie-assessment-toolkit>` around a scope per item, and grants `answerEliminator`, AfA's `answer-masking`, in the profile.",
+		whatMakesItTick: [
+			"Multiple choice 13.2 and EBSR 14.2 predate `answer-masking`, so the legacy adapters read their markup: the toggle ends the choice's row and the label text is what the strategy marks.",
+			"The current multiple choice and select-text declare `answer-masking` and supply their choices through `pieSupportTargets`. The math choices are named from a note, which says \"(eliminated)\" itself.",
+			"The strategy is `toolParameters.answerEliminator.strategy` in the assessment's settings, and the NDS toggle is the toolkit's `nds-icons`. Both switch mid-session and keep the eliminations.",
+			"Evaluate mode leaves no toggle on a choice that is not eliminated, so none takes a Tab stop.",
+		],
+		section: demoAnswerEliminatorSection,
 	},
 	"tts-ssml": {
 		id: "tts-ssml",

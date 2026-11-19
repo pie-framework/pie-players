@@ -1,6 +1,6 @@
 /**
  * PNP Policy Source: step 5 of `composeDecision` (see
- * `docs/tools-and-accomodations/architecture.md`).
+ * `docs/tools-and-accommodations/architecture.md`).
  *
  * This source applies the PNP/profile precedence rules as a `(candidates, pnpPolicyInputs) →
  * (refinedCandidates, perToolFlags, mandates, decisions)` function the

@@ -58,7 +58,7 @@ the tool mounts again in that section attempt. Without a store, an
 `assessmentId` or a `sectionId` in the runtime context, the choice lasts only on
 the theme host. Nothing is kept for the device, so one learner's choice never
 overrides the scheme a host sets for the next. The host persists the store as
-[State persistence pattern](../../docs/tools-and-accomodations/architecture.md#state-persistence-pattern)
+[State persistence pattern](../../docs/tools-and-accommodations/architecture.md#state-persistence-pattern)
 describes.
 
 ## Custom schemes

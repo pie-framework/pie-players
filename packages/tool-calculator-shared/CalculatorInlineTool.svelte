@@ -230,13 +230,15 @@
 		align-items: center;
 		justify-content: center;
 		padding: 0.25rem;
-		border: 1px solid var(--pie-border, #ccc);
+		/* Border and ink resolve through the button chains the toolbar's own
+		   buttons use, so a host restyling toolbar buttons restyles this one. */
+		border: 1px solid var(--pie-button-border, var(--pie-border, #ccc));
 		border-radius: 4px;
 		/* Button fills resolve through the button tokens, which every base theme
 		   and colour scheme sets opaque. --pie-background is the page token a host
 		   may point at its own backdrop, so this fill does not read it. */
 		background-color: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-white, #fff)));
-		color: var(--pie-text, #333);
+		color: var(--pie-button-color, var(--pie-text, #333));
 		cursor: pointer;
 		transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
 	}
@@ -257,10 +259,7 @@
 	.pie-tool-calculator-inline__button--active {
 		border-color: var(--pie-tool-trigger-active-border-color, var(--pie-primary, #1976d2));
 		background-color: var(--pie-tool-trigger-active-background, var(--pie-primary, #1976d2));
-		color: var(
-			--pie-tool-trigger-active-color,
-			color-mix(in srgb, var(--pie-background, #fff) var(--pie-fixed-hue-collapse, 0%), white)
-		);
+		color: var(--pie-tool-trigger-active-color, var(--pie-white, #fff));
 	}
 
 	.pie-tool-calculator-inline__button--active:hover:not(:disabled) {
@@ -273,10 +272,7 @@
 				var(--pie-primary-dark, #1565c0)
 			)
 		);
-		color: var(
-			--pie-tool-trigger-active-color,
-			color-mix(in srgb, var(--pie-background, #fff) var(--pie-fixed-hue-collapse, 0%), white)
-		);
+		color: var(--pie-tool-trigger-active-color, var(--pie-white, #fff));
 	}
 
 	.pie-tool-calculator-inline__button:disabled {
@@ -307,7 +303,7 @@
 	}
 
 	.pie-tool-calculator-inline__button:not(.pie-tool-calculator-inline__button--active):hover:not(:disabled) .pie-tool-calculator-inline__icon {
-		color: var(--pie-button-hover-color, #667eea);
+		color: var(--pie-button-hover-color, var(--pie-button-color, var(--pie-text, #333)));
 	}
 
 	.pie-tool-calculator-inline__button--active .pie-tool-calculator-inline__icon {

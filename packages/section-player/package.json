@@ -61,10 +61,8 @@
 	],
 	"scripts": {
 		"build": "vite build && vite build --config vite.config.browser.ts && bun ../../scripts/prune-unreachable-declarations.mjs",
-		"dev": "vite build --watch",
 		"typecheck": "tsc --noEmit && tsc -p tsconfig.tests.json",
 		"check": "svelte-check --tsconfig ./tsconfig.svelte-check.json --compiler-warnings options_missing_custom_element:ignore",
-		"lint": "biome lint .",
 		"test": "bun test"
 	},
 	"dependencies": {
@@ -76,16 +74,15 @@
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.14.0",
-		"@biomejs/biome": "^2.6.4",
 		"@happy-dom/global-registrator": "^21.0.4",
 		"@pie-players/pie-theme": "workspace:*",
-		"@playwright/test": "^1.64.1",
+		"@playwright/test": "^1.65.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@types/node": "^26.6.6",
 		"svelte": "^5.57.3",
 		"svelte-check": "^4.7.8",
 		"typescript": "^5.9.3",
-		"vite": "^8.3.3",
+		"vite": "^8.3.8",
 		"vite-plugin-dts": "^5.1.2"
 	},
 	"homepage": "https://github.com/pie-framework/pie-players/tree/master/packages/section-player#readme",

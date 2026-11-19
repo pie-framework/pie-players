@@ -12,10 +12,16 @@
  * test-dependency bump (#819) failed every preloaded item-player e2e that way.
  * Workspaces that declare different specifiers may resolve differently, so an
  * exact pin in a published package and `next` in a demo stay independent.
+ *
+ * It also resolves CI's Playwright browser image from the lock, which needs the
+ * hoisted `playwright` and `playwright-core` on the `@playwright/test` version.
+ * A peer-only `playwright-core` keeps its old entry through a Playwright bump,
+ * so that mismatch otherwise surfaces only in CI's Change Scope job.
  */
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { playwrightImage } from "./lib/playwright-ci.mjs";
 
 const LABEL = "[check-lock-consistency]";
 
@@ -88,22 +94,33 @@ export function collectLockFindings(lock) {
 	return failures;
 }
 
-function main() {
-	const lockPath = path.join(process.cwd(), "bun.lock");
-	const failures = collectLockFindings(
-		parseLock(readFileSync(lockPath, "utf8")),
-	);
-
-	if (failures.length > 0) {
-		console.error(
-			`${LABEL} Workspaces declaring the same specifier resolve different versions:`,
+/** @returns {string[]} The error lines for every problem in the lock; empty when it is consistent. */
+export function lockReport(lock) {
+	const lines = [];
+	try {
+		playwrightImage(lock);
+	} catch (error) {
+		lines.push(
+			`${LABEL} ${error.message} Set the hoisted entries in bun.lock to the @playwright/test version.`,
 		);
-		for (const failure of failures) {
-			console.error(`- ${failure}`);
-		}
-		console.error(
+	}
+
+	const failures = collectLockFindings(lock);
+	if (failures.length > 0) {
+		lines.push(
+			`${LABEL} Workspaces declaring the same specifier resolve different versions:`,
+			...failures.map((failure) => `- ${failure}`),
 			`${LABEL} A regenerated lock re-resolved a dist tag for some workspaces only. Restore bun.lock from the base branch and redo just the intended change, so the lock moves nothing else.`,
 		);
+	}
+	return lines;
+}
+
+function main() {
+	const lockPath = path.join(process.cwd(), "bun.lock");
+	const lines = lockReport(parseLock(readFileSync(lockPath, "utf8")));
+	if (lines.length > 0) {
+		for (const line of lines) console.error(line);
 		process.exit(1);
 	}
 

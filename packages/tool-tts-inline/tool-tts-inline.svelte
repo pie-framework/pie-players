@@ -109,12 +109,11 @@ the runtime context supplies a TTS service.
 		};
 	};
 
-	// <pie-nds-icon-button> only exposes `button-aria-label` on its inner light-DOM
-	// <button>. Reflect any additional ARIA relationships (expanded / controls /
-	// pressed / haspopup) onto that inner button so the trigger keeps its
-	// disclosure + toggle semantics. The button is created by Lit after the
+	// <pie-nds-icon-button> copies `expanded`, `controls` and `button-aria-pressed`
+	// onto its inner light-DOM <button>, but not `aria-busy` or `title`. Reflect
+	// what it does not forward onto that inner button. The button is created by Lit after the
 	// element's first update, so we watch for it and re-apply on re-render.
-	const reflectAria = (node: HTMLElement, attrs: Record<string, string | null>) => {
+	const reflectToInnerButton = (node: HTMLElement, attrs: Record<string, string | null>) => {
 		let current = attrs;
 		const apply = () => {
 			const inner = node.querySelector('button');
@@ -1027,17 +1026,20 @@ the runtime context supplies a TTS service.
 				{#if useNdsIcons && ndsIconButtonReady}
 				<!-- NDS circular icon button. The native click bubbles out of the
 					     component's inner <button>, so `onclick` still runs
-					     handlePlayPause. `reflectAria` mirrors the disclosure/toggle
-					     relationships onto that inner button (nds exposes only aria-label). -->
+					     handlePlayPause. NDS copies `expanded`, `controls` and
+					     `button-aria-pressed` onto that inner button;
+					     `reflectToInnerButton` adds `aria-busy` and the hover `title`,
+					     which it does not forward. -->
 					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 					<pie-nds-icon-button
 						use:ndsIconButtonAction
-						use:reflectAria={{
-							'aria-expanded': controlsVisible ? 'true' : 'false',
-							'aria-controls': controlsVisible ? panelId : null,
-							'aria-pressed': controlsVisible ? 'true' : 'false',
+						use:reflectToInnerButton={{
 							'aria-busy': playbackStartInFlight ? 'true' : null,
+							title: interfaceI18n.t(triggerLabelKey),
 						}}
+						expanded={controlsVisible ? 'true' : 'false'}
+						controls={controlsVisible ? panelId : ''}
+						button-aria-pressed={controlsVisible ? 'true' : 'false'}
 						class="pie-tool-tts-inline__trigger {sizeClass}"
 						type="circle"
 						size="small"
@@ -1060,6 +1062,7 @@ the runtime context supplies a TTS service.
 					aria-controls={controlsVisible ? panelId : undefined}
 					aria-pressed={controlsVisible ? 'true' : 'false'}
 					aria-label={interfaceI18n.t(triggerLabelKey)}
+					title={interfaceI18n.t(triggerLabelKey)}
 					aria-busy={playbackStartInFlight ? 'true' : undefined}
 					disabled={!ttsService}
 					onclick={handlePlayPause}
@@ -1114,6 +1117,7 @@ the runtime context supplies a TTS service.
 									onkeydown={(event) => handleClusterKeydown(SPEED_RADIO_SELECTOR, event)}
 									tabindex={playbackRate === option.rate ? 0 : -1}
 									aria-label={option.ariaLabel}
+									title={option.ariaLabel}
 									aria-checked={playbackRate === option.rate}
 									disabled={!ttsService}
 								>
@@ -1132,6 +1136,7 @@ the runtime context supplies a TTS service.
 						onclick={handleSeekBackward}
 						onkeydown={(event) => handleClusterKeydown(MEDIA_BUTTON_SELECTOR, event)}
 						aria-label={interfaceI18n.t('tools.textToSpeech.inline.rewindA11y')}
+						title={interfaceI18n.t('tools.textToSpeech.inline.rewindA11y')}
 						disabled={!ttsService || !speaking}
 					>
 						<i class="fa-solid fa-backward pie-tool-tts-inline__icon" aria-hidden="true"></i>
@@ -1146,6 +1151,7 @@ the runtime context supplies a TTS service.
 						onclick={handleSeekForward}
 						onkeydown={(event) => handleClusterKeydown(MEDIA_BUTTON_SELECTOR, event)}
 						aria-label={interfaceI18n.t('tools.textToSpeech.inline.fastForwardA11y')}
+						title={interfaceI18n.t('tools.textToSpeech.inline.fastForwardA11y')}
 						disabled={!ttsService || !speaking}
 					>
 						<i class="fa-solid fa-forward pie-tool-tts-inline__icon" aria-hidden="true"></i>
@@ -1165,6 +1171,7 @@ the runtime context supplies a TTS service.
 						onclick={handleStop}
 						onkeydown={(event) => handleClusterKeydown(MEDIA_BUTTON_SELECTOR, event)}
 						aria-label={interfaceI18n.t('tools.textToSpeech.inline.stopA11y')}
+						title={interfaceI18n.t('tools.textToSpeech.inline.stopA11y')}
 						disabled={!ttsService}
 					>
 						<i class="fa-solid fa-stop pie-tool-tts-inline__icon" aria-hidden="true"></i>
@@ -1238,7 +1245,7 @@ the runtime context supplies a TTS service.
 		   a tertiary trigger kept a #f3f5f7 pill on every page — and once the
 		   glyph followed the theme, a light glyph landed on that light pill. */
 		--color-new-gray: var(--pie-background-dark, #f3f5f7);
-		--color-primary-white: var(--pie-white, #ffffff);
+		--color-primary-white: var(--pie-button-background-color, var(--pie-button-bg, var(--pie-white, #ffffff)));
 		--color-primary-black: var(--pie-text, #000000);
 		--color-focus-blue: var(--pie-button-focus-outline, #2b87ff);
 	}
@@ -1286,17 +1293,10 @@ the runtime context supplies a TTS service.
 		);
 	}
 
-	/* NDS variant: its glyph colour derives from --color-interactive-blue, so the
-	   accent is remapped rather than painted, exactly as the base rule does. Only
-	   the foreground hook applies -- background and border are owned by the NDS
-	   button's own internals, and setting them on this host element would paint a
-	   box the tertiary button does not currently have. */
-	.pie-tool-tts-inline__trigger:not(.pie-tool-tts-inline__trigger--plain)[aria-expanded="true"] {
-		--color-interactive-blue: var(
-			--pie-tool-trigger-active-color,
-			var(--pie-tts-button-color, var(--pie-button-color, var(--pie-text, #222)))
-		);
-	}
+	/* The NDS trigger takes none of the hooks and keeps its accent while open. Its
+	   button owns the fill, so only the foreground hook could reach it, and a
+	   host's active foreground, chosen against its active fill, lands on the
+	   page instead: white on white for the calculator's pairing. */
 
 	.pie-tool-tts-inline__control:hover:not(:disabled) {
 		background-color: var(--pie-button-hover-bg, var(--pie-secondary-background, #f2f4f8));

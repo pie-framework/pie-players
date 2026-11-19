@@ -246,5 +246,5 @@ invariants do not.
 ## References
 
 - [`developer_patterns.md`](./developer_patterns.md) — custom element communication mechanisms
-- [`../tools-and-accomodations/architecture.md`](../tools-and-accomodations/architecture.md)
+- [`../tools-and-accommodations/architecture.md`](../tools-and-accommodations/architecture.md)
   — host surfaces, the same pattern applied to tool capabilities

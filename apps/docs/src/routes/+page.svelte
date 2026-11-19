@@ -32,7 +32,7 @@
 		},
 		{
 			name: 'Assessment player',
-			tag: '<pie-assessment-player>',
+			tag: '<pie-assessment-player-default>',
 			summary:
 				'A reference assembly of the section player and the toolkit across sections. Production assessment players are host-built from the same parts.',
 			points: [

@@ -32,6 +32,7 @@ import {
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import type { MessageKey } from "@pie-players/pie-players-shared/i18n/types";
 import { resolveOverlayElement } from "./overlay-element-cache.js";
+import { resolveToolbarFaGlyph } from "./toolbar-glyphs.js";
 
 /** The element props these panels read for their host-supplied lookup. */
 type DictionaryPanelElement = HTMLElement & {
@@ -141,13 +142,15 @@ function renderDictionaryPanel(args: {
 		registration.toolId,
 		toolbarContext,
 	);
+	const icon =
+		typeof registration.icon === "function"
+			? registration.icon(context)
+			: registration.icon;
 	const button: ToolToolbarButtonDefinition = {
 		toolId: registration.toolId,
 		label: registration.name,
-		icon:
-			typeof registration.icon === "function"
-				? registration.icon(context)
-				: registration.icon,
+		icon,
+		faIconName: resolveToolbarFaGlyph(icon),
 		disabled: false,
 		ariaLabel: toolbarContext.i18n.t(args.buttonA11yKey),
 		tooltip: toolbarContext.i18n.t(args.tooltipKey),

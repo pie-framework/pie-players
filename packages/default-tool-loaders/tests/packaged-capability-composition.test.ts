@@ -1,5 +1,11 @@
-import { describe, expect, spyOn, test } from "bun:test";
+import { GlobalRegistrator } from "@happy-dom/global-registrator";
+import { afterAll, beforeAll, describe, expect, spyOn, test } from "bun:test";
 import { ToolRegistry } from "@pie-players/pie-assessment-toolkit";
+import type {
+	ToolContext,
+	ToolbarContext,
+} from "@pie-players/pie-assessment-toolkit/tools/registration";
+import { resolveInterfaceI18n } from "@pie-players/pie-players-shared/i18n/provider";
 import { resolveFallbackToolIcon } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import {
 	createPackagedToolRegistry,
@@ -10,6 +16,7 @@ import {
 	SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT,
 } from "../src/index";
 import { assertPackagedCapabilityComposition } from "../src/packaged-capability-composition";
+import { resolveToolbarFaGlyph } from "../src/registrations/toolbar-glyphs";
 
 const collectPlacementIds = (
 	placement: Record<string, readonly string[]>,
@@ -50,6 +57,82 @@ describe("packaged capability composition", () => {
 			.map(({ toolId, icon }) => `${toolId}: ${String(icon)}`);
 		expect(buttons.length).toBeGreaterThan(10);
 		expect(missing).toEqual([]);
+	});
+
+	test("gives every packaged toolbar button a FontAwesome glyph", () => {
+		// A button without one keeps the toolbar's square button when the host
+		// enables NDS icons, beside the circular NDS buttons of the rest.
+		const missing = PACKAGED_TOOL_REGISTRATIONS.filter(
+			(registration) => registration.renderToolbar,
+		)
+			.filter(
+				({ icon }) =>
+					typeof icon !== "string" || resolveToolbarFaGlyph(icon) === undefined,
+			)
+			.map(({ toolId, icon }) => `${toolId}: ${String(icon)}`);
+		expect(missing).toEqual([]);
+	});
+
+	describe("rendered toolbar buttons", () => {
+		beforeAll(() => {
+			if (typeof (globalThis as { window?: unknown }).window === "undefined") {
+				GlobalRegistrator.register();
+			}
+		});
+		afterAll(() => {
+			if (GlobalRegistrator.isRegistered) GlobalRegistrator.unregister();
+		});
+
+		test("carry the FontAwesome glyph the registration resolves", () => {
+			// The map test above checks names; this one checks the button each
+			// registration actually builds, so a renderer that drops `faIconName`
+			// fails here rather than falling back to the square button unnoticed.
+			const context: ToolContext = {
+				level: "item",
+				assessment: {} as any,
+				itemRef: { id: "i1" } as any,
+				item: { id: "i1", config: { elements: {} } } as any,
+			};
+			const toolbarContext = {
+				scope: { level: "item", scopeId: "i1" },
+				itemId: "i1",
+				catalogId: "i1",
+				language: "en-US",
+				i18n: resolveInterfaceI18n(null),
+				toolCoordinator: null,
+				toolkitCoordinator: null,
+				ttsService: null,
+				elementToolStateStore: null,
+				toggleTool: () => {},
+				isToolVisible: () => false,
+				subscribeVisibility: null,
+				getToolParameters: () => null,
+				getToolRenderParams: () => ({
+					calculatorType: "basic",
+					availableTypes: ["basic"],
+				}),
+				componentOverrides: { toolTagMap: PACKAGED_TOOL_TAG_MAP },
+			} as unknown as ToolbarContext;
+
+			const checked: string[] = [];
+			const missing: string[] = [];
+			for (const registration of PACKAGED_TOOL_REGISTRATIONS) {
+				if (!registration.renderToolbar) continue;
+				const icon =
+					typeof registration.icon === "function"
+						? registration.icon(context)
+						: registration.icon;
+				const button = registration.renderToolbar(context, toolbarContext)
+					?.button;
+				if (!button) continue;
+				checked.push(registration.toolId);
+				if (button.faIconName !== resolveToolbarFaGlyph(icon as string)) {
+					missing.push(`${registration.toolId}: ${String(button.faIconName)}`);
+				}
+			}
+			expect(checked.length).toBeGreaterThan(10);
+			expect(missing).toEqual([]);
+		});
 	});
 
 	test("gives every loaded capability an element tag", () => {

@@ -207,7 +207,7 @@ scope (`section`, `item`, `passage`), and
 `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` from
 `@pie-players/pie-default-tool-loaders` is the packaged opt-in. Section-level
 tools render only when `show-toolbar` is set. The
-[canonical tool ids](../../docs/tools-and-accomodations/tool_provider_system.md#canonical-tool-ids)
+[canonical tool ids](../../docs/tools-and-accommodations/tool_provider_system.md#canonical-tool-ids)
 are listed with the tool provider system. Tool configuration is validated when
 the toolkit initializes, toolbar overlays included, at the
 `tool-config-strictness` level. The text-to-speech provider is configured under
@@ -1155,7 +1155,7 @@ trust model.
 | Specifier | Contents |
 | --- | --- |
 | `@pie-players/pie-section-player` | Registers every element. Exports `sectionFromItem`, `DEFAULT_SECTION_PLAYER_POLICIES` and the types `SectionPlayerRuntimeConfig`, `SectionPlayerRuntimePlayerConfig`, `SectionPlayerRuntimeHostContract`, `SectionPlayerSnapshot`, `SectionPlayerNavigationSnapshot`, `SectionPlayerPolicies`, `SectionPlayerHostHooks`, the card title context types, `SectionPlayerBackendResolver` and `SectionPlayerBackendResolverContext` |
-| `@pie-players/pie-section-player/browser` | The self-contained browser build, which also exports `createPackagedToolRegistry` and `DEFAULT_TOOL_MODULE_LOADERS` ([Loading from a CDN](../../docs/install/cdn.md#section-player-browser-build)) |
+| `@pie-players/pie-section-player/browser` | The self-contained browser build, which also exports `createPackagedToolRegistry`, `createCalculatorToolRegistration`, `DEFAULT_TOOL_MODULE_LOADERS`, `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` and `createUniversalPersonalNeedsProfile` ([Loading from a CDN](../../docs/install/cdn.md#section-player-browser-build)) |
 | `@pie-players/pie-section-player/components/section-player-splitpane-element` | An alias of the package root |
 | `@pie-players/pie-section-player/contracts/runtime-host-contract` | The host method types |
 | `@pie-players/pie-section-player/contracts/host-hooks` | `SectionPlayerHostHooks` |
@@ -1165,7 +1165,14 @@ trust model.
 ## Development
 
 ```bash
-bun run --cwd packages/section-player dev
+bun run --cwd packages/section-player vite build --watch
+bun run build:watch:section-tools
 bun run --cwd packages/section-player check
 bun run --cwd packages/section-player build
 ```
+
+`vite build --watch` rebuilds the section player's Node build incrementally on
+each save. `build:watch:section-tools` rebuilds the section player, the
+toolkit, every tool package and the section-player debug tools as their
+sources change, rerunning each changed package's full `build`, so use it when
+an edit spans packages.

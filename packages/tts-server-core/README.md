@@ -281,7 +281,7 @@ implements `ITTSCache` over shared storage.
 
 `resolveSpeedRateBucket(rate, fallback = 'medium')` maps a rate multiplier to a
 `SpeedRateBucket`, the three-value speed some backends take in place of a
-continuous rate: at most 0.95 is `slow`, at least 1.5 is `fast`, anything
+continuous rate: at most 0.95 is `slow`, at least 1.05 is `fast`, anything
 between is `fallback`. The custom transport of `ServerTTSProvider` derives its
 `speedRate` field with it unless the host sets a bucket.
 

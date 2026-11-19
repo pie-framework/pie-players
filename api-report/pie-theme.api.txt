@@ -14,6 +14,7 @@
   type DaisyMappingEntry
   type DaisySlot
   type DaisyUIThemeId
+  PIE_THEME_CONTRAST_RELATIONSHIPS
   PIE_THEME_PROVIDER_NONE
   type PieColorSchemeDescriptor
   type PieColorSchemePreview
@@ -30,6 +31,7 @@
   type RegisteredPieColorScheme
   type RegistrationReceipt
   type ResolvePieThemeInput
+  type ThemeContrastRelationship
   type ThemeMode
   type ThemeProviderAdapter
   type ThemeResolution

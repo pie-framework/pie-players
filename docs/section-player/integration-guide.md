@@ -282,7 +282,7 @@ normalizes to a `CanonicalToolsConfig`:
 
 `createPackagedToolRegistry()` registers sixteen capabilities. Fifteen are
 placeable ([canonical tool
-ids](../tools-and-accomodations/tool_provider_system.md#canonical-tool-ids)),
+ids](../tools-and-accommodations/tool_provider_system.md#canonical-tool-ids)),
 among them `magnification`; the sixteenth, `transcript`, is a content region
 that validation rejects in any placement. A tool placed at a level it does not
 support fails validation, which throws under the default `tool-config-strictness`
@@ -329,7 +329,7 @@ admits the highlighter overlay the section mounts.
 Desmos is the default calculator, and its adapter refuses to load Desmos without
 an API key or a proxy endpoint. A licensed deployment supplies the key through
 `provider.runtime.authFetcher`
-([calculator with host auth](../tools-and-accomodations/tool_provider_system.md#calculator-with-host-auth)).
+([calculator with host auth](../tools-and-accommodations/tool_provider_system.md#calculator-with-host-auth)).
 The documented browser integration puts the key in the script URL, so runtime
 delivery keeps it out of the static bundle without making it secret; see the
 [Desmos API Terms](https://www.desmos.com/api-terms).

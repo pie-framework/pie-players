@@ -1,5 +1,5 @@
 /**
- * Build-service bundle path encoding.
+ * Bundle host path encoding.
  *
  * `config.elements` is authored content and its values land in a URL path, so
  * these tests pin both halves of the encoding rule: a legitimate scoped spec

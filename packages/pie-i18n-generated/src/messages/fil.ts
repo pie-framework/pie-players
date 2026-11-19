@@ -416,7 +416,7 @@ const fil = {
 			description: "I-cross out ang mga pagpipilian sa sagot",
 			buttonA11y: "I-Cross Out, alisin ang mga pagpipilian sa sagot",
 			tooltip: "I-Cross Out",
-			toggleA11y: "I-toggle ang cross out para sa {choice}",
+			toggleA11y: "I-cross out ang {choice}",
 			eliminatedA11y: "(na-cross out)",
 			unlabeledChoice: "Pagpipiliang walang label",
 		},

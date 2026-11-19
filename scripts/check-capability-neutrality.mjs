@@ -83,10 +83,12 @@ const CAPABILITY_IDS = [
  * and `pie-tool-overlay-protect` are the same category from the other side: host
  * contracts, declared on content by whoever renders it, naming a box rather than
  * a capability. Every capability that positions over content reads the same two.
+ * `--pie-tool-trigger-active-*` is a token family, not a tag: the open-state
+ * paint every tool trigger shares, the toolbar's buttons among them.
  */
 const CAPABILITY_TAG_PATTERN = /pie-tool-[a-z0-9-]+/g;
 const GENERIC_TOOL_TAG_PATTERN =
-	/^pie-tool-(?:shell|overlay-boundary|overlay-protect)(?:[_-]|$)/;
+	/^pie-tool-(?:shell|overlay-boundary|overlay-protect|trigger-active)(?:[_-]|$)/;
 
 /**
  * PIE element type names: the pie-elements-ng React and Svelte packages, plus
@@ -223,7 +225,7 @@ if (failures.length > 0) {
 		"\nMove the capability-specific part into a capability package, or into the" +
 			"\ncomposition layer (@pie-players/pie-default-tool-loaders) if it is a" +
 			"\ndecision about which capabilities a deployment has. The layers, and which" +
-			"\none this belongs in, are in docs/tools-and-accomodations/architecture.md" +
+			"\none this belongs in, are in docs/tools-and-accommodations/architecture.md" +
 			"\nunder Capability Ownership Layers. See also PIE-886.",
 	);
 	process.exit(1);

@@ -141,27 +141,24 @@
 		"@pie-players/pie-language-tags": "workspace:*",
 		"dompurify": "^3.4.17",
 		"ipaddr.js": "^2.5.0",
-		"semver": "^7.8.5"
+		"semver": "^7.8.6"
 	},
 	"scripts": {
 		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && node scripts/bundle-vendored-modules.mjs && mkdir -p dist/components && cp -R src/components/vendor dist/components/vendor && bun ../../scripts/prune-unreachable-declarations.mjs",
-		"dev": "tsc -p tsconfig.json --watch",
 		"typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.tests.json",
-		"lint": "biome lint .",
 		"check": "svelte-check --tsconfig ./tsconfig.svelte-check.json",
 		"test": "bun test",
-		"check-i18n": "bun run src/i18n/scripts/check-coverage.ts",
 		"scan-hardcoded": "bun run src/i18n/scripts/scan-hardcoded.ts"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.4",
 		"@happy-dom/global-registrator": "^21.0.4",
 		"@pie-element/shared-math-rendering-mathjax": "0.1.8",
-		"@playwright/test": "^1.64.1",
+		"@playwright/test": "^1.65.1",
 		"@types/semver": "^7.8.0",
 		"es-module-shims": "^2.8.4",
 		"esbuild": "^0.28.2",
-		"glob": "^13.0.0",
+		"glob": "^14.0.6",
+		"lit": "^3.3.3",
 		"svelte": "^5.57.3",
 		"svelte-check": "^4.7.8",
 		"typescript": "^5.9.3"

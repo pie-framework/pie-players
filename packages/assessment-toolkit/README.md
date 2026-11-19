@@ -6,8 +6,8 @@ highlighting and per-element tool state. It ships the `ToolkitCoordinator`, the
 services it owns and the `<pie-assessment-toolkit>` custom element. This README
 is for host integrators wiring the toolkit into a section player, an item player
 or their own shell, and for contributors working on toolkit core. The
-[tools and accommodations architecture](../../docs/tools-and-accomodations/architecture.md)
-sets out the design, and [Configuring Tools](../../docs/tools-and-accomodations/tool_provider_system.md)
+[tools and accommodations architecture](../../docs/tools-and-accommodations/architecture.md)
+sets out the design, and [Configuring Tools](../../docs/tools-and-accommodations/tool_provider_system.md)
 is the configuration guide.
 
 ## Contents
@@ -1212,6 +1212,23 @@ the five inline on the document element. Inline styles outrank any author
 selector, so a host override takes `!important` and owns the contrast the
 derivation was maintaining, across every scheme it ships.
 
+### Item toolbar button tokens
+
+`<pie-item-toolbar>` paints an open tool's button through the same three
+`component-public` hooks the inline tools' triggers honour, so a host styles
+every open tool with one set:
+
+| Custom property | Default | Paints |
+| --- | --- | --- |
+| `--pie-tool-trigger-active-background` | `--pie-primary` | Fill of an open tool's button |
+| `--pie-tool-trigger-active-color` | `--pie-white` | Its glyph |
+| `--pie-tool-trigger-active-border-color` | `--pie-primary` | Its border (plain buttons only) |
+
+Every Base Theme and colour scheme sets the defaults as a contrast-checked pair.
+A host that sets the fill owns the glyph's contrast against it. The buttons
+`<pie-nds-icon-button>` renders when the host enables `ndsIcons` have no border,
+so they take the first two.
+
 ### AccessibilityCatalogResolver
 
 ```typescript
@@ -1427,7 +1444,7 @@ player.section = mySection;
 
 ### Safe Custom Tool Configuration
 
-Invalid tool or runtime initialization is handled inside `pie-assessment-toolkit`; the host needs no try/catch. The error model, its events and hooks, and the fallback panel are in [Framework-owned error handling](../../docs/tools-and-accomodations/framework-owned-error-handling.md); host-side config patterns are in [Safe custom tool configuration](../../docs/tools-and-accomodations/safe-custom-tool-config.md).
+Invalid tool or runtime initialization is handled inside `pie-assessment-toolkit`; the host needs no try/catch. The error model, its events and hooks, and the fallback panel are in [Framework-owned error handling](../../docs/tools-and-accommodations/framework-owned-error-handling.md); host-side config patterns are in [Safe custom tool configuration](../../docs/tools-and-accommodations/safe-custom-tool-config.md).
 
 Use `createToolsConfig()` when you want to pre-validate and inspect diagnostics before mounting:
 
@@ -1716,14 +1733,14 @@ the host's obligations.
 
 - [Tool Registry Reference](docs/TOOL_REGISTRY.md) - Registry-based tool management and AfA PNP 3.0 profile support
 - [PNP Configuration Guide](docs/PNP_CONFIGURATION.md) - How to configure student profiles, district policies, and governance rules
-- [Configuring Tools](../../docs/tools-and-accomodations/tool_provider_system.md) - Placement, policy and provider configuration
-- [Toolkit Tool Host Contract](../../docs/tools-and-accomodations/tool_host_contract.md) - Runtime guarantees between hosts and toolkit-managed tools
-- [Tools and Accommodations Architecture](../../docs/tools-and-accomodations/architecture.md) - Tool design, scopes and activation
+- [Configuring Tools](../../docs/tools-and-accommodations/tool_provider_system.md) - Placement, policy and provider configuration
+- [Toolkit Tool Host Contract](../../docs/tools-and-accommodations/tool_host_contract.md) - Runtime guarantees between hosts and toolkit-managed tools
+- [Tools and Accommodations Architecture](../../docs/tools-and-accommodations/architecture.md) - Tool design, scopes and activation
 - [Assessment toolkit in the architecture overview](../../docs/architecture/architecture.md#assessment-toolkit) - Where the toolkit sits among the players
 - [Section Player README](../section-player/README.md) - Section player integration
 - [Section Player Architecture](../section-player/ARCHITECTURE.md#layered-runtime-engine) - Layered runtime engine, kernel/toolkit wiring, lifecycle emit invariant
-- [Framework-Owned Error Handling](../../docs/tools-and-accomodations/framework-owned-error-handling.md) - Canonical framework error model/events and fallback behavior
-- [Safe Custom Tool Configuration](../../docs/tools-and-accomodations/safe-custom-tool-config.md) - Host-side config patterns and validation guidance
+- [Framework-Owned Error Handling](../../docs/tools-and-accommodations/framework-owned-error-handling.md) - Canonical framework error model/events and fallback behavior
+- [Safe Custom Tool Configuration](../../docs/tools-and-accommodations/safe-custom-tool-config.md) - Host-side config patterns and validation guidance
 - [Architecture Overview](../../docs/architecture/architecture.md) - Complete system architecture
 
 ## License

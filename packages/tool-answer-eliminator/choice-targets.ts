@@ -1,3 +1,4 @@
+import { accessibleText } from "./accessible-text.js";
 import type { ChoiceAdapter } from "./adapters/choice-adapter.js";
 import { EBSRAdapter } from "./adapters/ebsr-adapter.js";
 import { MultipleChoiceAdapter } from "./adapters/multiple-choice-adapter.js";
@@ -17,10 +18,16 @@ export interface ChoiceTarget {
 	 * choice has none, which the toggle names from the interface catalog.
 	 */
 	label: string;
-	/** Where the toggle goes, and what carries the eliminated state. */
+	/**
+	 * Takes the toggle as its last child, and carries `data-pie-answer-eliminated`
+	 * while the choice is eliminated.
+	 */
 	container: HTMLElement;
-	/** The range the strategy strikes through or masks. */
-	createRange(): Range | null;
+	/**
+	 * What the strategy strikes through, crosses out or masks, and what dims:
+	 * inside `container`, and without the selection control or the toggle.
+	 */
+	content: Element;
 	isSelected(): boolean;
 	canEliminate(): boolean;
 	/** Blocks or restores the learner's selection of the choice. */
@@ -70,13 +77,10 @@ function guarded<T>(read: () => T, fallback: T, what: string): T {
 }
 
 /**
- * A choice an element returned from `pieSupportTargets('answer-masking')`,
- * with the element its range covers, or null when it is not shaped as the
- * README describes.
+ * A choice an element returned from `pieSupportTargets('answer-masking')`, or
+ * null when it is not shaped as the README describes.
  */
-function declaredTarget(
-	candidate: unknown,
-): { target: ChoiceTarget; content: Element } | null {
+function declaredTarget(candidate: unknown): ChoiceTarget | null {
 	if (!candidate || typeof candidate !== "object") return null;
 	const declared = candidate as Record<string, unknown>;
 	const { id, label, container, content } = declared;
@@ -85,8 +89,8 @@ function declaredTarget(
 	if (!(container instanceof HTMLElement) || !(content instanceof Element)) {
 		return null;
 	}
-	// The strategies find the choice from its range, by walking up from it.
-	if (!container.contains(content)) return null;
+	// The toggle is appended to the container, outside what dims and strikes.
+	if (content === container || !container.contains(content)) return null;
 	if (
 		typeof isSelected !== "function" ||
 		typeof isEliminable !== "function" ||
@@ -96,13 +100,9 @@ function declaredTarget(
 	}
 	const target: ChoiceTarget = {
 		id,
-		label: label.trim() || content.textContent?.trim() || "",
+		label: label.trim() || accessibleText(content),
 		container,
-		createRange() {
-			const range = document.createRange();
-			range.selectNodeContents(content);
-			return range;
-		},
+		content,
 		isSelected: () =>
 			guarded(() => isSelected.call(candidate) === true, false, "isSelected"),
 		canEliminate: () =>
@@ -118,7 +118,7 @@ function declaredTarget(
 				"setEliminated",
 			),
 	};
-	return { target, content };
+	return target;
 }
 
 function setHook(element: Element, name: string): void {
@@ -143,20 +143,19 @@ function declaredChoices(owner: HTMLElement): FoundChoice[] {
 	const found: FoundChoice[] = [];
 	const ids = new Set<string>();
 	for (const candidate of supplied) {
-		const declared = declaredTarget(candidate);
-		if (!declared || ids.has(declared.target.id)) {
+		const target = declaredTarget(candidate);
+		if (!target || ids.has(target.id)) {
 			console.warn(
 				`[AnswerEliminator] <${owner.localName}> supplied a choice that is malformed or repeats an id`,
 				candidate,
 			);
 			continue;
 		}
-		const { target, content } = declared;
 		ids.add(target.id);
-		// The strategies style and announce through these. Unchanged hooks are
+		// The theme styles the eliminated state through these. Unchanged hooks are
 		// not rewritten: every write is a mutation the core observes.
 		setHook(target.container, CHOICE_HOOK_ATTR);
-		setHook(content, LABEL_HOOK_ATTR);
+		setHook(target.content, LABEL_HOOK_ATTR);
 		found.push({ target, owner });
 	}
 	return found;
@@ -174,12 +173,17 @@ const LEGACY_ADAPTERS: readonly ChoiceAdapter[] = [
 	new MultipleChoiceAdapter(),
 ];
 
-function legacyTarget(choice: HTMLElement, adapter: ChoiceAdapter): ChoiceTarget {
+function legacyTarget(
+	choice: HTMLElement,
+	adapter: ChoiceAdapter,
+): ChoiceTarget | null {
+	const content = adapter.getChoiceContent(choice);
+	if (!content) return null;
 	return {
 		id: adapter.getChoiceId(choice),
 		label: adapter.getChoiceLabel(choice),
-		container: choice,
-		createRange: () => adapter.createChoiceRange(choice),
+		container: adapter.getChoiceContainer(choice),
+		content,
 		isSelected: () => adapter.isSelected(choice),
 		canEliminate: () => adapter.canEliminate(choice),
 		setEliminated: (eliminated) => adapter.setSelectable(choice, !eliminated),
@@ -201,7 +205,8 @@ function legacyChoices(
 			if (seen.has(choice)) continue;
 			seen.add(choice);
 			if (owners.some((owner) => owner.contains(choice))) continue;
-			found.push({ target: legacyTarget(choice, adapter), owner: null });
+			const target = legacyTarget(choice, adapter);
+			if (target) found.push({ target, owner: null });
 		}
 	}
 	return found;

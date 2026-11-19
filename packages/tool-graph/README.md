@@ -58,7 +58,7 @@ placement is not snapped. Each point is focusable on its own.
 Points and lines live in the element and are not written to the tool-state
 store. The toolkit reuses the element while the tool stays in the same scope, so
 they survive closing and reopening it; a section change starts them over, as
-[Lifetimes and scope consequences](../../docs/tools-and-accomodations/architecture.md#lifetimes-and-scope-consequences)
+[Lifetimes and scope consequences](../../docs/tools-and-accommodations/architecture.md#lifetimes-and-scope-consequences)
 describes.
 
 ## Styling
@@ -70,5 +70,5 @@ The tool reads the canonical semantic tokens `--pie-background`, `--pie-white`,
 
 ## Related documentation
 
-- [Tools and accommodations architecture](../../docs/tools-and-accomodations/architecture.md)
-- [Tool provider system](../../docs/tools-and-accomodations/tool_provider_system.md)
+- [Tools and accommodations architecture](../../docs/tools-and-accommodations/architecture.md)
+- [Tool provider system](../../docs/tools-and-accommodations/tool_provider_system.md)

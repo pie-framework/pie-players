@@ -387,7 +387,7 @@ const fa = {
 			description: "خط زدن گزینه‌های پاسخ",
 			buttonA11y: "خط زدن، کنار گذاشتن گزینه‌های پاسخ",
 			tooltip: "خط زدن",
-			toggleA11y: "تغییر وضعیت خط‌زدن {choice}",
+			toggleA11y: "خط زدن {choice}",
 			eliminatedA11y: "(خط خورده)",
 			unlabeledChoice: "گزینهٔ بدون برچسب",
 		},

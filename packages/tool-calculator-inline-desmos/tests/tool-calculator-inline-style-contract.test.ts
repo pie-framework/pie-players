@@ -77,6 +77,33 @@ describe("tool-calculator-inline active trigger styling contract", () => {
 		);
 	});
 
+	test("border and ink resolve through the toolbar button's chains", () => {
+		// The toolbar's own buttons read --pie-button-border and
+		// --pie-button-color; a trigger reading --pie-border / --pie-text ignored a
+		// host that restyled toolbar buttons through them.
+		const resting = cssRuleBody(".pie-tool-calculator-inline__button").replace(
+			/\s+/g,
+			"",
+		);
+		expect(resting).toContain(
+			"border:1pxsolidvar(--pie-button-border,var(--pie-border,#ccc))",
+		);
+		expect(resting).toContain(
+			"color:var(--pie-button-color,var(--pie-text,#333))",
+		);
+	});
+
+	test("hover glyph follows the theme, not a literal", () => {
+		const declarations = source
+			.slice(source.indexOf("<style"))
+			.replace(/\/\*[\s\S]*?\*\//g, "")
+			.replace(/\s+/g, "");
+		expect(declarations).not.toContain("#667eea");
+		expect(declarations).toContain(
+			"color:var(--pie-button-hover-color,var(--pie-button-color,var(--pie-text,#333)))",
+		);
+	});
+
 	test("no surface fill resolves through --pie-background", () => {
 		/*
 		 * Ported from `packages/calculator-cortex/tests/calculator-cortex-style-contract.test.ts`.
@@ -127,14 +154,19 @@ describe("tool-calculator-inline active trigger styling contract", () => {
 		expect(contrastRatio("#ffffff", "#1268aa")).toBeGreaterThanOrEqual(4.5);
 	});
 
-	test("active trigger ink collapses to the page colour under a scheme", () => {
+	test("active trigger ink defaults to --pie-white, the page colour under a scheme", () => {
+		// Every colour scheme sets `--pie-white` to its page colour, and the theme
+		// checks it against `--pie-primary` and `--pie-primary-dark` as the pressed
+		// trigger glyph. A fixed white fails on a light primary, as in dark themes.
 		for (const selector of [
 			".pie-tool-calculator-inline__button--active",
 			".pie-tool-calculator-inline__button--active:hover:not(:disabled)",
 		]) {
 			const body = cssRuleBody(selector).replace(/\s+/g, "");
-			expect(body, selector).toContain("--pie-fixed-hue-collapse");
-			expect(body, selector).toContain("var(--pie-background");
+			expect(body, selector).toContain(
+				"color:var(--pie-tool-trigger-active-color,var(--pie-white,#fff))",
+			);
+			expect(body, selector).not.toMatch(/,white\)/);
 		}
 	});
 

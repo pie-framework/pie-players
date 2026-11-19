@@ -390,7 +390,7 @@ const am = {
 			description: "የመልስ ምርጫዎችን በመስመር መሻገር",
 			buttonA11y: "በመስመር መሻገር፣ የመልስ ምርጫዎችን ማስወጋት",
 			tooltip: "በመስመር መሻገር",
-			toggleA11y: "ለ{choice} ማስወጋትን ቀያይር",
+			toggleA11y: "{choice}ን አስወጋ",
 			eliminatedA11y: "(የተወጋ)",
 			unlabeledChoice: "ያልተሰየመ ምርጫ",
 		},

@@ -90,9 +90,11 @@ parameter. Absent or empty, the request is today's request.
 
 **Backend.** A backend that serves variants:
 
-- negotiates with the semantics of `negotiateContentLanguage` and passes the
+- negotiates with the semantics of `negotiateContentLanguage`
+  (`@pie-players/pie-language-tags`, re-exported through
+  `@pie-players/pie-players-shared/i18n/language-tags`) and passes the
   conformance fixtures in
-  `packages/players-shared/tests/content-language-fixtures.json` unchanged;
+  `packages/pie-language-tags/test/content-language-fixtures.json` unchanged;
 - resolves per item, with items that share a passage resolved together so the
   passage renders in one language;
 - applies the assessment's `LanguagePolicy`; a request may narrow the policy and

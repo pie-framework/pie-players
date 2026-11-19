@@ -16,4 +16,12 @@ export declare class NdsIconButton extends HTMLElement {
 	iconName: string;
 	disabled: boolean;
 	buttonAriaLabel: string;
+	/** `button-aria-pressed`: copied onto the inner button's `aria-pressed`. */
+	buttonAriaPressed: string;
+	/** `has-popup`: copied onto the inner button's `aria-haspopup`. */
+	hasPopup: string;
+	/** "true" | "false": copied onto the inner button's `aria-expanded`. */
+	expanded: string;
+	/** Id copied onto the inner button's `aria-controls`. */
+	controls: string;
 }

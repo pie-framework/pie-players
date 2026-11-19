@@ -3,7 +3,7 @@
  * that are not toolbar tools.
  *
  * "Tool" in this codebase means *policy-addressable capability*, not "gadget on
- * a toolbar" (see `docs/tools-and-accomodations/architecture.md`). Most such
+ * a toolbar" (see `docs/tools-and-accommodations/architecture.md`). Most such
  * capabilities render as toolbar surfaces, so the engine's main answer is a
  * placement-scoped `ToolPolicyDecision`. Some do not: a signed alternate renders
  * as its own region and is never placed on a toolbar, so asking

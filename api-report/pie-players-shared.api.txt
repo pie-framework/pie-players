@@ -235,6 +235,7 @@
   pieRegistry
   projectSessionIntoHostContainer
   registerPreloadedElements
+  removeUndeclaredMarkupTags
   resolveConfigureConfiguration
   resolveContainingBlockRect
   resolveEsmAssetRoot
@@ -589,6 +590,7 @@
   pieElementContextsWithin
   pieRegistry
   projectSessionIntoHostContainer
+  removeUndeclaredMarkupTags
   resolveConfigureConfiguration
   resolveInstrumentationProvider
   runtimeElementTags

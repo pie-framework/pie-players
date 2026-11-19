@@ -1,6 +1,6 @@
 /**
  * Tool Policy Engine — facade class. See
- * `docs/tools-and-accomodations/architecture.md`.
+ * `docs/tools-and-accommodations/architecture.md`.
  *
  * Wraps `composeDecision(...)` with engine-instance state:
  *   - bound inputs (`tools`, `assessment`, `pnpEnforcement`) and the

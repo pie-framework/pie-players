@@ -2,7 +2,7 @@
  * Tool Policy Provenance.
  *
  * Precedence and the rule vocabulary are documented in
- * `docs/tools-and-accomodations/architecture.md`.
+ * `docs/tools-and-accommodations/architecture.md`.
  *
  * Tracks decisions from every Pass-1 contributor: host placement, host policy,
  * provider veto, PNP/profile gates, and custom policy sources.

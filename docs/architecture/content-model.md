@@ -98,7 +98,8 @@ resolves variants:
   recording `substitution: "stale"`; `"require-current"` treats it as missing.
 
 **Language matching** is BCP 47 lookup that never crosses scripts:
-`negotiateContentLanguage` in `@pie-players/pie-players-shared/i18n/language-tags`
+`negotiateContentLanguage`, defined in `@pie-players/pie-language-tags` and
+re-exported through `@pie-players/pie-players-shared/i18n/language-tags`,
 walks `zh-TW → zh-Hant`, skips a bare `zh` held in another script, and then
 widens to a sibling in the same language and script, `es-MX → es-ES`. A sibling
 carries the request's variant and private-use subtags, so a variety such as
@@ -109,7 +110,7 @@ the order a backend lists members in never decides. Its
 `available` list stands for content that declares no language, and `source`
 names the family source the fallback chain ends at. A backend that negotiates
 on its own side matches the conformance fixtures in
-`packages/players-shared/tests/content-language-fixtures.json`.
+`packages/pie-language-tags/test/content-language-fixtures.json`.
 
 **Sessions.** The section player records an item session's `content` from the
 `identity` in the item player's delivery `backend-load-complete`, and falls back

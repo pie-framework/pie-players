@@ -4,7 +4,9 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+	assertPublishablePackagesChecked,
 	collectDeclaredTargets,
+	ENTRY_FIELDS,
 	getPublishablePackages,
 	isPackedMatch,
 	mapConcurrent,
@@ -64,22 +66,10 @@ export const collectExportTargetViolations = (declaredTargets, packedFiles) => {
 /**
  * Every path the manifest promises the tarball holds: the entry fields, every
  * `exports` target, and the `customElements` manifest, which tools read by that
- * field's path and which, unlike the others, is written without a `./` prefix.
+ * field's path.
  */
-export const collectPackTargets = (pkg) => {
-	const targets = collectDeclaredTargets(pkg);
-	if (typeof pkg?.customElements === "string") {
-		targets.add(pkg.customElements.replace(/^\.\//, ""));
-	}
-	return targets;
-};
-
-export const assertPublishablePackagesChecked = (checked) => {
-	if (checked > 0) return;
-	throw new Error(
-		"no publishable packages discovered; check scripts/publish-policy.json workspaceRoots",
-	);
-};
+export const collectPackTargets = (pkg) =>
+	collectDeclaredTargets(pkg, [...ENTRY_FIELDS, "customElements"]);
 
 const isVirtualSource = (sourcePath) =>
 	/^(?:dep:|browser-external:|virtual:|data:)|\0/.test(sourcePath);

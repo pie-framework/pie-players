@@ -378,7 +378,7 @@ const enAU = {
 			description: "Strike through answer choices",
 			buttonA11y: "Strike Through, eliminate answer choices",
 			tooltip: "Strike Through",
-			toggleA11y: "Toggle elimination for {choice}",
+			toggleA11y: "Eliminate {choice}",
 			eliminatedA11y: "(eliminated)",
 			unlabeledChoice: "Unlabelled choice",
 		},

@@ -281,7 +281,7 @@ section numbers. PIE codes to `item-translation`, `keyword-translation`,
 `language-of-interface` and `sign-language` instead of APIP's
 `itemTranslationDisplay` and `keyWordTranslations`, and cites APIP v1.0 only as
 evidence for the variant model it originated. The
-[tools and accommodations architecture](../tools-and-accomodations/architecture.md)
+[tools and accommodations architecture](../tools-and-accommodations/architecture.md)
 does the same in framing `requiresAuthoredContent` as AfA's DRD half of the PNP/DRD
 pair.
 
@@ -295,7 +295,7 @@ so they read as chosen rather than overlooked.
 
 | Decision | Authority | Where it is met |
 | --- | --- | --- |
-| Interface locale is a deployment fact the player publishes from `locale` | QTI 3.0 declares item content with `xml:lang` and leaves the delivery's UI language to the platform; LTI passes the platform's display locale as a `launch_presentation` hint; AfA PNP 3.0 `language-of-interface` is a learner preference the platform's policy resolves | one scalar on the composition context ([Interface locale](#interface-locale)); a PNP preference reaches it only through host policy ([tools and accommodations](../tools-and-accomodations/architecture.md)); no element or item sets it |
+| Interface locale is a deployment fact the player publishes from `locale` | QTI 3.0 declares item content with `xml:lang` and leaves the delivery's UI language to the platform; LTI passes the platform's display locale as a `launch_presentation` hint; AfA PNP 3.0 `language-of-interface` is a learner preference the platform's policy resolves | one scalar on the composition context ([Interface locale](#interface-locale)); a PNP preference reaches it only through host policy ([tools and accommodations](../tools-and-accommodations/architecture.md)); no element or item sets it |
 | Content language is a separate fact, declared on each run | QTI 3.0 `xml:lang`; WCAG 2.2 3.1.2 Language of Parts (AA); HTML `dir` and UAX #9 for direction | `env` carries it ([Content language](#content-language)); `lang` and `dir` go on the content subtree, and on the chrome subtree where the interface locale differs |
 | The page owns its language | WCAG 2.2 3.1.1 Language of Page (A) | no player or element writes `document.documentElement` |
 | Tags are BCP 47, canonicalized | RFC 5646 (BCP 47); W3C *Language tags in HTML and XML* | `normalizeLanguageTag` and `toLanguageTag`: `es_ES.UTF-8` compares as `es-es` and renders as `es-ES` |
@@ -747,7 +747,7 @@ behavior-preserving until a host opts in by supplying a locale.
   POSIX/BCP-47 matching defect, owner-scope resolution
 - [`../prds/speech-to-text.md`](../prds/speech-to-text.md) — per-locale
   recognizer provisioning
-- [`../tools-and-accomodations/architecture.md`](../tools-and-accomodations/architecture.md)
+- [`../tools-and-accommodations/architecture.md`](../tools-and-accommodations/architecture.md)
   — ownership layers, capability neutrality, PNP precedence
 - [`../integrations/consumer-api-dependencies.md`](../integrations/consumer-api-dependencies.md)
   — `env` pass-through, attribute typing, propagation risk

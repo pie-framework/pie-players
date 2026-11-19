@@ -388,7 +388,7 @@ const tr = {
 			description: "Cevap seçeneklerinin üstünü çizme",
 			buttonA11y: "Üstünü çiz, cevap seçeneklerini elemek için",
 			tooltip: "Üstünü çiz",
-			toggleA11y: "{choice} seçeneği için elemeyi aç veya kapat",
+			toggleA11y: "{choice} seçeneğini ele",
 			eliminatedA11y: "(elendi)",
 			unlabeledChoice: "Etiketsiz seçenek",
 		},

@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 
-import { collectLockFindings, parseLock } from "../check-lock-consistency.mjs";
+import {
+	collectLockFindings,
+	lockReport,
+	parseLock,
+} from "../check-lock-consistency.mjs";
 
 const OLD = "14.0.7-next.20261019093941";
 const NEW = "14.0.7-next.20261019155156";
@@ -126,5 +130,52 @@ describe("collectLockFindings", () => {
 		};
 
 		expect(collectLockFindings(lock)).toEqual([]);
+	});
+});
+
+describe("lockReport", () => {
+	test("reports a stale Playwright entry and dist-tag drift together", () => {
+		const lock = {
+			workspaces: {
+				"apps/demo-ui": {
+					name: "@pie-players/demo-ui",
+					dependencies: { "@pie-element/multiple-choice": "next" },
+				},
+				"apps/item-demos": {
+					name: "@pie-players/item-demos",
+					dependencies: { "@pie-element/multiple-choice": "next" },
+				},
+			},
+			packages: {
+				"@playwright/test": entry("@playwright/test", "1.65.1"),
+				playwright: entry("playwright", "1.65.1"),
+				"playwright-core": entry("playwright-core", "1.64.1"),
+				"@pie-element/multiple-choice": entry(
+					"@pie-element/multiple-choice",
+					OLD,
+				),
+				"@pie-players/item-demos/@pie-element/multiple-choice": entry(
+					"@pie-element/multiple-choice",
+					NEW,
+				),
+			},
+		};
+
+		const report = lockReport(lock).join("\n");
+		expect(report).toContain("requires playwright-core to match");
+		expect(report).toContain("@pie-element/multiple-choice@next resolves to");
+	});
+
+	test("is empty for a consistent lock", () => {
+		const lock = {
+			workspaces: {},
+			packages: {
+				"@playwright/test": entry("@playwright/test", "1.65.1"),
+				playwright: entry("playwright", "1.65.1"),
+				"playwright-core": entry("playwright-core", "1.65.1"),
+			},
+		};
+
+		expect(lockReport(lock)).toEqual([]);
 	});
 });

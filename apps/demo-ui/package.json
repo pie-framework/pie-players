@@ -30,7 +30,6 @@
 	},
 	"scripts": {
 		"check": "svelte-check --tsconfig ./tsconfig.json",
-		"lint": "biome lint src",
 		"test": "bun test src"
 	},
 	"dependencies": {
@@ -65,11 +64,10 @@
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/tts-server-core": "workspace:*",
-		"semver": "^7.8.5",
+		"semver": "^7.8.6",
 		"svelte": "^5.57.3"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.4",
 		"@pie-players/tts-server-google": "workspace:*",
 		"@pie-players/tts-server-polly": "workspace:*",
 		"@types/semver": "^7.8.0",

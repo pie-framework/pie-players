@@ -215,6 +215,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		initializeMathRendering,
 		mapEsmViewElements,
 		makeUniqueTags,
+		removeUndeclaredMarkupTags,
 		validatePieConfigContract,
 		normalizeItemSessionContainer,
 		normalizeItemPlayerStrategy,
@@ -1013,7 +1014,9 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		config: ConfigEntity;
 		applied: FeatureDecisionAppliedDetail[];
 	} {
-		const versionNormalizedConfig = normalizePreloadedElementVersions(configEntity);
+		const versionNormalizedConfig = normalizePreloadedElementVersions(
+			removeUndeclaredMarkupTags(configEntity),
+		);
 		const { config, applied } = applyItemFeatures(
 			versionNormalizedConfig,
 			itemFeatureInputs,
@@ -1187,8 +1190,9 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	// ─── loadConfig pipeline ─────────────────────────────────────────────────
 	//
 	//     parse → validate (assertPieConfigContract, then contract warnings)
-	//       → prepareConfigEntity (preloaded version alignment, item
-	//         features, makeUniqueTags) → assertElementPackagesAllowed
+	//       → prepareConfigEntity (undeclared markup tags removed, preloaded
+	//         version alignment, item features, makeUniqueTags)
+	//       → assertElementPackagesAllowed
 	//       → collectRuntimeSupportHints (esm) → initializeMathRendering (iife)
 	//       → preloaded: defineAuthoredPreloadedTags + assertRegistered
 	//         | iife, esm: ensureRegistered

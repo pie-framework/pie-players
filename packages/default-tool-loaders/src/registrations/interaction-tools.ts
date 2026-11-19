@@ -24,12 +24,13 @@ import {
 	syncButtonAndOverlayVisibility,
 } from "@pie-players/pie-assessment-toolkit/tools/registration";
 import { resolveOverlayElement } from "./overlay-element-cache.js";
+import { resolveToolbarFaGlyph } from "./toolbar-glyphs.js";
 
-type EliminationStrategy = "strikethrough" | "mask";
+type EliminationStrategy = "strikethrough" | "cross" | "mask";
 
 /** The policy parameters' `strategy`, defaulting to strikethrough. */
 const normalizeEliminationStrategy = (value: unknown): EliminationStrategy =>
-	value === "mask" ? "mask" : "strikethrough";
+	value === "cross" || value === "mask" ? value : "strikethrough";
 
 /** The AfA PNP 3.0 support term an element declares to take the eliminator. */
 const ANSWER_MASKING = "answer-masking";
@@ -236,7 +237,6 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 					elementIds?: readonly string[];
 				},
 		);
-		overlay.setAttribute("button-alignment", "inline");
 		overlay.setAttribute(
 			"strategy",
 			normalizeEliminationStrategy(
@@ -244,10 +244,13 @@ export const answerEliminatorToolRegistration: ToolRegistration = {
 			),
 		);
 
+		const icon =
+			typeof this.icon === "function" ? this.icon(context) : this.icon;
 		const button: ToolToolbarButtonDefinition = {
 			toolId: this.toolId,
 			label: this.name,
-			icon: typeof this.icon === "function" ? this.icon(context) : this.icon,
+			icon,
+			faIconName: resolveToolbarFaGlyph(icon),
 			disabled: false,
 			ariaLabel: toolbarContext.i18n.t("tools.answerEliminator.buttonA11y"),
 			tooltip: toolbarContext.i18n.t("tools.answerEliminator.tooltip"),

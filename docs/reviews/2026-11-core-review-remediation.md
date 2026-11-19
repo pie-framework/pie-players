@@ -430,7 +430,7 @@ release until every original finding is eliminated.
 
 | Order / branch anchor | Grouped scope | Admission / gates | Status |
 |---|---|---|---|
-| 11 / R-11 + remaining R-23, then remaining R-25/R-04 | Calculator lifecycle/telemetry and helper dedupe together if a demonstrated leak/divergence warrants it; otherwise defer the new package (D5). Separately finish release-infrastructure cleanup only where it fixes a verified gate/build risk. Unused smoke tool (D1), auth refactors, resolutions removal and broad svelte-check alignment are not automatic stabilization work. | Package/fixed-versioning checks if D5 approved; relevant regressions and scripts tests; separate runtime and infrastructure PRs rather than one cross-cutting cleanup PR. | deferred recommendation; pending maintainer disposition |
+| 11 / R-11 + remaining R-23, then remaining R-25/R-04 | Calculator lifecycle/telemetry and helper dedupe together if a demonstrated leak/divergence warrants it; otherwise defer the new package (D5). Separately finish release-infrastructure cleanup only where it fixes a verified gate/build risk. Unused smoke tool (D1), auth refactors, resolutions removal and broad svelte-check alignment are not automatic stabilization work. | Package/fixed-versioning checks if D5 approved; relevant regressions and scripts tests; separate runtime and infrastructure PRs rather than one cross-cutting cleanup PR. | partial: R-04's superseded pack scripts removed in d9024b820; D1, the `check:publish-surface` alias and the `resolutions` removal done in PIE-1448; the rest deferred, pending maintainer disposition |
 | 12 / R-22 + removal portions of R-16/R-17/R-21 | One explicit public-surface batch: exact symbol list, consumer verification and migration notes before editing. Includes assessment readiness type/selectors, public controller methods and session-result narrowing, catalog-store writers, and the R-22 inventory. D8 governs registry retention. No removals elsewhere. | Maintainer-approved removal list; pad procedure, API report, type/consumer and packaging checks; patch changeset names affected host shapes. If approved, land immediately before the coordinated lockstep release, with time for release-candidate verification. Publishing itself needs a separate instruction. | held; no blanket approval and no scheduled release |
 | 13 / R-26 | Audit every original R-id and D-id: completed scope, deferred scope with rationale, remaining client impacts, and release-candidate evidence. | No silent omissions; unresolved choices cannot be treated as accepted defaults. | ongoing, final audit after applicable batches |
 
@@ -476,7 +476,7 @@ explicit client-impact decisions. D7's recommended path preserves behavior.
 
 | ID | Decision | Options | Proposed default | Resolution |
 |---|---|---|---|---|
-| D1 | `scripts/smoke-pie-elements-ng-esm.mjs` (~950 lines, zero callers) | wire into docs / delete | delete | pending |
+| D1 | `scripts/smoke-pie-elements-ng-esm.mjs` (~950 lines, zero callers) | wire into docs / delete | delete | resolved: deleted with its engine and test (PIE-1448) |
 | D2 | Escape-close semantics for obscuring overlay tools | page-wide close with `defaultPrevented` guard (magnifier, WCAG 2.4.11) / focused-panel only (line-reader) | ordered dismissal | resolved: relevant obscuring overlay, handled-event protection, one layer per press; preserve content focus |
 | D3 | `langId`/`lang_id` wire reconciliation | both spellings everywhere / single spelling | canonical internal field, endpoint-specific adapters | resolved direction; known-client verification required before dual-send removal |
 | D4 | TTS cache module | add optional cache hook to `BaseTTSProvider`/`ITTSServerProvider` / document route-level caching as the story | route-level caching | resolved: keep route-level caching; no provider hook for 1.0 |
@@ -548,3 +548,14 @@ anything a refactor invalidated. Full local gate before any push
   defect repair from optional architecture/cleanup. D1–D8 remain pending; this
   edit records recommendations, not authorization. No item was marked fixed
   based on the reorder.
+
+- **2026-11-09 (d9024b820)** — R-04's four superseded pack scripts
+  (`check:pack-exports`, `check:pack-smoke`, `check:sourcemaps`,
+  `check:runtime-compat`) are deleted, and pack-exports' `customElements` rule
+  moves into `check:pack-integrity`.
+
+- **2026-11-10 (PIE-1448)** — the dead-scripts cleanup closes D1 and the rest
+  of R-04's infrastructure scope: it deletes the smoke tool with its engine and
+  test, and folds `check:publish-surface` into `check:source-exports`, the one
+  gate that ran it. From the P3 infra tail it drops the root `resolutions`,
+  which duplicated `overrides`. The rest of batch 11 is unchanged.

@@ -32,6 +32,30 @@ for (const route of ["three-questions", "quiz-engine-nds-icon"]) {
 		});
 	}
 
+	if (route === "quiz-engine-nds-icon") {
+		for (const factor of [2, 4]) {
+			// Under ndsIcons every packaged tool's toolbar button is an NDS button,
+			// not only the calculator's, so each of them has to hold up when magnified.
+			test(`keeps every NDS section toolbar button usable at ${factor * 100}% browser zoom`, async ({ baseURL }, testInfo) => {
+				await withBrowserZoom(baseURL!, testInfo, async (page, setZoom, capture) => {
+					await page.goto(`/${route}?mode=candidate&layout=splitpane`, { waitUntil: "networkidle" });
+					await setZoom(factor);
+					const toolbar = page.locator("pie-section-toolbar").first();
+					await expect(toolbar.locator("pie-nds-icon-button").first()).toBeVisible();
+					const buttons = await toolbar.locator("pie-nds-icon-button").getByRole("button").all();
+					expect(buttons.length).toBeGreaterThanOrEqual(6);
+					expect(await toolbar.locator("button.item-toolbar__button").count()).toBe(0);
+					for (const button of buttons) {
+						await button.focus();
+						await expectUsableTarget(button);
+					}
+					await capture("section-toolbar-nds.png");
+					await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+				});
+			});
+		}
+	}
+
 	for (const width of [320, 375, 1280]) {
 		test(`keeps ${route} controls usable in a ${width}px host`, async ({ page }, testInfo) => {
 			await page.addInitScript(() => {

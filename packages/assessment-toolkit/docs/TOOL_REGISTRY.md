@@ -296,7 +296,7 @@ A calculator's provider reads `tools.providers.calculator`:
 - `provider.runtime.authFetcher` supplies the key from the host at runtime.
 - `settings` goes to the vendor adapter.
 
-[Configuring Tools](../../../docs/tools-and-accomodations/tool_provider_system.md#calculator-with-host-auth) covers the key sources.
+[Configuring Tools](../../../docs/tools-and-accommodations/tool_provider_system.md#calculator-with-host-auth) covers the key sources.
 
 ### Default Tools
 
@@ -764,7 +764,7 @@ AfA PNP 3.0 defines the profile's supports and prohibitions. Item settings, dist
 ## References
 
 - [PNP Configuration Guide](PNP_CONFIGURATION.md) - How integrators configure governance rules
-- [Configuring Tools](../../../docs/tools-and-accomodations/tool_provider_system.md) - Placement, providers and host resolvers
+- [Configuring Tools](../../../docs/tools-and-accommodations/tool_provider_system.md) - Placement, providers and host resolvers
 - [CONTEXT.md](../../../CONTEXT.md) - Definitions of support id, placement, grant, tool surface and catalog owner
 - [IMS AfA PNP 3.0 Information Model](https://www.imsglobal.org/spec/afa/v3p0/info)
 - [QTI 3.0 Specification](https://www.imsglobal.org/spec/qti/v3p0)

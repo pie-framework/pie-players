@@ -1,5 +1,13 @@
 # @pie-players/pie-section-player-tools-session-debugger
 
+## 1.0.0-beta.11
+
+### Patch Changes
+
+- Updated dependencies [3b47fd3]
+- Updated dependencies [66477a7]
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.11
+
 ## 1.0.0-beta.10
 
 ### Patch Changes

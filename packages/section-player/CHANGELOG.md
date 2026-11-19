@@ -1,5 +1,55 @@
 # @pie-players/pie-section-player
 
+## 1.0.0-beta.11
+
+### Patch Changes
+
+- 3b47fd3: The answer eliminator's toggle is a round icon button on the shared trigger
+  tokens and the NDS icon button under `nds-icons`. `strategy` gains `cross`. An
+  eliminated choice dims its content and is no longer marked `aria-disabled`.
+  `button-alignment` and `--pie-answer-eliminator-toggle-color` are removed: the
+  toggle always sits in flow as the choice container's last child, and its
+  colours come from the `--pie-button-*` and `--pie-tool-trigger-active-*` tokens.
+  The toggle is named "Eliminate {choice}" in every locale, ends a legacy
+  multiple-choice row ahead of its rationale, and is absent where a choice cannot
+  be eliminated, as in evaluate mode. There an eliminated choice keeps its toggle,
+  pressed and disabled, and a struck legacy multiple-choice choice stays
+  unselectable when the element re-renders its inputs. The NDS eliminator toggle
+  and the NDS inline TTS trigger keep their accent when pressed, so
+  `--pie-tool-trigger-active-color` no longer recolours either.
+  
+  Strikethrough and cross draw SVG marks in the choice's container, over the
+  content and outside its dim, so a strike keeps its full colour and reaches
+  images and MathJax output, and the content's markup stays as the element
+  rendered it. The Highlight API paint and the
+  `pie-answer-eliminator-eliminated-fallback`, `pie-answer-eliminator-image-strike*`
+  and `pie-answer-eliminator-math-strike*` classes are removed. Choices an
+  element renders after the tool turns on get toggles, turning the tool on again
+  leaves tracked choices as they are, a strategy change repaints in place with
+  the tool on or off, and focus follows a re-rendered choice to its new toggle.
+  Toggles are named from an expression's spoken name and an image's alt text. A
+  legacy element's session decides which choice is selected, so a shown correct
+  answer hides no toggle. Every NDS mount bridges `--color-primary-white` to the
+  button background, and the calculator's and the eliminator's pressed glyphs
+  default to `--pie-white`.
+- 46dd86e: The section player's `./browser` build exports `SECTION_PLAYER_PREFERRED_TOOL_PLACEMENT` and `createUniversalPersonalNeedsProfile`, so a page that loads the build reads the packaged placement and universal profile from the release it renders. `@pie-players/pie-theme` exports `PIE_THEME_CONTRAST_RELATIONSHIPS` and its `ThemeContrastRelationship` type, the pairs the theme's contrast diagnostics measure. Host R keeps local copies of all three and can adopt the exports.
+- a6f323c: A markup custom-element tag that `elements` does not declare and no model
+  references is a config-contract warning instead of an error, so items that
+  carry one, such as a leftover rubric tag, render again in the item and section
+  players. The item player removes such tags from its runtime copy of the markup
+  and keeps their content, through the new `removeUndeclaredMarkupTags`, so an
+  undeclared tag never upgrades an element another item registered. A model whose
+  element is undeclared still fails validation.
+- Updated dependencies [3b47fd3]
+- Updated dependencies [677f1e3]
+- Updated dependencies [66477a7]
+- Updated dependencies [a6f323c]
+  - @pie-players/pie-default-tool-loaders@1.0.0-beta.11
+  - @pie-players/pie-players-shared@1.0.0-beta.11
+  - @pie-players/pie-assessment-toolkit@1.0.0-beta.11
+  - @pie-players/pie-item-player@1.0.0-beta.11
+  - @pie-players/pie-context@1.0.0-beta.11
+
 ## 1.0.0-beta.10
 
 ### Patch Changes

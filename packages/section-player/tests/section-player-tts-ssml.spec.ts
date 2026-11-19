@@ -2095,6 +2095,16 @@ test.describe("section player demo tts-ssml", () => {
 		await expect(speedButtons.nth(2)).toContainText("1.5x");
 		await expect(speedButtons.nth(3)).toContainText("Normal");
 		await expect(speedButtons.nth(3)).toHaveAttribute("aria-checked", "true");
+		// Every control shows its accessible name as a hover tooltip.
+		const triggerAndControls = passageInlineTts.locator(
+			"button.pie-tool-tts-inline__trigger, .pie-tool-tts-inline__trigger button, [data-pie-tts-control]",
+		);
+		await expect(triggerAndControls).toHaveCount(8);
+		for (const control of await triggerAndControls.all()) {
+			const name = await control.getAttribute("aria-label");
+			expect(name).toBeTruthy();
+			await expect(control).toHaveAttribute("title", name as string);
+		}
 		await passagePanel.getByRole("button", { name: "Stop reading" }).click();
 		await expect(passagePanel).toHaveCount(0);
 

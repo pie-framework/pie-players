@@ -72,14 +72,15 @@ describe("tool-tts-inline trigger styling contract", () => {
 	});
 
 	test("trigger passes disclosure + toggle semantics to its inner button", () => {
-		// NDS copies these three onto the inner <button>; only aria-busy, which it
-		// does not forward, is mirrored by hand.
+		// NDS copies these three onto the inner <button>; aria-busy and the hover
+		// title, which it does not forward, are mirrored by hand.
 		expect(triggerSnippet).toContain("expanded={controlsVisible ? 'true' : 'false'}");
 		expect(triggerSnippet).toContain("controls={controlsVisible ? panelId : ''}");
 		expect(triggerSnippet).toContain(
 			"button-aria-pressed={controlsVisible ? 'true' : 'false'}",
 		);
-		expect(triggerSnippet).toContain("use:reflectAria={{ 'aria-busy':");
+		expect(triggerSnippet).toContain("use:reflectToInnerButton={{");
+		expect(triggerSnippet).toContain("title: interfaceI18n.t(triggerLabelKey),");
 		expect(triggerSnippet).not.toContain("'aria-expanded'");
 	});
 
@@ -445,7 +446,7 @@ describe("tool-tts-inline keyboard order contract", () => {
 		// with it — Stop can still halt playback / dismiss the panel, and staying
 		// enabled is what lets it keep focus it already had.
 		expect(source).toContain(
-			"aria-label={interfaceI18n.t('tools.textToSpeech.inline.stopA11y')}\n\t\t\t\t\t\tdisabled={!ttsService}",
+			"title={interfaceI18n.t('tools.textToSpeech.inline.stopA11y')}\n\t\t\t\t\t\tdisabled={!ttsService}",
 		);
 		// Rewind / fast-forward correctly go inactive with `speaking`.
 		expect(source).toContain("disabled={!ttsService || !speaking}");

@@ -208,8 +208,10 @@ function clearRegion(wrapper: Element) {
  * measured. Most never scroll: a table that fits its column, a drag tile, a
  * layout table. Left as regions they add a tab stop and a landmark each, so the
  * live player measures every wrapper and keeps the region only where there is
- * something to scroll. Measurements are read for every wrapper before the first
- * write. A wrapper holding focus keeps its region, so a sync never drops focus.
+ * something to scroll. The theme clips a table wrapper only while it is a region,
+ * so one that fits leaves a keypad or menu opened in the table free to overflow
+ * it. Measurements are read for every wrapper before the first write. A wrapper
+ * holding focus keeps its region, so a sync never drops focus.
  */
 export function syncOverwideRegions(
 	wrappers: Iterable<Element>,
@@ -219,13 +221,53 @@ export function syncOverwideRegions(
 	for (const wrapper of wrappers) {
 		if (!wrapper.isConnected) continue;
 		if (!wrapper.classList.contains(spec.wrapperClass)) continue;
-		measured.push([wrapper, wrapper.scrollWidth > wrapper.clientWidth]);
+		measured.push([wrapper, contentOverflows(wrapper)]);
 	}
 	for (const [wrapper, scrolls] of measured) {
 		const node = wrapper.firstElementChild;
 		if (scrolls && node?.matches(spec.selector)) setRegion(wrapper, node, spec);
 		else if (!scrolls && !isFocused(wrapper)) clearRegion(wrapper);
 	}
+}
+
+/**
+ * Whether the wrapper's content is wider than the wrapper: the content's own
+ * box, offset by its used inline-start margin, against the wrapper's width.
+ *
+ * Not the wrapper's `scrollWidth`, which also counts what the content positions
+ * outside itself. A keypad or menu a PIE element opens inside a table widens the
+ * scroll extent without giving the wrapper anything to scroll, and measured that
+ * way a resize while it is open, a cell growing as the learner types, would make
+ * the wrapper the scroll container that clips it. The margin is the used value,
+ * so a centred table that fits reads as fitting and an indented one pushed past
+ * the edge does not. None of the three values moves with the wrapper's scroll
+ * position. The 1px allowance absorbs `offsetWidth` rounding against a
+ * fractional margin.
+ *
+ * `offsetWidth` ignores the content's own transform, so a scaled or rotated
+ * image can overflow at an untransformed width that fits. Transformed content
+ * is measured by the scroll width, which counts the transform.
+ */
+function contentOverflows(wrapper: Element): boolean {
+	const content = wrapper.firstElementChild as HTMLElement | null;
+	if (!content?.offsetWidth) return false;
+	const view = wrapper.ownerDocument.defaultView;
+	if (!view) return false;
+	const rtl = view.getComputedStyle(wrapper).direction === "rtl";
+	const style = view.getComputedStyle(content);
+	if (TRANSFORM_PROPERTIES.some((property) => isSet(style, property))) {
+		return wrapper.scrollWidth > wrapper.clientWidth;
+	}
+	const startMargin =
+		Number.parseFloat(rtl ? style.marginRight : style.marginLeft) || 0;
+	return startMargin + content.offsetWidth - wrapper.clientWidth > 1;
+}
+
+const TRANSFORM_PROPERTIES = ["transform", "translate", "rotate", "scale"];
+
+function isSet(style: CSSStyleDeclaration, property: string): boolean {
+	const value = style.getPropertyValue(property);
+	return value !== "" && value !== "none";
 }
 
 function isFocused(element: Element): boolean {

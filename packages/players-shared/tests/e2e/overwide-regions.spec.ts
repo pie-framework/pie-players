@@ -102,6 +102,44 @@ function regionState(page: Page) {
 const NARROW_TABLE =
 	'<table style="width:200px"><caption>Scores</caption><tr><td>a</td></tr></table>';
 
+/**
+ * A table holding an answer field with an open keypad, laid out the way
+ * math-inline lays its keypad out: absolutely positioned against a relative
+ * container inside the cell, wider than the column and reaching below the table.
+ */
+const KEYPAD_TABLE =
+	'<table><tr><td><div style="position:relative"><span id="field" style="display:inline-block;width:50px;height:20px"></span><div id="keypad" style="position:absolute;top:100%;left:0;width:600px;height:200px;background:#ccc"></div></div></td></tr></table>';
+
+function wrapperOverflow(page: Page) {
+	return page.evaluate(() => {
+		const style = getComputedStyle(
+			document.querySelector(".pie-table-scroll") as HTMLElement,
+		);
+		return { x: style.overflowX, y: style.overflowY };
+	});
+}
+
+/** Whether a point near the keypad's bottom edge, below the table, hits it. */
+function keypadReachable(page: Page) {
+	return page.evaluate(() => {
+		const keypad = document.getElementById("keypad") as HTMLElement;
+		const table = document.querySelector("table") as HTMLElement;
+		const box = keypad.getBoundingClientRect();
+		const y = box.bottom - 10;
+		if (y <= table.getBoundingClientRect().bottom) return false;
+		return document.elementFromPoint(box.left + 10, y) === keypad;
+	});
+}
+
+function nextFrames(page: Page) {
+	return page.evaluate(
+		() =>
+			new Promise<void>((resolve) =>
+				requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+			),
+	);
+}
+
 test.describe("table wrapper layout and regions", () => {
 	test("lays a table with a negative top margin out where it stood unwrapped", async ({
 		page,
@@ -177,5 +215,53 @@ test.describe("table wrapper layout and regions", () => {
 
 		await setWidth(400);
 		await expect.poll(async () => (await regionState(page)).role).toBeNull();
+	});
+
+	test("a table wider than its column scrolls", async ({ page }) => {
+		await renderWrapped(page, NARROW_TABLE, 120);
+		await expect
+			.poll(async () => (await regionState(page)).role)
+			.toBe("region");
+		expect(await wrapperOverflow(page)).toEqual({ x: "auto", y: "hidden" });
+	});
+
+	// A scroll container clips vertically too, so a wrapper that scrolled a
+	// table that fits cut off the keypad of every answer field in it.
+	test("a table that fits leaves the keypad open in it unclipped", async ({
+		page,
+	}) => {
+		await renderWrapped(page, KEYPAD_TABLE, 400);
+		await expect.poll(async () => (await regionState(page)).role).toBeNull();
+		expect(await wrapperOverflow(page)).toEqual({
+			x: "visible",
+			y: "visible",
+		});
+		expect(await keypadReachable(page)).toBe(true);
+	});
+
+	// The keypad opens once the field is focused, and reaches past the wrapper's
+	// right edge: measured by the wrapper's scroll width, the table resizing as
+	// the learner types would read as overflow.
+	test("keeps the keypad unclipped when the table resizes under it", async ({
+		page,
+	}) => {
+		await renderWrapped(
+			page,
+			KEYPAD_TABLE.replace('id="keypad"', 'id="keypad" hidden'),
+			400,
+		);
+		await expect.poll(async () => (await regionState(page)).role).toBeNull();
+
+		await page.evaluate(() => {
+			(document.getElementById("keypad") as HTMLElement).hidden = false;
+		});
+		await nextFrames(page);
+		await page.evaluate(() => {
+			(document.getElementById("field") as HTMLElement).style.width = "150px";
+		});
+		await nextFrames(page);
+
+		expect((await regionState(page)).role).toBeNull();
+		expect(await keypadReachable(page)).toBe(true);
 	});
 });

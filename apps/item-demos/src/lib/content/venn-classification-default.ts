@@ -15,7 +15,7 @@ const demo: DemoInfo = {
 			id: "",
 			markup: '<venn-classification id="1"></venn-classification>',
 			elements: {
-				"venn-classification": "@pie-element/venn-classification@0.1.9",
+				"venn-classification": "@pie-element/venn-classification@latest",
 			},
 			models: [
 				{

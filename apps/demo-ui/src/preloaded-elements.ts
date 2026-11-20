@@ -159,6 +159,11 @@ export const ESM_DEMO_BROWSER_BUILDS: Readonly<Record<string, BrowserBuild>> = {
 		delivery: () => import("@pie-element/select-text/browser/delivery"),
 		controller: () => import("@pie-element/select-text/browser/controller"),
 	},
+	"@pie-element/venn-classification": {
+		delivery: () => import("@pie-element/venn-classification/browser/delivery"),
+		controller: () =>
+			import("@pie-element/venn-classification/browser/controller"),
+	},
 };
 
 type ElementMap = Readonly<Record<string, string>>;

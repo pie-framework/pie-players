@@ -35,6 +35,7 @@ import likertDefault from "./likert-default";
 import matchDefault from "./match-default";
 import matchListDefault from "./match-list-default";
 import mathInlineDefault from "./math-inline-default";
+import mathInlineE703402 from "./math-inline-e703402";
 import mathTemplatedDefault from "./math-templated-default";
 import matrixDefault from "./matrix-default";
 import multiTraitRubricDefault from "./multi-trait-rubric-default";
@@ -89,6 +90,7 @@ const publicDemos: DemoInfo[] = [
 	matchDefault,
 	matchListDefault,
 	mathInlineDefault,
+	mathInlineE703402,
 	mathTemplatedDefault,
 	matrixDefault,
 	multiTraitRubricDefault,

@@ -29,13 +29,16 @@ function parse(markup: string): HTMLElement {
 	return host;
 }
 
-function setWidths(element: Element, scrollWidth: number, clientWidth: number) {
-	Object.defineProperty(element, "scrollWidth", {
-		value: scrollWidth,
+/** Lays `wrapper` out `clientWidth` wide around content `contentWidth` wide. */
+function setWidths(wrapper: Element, contentWidth: number, clientWidth: number) {
+	Object.defineProperty(wrapper, "clientWidth", {
+		value: clientWidth,
 		configurable: true,
 	});
-	Object.defineProperty(element, "clientWidth", {
-		value: clientWidth,
+	const content = wrapper.firstElementChild;
+	if (!content) return;
+	Object.defineProperty(content, "offsetWidth", {
+		value: contentWidth,
 		configurable: true,
 	});
 }
@@ -122,6 +125,50 @@ describe("syncOverwideRegions", () => {
 		expect(wrapper.getAttribute("tabindex")).toBe("0");
 		expect(wrapper.getAttribute("role")).toBe("region");
 		expect(wrapper.getAttribute("aria-label")).toBe("Scrollable table: Data");
+		root.remove();
+	});
+
+	// A keypad an element opens in the table widens the wrapper's scroll extent.
+	// Read as overflow, it would make the wrapper the scroll container that clips it.
+	test("measures the content, not what the content positions outside itself", () => {
+		const { wrapper, root } = wrapped();
+		setWidths(wrapper, 200, 300);
+		Object.defineProperty(wrapper, "scrollWidth", {
+			value: 900,
+			configurable: true,
+		});
+		syncOverwideRegions([wrapper], TABLE_SPEC);
+		expect(wrapper.hasAttribute("role")).toBe(false);
+		root.remove();
+	});
+
+	test("counts the margin that pushes the content past the edge", () => {
+		const root = parse(
+			'<table style="margin-left: 150px"><tr><td>a</td></tr></table>',
+		);
+		document.body.appendChild(root);
+		wrapOverwideTablesInElement(root);
+		const wrapper = root.querySelector(".pie-table-scroll") as HTMLElement;
+		setWidths(wrapper, 200, 300);
+		syncOverwideRegions([wrapper], TABLE_SPEC);
+		expect(wrapper.getAttribute("role")).toBe("region");
+		root.remove();
+	});
+
+	test("measures transformed content by the scroll width, which counts the transform", () => {
+		const root = parse(
+			'<table style="transform: scale(2)"><tr><td>a</td></tr></table>',
+		);
+		document.body.appendChild(root);
+		wrapOverwideTablesInElement(root);
+		const wrapper = root.querySelector(".pie-table-scroll") as HTMLElement;
+		setWidths(wrapper, 200, 300);
+		Object.defineProperty(wrapper, "scrollWidth", {
+			value: 400,
+			configurable: true,
+		});
+		syncOverwideRegions([wrapper], TABLE_SPEC);
+		expect(wrapper.getAttribute("role")).toBe("region");
 		root.remove();
 	});
 

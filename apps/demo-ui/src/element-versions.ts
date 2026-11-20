@@ -26,7 +26,6 @@ import passage from "@pie-element/passage/package.json";
 import placementOrdering from "@pie-element/placement-ordering/package.json";
 import rubric from "@pie-element/rubric/package.json";
 import selectText from "@pie-element/select-text/package.json";
-import vennClassification from "@pie-element/venn-classification/package.json";
 
 /**
  * The pie-elements-ng packages the demos install, and the versions they load
@@ -68,7 +67,6 @@ const MANIFESTS: ReadonlyArray<{ name: string; version: string }> = [
 	placementOrdering,
 	rubric,
 	selectText,
-	vennClassification,
 ];
 
 export const ESM_DEMO_ELEMENT_VERSIONS: Readonly<Record<string, string>> =

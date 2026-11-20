@@ -61,7 +61,6 @@
 		"@pie-element/placement-ordering": "next",
 		"@pie-element/rubric": "next",
 		"@pie-element/select-text": "next",
-		"@pie-element/venn-classification": "next",
 		"@pie-players/pie-item-player": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
 		"@pie-players/tts-server-core": "workspace:*",

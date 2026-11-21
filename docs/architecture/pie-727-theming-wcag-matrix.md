@@ -143,13 +143,18 @@ threshold rather than inferring a relationship from token names.
 
 - **States:** scrollbars, form widgets, spellcheck underlines
 - **Theme/scheme set:** polarity derived per palette from contrast against the
-  resolved `--pie-background`; `null` when the background is not opaque, leaving
-  polarity to the host
-- **WCAG criteria:** 1.4.1, 1.4.3
+  resolved `--pie-background`, `dark` for the dark Base Theme; `null` for the
+  light Base Theme and when the background is not opaque, leaving polarity to
+  the host. The generated `color-schemes.css` and the dark `tokens.css` rule
+  stamp the same keyword; content images take a white backing when it is dark
+- **WCAG criteria:** 1.4.1, 1.4.3, 1.4.11
 - **Coverage:** `packages/theme/tests/theme-resolution.test.ts` asserts derived
-  polarity for representative built-ins and the `null` base-theme case;
+  polarity for representative built-ins and both base themes;
   `packages/theme/tests/theme-element-dom.test.ts` asserts the element stamps and
-  restores it. Browser participation is not overridden.
+  restores it; `packages/theme/tests/content-styles-dark-scheme-images.test.ts`
+  asserts the generated stamps; `packages/players-shared/tests/e2e/content-image-backing.spec.ts`
+  asserts the image backing and eliminator casing by computed style. Browser
+  participation is not overridden.
 
 ### Assessment navigation
 

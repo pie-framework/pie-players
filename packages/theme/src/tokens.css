@@ -63,6 +63,7 @@
 
 [data-theme="dark"],
 :where(pie-theme[theme="dark"]:not([scope="document"])) {
+	color-scheme: dark;
 	--pie-annotation-underline: #9c89ec;
 	--pie-annotation-underline-dark: #9c89ec;
 	--pie-background: #000000;

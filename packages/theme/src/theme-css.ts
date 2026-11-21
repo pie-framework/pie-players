@@ -2,6 +2,7 @@ import {
 	assertCanonicalThemeDefinitions,
 	getBaseThemeVariables,
 	listBuiltInColorSchemeDefinitions,
+	resolvePaletteColorScheme,
 } from "./theme-definitions.js";
 import type { ThemeVariables } from "./theme-types.js";
 
@@ -18,8 +19,10 @@ function renderDeclarations(variables: Readonly<ThemeVariables>): string {
 function renderRule(
 	selectors: readonly string[],
 	variables: Readonly<ThemeVariables>,
+	colorScheme: "light" | "dark" | null = null,
 ): string {
-	return `${selectors.join(",\n")} {\n${renderDeclarations(variables)}\n}`;
+	const polarity = colorScheme ? `\tcolor-scheme: ${colorScheme};\n` : "";
+	return `${selectors.join(",\n")} {\n${polarity}${renderDeclarations(variables)}\n}`;
 }
 
 /*
@@ -38,12 +41,25 @@ function renderTokensCss(): string {
 	)}\n\n${renderRule(
 		['[data-theme="dark"]', selfScopedThemeElement("dark")],
 		getBaseThemeVariables("dark"),
+		// The dark Base Theme states its polarity, as the resolver does. The light
+		// rule does not: it matches `:root`, and a keyword there would override a
+		// host's own `color-scheme`.
+		resolvePaletteColorScheme(getBaseThemeVariables("dark")),
 	)}\n`;
 }
 
+/*
+ * Each scheme carries the polarity `<pie-theme>` writes inline when it resolves
+ * the scheme, so a page that applies `data-color-scheme` without the element
+ * paints UA controls and `light-dark()` values the same way.
+ */
 function renderColorSchemesCss(): string {
 	const rules = listBuiltInColorSchemeDefinitions().map((scheme) =>
-		renderRule([`[data-color-scheme="${scheme.id}"]`], scheme.variables),
+		renderRule(
+			[`[data-color-scheme="${scheme.id}"]`],
+			scheme.variables,
+			resolvePaletteColorScheme(scheme.variables),
+		),
 	);
 	return `${GENERATED_HEADER}\n\n${rules.join("\n\n")}\n`;
 }

@@ -201,11 +201,20 @@ describe("resolved color-scheme polarity", () => {
 		);
 	});
 
-	test("leaves the keyword to the host when no scheme resolves", () => {
-		// Including a dark base theme: the host's own stylesheet decided that
-		// polarity and pie-theme has no standing to restate it.
-		expect(resolvePieTheme({ baseTheme: "dark" }).colorScheme).toBeNull();
+	test("states dark for the dark Base Theme and leaves light to the host", () => {
+		// PIE paints the dark page, so content keyed on the used color-scheme has
+		// to see it. Light is the UA default and the host may declare its own.
+		expect(resolvePieTheme({ baseTheme: "dark" }).colorScheme).toBe("dark");
 		expect(resolvePieTheme({ baseTheme: "light" }).colorScheme).toBeNull();
+	});
+
+	test("leaves the keyword to the host when a provider repaints the dark base light", () => {
+		expect(
+			resolvePieTheme({
+				baseTheme: "dark",
+				providerVariables: { "--pie-background": "#ffffff" },
+			}).colorScheme,
+		).toBeNull();
 	});
 
 	test("leaves the keyword to the host for an unavailable scheme", () => {

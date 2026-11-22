@@ -1014,11 +1014,13 @@ mjx-c.mjx-c27 {
 	stroke-linecap: square;
 }
 
-/* Wider light line under each diagonal so the X stays legible on dark imagery. */
+/* Wider line under each diagonal so the X stays legible on the image. It is
+   light on a light page, for dark imagery, and dark on a dark page, where every
+   image sits on the white backing below. */
 :where([data-pie-content]) .pie-answer-eliminator-image-strike-casing {
 	stroke: var(
 		--pie-answer-eliminator-image-strike-casing-color,
-		rgba(255, 255, 255, 0.85)
+		light-dark(rgba(255, 255, 255, 0.85), rgba(0, 0, 0, 0.85))
 	);
 	stroke-width: 6;
 	stroke-linecap: square;
@@ -1170,9 +1172,11 @@ mjx-c.mjx-c27 {
    the page the text was pasted from, drops away. A shade fill (a header row, a highlight) inverts:
    it takes the scheme's ink, and everything inside it reads the scheme's page
    as its ink, so it keeps the contrast the scheme certifies and still stands
-   out. The default theme stamps no data-color-scheme and keeps the authored
-   colours. Gradients, background images and colours in MathJax output carry
-   no marker and render as authored.
+   out. An image's light fill is the exception: it is a backing, and on a dark
+   page it stays one, as the image backing below gives every image. The default
+   theme stamps no data-color-scheme and keeps the authored colours.
+   Gradients, background images and colours in MathJax output carry no marker
+   and render as authored.
 
    The ink and page are captured on the element that declares the scheme's
    tokens, so the swap inside a fill reads them without a cycle, and a fill
@@ -1201,6 +1205,14 @@ mjx-c.mjx-c27 {
 	color: var(--pie-text) !important;
 }
 
+[data-color-scheme] img[data-pie-authored-fill="light"] {
+	background-color: light-dark(
+		transparent,
+		var(--pie-content-image-backing, #fff)
+	) !important;
+	color: light-dark(var(--pie-text), Canvas) !important;
+}
+
 [data-color-scheme] [data-pie-authored-fill="shade"] {
 	--pie-text: var(--pie-scheme-page);
 	--pie-black: var(--pie-scheme-page);
@@ -1209,4 +1221,30 @@ mjx-c.mjx-c27 {
 	--pie-white: var(--pie-scheme-ink);
 	background-color: var(--pie-scheme-ink) !important;
 	color: var(--pie-scheme-page) !important;
+}
+
+/* IMAGE BACKING ON A DARK PAGE
+
+   Authored images were drawn for a white page, and many are black line art or
+   text on a transparent background, which vanishes on a dark page. When the
+   used `color-scheme` is dark, an image in item content takes a white backing:
+   transparent artwork shows as authored, and an opaque image or photo covers
+   the backing and looks as before. A broken image's alt text paints in the
+   dark canvas colour, legible on the backing.
+
+   Polarity comes from `color-scheme`. `<pie-theme>` writes it inline for a
+   resolved scheme, built-in or host-registered, and for the dark Base Theme;
+   the static scheme and token CSS stamp the same keyword; a host theme that
+   declares `color-scheme: dark` itself gets the backing too. The backing is
+   white rather than the scheme's ink: a page whose host declares
+   `color-scheme: light dark` can report dark while painting light, and a white
+   box there is harmless where an ink-coloured one would hide black artwork. A
+   browser without `light-dark()` drops both declarations and leaves the image
+   as authored. */
+:where([data-pie-content]) img {
+	background-color: light-dark(
+		transparent,
+		var(--pie-content-image-backing, #fff)
+	);
+	color: light-dark(currentcolor, Canvas);
 }

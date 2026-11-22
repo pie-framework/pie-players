@@ -163,7 +163,9 @@ overrides marked elements under `[data-color-scheme]`:
 
 The default theme stamps no `data-color-scheme`, so authored colors render as
 written. Gradients, background images and colors inside MathJax output carry no
-marker and stay as authored.
+marker and stay as authored. An image's near-white fill is the one fill kept
+under a dark scheme: it is a backing, the same one every image gets on a dark
+page (see image backing below).
 
 Inside an inverted fill the neutral tokens swap: `--pie-text`, `--pie-black` and
 `--pie-border` take the scheme's page, `--pie-background` and `--pie-white` its
@@ -185,14 +187,35 @@ PIE's color schemes: it tells the browser whether to paint its own widgets —
 `select` text, scrollbars, checkboxes, native date pickers — light or dark.
 Custom properties cannot reach those. Only this keyword can.
 
-`<pie-theme>` sets it from a resolved scheme only, choosing the keyword by
-whether black or white contrasts better against the resolved `--pie-background`.
-A base theme leaves it alone, because a host stylesheet already declares the
-polarity of its own themes, and restating that from PIE's palette would take the
-decision away from every host that never asked for an accommodation. Clearing a
-scheme restores the host's own declaration rather than deleting it. A background
-the resolver cannot read as an opaque color also leaves it alone.
+`<pie-theme>` sets it from a resolved scheme, built-in or host-registered,
+choosing the keyword by whether black or white contrasts better against the
+resolved `--pie-background`, and sets `dark` for the dark Base Theme, whose page
+PIE paints. The light Base Theme leaves it alone: light is the browser default,
+and a keyword there would override a host's own declaration. Clearing a scheme or
+a dark theme restores the host's own declaration rather than deleting it. A
+background the resolver cannot read as an opaque color also leaves it alone.
 
-The consequence for a host: driving `theme="dark"` into the element does not
-darken native controls. That stays the host's own `color-scheme` declaration to
-make.
+The generated CSS stamps the same keyword: each built-in rule in
+`color-schemes.css` carries its scheme's polarity, and the dark rule in
+`tokens.css` carries `dark`. On that stylesheet path the keyword is an ordinary
+declaration, so a host rule of equal specificity loaded later wins, where the
+element's inline value always does.
+
+## Image backing
+
+Authored images were drawn for a white page, and many are black line art or
+text on a transparent background. When the used `color-scheme` is dark, every
+image inside `[data-pie-content]` gets a white backing, so transparent artwork
+shows as authored and an opaque image covers the backing unchanged. The rule
+reads `color-scheme` through `light-dark()`, so it fires for a dark built-in, a
+dark host-registered scheme, the dark Base Theme, and a host theme that declares
+`color-scheme: dark` itself, such as a DaisyUI dark theme. A custom scheme whose
+background the resolver cannot read gets no keyword, so its host declares
+`color-scheme` to get the backing. The answer eliminator's casing under an image
+X follows the same keyword, dark over the backing.
+
+The backing is white and not the scheme's ink, a deliberate trade: a host that
+declares `color-scheme: light dark` on a light page reports dark to a learner
+with a dark OS, and there a white box is harmless where an ink-colored one would
+hide black artwork. A browser without `light-dark()` (before Chrome 123, Firefox
+120, Safari 17.5) leaves images as authored.

@@ -321,10 +321,19 @@ describe("pie-theme DOM contract", () => {
 	test("leaves color-scheme alone when the host never declared one", () => {
 		const element = pieThemeElement({
 			scope: "document",
-			theme: "dark",
+			theme: "light",
 			provider: "none",
 		});
 		document.body.append(element);
+		expect(
+			document.documentElement.style.getPropertyValue("color-scheme"),
+		).toBe("");
+
+		element.setAttribute("theme", "dark");
+		expect(
+			document.documentElement.style.getPropertyValue("color-scheme"),
+		).toBe("dark");
+		element.setAttribute("theme", "light");
 		expect(
 			document.documentElement.style.getPropertyValue("color-scheme"),
 		).toBe("");

@@ -170,7 +170,8 @@ registerPieColorSchemes(entries): RegistrationReceipt
 contains `baseTheme`, `requestedScheme`, `resolvedScheme` (the descriptor, or
 `null`), `status` (`default`, `built-in`, `custom`, or `unavailable`), the final
 immutable `variables`, `colorScheme` (the CSS `color-scheme` keyword the
-resolution implies, `null` without a scheme), and `diagnostics`.
+resolution implies: the scheme's polarity, `dark` for the dark Base Theme, `null`
+otherwise), and `diagnostics`.
 
 `listPieColorSchemes()` returns an immutable snapshot whose `schemes` list keeps
 the built-in order and starts with the `default` descriptor. Each descriptor's
@@ -473,5 +474,6 @@ copies the existing files to `dist`.
 
 The package-internal `renderPieThemeCss()` implementation lives in
 `src/theme-css.ts`; it is not a public export. Generated `color-schemes.css`
-contains one unlayered `[data-color-scheme="..."]` rule per built-in scheme and
-no base-theme or grouped exception rules.
+contains one unlayered `[data-color-scheme="..."]` rule per built-in scheme,
+each opening with the scheme's `color-scheme` keyword, and no base-theme or
+grouped exception rules.

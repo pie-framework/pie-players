@@ -342,8 +342,9 @@ state visible; the element re-resolves when forced colors turn on or off, so
 existing nodes update without a remount. `tokens.css` carries the same map in an
 `@media (forced-colors: active)` block that outranks its Base Theme rules and the
 `color-schemes.css` rules. A host declaration still competes with either path as
-it does with any other token: `!important` beats the inline map, and a host
-stylesheet rule meets the `@media` block in the normal cascade. Outside forced
+it does with any other token: `!important` beats the inline map, a declaration
+on a descendant of `<pie-theme>` wins inside that subtree, and a host stylesheet
+rule meets the `@media` block in the normal cascade. Outside forced
 colors no token changes.
 
 Fill tokens stay with the browser, `--pie-primary` among them because it paints

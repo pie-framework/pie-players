@@ -56,7 +56,6 @@ import {
 	flatTextContent,
 	flatTreeChildNodes,
 	flatTreeParentElement,
-	flatTreeTextNodes,
 	rangeHoldsTextPosition,
 	rangeIntersectsComposedNode,
 } from "./tts/flat-tree.js";
@@ -70,6 +69,7 @@ import {
 	type BoundarySpacingMode,
 	collectRangeTextForSpeech,
 	collectVisibleTextAndMap,
+	flatTreeTextNodesWithLineBreaks,
 	isElementHiddenForTTS,
 	isNodeExcludedFromSpeech,
 	isNodeSuppressedForTTS,
@@ -1190,28 +1190,47 @@ export class TTSService {
 		);
 		const nodeStartOffsets = this.createNodeStartOffsets(map);
 
+		// A boundary falls where the spoken text enters a block other than the one
+		// the previous spoken text was in, and after a `<br>`, which pauses as
+		// briefly as a minor block. Every text node that adds to the spoken text
+		// records its block, the first one included: inline markup such as `<u>` or
+		// `<i>` starts a new text node in the same block, which is no place to cut
+		// the speech or pause it. A node that adds nothing, such as whitespace
+		// collapsed into the space before it, records nothing and carries a line
+		// break on, so the boundary falls on the first word after it.
+		const lineBreakUnits = this.getStructuralPauseProfile().units.minor;
 		let previousBoundaryAnchor: Element | null = null;
-		for (const textNode of flatTreeTextNodes(contentElement)) {
+		let pendingLineBreak = false;
+		for (const {
+			node: textNode,
+			afterLineBreak,
+		} of flatTreeTextNodesWithLineBreaks(contentElement)) {
+			pendingLineBreak ||= afterLineBreak;
 			const parent = flatTreeParentElement(textNode);
 			if (
 				parent &&
 				!isElementHiddenForTTS(parent) &&
 				!isNodeSuppressedForTTS(textNode)
 			) {
-				const boundary = this.getBoundaryAnchor(textNode, contentElement);
 				const boundaryPoint = nodeStartOffsets.get(textNode);
-				if (
-					boundary &&
-					boundaryPoint !== undefined &&
-					boundary.anchor !== previousBoundaryAnchor &&
-					boundaryPoint > 0
-				) {
+				if (boundaryPoint === undefined) continue;
+				const boundary = this.getBoundaryAnchor(textNode, contentElement);
+				const blockUnits =
+					boundary && boundary.anchor !== previousBoundaryAnchor
+						? boundary.units
+						: null;
+				if (boundaryPoint > 0 && (blockUnits !== null || pendingLineBreak)) {
+					const units = Math.max(
+						blockUnits ?? 0,
+						pendingLineBreak ? lineBreakUnits : 0,
+					);
 					boundaries.set(
 						boundaryPoint,
-						Math.max(boundaries.get(boundaryPoint) || 0, boundary.units),
+						Math.max(boundaries.get(boundaryPoint) || 0, units),
 					);
-					previousBoundaryAnchor = boundary.anchor;
 				}
+				if (boundary) previousBoundaryAnchor = boundary.anchor;
+				pendingLineBreak = false;
 			}
 		}
 		return boundaries;

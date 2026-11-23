@@ -3,6 +3,7 @@ import {
 	flatTreeTextNodes,
 	rangeHoldsTextPosition,
 	rangeIntersectsComposedNode,
+	walkFlatTree,
 } from "./flat-tree.js";
 
 export type NormalizedTextMap = Map<number, { node: Text; offset: number }>;
@@ -280,6 +281,38 @@ export const shouldInsertWordBoundarySpace = (
 	return prevIsAlnum && nextIsAlnum;
 };
 
+/** Whether `node` is a `<br>`. */
+export const isLineBreakElement = (node: Node): boolean =>
+	node.nodeType === 1 && (node as Element).localName?.toLowerCase() === "br";
+
+/**
+ * `root`'s text nodes in rendering order, each with whether a spoken `<br>` (one
+ * neither hidden nor suppressed) stands between it and the text node before it.
+ *
+ * A `<br>` has no text, so a walk of text nodes alone joins the lines it breaks:
+ * `food.<br>What` reads `food.What`, which a voice speaks as "food dot what".
+ * Callers that skip a text node carry its line break on to the next one.
+ */
+export const flatTreeTextNodesWithLineBreaks = (
+	root: Element,
+): Array<{ node: Text; afterLineBreak: boolean }> => {
+	const entries: Array<{ node: Text; afterLineBreak: boolean }> = [];
+	let afterLineBreak = false;
+	walkFlatTree(root, (node) => {
+		if (node.nodeType === 3) {
+			entries.push({ node: node as Text, afterLineBreak });
+			afterLineBreak = false;
+		} else if (
+			isLineBreakElement(node) &&
+			!isNodeExcludedFromSpeech(node, root)
+		) {
+			afterLineBreak = true;
+		}
+		return undefined;
+	});
+	return entries;
+};
+
 export const collectVisibleTextAndMap = (
 	element: Element,
 	options?: TextProcessingOptions,
@@ -294,22 +327,31 @@ export const collectVisibleTextAndMap = (
 	let lastCharWasWhitespace = false;
 	let lastMapped: { node: Text; offset: number } | null = null;
 	let previousVisibleChar: string | null = null;
+	// A `<br>` before this text, which reads as a space between the lines.
+	let pendingLineBreak = false;
 
-	for (const textNode of flatTreeTextNodes(element)) {
+	for (const {
+		node: textNode,
+		afterLineBreak,
+	} of flatTreeTextNodesWithLineBreaks(element)) {
+		pendingLineBreak ||= afterLineBreak;
 		const parent = flatTreeParentElement(textNode);
 		if (parent && !isNodeExcludedFromSpeech(textNode, element)) {
 			const raw = textNode.textContent || "";
 			const firstVisibleMatch = raw.match(/\S/);
 			const firstVisibleChar = firstVisibleMatch ? firstVisibleMatch[0] : null;
+			const breaksLine = pendingLineBreak && firstVisibleChar !== null;
+			pendingLineBreak = false;
 
 			if (
 				!inLeadingWhitespace &&
 				!lastCharWasWhitespace &&
-				shouldInsertWordBoundarySpace(
-					previousVisibleChar,
-					firstVisibleChar,
-					options,
-				)
+				(breaksLine ||
+					shouldInsertWordBoundarySpace(
+						previousVisibleChar,
+						firstVisibleChar,
+						options,
+					))
 			) {
 				outChars.push(" ");
 				if (lastMapped) {

@@ -9,6 +9,7 @@ import {
 	collectVisibleTextAndMap,
 	type NormalizedTextMap,
 	type TextProcessingOptions,
+	isLineBreakElement,
 	isNodeExcludedFromSpeech,
 	normalizeTextForSpeech,
 	rangeHoldsSpeakableElement,
@@ -42,6 +43,8 @@ interface TextAccumulator {
 	inLeadingWhitespace: boolean;
 	lastCharWasWhitespace: boolean;
 	lastMapped: { node: Text; offset: number } | null;
+	/** A `<br>` since the last character, which reads as a space between the lines. */
+	pendingLineBreak: boolean;
 	options?: TextProcessingOptions;
 }
 
@@ -54,6 +57,7 @@ const createAccumulator = (
 	inLeadingWhitespace: true,
 	lastCharWasWhitespace: false,
 	lastMapped: null,
+	pendingLineBreak: false,
 	options,
 });
 
@@ -173,6 +177,7 @@ const appendCharacter = (
 		acc.map.delete(acc.position);
 	}
 	acc.chars.push(character);
+	acc.pendingLineBreak = false;
 	if (mapping) {
 		acc.map.set(acc.position, mapping);
 		acc.lastMapped = mapping;
@@ -193,6 +198,7 @@ const shouldInsertBoundarySpace = (
 	) {
 		return false;
 	}
+	if (acc.pendingLineBreak) return true;
 	const previous = acc.chars[acc.chars.length - 1];
 	// Defer to the shared locale-aware decision (Intl.Segmenter, falling back to
 	// alnum) so adjacent text nodes split into words consistently with the main
@@ -433,6 +439,10 @@ const collectMathAware = (
 		}
 		if (node.nodeType !== 1) return;
 		const element = node as Element;
+		if (isLineBreakElement(element)) {
+			acc.pendingLineBreak = true;
+			return;
+		}
 		if (isAssistiveMathElement(element)) return;
 		const canonicalMathML = findCanonicalMathML(element);
 		// An equation is spoken as math only when the selection holds all of it;

@@ -1,6 +1,7 @@
 import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { PlaybackState, TTSService } from "../src/services/TTSService";
+import { collectVisibleTextAndMap } from "../src/services/tts/text-processing";
 import { contentWith as contentOf } from "./fixtures/read-aloud-content";
 import type {
 	ITTSProvider,
@@ -35,6 +36,24 @@ const visibleMapOver = (text: string) => {
 	return new Map(
 		Array.from(text, (_, offset) => [offset, { node, offset }] as const),
 	);
+};
+
+// The speech plan for `markup`, laid out in the real DOM so blocks are told
+// from inline markup by their computed display, as in a browser.
+const speechPlanOf = (markup: string): TTSSpeechSegment[] => {
+	const service = new TTSService();
+	const root = realDocument.createElement("div");
+	root.innerHTML = markup;
+	realDocument.body.append(root);
+	try {
+		const { text } = collectVisibleTextAndMap(
+			root,
+			(service as any).getTextProcessingOptions("en-US"),
+		);
+		return (service as any).createSpeechPlan(root, text, 0, "en-US");
+	} finally {
+		root.remove();
+	}
 };
 
 class MockTTSImpl implements ITTSProviderImplementation {
@@ -242,6 +261,58 @@ describe("TTSService structural pauses", () => {
 			(globalThis as any).NodeFilter = originalNodeFilter;
 			(globalThis as any).window = originalWindow;
 		}
+	});
+
+	// Inline markup starts a new text node in the same block. Cutting there paused
+	// the speech before an underlined word, mid-sentence.
+	test("keeps inline markup in a block in one segment", () => {
+		const segments = speechPlanOf(
+			"<div>A mother bear has <u>cubs</u>. They are <i>small</i>. The mother gives them food.</div>",
+		);
+		expect(segments.map((segment) => segment.text)).toEqual([
+			"A mother bear has cubs. They are small. The mother gives them food.",
+		]);
+	});
+
+	test("cuts where the text enters another block, and only there", () => {
+		const segments = speechPlanOf(
+			"<p>A mother bear has <u>cubs</u>. They are small.</p><p>What are <i>cubs</i>?</p>",
+		);
+		expect(segments.map((segment) => segment.text)).toEqual([
+			"A mother bear has cubs. They are small.",
+			"What are cubs?",
+		]);
+		expect(segments[0].pauseMsAfter).toBeGreaterThan(0);
+	});
+
+	test("cuts at the first word of a block that opens with collapsed whitespace", () => {
+		const segments = speechPlanOf("<p>one </p><p>\n<b>two</b> three</p>");
+		expect(segments.map((segment) => segment.text)).toEqual([
+			"one",
+			"two three",
+		]);
+	});
+
+	test("pauses at a <br>, and speaks the lines it breaks apart", () => {
+		const segments = speechPlanOf(
+			"<div>A mother bear has <u>cubs</u>. They are small. The mother gives them food.<br /><br />What are <i>cubs</i>?</div>",
+		);
+		expect(segments.map((segment) => segment.text)).toEqual([
+			"A mother bear has cubs. They are small. The mother gives them food.",
+			"What are cubs?",
+		]);
+		expect(segments[0].pauseMsAfter).toBeGreaterThan(0);
+	});
+
+	test("pauses at a <br> that ends a line without punctuation", () => {
+		const segments = speechPlanOf(
+			"<div>Roses are red<br />Violets are blue</div>",
+		);
+		expect(segments.map((segment) => segment.text)).toEqual([
+			"Roses are red",
+			"Violets are blue",
+		]);
+		expect(segments[0].pauseMsAfter).toBeGreaterThan(0);
 	});
 
 	test("uses speech plan for generated content and scales pauses by rate", async () => {

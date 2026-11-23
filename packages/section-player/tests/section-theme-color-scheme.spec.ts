@@ -29,6 +29,29 @@ async function openThemeMenu(page: Page) {
 	return themeTool;
 }
 
+/** One token per forced-colors role; the theme tests assert the whole map. */
+const FORCED_COLORS_SAMPLE: Record<string, string> = {
+	"--pie-button-focus-outline": "Highlight",
+	"--pie-focus-checked-border": "Highlight",
+	"--pie-border": "CanvasText",
+	"--pie-button-border": "CanvasText",
+	"--pie-disabled": "GrayText",
+};
+
+/** Read tokens a document-scoped `<pie-theme>` wrote on the root. */
+async function readRootTokens(page: Page, tokens: readonly string[]) {
+	return page.evaluate(
+		(names) =>
+			Object.fromEntries(
+				names.map((name) => [
+					name,
+					document.documentElement.style.getPropertyValue(name).trim(),
+				]),
+			),
+		tokens,
+	);
+}
+
 /** Set the scheme the way a host does, on its document-scoped `<pie-theme>`. */
 async function setHostScheme(page: Page, scheme: string) {
 	await page
@@ -921,12 +944,48 @@ test.describe("section theme and color scheme integration", () => {
 		);
 	});
 
-	test("leaves forced-color rendering to the browser and keeps keyboard focus visible", async ({
+	test("maps the stylesheet-only state tokens to system colors under forced colors", async ({
+		page,
+	}) => {
+		await page.emulateMedia({ forcedColors: "active" });
+		await page.setContent("<main>CSS adapter probe</main>");
+		const tokens = await page.evaluate(
+			({ tokensCss, schemesCss, mapped }) => {
+				const frame = document.createElement("iframe");
+				document.body.append(frame);
+				const frameDocument = frame.contentDocument;
+				if (!frameDocument) throw new Error("CSS probe iframe unavailable");
+				frameDocument.open();
+				frameDocument.write(
+					`<style>${tokensCss}\n${schemesCss}</style>` +
+						'<pie-theme theme="dark" data-color-scheme="white-on-black"></pie-theme>',
+				);
+				frameDocument.close();
+				const probe = frameDocument.querySelector("pie-theme");
+				if (!probe) throw new Error("CSS probe element unavailable");
+				const style = frame.contentWindow?.getComputedStyle(probe);
+				return Object.fromEntries(
+					mapped.map((token) => [token, style?.getPropertyValue(token).trim()]),
+				);
+			},
+			{
+				tokensCss: TOKENS_CSS,
+				schemesCss: COLOR_SCHEMES_CSS,
+				mapped: Object.keys(FORCED_COLORS_SAMPLE),
+			},
+		);
+		expect(tokens).toEqual(FORCED_COLORS_SAMPLE);
+	});
+
+	test("maps the state tokens to system colors and keeps keyboard focus visible under forced colors", async ({
 		page,
 	}) => {
 		await page.emulateMedia({ forcedColors: "active" });
 		await gotoDemo(page);
 		await setHostScheme(page, "forced-unavailable");
+		await expect
+			.poll(() => readRootTokens(page, Object.keys(FORCED_COLORS_SAMPLE)))
+			.toEqual(FORCED_COLORS_SAMPLE);
 		await page
 			.getByRole("button", { name: "Theme, change colors and contrast" })
 			.first()
@@ -977,5 +1036,26 @@ test.describe("section theme and color scheme integration", () => {
 		expect(optionStyles.forcedColorAdjust).toBe("auto");
 		expect(optionStyles.outlineStyle).not.toBe("none");
 		expect(optionStyles.outlineWidth).toBeGreaterThanOrEqual(2);
+
+		// Leaving forced colors restores the palette on the same host element.
+		const host = page.locator('pie-theme[scope="document"]');
+		await host.evaluate((element) => {
+			(window as { forcedColorsHost?: Element }).forcedColorsHost = element;
+		});
+		await page.emulateMedia({ forcedColors: "none" });
+		await expect
+			.poll(async () =>
+				Object.values(
+					await readRootTokens(page, Object.keys(FORCED_COLORS_SAMPLE)),
+				).filter((value) => /^(Highlight|CanvasText|GrayText)$/.test(value)),
+			)
+			.toEqual([]);
+		expect(
+			await host.evaluate(
+				(element) =>
+					element ===
+					(window as { forcedColorsHost?: Element }).forcedColorsHost,
+			),
+		).toBe(true);
 	});
 });

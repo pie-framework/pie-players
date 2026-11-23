@@ -171,10 +171,25 @@
  * scrollbar stays hidden; when it doesn't, the wrapper provides the sideways
  * scroll needed to satisfy WCAG 1.4.10 Reflow at 400% zoom instead of forcing
  * the section layout to scroll horizontally.
+ *
+ * Unlike the image wrapper, it is a scroll container only while it is a region.
+ * A scroll container clips vertically as well (`overflow-x: auto` forces
+ * `overflow-y` off `visible`), and a table can hold PIE elements whose keypads,
+ * menus and tooltips render inside the element and open past the table's
+ * bottom edge. The live item player keeps the region only while the table is
+ * wider than its column, so a table that fits clips nothing; markup sanitized
+ * outside the player keeps the region, and the scroll, on every wrapper. A
+ * popup in a table that does scroll is still clipped: escaping a scroll
+ * container is the element's to do, by positioning the popup `fixed`.
+ * `flow-root` keeps the block formatting context `overflow` gives a region,
+ * so the table lays out the same either way.
  */
 :where([data-pie-content]) .pie-table-scroll {
-	display: block;
+	display: flow-root;
 	max-width: 100%;
+}
+
+:where([data-pie-content]) .pie-table-scroll[role="region"] {
 	overflow-x: auto;
 	overflow-y: hidden;
 }

@@ -1,14 +1,16 @@
 import type { Page } from "@playwright/test";
 
 /**
- * A dark scheme and a high-contrast scheme, each with the
- * `--pie-button-focus-outline` it sets, as the browser reports the colour. Both
- * differ from every literal the player chrome falls back to, so a ring that
- * matches one came from the scheme.
+ * A dark scheme, a high-contrast scheme and the one scheme whose
+ * `--pie-focus-keyboard-outline` differs from its `--pie-button-focus-outline`,
+ * each with the keyboard ring it sets, as the browser reports the colour. All
+ * differ from the literal the player chrome falls back to, so a ring that
+ * matches one came from the scheme, and the third shows the keyboard token leads.
  */
 export const FOCUS_RING_SCHEMES = [
 	{ scheme: "yellow-on-navy", outline: "rgb(255, 255, 153)" },
 	{ scheme: "white-on-black", outline: "rgb(255, 255, 0)" },
+	{ scheme: "light-gray-on-dark-gray", outline: "rgb(255, 255, 255)" },
 ] as const;
 
 /** Apply a scheme the way a host does, on the page's document-scoped `<pie-theme>`. */

@@ -86,11 +86,12 @@ const VERTICAL_SECTION_TAG = "pie-section-player-vertical";
 
 // The focus ring of every control this element draws. The status view and the
 // section view each render their own stylesheet, and never at once, so both
-// carry this rule.
+// carry this rule. The chain is the keyboard-focus one item content and
+// render-ui use, so chrome and content rings agree.
 const CONTROL_FOCUS_RING_CSS = `
 	.pie-assessment-player-retry:focus-visible,
 	.pie-assessment-player-nav-btn:focus-visible {
-		outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #0066cc));
+		outline: 2px solid var(--pie-focus-keyboard-outline, var(--pie-focus-outline, var(--pie-button-focus-outline, var(--pie-focus-checked-border, #1565c0))));
 		outline-offset: 2px;
 	}
 `;

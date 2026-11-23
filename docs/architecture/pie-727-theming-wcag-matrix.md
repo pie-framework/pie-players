@@ -84,7 +84,7 @@ threshold rather than inferring a relationship from token names.
   `packages/section-player/tests/section-theme-color-scheme.spec.ts` asserts
   selected and unselected toggle legibility across every built-in scheme;
   `packages/section-player/tests/section-player-tabbed-layout.spec.ts` asserts the
-  focus-visible ring under a dark and a high-contrast scheme. Hover, disabled and
+  focus-visible ring under three dark schemes, one high-contrast. Hover, disabled and
   a host override are not asserted.
 
 ### Split divider
@@ -94,7 +94,7 @@ threshold rather than inferring a relationship from token names.
 - **WCAG criteria:** 1.4.11, 2.4.7, 2.4.11, 2.4.13
 - **Coverage:** `packages/section-player/tests/section-toolbar-tools.spec.ts`
   asserts the focus ring and handle of the section split divider, and the passage
-  card and media-gated item card rings, under a dark and a high-contrast scheme
+  card and media-gated item card rings, under three dark schemes, one high-contrast
   and under the `--pie-section-player-focus-outline` override.
   `packages/section-player/tests/section-player-sign-language-region.spec.ts`
   covers the card split divider and
@@ -172,7 +172,7 @@ threshold rather than inferring a relationship from token names.
 - **Coverage:** `packages/assessment-player/tests/assessment-player-theme-contract.test.ts`
   covers the `--pie-background` read;
   `packages/assessment-player/tests/assessment-player-smoke.spec.ts` asserts the
-  Back and Next focus ring under a dark and a high-contrast scheme. Extend it with
+  Back and Next focus ring under three dark schemes, one high-contrast. Extend it with
   computed-style coverage of the other states before visual nav changes.
 
 ### Item toolbar buttons
@@ -183,8 +183,8 @@ threshold rather than inferring a relationship from token names.
 - **Coverage:** `packages/assessment-toolkit/tests/toolbar-items.test.ts` covers
   token usage for chrome and glyphs.
   `packages/section-player/tests/section-toolbar-tools.spec.ts` asserts the hosted
-  tool shell's header, move and close focus rings under a dark and a
-  high-contrast scheme, and no ring on pointer focus. Browser coverage of
+  tool shell's header, move and close focus rings under three dark
+  schemes, one high-contrast, and no ring on pointer focus. Browser coverage of
   rendered contrast and target size is still needed.
 
 ### TTS inline trigger

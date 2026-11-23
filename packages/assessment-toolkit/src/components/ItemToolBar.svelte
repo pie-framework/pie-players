@@ -164,12 +164,14 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 	// A shell mounts at `document.body`, out of reach of this component's
 	// shadow-root styles, so its focus ring is a document stylesheet the first
 	// shell installs: one rule for the header, which takes focus to move and
-	// resize the window, and for the plain-button controls.
+	// resize the window, and for the plain-button controls. It stays installed
+	// after the last toolbar unmounts: one small idempotent rule. The chain is
+	// the keyboard-focus one item content and render-ui use.
 	const TOOL_SHELL_STYLES = `
 .pie-tool-shell__header:focus-visible,
 .pie-tool-shell__control:focus-visible,
 .pie-tool-shell__close:focus-visible {
-	outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2));
+	outline: 2px solid var(--pie-focus-keyboard-outline, var(--pie-focus-outline, var(--pie-button-focus-outline, var(--pie-focus-checked-border, #1565c0))));
 	outline-offset: 2px;
 }
 `;

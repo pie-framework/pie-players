@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import { checkMedia, mediaDisabledAxeRules } from "../../../test-support/a11y-media";
 
 function contrastRatio(foreground: string, background: string): number {
 	const parse = (value: string): [number, number, number] => {
@@ -600,7 +601,7 @@ test("steps key size down instead of clipping a panel it cannot fill", async ({
 // One test per mode and theme, so each scan gets its own time budget.
 for (const theme of ["light", "dark"] as const)
 	for (const demo of modes)
-		test(`has no serious or critical accessibility violations: ${demo.mode} ${theme}`, async ({
+		test(`has no serious or critical accessibility violations: ${demo.mode} ${theme}`, { tag: "@axe" }, async ({
 			page,
 		}) => {
 			await page.goto(demo.path);
@@ -613,8 +614,9 @@ for (const theme of ["light", "dark"] as const)
 				// single named keyboard sink in its open shadow root. Axe treats the host's
 				// ElementInternals semantics as a second control even after the host is
 				// removed from the tab order, producing a nested-control false positive.
-				.disableRules(["nested-interactive"])
+				.disableRules(["nested-interactive", ...mediaDisabledAxeRules()])
 				.analyze();
+			await checkMedia(page, "body");
 			const material = results.violations.filter(
 				(violation) =>
 					violation.impact === "serious" || violation.impact === "critical",

@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { a11yMediaProjects } from "../../scripts/lib/playwright-media-projects.mjs";
 import { viteListeningOn } from "../../scripts/lib/playwright-web-server.mjs";
 
 const configDir = dirname(fileURLToPath(import.meta.url));
@@ -68,5 +69,6 @@ export default defineConfig({
 			testMatch: /section-(player-host-section-switch|player-preloaded-npm|ruler-pointer|protractor-pointer)\.spec\.ts/,
 			use: { ...devices["Desktop Safari"] },
 		},
+		...a11yMediaProjects(/section-(demos-chrome-a11y|player-tts-ssml)\.spec\.ts/),
 	],
 });

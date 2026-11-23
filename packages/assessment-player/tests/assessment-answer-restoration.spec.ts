@@ -3,6 +3,7 @@ import AxeBuilder from "@axe-core/playwright";
 import type { AssessmentPlayerRuntimeHostContract } from "@pie-players/pie-assessment-player";
 import type { SectionControllerHandle, ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
 import type { SectionControllerSessionState } from "@pie-players/pie-players-shared/types";
+import { checkMedia, mediaDisabledAxeRules } from "../../../test-support/a11y-media";
 
 const player = "pie-assessment-player-default";
 const firstChoice = 'input[type="radio"][value="a"]';
@@ -178,13 +179,14 @@ for (const fault of ["delay", "readiness"] as const) {
 	});
 }
 
-test("failed restoration preserves answers and offers accessible keyboard retry", async ({ page }, testInfo) => {
+test("failed restoration preserves answers and offers accessible keyboard retry", { tag: "@axe" }, async ({ page }, testInfo) => {
 	const host = await prepareRestore(page, "reject");
 	await expect(host.getByRole("alert")).toHaveText("Your saved answers for this section could not be restored. Try again.");
 	await expectSavedAnswerIntact(page);
 	expect(await page.evaluate(() => window.assessmentRestore.errors)).toBe(1);
 	await page.setViewportSize({ width: 320, height: 800 });
-	const axe = await new AxeBuilder({ page }).include(sectionHost).analyze();
+	const axe = await new AxeBuilder({ page }).include(sectionHost).disableRules(mediaDisabledAxeRules()).analyze();
+	await checkMedia(page, sectionHost);
 	expect(axe.violations).toEqual([]);
 	const retry = host.getByRole("button", { name: "Retry", exact: true });
 	await expect(host.getByRole("button", { name: "Next", exact: true })).toBeFocused();

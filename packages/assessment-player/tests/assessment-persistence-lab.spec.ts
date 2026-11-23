@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { checkMedia, mediaDisabledAxeRules } from "../../../test-support/a11y-media";
 import type { readLab } from "../../../apps/assessment-demos/src/lib/server/persistence-lab";
 
 type ServerState = ReturnType<typeof readLab>;
@@ -66,7 +67,7 @@ test("real answers survive HTTP save, navigation and reload without browser stor
 	await expect(choice(page, "a")).toBeChecked();
 });
 
-test("held writes stay uncommitted until released and expose keyboard controls", async ({ page, request }, testInfo) => {
+test("held writes stay uncommitted until released and expose keyboard controls", { tag: "@axe" }, async ({ page, request }, testInfo) => {
 	await page.setViewportSize({ width: 320, height: 800 });
 	await page.getByLabel("Next write behavior").selectOption("hold");
 	await page.getByRole("button", { name: "Save snapshot", exact: true }).click();
@@ -82,7 +83,8 @@ test("held writes stay uncommitted until released and expose keyboard controls",
 	await expect(release).toBeFocused();
 	await expect(release).toHaveCSS("outline-style", "solid");
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-	const axe = await new AxeBuilder({ page }).include(".pie-lab-controls").withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).analyze();
+	const axe = await new AxeBuilder({ page }).include(".pie-lab-controls").withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"]).disableRules(mediaDisabledAxeRules()).analyze();
+	await checkMedia(page, ".pie-lab-controls");
 	expect(axe.violations).toEqual([]);
 	await page.screenshot({ path: testInfo.outputPath("persistence-lab-held.png"), fullPage: true });
 	await release.press("Enter");

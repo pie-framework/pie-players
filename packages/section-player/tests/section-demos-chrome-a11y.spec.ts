@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { checkMedia, mediaDisabledAxeRules } from "../../../test-support/a11y-media";
 import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
@@ -9,7 +10,7 @@ const DISALLOWED_DEMO_CHROME_VIOLATIONS = new Set([
 ]);
 
 test.describe("section demos chrome accessibility", () => {
-	test("avoids known chrome a11y regressions with debug panels open", async ({
+	test("avoids known chrome a11y regressions with debug panels open", { tag: "@axe" }, async ({
 		page,
 	}) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
@@ -29,10 +30,11 @@ test.describe("section demos chrome accessibility", () => {
 		await instrumentationToggle.click();
 
 		const axeResults = await new AxeBuilder({ page })
-			.disableRules(["region"])
+			.disableRules(["region", ...mediaDisabledAxeRules()])
 			// vite-error-overlay is the dev-server crash overlay — not product surface.
 			.exclude("vite-error-overlay")
 			.analyze();
+		await checkMedia(page, "body");
 		const matched = axeResults.violations.filter((violation) =>
 			DISALLOWED_DEMO_CHROME_VIOLATIONS.has(violation.id),
 		);

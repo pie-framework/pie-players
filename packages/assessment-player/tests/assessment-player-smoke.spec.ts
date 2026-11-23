@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { checkMedia, mediaDisabledAxeRules } from "../../../test-support/a11y-media";
 import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
 const DEMO_PATH = "/three-section-assessment";
@@ -636,14 +637,15 @@ test.describe("assessment player smoke", () => {
 			.toBeGreaterThan(rowsBeforeEmit);
 	});
 
-	test("keeps baseline a11y regressions in check", async ({ page }) => {
+	test("keeps baseline a11y regressions in check", { tag: "@axe" }, async ({ page }) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 		await expect(page.locator("pie-assessment-player-default")).toBeVisible();
 
 		const axeResults = await new AxeBuilder({ page })
 			.include("pie-assessment-player-default")
-			.disableRules(["region"])
+			.disableRules(["region", ...mediaDisabledAxeRules()])
 			.analyze();
+		await checkMedia(page, "pie-assessment-player-default");
 		const seriousOrCritical = axeResults.violations.filter((violation) =>
 			["serious", "critical"].includes(violation.impact || ""),
 		);

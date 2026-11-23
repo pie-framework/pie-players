@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { a11yMediaProjects } from "../../scripts/lib/playwright-media-projects.mjs";
 import { viteListeningOn } from "../../scripts/lib/playwright-web-server.mjs";
 
 const configDir = dirname(fileURLToPath(import.meta.url));
@@ -40,5 +41,8 @@ export default defineConfig({
 			name: "chromium",
 			use: { ...devices["Desktop Chrome"] },
 		},
+		...a11yMediaProjects(
+			/assessment-(answer-restoration|persistence-lab|player-lifecycle|player-smoke)\.spec\.ts/,
+		),
 	],
 });

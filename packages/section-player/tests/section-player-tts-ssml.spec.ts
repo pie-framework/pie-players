@@ -1,6 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { DAISYUI_THEME_CATALOG, listPieColorSchemes } from "@pie-players/pie-theme";
+import { checkMedia, mediaDisabledAxeRules } from "../../../test-support/a11y-media";
 import { expectUsableTarget } from "../../../test-support/control-sizing";
 import { withBrowserZoom } from "../../../test-support/browser-zoom";
 import {
@@ -407,7 +408,7 @@ test.describe("section player demo tts-ssml", () => {
 	}
 
 	for (const rootFontPx of [16, 32]) {
-		test(`keeps reading controls accessible in a narrow host with ${rootFontPx}px root text`, async ({ page }, testInfo) => {
+		test(`keeps reading controls accessible in a narrow host with ${rootFontPx}px root text`, { tag: "@axe" }, async ({ page }, testInfo) => {
 			await page.addInitScript(() => {
 				Object.defineProperty(window, "outerWidth", { get: () => 1768 });
 			});
@@ -454,7 +455,9 @@ test.describe("section player demo tts-ssml", () => {
 			const results = await new AxeBuilder({ page })
 				.include("pie-section-player-splitpane")
 				.withTags(["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"])
+				.disableRules(mediaDisabledAxeRules())
 				.analyze();
+			await checkMedia(page, "pie-section-player-splitpane");
 			expect(results.violations.filter(v => !isKnownA11yBaselineDebt(v))).toEqual([]);
 			await page.screenshot({ path: testInfo.outputPath("reading-controls.png") });
 			await panel.getByRole("button", { name: "Stop reading", exact: true }).press("Enter");
@@ -2268,15 +2271,16 @@ test.describe("section player demo tts-ssml", () => {
 		);
 	});
 
-	test("keeps baseline a11y regressions in check", async ({ page }) => {
+	test("keeps baseline a11y regressions in check", { tag: "@axe" }, async ({ page }) => {
 		await gotoDemo(page);
 
 		// Baseline automated a11y scan (fail on serious / critical issues).
 		const axeResults = await new AxeBuilder({ page })
-			.disableRules(["region"])
+			.disableRules(["region", ...mediaDisabledAxeRules()])
 			// vite-error-overlay is the dev-server crash overlay — not product surface.
 			.exclude("vite-error-overlay")
 			.analyze();
+		await checkMedia(page, "body");
 		const seriousOrCritical = axeResults.violations.filter((violation) =>
 			["serious", "critical"].includes(violation.impact || ""),
 		);

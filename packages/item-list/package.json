@@ -60,7 +60,7 @@
 	},
 	"devDependencies": {
 		"@happy-dom/global-registrator": "^21.0.4",
-		"@pie-element/shared-math-rendering-mathjax": "0.1.8",
+		"@pie-element/shared-math-rendering-mathjax": "0.1.9",
 		"@playwright/test": "^1.65.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
 		"@types/node": "^26.6.6",

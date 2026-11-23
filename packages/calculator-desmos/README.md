@@ -152,6 +152,17 @@ leaves the expression list on, because on a graphing calculator the list is the
 only way to enter a function. A host that wants the list gone passes
 `settings: { expressions: false }`.
 
+### Theming
+
+The calculator follows the theme computed on its container. `invertedColors` is
+`true` when `--pie-background` is dark. A graphing calculator takes
+`--pie-calculator-series-1` to `--pie-calculator-series-6` as its `colors`
+palette when any of them is set, keeping Desmos's colour in a slot whose token is
+unset; Desmos inverts `colors` along with everything else, so an inverted
+calculator keeps Desmos's own palette. Both re-apply through `updateSettings`
+when a `<pie-theme>` or the document element changes theme.
+`settings.invertedColors` and `settings.colors` take precedence over the theme.
+
 ## Calculator behavior
 
 Desmos exposes values and state on the graphing calculator only:

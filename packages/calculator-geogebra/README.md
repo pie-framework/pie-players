@@ -109,6 +109,17 @@ The adapter sets these parameters around `settings`:
 `enableFileFeatures`, `enableCAS` and `enableRightClick` to `false` after
 `settings`, so a host cannot relax it.
 
+### Theming
+
+`borderColor` defaults to `--pie-border` as it computes on the container, and
+`settings.borderColor` takes precedence. GeoGebra reads the border once, at
+load. The graphing app's graphics view takes `--pie-background` as `bgColor`,
+`--pie-blue-grey-300` as `gridColor` and `--pie-text` as `axesColor` through
+`setGraphicsOptions`: at load, after `clear()` and `importState()`, and whenever a
+`<pie-theme>` or the document element changes theme. The algebra view and
+keyboard keep GeoGebra's light chrome, since the embedding API has no call for
+them.
+
 ## Calculator behavior
 
 | Method | Behavior |

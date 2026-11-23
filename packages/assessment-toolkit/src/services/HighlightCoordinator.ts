@@ -19,6 +19,7 @@
  * @see https://developer.mozilla.org/en-US/docs/Web/API/CSS_Custom_Highlight_API
  */
 
+import { observePieThemeChanges } from "@pie-players/pie-theme/theme-observer";
 import type { HighlightCoordinatorApi } from "./interfaces.js";
 import { RangeSerializer, type SerializedRange } from "./RangeSerializer.js";
 import {
@@ -408,7 +409,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	private nextAnnotationId = 1;
 	private supported = false;
 	private rangeSerializer: RangeSerializer;
-	private themeObserver: MutationObserver | null = null;
+	private stopThemeObservation: (() => void) | null = null;
 
 	constructor() {
 		this.rangeSerializer = new RangeSerializer();
@@ -434,48 +435,9 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 	 * themes its target as it connects.
 	 */
 	private setupThemeObservation(): void {
-		if (typeof document === "undefined") return;
-		if (typeof MutationObserver === "undefined") return;
-
-		const themeHosts = document.getElementsByTagName("pie-theme");
-		const observedHosts = new WeakSet<Element>();
-		const observeNewHosts = (): boolean => {
-			let found = false;
-			for (const host of themeHosts) {
-				if (observedHosts.has(host)) continue;
-				observedHosts.add(host);
-				observer.observe(host, {
-					attributes: true,
-					attributeFilter: [
-						"theme",
-						"scheme",
-						"provider",
-						"variables",
-						"style",
-						"data-theme",
-						"data-color-scheme",
-					],
-				});
-				found = true;
-			}
-			return found;
-		};
-		const observer = new MutationObserver((records) => {
-			const mounted = observeNewHosts();
-			if (mounted || records.some((record) => record.type === "attributes")) {
-				this.applyAdaptiveTTSStyle();
-			}
-		});
-		this.themeObserver = observer;
-
-		observer.observe(document.documentElement, {
-			attributes: true,
-			attributeFilter: ["style", "data-theme", "data-color-scheme", "class"],
-		});
-		// Insertions, so a `<pie-theme>` mounted later is found. An insertion
-		// costs a walk of the live host list, which holds a handful at most.
-		observer.observe(document, { childList: true, subtree: true });
-		observeNewHosts();
+		this.stopThemeObservation = observePieThemeChanges(() =>
+			this.applyAdaptiveTTSStyle(),
+		);
 	}
 
 	private parseColor(
@@ -1151,7 +1113,7 @@ export class HighlightCoordinator implements HighlightCoordinatorApi {
 		if (ttsStyleInputs.override?.owner === this) {
 			ttsStyleInputs.override = null;
 		}
-		this.themeObserver?.disconnect();
-		this.themeObserver = null;
+		this.stopThemeObservation?.();
+		this.stopThemeObservation = null;
 	}
 }

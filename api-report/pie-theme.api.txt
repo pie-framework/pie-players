@@ -61,5 +61,10 @@
   PieThemeElement
   definePieTheme
 
+./theme-observer
+  type PieElementTheme
+  observePieThemeChanges
+  readPieElementTheme
+
 ./token-registry.json
   default

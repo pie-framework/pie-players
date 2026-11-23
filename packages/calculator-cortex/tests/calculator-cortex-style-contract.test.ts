@@ -80,22 +80,6 @@ describe("host theming reaches the calculator", () => {
 			);
 		expect(offenders).toEqual([]);
 	});
-
-	test("surfaces never resolve through --pie-background", () => {
-		/*
-		 * `--pie-background` is the page token, which a host may point at its own
-		 * backdrop or at a translucent value. A surface resolving through it would
-		 * stop every text-contrast guarantee in this package from being the
-		 * package's to make. `--pie-white` and `--pie-background-dark` are surface
-		 * roles and opaque in both base themes and in all ten schemes.
-		 */
-		const surfaceRules = [
-			...allStyles.matchAll(/(?:^|\n)\s*background(?:-color)?:\s*([^;]+);/g),
-		].map((match) => match[1] ?? "");
-		for (const rule of surfaceRules) {
-			expect(rule).not.toMatch(/var\(\s*--pie-background\s*[,)]/);
-		}
-	});
 });
 
 describe("the layout responds to its panel, not the window", () => {

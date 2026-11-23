@@ -236,20 +236,25 @@ element: a declaration there would override every ancestor, a learner's
 color-scheme accommodation included.
 `tests/calculator-cortex-style-contract.test.ts` enforces it.
 
-Consumed: `--pie-text`, `--pie-white`, `--pie-background-dark`, `--pie-border`,
-`--pie-border-gray`, `--pie-blue-grey-300`, `--pie-button-bg`,
-`--pie-button-color`, `--pie-button-hover-bg`, `--pie-button-hover-border`,
-`--pie-button-active-bg`, `--pie-button-focus-outline`, `--pie-primary`,
-`--pie-primary-dark`, `--pie-incorrect`, `--pie-incorrect-secondary`,
+Consumed: `--pie-text`, `--pie-white`, `--pie-background`,
+`--pie-background-dark`, `--pie-surface`, `--pie-border`, `--pie-border-gray`,
+`--pie-blue-grey-300`, `--pie-button-bg`, `--pie-button-color`,
+`--pie-button-hover-bg`, `--pie-button-hover-border`, `--pie-button-active-bg`,
+`--pie-button-focus-outline`, `--pie-primary`, `--pie-primary-dark`,
+`--pie-faded-primary`, `--pie-incorrect`, `--pie-incorrect-secondary`,
 `--pie-content-emphasis` and `--pie-font-family`.
 
-`--pie-background` is excluded. It is the page token, which a host may point at
-its own backdrop or at a translucent value, and resolving the calculator's fill
-through it would take every contrast guarantee out of this package's hands.
-Surfaces take `--pie-white` for the card and `--pie-background-dark` for the
-recessed keypad plane, both opaque in the base themes and in all ten schemes. The
-card and keypad surfaces are package-private (`--pie-calculator-surface`,
-`--pie-calculator-surface-raised`) and carry no compatibility guarantee.
+The card and the screen take `--pie-background` and the recessed keypad plane
+`--pie-background-dark`, the two surfaces `--pie-text` is certified against at
+4.5:1. The keypad plane's `--pie-calculator-surface-raised` is package-private
+and carries no compatibility guarantee.
+
+The input field sets MathLive's caret, selection and contains-highlight colours
+from `--pie-text`, `--pie-faded-primary` and `--pie-surface`. Placeholders take
+the field ink, `--pie-button-color` at full opacity, certified at 4.5:1 on
+`--pie-button-bg`: MathLive 0.111 draws them in the field's own colour, and
+`--placeholder-color` carries the same value for a release that styles them
+apart.
 
 `--pie-font-scale` is not consumed, matching the recorded decision in
 `section-player/tests/content-text-follows-font-scale.test.ts`: the font
@@ -266,7 +271,8 @@ and keep the palette distinguishable.
 
 JSXGraph's own axis and grid defaults are light in every theme, so the package
 themes the plot's axes, tick labels and grid from the resolved tokens and
-re-applies them when `theme: "auto"` follows an OS change. The plot is
+re-applies them when the page's scheme changes or `theme: "auto"` follows an OS
+change. The plot is
 `aria-hidden`, out of axe's reach, so `e2e/calculator-cortex.spec.ts` asserts its
 contrast directly: tick labels at 4.5:1 as text and axes at 3:1 as a graphical
 object.

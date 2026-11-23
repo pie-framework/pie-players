@@ -41,7 +41,8 @@
 		"access": "public"
 	},
 	"dependencies": {
-		"@pie-players/pie-calculator": "workspace:*"
+		"@pie-players/pie-calculator": "workspace:*",
+		"@pie-players/pie-theme": "workspace:*"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.3"

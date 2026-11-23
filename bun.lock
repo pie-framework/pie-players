@@ -29,7 +29,7 @@
     },
     "apps/assessment-demos": {
       "name": "@pie-players/assessment-demos",
-      "version": "0.1.63-beta.10",
+      "version": "0.1.63-beta.11",
       "dependencies": {
         "@pie-players/demo-ui": "workspace:*",
         "@pie-players/pie-assessment-player": "workspace:*",
@@ -62,7 +62,7 @@
     },
     "apps/backend-demos": {
       "name": "@pie-players/backend-demos",
-      "version": "0.1.34-beta.10",
+      "version": "0.1.34-beta.11",
       "dependencies": {
         "@pie-players/demo-ui": "workspace:*",
         "@pie-players/pie-item-player": "workspace:*",
@@ -86,7 +86,7 @@
     },
     "apps/demo-ui": {
       "name": "@pie-players/demo-ui",
-      "version": "0.1.3-beta.10",
+      "version": "0.1.3-beta.11",
       "dependencies": {
         "@pie-element/categorize": "next",
         "@pie-element/charting": "next",
@@ -151,7 +151,7 @@
     },
     "apps/item-demos": {
       "name": "@pie-players/item-demos",
-      "version": "0.1.83-beta.10",
+      "version": "0.1.83-beta.11",
       "dependencies": {
         "@pie-element/mc-populated-blank": "next",
         "@pie-element/multiple-choice": "next",
@@ -206,7 +206,7 @@
     },
     "apps/lti-demos": {
       "name": "@pie-players/lti-demos",
-      "version": "0.1.38-beta.10",
+      "version": "0.1.38-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-player": "workspace:*",
         "@pie-players/pie-assessment-toolkit": "workspace:*",
@@ -226,7 +226,7 @@
     },
     "apps/section-demos": {
       "name": "@pie-players/section-demos",
-      "version": "0.1.89-beta.10",
+      "version": "0.1.89-beta.11",
       "dependencies": {
         "@pie-element/categorize": "next",
         "@pie-element/drag-in-the-blank": "next",
@@ -283,7 +283,7 @@
     },
     "packages/assessment-player": {
       "name": "@pie-players/pie-assessment-player",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -300,7 +300,7 @@
     },
     "packages/assessment-toolkit": {
       "name": "@pie-players/pie-assessment-toolkit",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-calculator": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -318,14 +318,14 @@
     },
     "packages/calculator": {
       "name": "@pie-players/pie-calculator",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "devDependencies": {
         "typescript": "^5.9.3",
       },
     },
     "packages/calculator-cortex": {
       "name": "@pie-players/pie-calculator-cortex",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-calculator": "workspace:*",
       },
@@ -345,7 +345,7 @@
     },
     "packages/calculator-desmos": {
       "name": "@pie-players/pie-calculator-desmos",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-calculator": "workspace:*",
       },
@@ -355,7 +355,7 @@
     },
     "packages/calculator-geogebra": {
       "name": "@pie-players/pie-calculator-geogebra",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-calculator": "workspace:*",
       },
@@ -365,7 +365,7 @@
     },
     "packages/default-tool-loaders": {
       "name": "@pie-players/pie-default-tool-loaders",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-calculator": "workspace:*",
@@ -394,7 +394,7 @@
     },
     "packages/item-list": {
       "name": "@pie-players/pie-item-list",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-element/shared-types": "0.2.3",
         "@pie-players/pie-item-player": "workspace:*",
@@ -416,7 +416,7 @@
     },
     "packages/item-player": {
       "name": "@pie-players/pie-item-player",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-players-shared": "workspace:*",
       },
@@ -438,7 +438,7 @@
     },
     "packages/pie-context": {
       "name": "@pie-players/pie-context",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "devDependencies": {
         "@happy-dom/global-registrator": "^21.0.4",
         "typescript": "^5.9.3",
@@ -446,7 +446,7 @@
     },
     "packages/pie-i18n-generated": {
       "name": "@pie-players/pie-i18n-generated",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "devDependencies": {
         "@pie-players/pie-players-shared": "workspace:*",
         "typescript": "^5.9.3",
@@ -454,14 +454,14 @@
     },
     "packages/pie-language-tags": {
       "name": "@pie-players/pie-language-tags",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "devDependencies": {
         "typescript": "^5.9.3",
       },
     },
     "packages/players-shared": {
       "name": "@pie-players/pie-players-shared",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-element/shared-utils": "0.1.6",
         "@pie-lib/math-rendering-module": "6.0.0",
@@ -486,7 +486,7 @@
     },
     "packages/print-player": {
       "name": "@pie-players/pie-print-player",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "devDependencies": {
         "@happy-dom/global-registrator": "^21.0.4",
         "@pie-players/pie-assessment-toolkit": "workspace:*",
@@ -503,7 +503,7 @@
     },
     "packages/section-player": {
       "name": "@pie-players/pie-section-player",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
@@ -527,7 +527,7 @@
     },
     "packages/section-player-tools-event-debugger": {
       "name": "@pie-players/pie-section-player-tools-event-debugger",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "devDependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -542,7 +542,7 @@
     },
     "packages/section-player-tools-instrumentation-debugger": {
       "name": "@pie-players/pie-section-player-tools-instrumentation-debugger",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "devDependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -557,7 +557,7 @@
     },
     "packages/section-player-tools-pnp-debugger": {
       "name": "@pie-players/pie-section-player-tools-pnp-debugger",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
       },
@@ -574,7 +574,7 @@
     },
     "packages/section-player-tools-session-debugger": {
       "name": "@pie-players/pie-section-player-tools-session-debugger",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
       },
@@ -604,7 +604,7 @@
     },
     "packages/section-player-tools-tts-settings": {
       "name": "@pie-players/pie-section-player-tools-tts-settings",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "speech-rule-engine": "5.0.0-rc.4",
       },
@@ -622,7 +622,7 @@
     },
     "packages/theme": {
       "name": "@pie-players/pie-theme",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "devDependencies": {
         "@happy-dom/global-registrator": "^21.0.4",
         "typescript": "^5.9.3",
@@ -630,7 +630,7 @@
     },
     "packages/tool-annotation-toolbar": {
       "name": "@pie-players/pie-tool-annotation-toolbar",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -647,7 +647,7 @@
     },
     "packages/tool-answer-eliminator": {
       "name": "@pie-players/pie-tool-answer-eliminator",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -664,7 +664,7 @@
     },
     "packages/tool-calculator-desmos": {
       "name": "@pie-players/pie-tool-calculator-desmos",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-calculator": "workspace:*",
         "@pie-players/pie-tool-calculator-shared": "workspace:*",
@@ -680,7 +680,7 @@
     },
     "packages/tool-calculator-inline-desmos": {
       "name": "@pie-players/pie-tool-calculator-inline-desmos",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -697,7 +697,7 @@
     },
     "packages/tool-calculator-shared": {
       "name": "@pie-players/pie-tool-calculator-shared",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-calculator": "workspace:*",
@@ -716,7 +716,7 @@
     },
     "packages/tool-dictionary": {
       "name": "@pie-players/pie-tool-dictionary",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -732,7 +732,7 @@
     },
     "packages/tool-graph": {
       "name": "@pie-players/pie-tool-graph",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -749,7 +749,7 @@
     },
     "packages/tool-line-reader": {
       "name": "@pie-players/pie-tool-line-reader",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -766,7 +766,7 @@
     },
     "packages/tool-magnifier": {
       "name": "@pie-players/pie-tool-magnifier",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -783,7 +783,7 @@
     },
     "packages/tool-periodic-table": {
       "name": "@pie-players/pie-tool-periodic-table",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -799,7 +799,7 @@
     },
     "packages/tool-picture-dictionary": {
       "name": "@pie-players/pie-tool-picture-dictionary",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -815,7 +815,7 @@
     },
     "packages/tool-protractor": {
       "name": "@pie-players/pie-tool-protractor",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -832,7 +832,7 @@
     },
     "packages/tool-ruler": {
       "name": "@pie-players/pie-tool-ruler",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -849,7 +849,7 @@
     },
     "packages/tool-sign-language": {
       "name": "@pie-players/pie-tool-sign-language",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -866,7 +866,7 @@
     },
     "packages/tool-theme": {
       "name": "@pie-players/pie-tool-theme",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -884,7 +884,7 @@
     },
     "packages/tool-tts-inline": {
       "name": "@pie-players/pie-tool-tts-inline",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
@@ -901,62 +901,62 @@
     },
     "packages/tts": {
       "name": "@pie-players/pie-tts",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "devDependencies": {
         "typescript": "^5.9.3",
       },
     },
     "packages/tts-client-server": {
       "name": "@pie-players/tts-client-server",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/pie-tts": "workspace:*",
       },
       "devDependencies": {
         "typescript": "^5.9.3",
-        "vitest": "^5.1.0",
+        "vitest": "^5.1.1",
       },
     },
     "packages/tts-server-core": {
       "name": "@pie-players/tts-server-core",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-tts": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^26.6.6",
         "typescript": "^5.9.3",
-        "vitest": "^5.1.0",
+        "vitest": "^5.1.1",
       },
     },
     "packages/tts-server-google": {
       "name": "@pie-players/tts-server-google",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@google-cloud/text-to-speech": "^7.2.0",
         "@pie-players/tts-server-core": "workspace:*",
       },
       "devDependencies": {
         "typescript": "^5.9.3",
-        "vitest": "^5.1.0",
+        "vitest": "^5.1.1",
       },
     },
     "packages/tts-server-polly": {
       "name": "@pie-players/tts-server-polly",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@aws-sdk/client-polly": "^3.1163.0",
         "@pie-players/tts-server-core": "workspace:*",
       },
       "devDependencies": {
         "typescript": "^5.9.3",
-        "vitest": "^5.1.0",
+        "vitest": "^5.1.1",
       },
     },
     "packages/tts-server-sc": {
       "name": "@pie-players/tts-server-sc",
-      "version": "1.0.0-beta.10",
+      "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-players-shared": "workspace:*",
         "@pie-players/tts-server-core": "workspace:*",
@@ -965,12 +965,12 @@
       },
       "devDependencies": {
         "typescript": "^5.9.3",
-        "vitest": "^5.1.0",
+        "vitest": "^5.1.1",
       },
     },
     "tools/cli": {
       "name": "@pie-players/pie-players-cli",
-      "version": "0.3.9-beta.10",
+      "version": "0.3.9-beta.11",
       "bin": {
         "pie-players": "./bin/run.js",
       },
@@ -1974,9 +1974,9 @@
 
     "@visx/vendor": ["@visx/vendor@4.0.0", "", { "dependencies": { "@types/d3-array": "3.0.3", "@types/d3-color": "3.1.0", "@types/d3-delaunay": "6.0.1", "@types/d3-format": "3.0.1", "@types/d3-geo": "3.1.0", "@types/d3-interpolate": "3.0.1", "@types/d3-path": "3.1.1", "@types/d3-scale": "4.0.2", "@types/d3-shape": "3.1.7", "@types/d3-time": "3.0.0", "@types/d3-time-format": "2.1.0", "d3-array": "3.2.1", "d3-color": "3.1.0", "d3-delaunay": "6.0.2", "d3-format": "3.1.0", "d3-geo": "3.1.0", "d3-interpolate": "3.0.1", "d3-path": "3.1.0", "d3-scale": "4.0.2", "d3-shape": "3.2.0", "d3-time": "3.1.0", "d3-time-format": "4.1.0", "internmap": "2.0.3" } }, "sha512-LoBNzWjTXzBfu095BQxB14IwZQHHOLs8ZMzM6t2FL4ZGORaACgLcmXRRLhFo0VmRR8L7iNTM4HHc1j6yFvzsAA=="],
 
-    "@vitest/mocker": ["@vitest/mocker@5.1.0", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.31", "@vitest/spy": "5.1.0", "estree-walker": "^3.0.3", "magic-string": "^1.4.3" }, "peerDependencies": { "msw": "^2.4.9 || ^3.0.0", "vite": "^6.0.0 || ^7.0.0 || ^8.0.0" }, "optionalPeers": ["msw", "vite"] }, "sha512-5umB9/jlWcqVS6fsrFmv5Gdnpu6wAUio/lEOwAmvB7v+lFo/IW2B9FhAD0p19GCULTgMzLCdUmuCDCnAzWgppQ=="],
+    "@vitest/mocker": ["@vitest/mocker@5.1.1", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.31", "@vitest/spy": "5.1.1", "estree-walker": "^3.0.3", "magic-string": "^1.4.5" }, "peerDependencies": { "msw": "^2.4.9 || ^3.0.0", "vite": "^6.0.0 || ^7.0.0 || ^8.0.0" }, "optionalPeers": ["msw", "vite"] }, "sha512-b2OgTB4+3ImWIVafXKazJXwLKwQxUNnix6b3xUvUTMh7RyXlrtzoxfZr8aEz9zkHOMAS4K5lu3TvFWoiVeVTQg=="],
 
-    "@vitest/spy": ["@vitest/spy@5.1.0", "", {}, "sha512-2DPO5OMHWKrBngC+fCmTQqemNF0gidRhp3lxbBmRhW+M1XJrfgPpqNqWVevXtn2f2ufD5ZaR1B6B641aAlcX5A=="],
+    "@vitest/spy": ["@vitest/spy@5.1.1", "", {}, "sha512-6K8C6alQG1/Yc8/ZI22iJS7JEsxPdVzqtqDq+/xM4Z0mGVykemMVjLhqMy/q6/IHYG3kKD8hKSwRen/ZdyI9vQ=="],
 
     "@volar/language-core": ["@volar/language-core@2.4.28", "", { "dependencies": { "@volar/source-map": "2.4.28" } }, "sha512-w4qhIJ8ZSitgLAkVay6AbcnC7gP3glYM3fYwKV3srj8m494E3xtrCv6E+bWviiK/8hs6e6t1ij1s2Endql7vzQ=="],
 
@@ -2922,7 +2922,7 @@
 
     "tiny-warning": ["tiny-warning@1.0.3", "", {}, "sha512-lBN9zLN/oAf68o3zNXYrdCt1kP8WsiGW8Oo2ka41b2IM5JL/S1CTyX1rW0mb/zSuJun0ZUrDxx4sqvYS2FWzPA=="],
 
-    "tinybench": ["tinybench@6.2.2", "", {}, "sha512-nIZ2N2dFpjBsg2hgitKu7mA+FvsIJuGJOwysRngmVRRmWgR/UyPjwJj8c/fT/dhm8EkHnF5EOogRf+0Z2qrimA=="],
+    "tinybench": ["tinybench@6.2.5", "", {}, "sha512-b/8GRMdnY4cqkfCLyaFpTGIv1qwfi3oT0mWaepwT++6Z/ZrYehNfZZ2JDKVLKGhNoEkS3IIB1ELtCT0XS5DtOA=="],
 
     "tinyexec": ["tinyexec@1.3.1", "", {}, "sha512-GCvB3aoys96IuDFBMcTB46JOR6mdMtAToqwiW8JlWhsoh1mhHi/xn9ss/Dg7N555GiJyEt2qzoG/NHCwM6h1EA=="],
 
@@ -2998,7 +2998,7 @@
 
     "vitefu": ["vitefu@1.1.2", "", { "peerDependencies": { "vite": "^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0-beta.0" }, "optionalPeers": ["vite"] }, "sha512-zpKATdUbzbsycPFBN71nS2uzBUQiVnFoOrr2rvqv34S1lcAgMKKkjWleLGeiJlZ8lwCXvtWaRn7R3ZC16SYRuw=="],
 
-    "vitest": ["vitest@5.1.0", "", { "dependencies": { "@types/chai": "^5.2.2", "@vitest/mocker": "5.1.0", "chai": "^6.3.0", "es-module-lexer": "^2.3.2", "expect-type": "^1.4.0", "magic-string": "^1.4.3", "obug": "^3.0.0", "picomatch": "^4.0.7", "std-env": "^4.3.0", "tinybench": "^6.2.2", "tinyexec": "^1.3.1", "tinyglobby": "^0.2.17", "why-is-node-running": "3.2.1" }, "peerDependencies": { "@edge-runtime/vm": "*", "@opentelemetry/api": "^1.9.0", "@types/node": "^22.0.0 || >=24.0.0", "@vitest/browser-playwright": "5.1.0", "@vitest/browser-preview": "5.1.0", "@vitest/browser-webdriverio": "^5.0.0-beta.5 || >=5.0.0", "@vitest/coverage-istanbul": "5.1.0", "@vitest/coverage-v8": "5.1.0", "@vitest/ui": "5.1.0", "happy-dom": "*", "jsdom": "*", "vite": "^6.4.0 || ^7.0.0 || ^8.0.0" }, "optionalPeers": ["@edge-runtime/vm", "@opentelemetry/api", "@types/node", "@vitest/browser-playwright", "@vitest/browser-preview", "@vitest/browser-webdriverio", "@vitest/coverage-istanbul", "@vitest/coverage-v8", "@vitest/ui", "happy-dom", "jsdom"], "bin": { "vitest": "./vitest.mjs" } }, "sha512-MzmNFnrwa8v8lF1bLxw3UJ4EREwVOVb75VqJZmUDRjJ6EluK/x9th7qTbaeDk41WxE1GxWqmTXcdsfobfH5sOA=="],
+    "vitest": ["vitest@5.1.1", "", { "dependencies": { "@types/chai": "^5.2.2", "@vitest/mocker": "5.1.1", "chai": "^6.3.0", "es-module-lexer": "^2.3.2", "expect-type": "^1.4.0", "magic-string": "^1.4.5", "obug": "^3.0.0", "picomatch": "^4.0.7", "std-env": "^4.3.0", "tinybench": "^6.2.3", "tinyexec": "^1.3.1", "tinyglobby": "^0.2.17", "why-is-node-running": "3.2.1" }, "peerDependencies": { "@edge-runtime/vm": "*", "@opentelemetry/api": "^1.9.0", "@types/node": "^22.0.0 || >=24.0.0", "@vitest/browser-playwright": "5.1.1", "@vitest/browser-preview": "5.1.1", "@vitest/browser-webdriverio": "^5.0.0-beta.5 || >=5.0.0", "@vitest/coverage-istanbul": "5.1.1", "@vitest/coverage-v8": "5.1.1", "@vitest/ui": "5.1.1", "happy-dom": "*", "jsdom": "*", "vite": "^6.4.0 || ^7.0.0 || ^8.0.0" }, "optionalPeers": ["@edge-runtime/vm", "@opentelemetry/api", "@types/node", "@vitest/browser-playwright", "@vitest/browser-preview", "@vitest/browser-webdriverio", "@vitest/coverage-istanbul", "@vitest/coverage-v8", "@vitest/ui", "happy-dom", "jsdom"], "bin": { "vitest": "./vitest.mjs" } }, "sha512-trVmzUFOSraCZcI3uZIMD5FqBh4atFkC/XuJP/IU7qtyQay0FCs3Ia+0QiQ2JJwGyWG/xrcBoJNel2+O7kEZ0g=="],
 
     "vscode-uri": ["vscode-uri@3.1.0", "", {}, "sha512-/BpdSx+yCQGnCvecbyXdxHDkuk55/G3xwnC0GqY4gmQ3j+A+g8kzzgB4Nk/SINjqn6+waqw3EgbVF2QKExkRxQ=="],
 
@@ -3544,6 +3544,8 @@
 
     "@visx/vendor/d3-shape": ["d3-shape@3.2.0", "", { "dependencies": { "d3-path": "^3.1.0" } }, "sha512-SaLBuwGm3MOViRq2ABk3eLoxwZELpH6zhl3FbAoJ7Vm1gofKx6El1Ib5z23NUEhF9AsGl7y+dzLe5Cw2AArGTA=="],
 
+    "@vitest/mocker/magic-string": ["magic-string@1.4.5", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.6.0" } }, "sha512-oLLC2+YvQUfAa+vxoufE/yc1icb87M9iXIRqAoR/2EhE/8cb3SF/+Gi0c2By1B+5Vz2e2vQtUvHiu1+63Znh+w=="],
+
     "acorn-walk/acorn": ["acorn@8.16.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw=="],
 
     "chalk/supports-color": ["supports-color@7.2.0", "", { "dependencies": { "has-flag": "^4.0.0" } }, "sha512-qpCAvRl9stuOHveKsn7HncJRvv501qIacKzQlO/+Lwxc9+0q2wLyv4Dfvt80/DPn2pqOBsJdDiogXGR9+OvwRw=="],
@@ -3609,6 +3611,8 @@
     "victory-vendor/d3-shape": ["d3-shape@3.2.0", "", { "dependencies": { "d3-path": "^3.1.0" } }, "sha512-SaLBuwGm3MOViRq2ABk3eLoxwZELpH6zhl3FbAoJ7Vm1gofKx6El1Ib5z23NUEhF9AsGl7y+dzLe5Cw2AArGTA=="],
 
     "vitest/es-module-lexer": ["es-module-lexer@2.3.2", "", {}, "sha512-poHGpORABojJJucnV9KbOavETW8lBVnphkW77ER5/BQ5Fz7oXSoCNek7IH3vR5nRjdsEz926ibFYX8KtLQmdyw=="],
+
+    "vitest/magic-string": ["magic-string@1.4.5", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.6.0" } }, "sha512-oLLC2+YvQUfAa+vxoufE/yc1icb87M9iXIRqAoR/2EhE/8cb3SF/+Gi0c2By1B+5Vz2e2vQtUvHiu1+63Znh+w=="],
 
     "vitest/obug": ["obug@3.0.0", "", {}, "sha512-5vvB5+W7ePv+p3uqxi+RcW1XAzLW0/hxt3/4X4Lc4qHudzOhmBiBwOY6DRob4WnanAEGvNcLjF+KNOufrUoEQw=="],
 

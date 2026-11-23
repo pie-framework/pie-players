@@ -221,6 +221,36 @@ describe("math-aware TTS text processing", () => {
 	});
 });
 
+// A `<br>` has no text: joining the text nodes around it glued the lines, and a
+// voice read `food.What` as "food dot what".
+describe("line breaks in TTS text", () => {
+	test("reads a <br> between two lines as a space", () => {
+		const root = render(
+			"<p>The mother gives them food.<br /><br />What are <i>cubs</i>?</p>",
+		);
+
+		expect(collectMathAwareTextAndMap(root).visibleText).toBe(
+			"The mother gives them food. What are cubs?",
+		);
+	});
+
+	test("reads a <br> next to math as a space", () => {
+		const root = render(
+			"<p>Solve it.<br /><math><mi>x</mi></math> is the answer.<br />Check it.</p>",
+		);
+
+		expect(collectMathAwareTextAndMap(root).visibleText).toBe(
+			"Solve it. x is the answer. Check it.",
+		);
+	});
+
+	test("adds nothing for a <br> before the first line or after the last", () => {
+		const root = render("<p><br />Hello<br /></p>");
+
+		expect(collectMathAwareTextAndMap(root).visibleText).toBe("Hello");
+	});
+});
+
 describe("MathML canonicalization for TTS", () => {
 	test("keeps common MathML structure and removes unsafe attributes", () => {
 		const canonical = canonicalizeMathML(

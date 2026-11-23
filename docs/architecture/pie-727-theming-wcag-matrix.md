@@ -55,7 +55,7 @@ threshold rather than inferring a relationship from token names.
 | Surface | Owner | DOM mode | Status |
 | --- | --- | --- | --- |
 | [Section tabs](#section-tabs) | `@pie-players/pie-section-player` | Light DOM | Partial |
-| [Split divider](#split-divider) | `@pie-players/pie-section-player` | Light DOM | Planned |
+| [Split divider](#split-divider) | `@pie-players/pie-section-player` | Light DOM | Partial |
 | [Section item scroll fade](#section-item-scroll-fade) | `@pie-players/pie-section-player` | Light DOM | Planned |
 | [Section scrollbar chrome](#section-scrollbar-chrome) | `@pie-players/pie-section-player` | Light DOM | Partial |
 | [Player error banners](#player-error-banners) | `@pie-players/pie-item-player`, `@pie-players/pie-players-shared` | Light DOM and custom element surface | Covered |
@@ -82,16 +82,24 @@ threshold rather than inferring a relationship from token names.
 - **Coverage:** `packages/section-player/tests/section-player-theme-token-docs.test.ts`
   covers the docs/code token contract;
   `packages/section-player/tests/section-theme-color-scheme.spec.ts` asserts
-  selected and unselected toggle legibility across every built-in scheme. Hover,
-  disabled, focus-visible and a host override are not asserted.
+  selected and unselected toggle legibility across every built-in scheme;
+  `packages/section-player/tests/section-player-tabbed-layout.spec.ts` asserts the
+  focus-visible ring under a dark and a high-contrast scheme. Hover, disabled and
+  a host override are not asserted.
 
 ### Split divider
 
 - **States:** `default`, `hover`, `focus-visible`, `dragging`
 - **Theme/scheme set:** default matrix set plus `--pie-section-player-focus-outline` override
 - **WCAG criteria:** 1.4.11, 2.4.7, 2.4.11, 2.4.13
-- **Coverage:** extend the computed-style focus coverage in
-  `packages/section-player/tests/section-toolbar-tools.spec.ts`.
+- **Coverage:** `packages/section-player/tests/section-toolbar-tools.spec.ts`
+  asserts the focus ring and handle of the section split divider, and the passage
+  card and media-gated item card rings, under a dark and a high-contrast scheme
+  and under the `--pie-section-player-focus-outline` override.
+  `packages/section-player/tests/section-player-sign-language-region.spec.ts`
+  covers the card split divider and
+  `packages/item-player/tests/item-player-passage-split.spec.ts` the shared
+  passage divider. Hover and dragging are not asserted.
 
 ### Section item scroll fade
 
@@ -162,9 +170,10 @@ threshold rather than inferring a relationship from token names.
 - **Theme/scheme set:** default matrix set plus host-overridden nav and background tokens
 - **WCAG criteria:** 1.4.3, 1.4.11, 2.4.7, 2.4.11, 2.4.13, 2.5.8
 - **Coverage:** `packages/assessment-player/tests/assessment-player-theme-contract.test.ts`
-  covers the `--pie-background` read; extend
-  `packages/assessment-player/tests/assessment-player-smoke.spec.ts` with
-  computed-style and axe coverage before visual nav changes.
+  covers the `--pie-background` read;
+  `packages/assessment-player/tests/assessment-player-smoke.spec.ts` asserts the
+  Back and Next focus ring under a dark and a high-contrast scheme. Extend it with
+  computed-style coverage of the other states before visual nav changes.
 
 ### Item toolbar buttons
 
@@ -172,8 +181,11 @@ threshold rather than inferring a relationship from token names.
 - **Theme/scheme set:** default matrix set plus host-overridden `--pie-button-*` and toolbar tokens
 - **WCAG criteria:** 1.4.3, 1.4.11, 2.4.7, 2.4.11, 2.4.13, 2.5.8
 - **Coverage:** `packages/assessment-toolkit/tests/toolbar-items.test.ts` covers
-  token usage for chrome and glyphs. Browser coverage through the section-player
-  toolbar specs is still needed for rendered contrast and target size.
+  token usage for chrome and glyphs.
+  `packages/section-player/tests/section-toolbar-tools.spec.ts` asserts the hosted
+  tool shell's header, move and close focus rings under a dark and a
+  high-contrast scheme, and no ring on pointer focus. Browser coverage of
+  rendered contrast and target size is still needed.
 
 ### TTS inline trigger
 

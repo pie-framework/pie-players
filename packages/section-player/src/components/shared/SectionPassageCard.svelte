@@ -384,7 +384,7 @@ Passage card of a section player: renders a passage's heading, `<pie-item-toolba
 	}
 
 	:global(pie-section-player-passage-card .pie-section-player-content-card:has(.pie-section-player-passage-content :focus-visible)) {
-		outline: 3px solid var(--pie-section-player-focus-outline, var(--pie-focus-outline, #146eb3));
+		outline: 3px solid var(--pie-section-player-focus-outline, var(--pie-focus-outline, var(--pie-button-focus-outline, #146eb3)));
 		outline-offset: 2px;
 	}
 

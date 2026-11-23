@@ -138,7 +138,7 @@
 	}
 
 	.pie-section-player-split-divider:focus-visible {
-		outline: 3px solid var(--pie-section-player-focus-outline, var(--pie-focus-outline, #146eb3));
+		outline: 3px solid var(--pie-section-player-focus-outline, var(--pie-focus-outline, var(--pie-button-focus-outline, #146eb3)));
 		outline-offset: -2px;
 		border-radius: 999px;
 	}
@@ -171,9 +171,9 @@
 	.pie-section-player-split-divider:hover .pie-section-player-split-divider-handle,
 	.pie-section-player-split-divider:focus-visible .pie-section-player-split-divider-handle,
 	.pie-section-player-split-divider--dragging .pie-section-player-split-divider-handle {
-		background: var(--pie-section-player-focus-outline, var(--pie-focus-outline, #146eb3));
+		background: var(--pie-section-player-focus-outline, var(--pie-focus-outline, var(--pie-button-focus-outline, #146eb3)));
 		height: 80px;
-		box-shadow: 0 2px 8px color-mix(in srgb, var(--pie-section-player-focus-outline, var(--pie-focus-outline, #146eb3)) 30%, transparent);
+		box-shadow: 0 2px 8px color-mix(in srgb, var(--pie-section-player-focus-outline, var(--pie-focus-outline, var(--pie-button-focus-outline, #146eb3))) 30%, transparent);
 	}
 
 	.pie-section-player-split-divider--dragging {

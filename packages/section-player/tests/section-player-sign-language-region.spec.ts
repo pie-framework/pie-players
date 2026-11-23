@@ -1,4 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import {
+	FOCUS_RING_SCHEMES,
+	setStylesheetScheme,
+} from "../../../test-support/focus-ring";
 
 /**
  * E2E tests for the item card's catalog media region, rendering signed (ASL)
@@ -17,6 +22,10 @@ import { expect, test, type Page } from "@playwright/test";
  */
 
 const CLIP_SRC = "/demo-assets/sign-language/cdc-asl-handwashing.webm";
+const COLOR_SCHEMES_CSS = readFileSync(
+	new URL("../../theme/src/color-schemes.css", import.meta.url),
+	"utf8",
+);
 
 const GRANTED_PATH =
 	"/sign-language?page=signing-granted&mode=candidate&layout=splitpane";
@@ -283,5 +292,25 @@ test.describe("sign-language region — layout and resize", () => {
 		await page.keyboard.press("Home");
 		const max = Number(await divider.getAttribute("aria-valuemax"));
 		expect(Number(await divider.getAttribute("aria-valuenow"))).toBe(max);
+	});
+
+	test("divider draws its focus ring from the scheme", async ({ page }) => {
+		await gotoDemo(page, GRANTED_PATH);
+		const divider = itemCard(page, "asl-q1-authored").getByRole("separator", {
+			name: "Resize question and media panels",
+		});
+		const handle = divider.locator(
+			".pie-section-player-card-split-divider__handle",
+		);
+		await expect(divider).toBeVisible();
+
+		// This page mounts no `<pie-theme>`.
+		for (const { scheme, outline } of FOCUS_RING_SCHEMES) {
+			await setStylesheetScheme(page, COLOR_SCHEMES_CSS, scheme);
+			await divider.focus();
+			await page.keyboard.press("ArrowLeft");
+			await expect(divider, scheme).toHaveCSS("outline-color", outline);
+			await expect(handle, scheme).toHaveCSS("background-color", outline);
+		}
 	});
 });

@@ -84,6 +84,17 @@ function sameContent(a: unknown, b: unknown): boolean {
 const DEFAULT_SECTION_TAG = "pie-section-player-splitpane";
 const VERTICAL_SECTION_TAG = "pie-section-player-vertical";
 
+// The focus ring of every control this element draws. The status view and the
+// section view each render their own stylesheet, and never at once, so both
+// carry this rule.
+const CONTROL_FOCUS_RING_CSS = `
+	.pie-assessment-player-retry:focus-visible,
+	.pie-assessment-player-nav-btn:focus-visible {
+		outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #0066cc));
+		outline-offset: 2px;
+	}
+`;
+
 /**
  * Reference multi-section assessment player. A host gives it an `assessment`
  * definition and `assessment-id`, optionally with `attempt-id`, `session` and
@@ -657,10 +668,7 @@ export class AssessmentPlayerDefaultElement
 				border-color: var(--pie-button-hover-border, var(--pie-border, #8b919c));
 				color: var(--pie-button-hover-color, var(--pie-text, #111827));
 			}
-			.pie-assessment-player-retry:focus-visible {
-				outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #0066cc));
-				outline-offset: 2px;
-			}
+			${CONTROL_FOCUS_RING_CSS}
 		`;
 		root.appendChild(style);
 		const message = document.createElement("p");
@@ -978,6 +986,7 @@ export class AssessmentPlayerDefaultElement
 				height: 100%;
 				overflow: hidden;
 			}
+			${CONTROL_FOCUS_RING_CSS}
 		`;
 		container.appendChild(style);
 

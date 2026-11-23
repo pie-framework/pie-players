@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
+import {
+	FOCUS_RING_SCHEMES,
+	setDocumentScheme,
+} from "../../../test-support/focus-ring";
 
 const DEMO_PATH = "/three-section-assessment";
 const KNOWN_A11Y_BASELINE_DEBT = new Set<string>(["aria-allowed-attr"]);
@@ -157,6 +161,29 @@ test.describe("assessment player smoke", () => {
 				: (active.getAttribute("role") ?? active.tagName.toLowerCase());
 		});
 		expect(focusLanded).not.toBe("BODY");
+	});
+
+	test("draws the navigation focus ring from the scheme", async ({ page }) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+
+		const host = page.locator("pie-assessment-player-default");
+		const position = host.locator(".pie-assessment-player-current-position");
+		const backButton = host.getByRole("button", { name: "Back" });
+		const nextButton = host.getByRole("button", { name: "Next" });
+
+		// The second section, where Back and Next are both enabled.
+		await nextButton.focus();
+		await nextButton.press("Enter");
+		await expect(position).toHaveText("Section 2 of 3");
+
+		for (const { scheme, outline } of FOCUS_RING_SCHEMES) {
+			await setDocumentScheme(page, scheme);
+			for (const control of [backButton, nextButton]) {
+				await control.focus();
+				await expect(control, scheme).toBeFocused();
+				await expect(control, scheme).toHaveCSS("outline-color", outline);
+			}
+		}
 	});
 
 	test("announces the new position in a live region", async ({ page }) => {

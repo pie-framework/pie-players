@@ -935,7 +935,7 @@ Items pane of a section player: renders the item cards of the current compositio
 	   the card is not otherwise focusable. */
 	:global(pie-section-player-item-card [data-pie-timed-media-gate="holding"]:focus-visible) {
 		outline: 3px solid
-			var(--pie-section-player-focus-outline, var(--pie-focus-outline, #146eb3));
+			var(--pie-section-player-focus-outline, var(--pie-focus-outline, var(--pie-button-focus-outline, #146eb3)));
 		outline-offset: 2px;
 	}
 

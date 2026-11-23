@@ -161,6 +161,25 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 			}
 		);
 	};
+	// A shell mounts at `document.body`, out of reach of this component's
+	// shadow-root styles, so its focus ring is a document stylesheet the first
+	// shell installs: one rule for the header, which takes focus to move and
+	// resize the window, and for the plain-button controls.
+	const TOOL_SHELL_STYLES = `
+.pie-tool-shell__header:focus-visible,
+.pie-tool-shell__control:focus-visible,
+.pie-tool-shell__close:focus-visible {
+	outline: 2px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2));
+	outline-offset: 2px;
+}
+`;
+	const ensureToolShellStyles = () => {
+		if (document.head.querySelector('style[data-pie-tool-shell-styles]')) return;
+		const style = document.createElement('style');
+		style.dataset.pieToolShellStyles = 'true';
+		style.textContent = TOOL_SHELL_STYLES;
+		document.head.append(style);
+	};
 	// The toolbar's own glyphs render inside <pie-item-toolbar>'s shadow root,
 	// which <head> stylesheets don't reach; the calculator shell's controls mount
 	// on document.body, where they do.
@@ -1557,15 +1576,6 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 				onActivate();
 				bringToFront();
 			};
-			button.onfocus = () => {
-				button.style.outline =
-					'2px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2))';
-				button.style.outlineOffset = '2px';
-			};
-			button.onblur = () => {
-				button.style.outline = 'none';
-				button.style.outlineOffset = '0';
-			};
 			return button;
 		};
 
@@ -1980,6 +1990,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 			const useNdsShellIcons = shellDeclaresNdsChrome() && useNdsIcons;
 
 			if (useNdsShellIcons) ensureNdsAssets();
+			ensureToolShellStyles();
 
 			shellEl = document.createElement('div');
 			shellEl.className = 'pie-tool-shell';
@@ -2199,15 +2210,6 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 				};
 				closeButton.onmouseleave = () => {
 					closeButton.style.background = closeButtonBaseBackground;
-				};
-				closeButton.onfocus = () => {
-					closeButton.style.outline =
-						'2px solid var(--pie-button-focus-outline, var(--pie-primary, #4A90E2))';
-					closeButton.style.outlineOffset = '2px';
-				};
-				closeButton.onblur = () => {
-					closeButton.style.outline = 'none';
-					closeButton.style.outlineOffset = '0';
 				};
 				closeButton.onclick = closeShell;
 				closeButtonEl = closeButton;

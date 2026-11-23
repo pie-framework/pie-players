@@ -107,29 +107,31 @@ capability's registration supplies `enabled` and `selectionActions`.
 	const ttsService = $derived(runtimeContext?.ttsService ?? null);
 	const elementToolStateStore = $derived(runtimeContext?.elementToolStateStore ?? null);
 
-	// Available highlight colors (modern, accessible palette). `$derived` because
-	// the labels come from the catalog, so the list rebuilds when the locale moves —
-	// which is also why it has to be declared after `interfaceI18n` rather than with
-	// the other constants above.
+	// Available highlight colors. Each swatch paints the token, and the fallback,
+	// that HighlightCoordinator fills the highlight with, so it shows the color it
+	// applies under every scheme. `$derived` because the labels come from the
+	// catalog, so the list rebuilds when the locale moves — which is also why it
+	// has to be declared after `interfaceI18n` rather than with the other
+	// constants above.
 	const highlightColors = $derived([
 		{
 			name: HighlightColor.YELLOW,
-			hex: '#fde995',
+			fill: 'var(--pie-annotation-yellow-highlight, #fef4ca)',
 			label: interfaceI18n.t('tools.annotationToolbar.highlightYellowA11y')
 		},
 		{
 			name: HighlightColor.PINK,
-			hex: '#ff9fae',
+			fill: 'var(--pie-annotation-pink-highlight, #ffcfd7)',
 			label: interfaceI18n.t('tools.annotationToolbar.highlightPinkA11y')
 		},
 		{
 			name: HighlightColor.BLUE,
-			hex: '#a7e0f6',
+			fill: 'var(--pie-annotation-blue-highlight, #d3f0fb)',
 			label: interfaceI18n.t('tools.annotationToolbar.highlightBlueA11y')
 		},
 		{
 			name: HighlightColor.GREEN,
-			hex: '#a6e1c5',
+			fill: 'var(--pie-annotation-green-highlight, #d3f0e2)',
 			label: interfaceI18n.t('tools.annotationToolbar.highlightGreenA11y')
 		}
 	]);
@@ -915,7 +917,7 @@ capability's registration supplies `enabled` and `selectionActions`.
 		{#each highlightColors as color}
 			<button
 				class="pie-tool-annotation-toolbar__highlight-swatch"
-				style="background-color: {color.hex};"
+				style="background-color: {color.fill};"
 				onclick={() => handleHighlight(color.name)}
 				aria-label={color.label}
 				title={color.label}

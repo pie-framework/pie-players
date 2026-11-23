@@ -268,9 +268,9 @@ white:
 | Background | Tokens | Why |
 | --- | --- | --- |
 | white | 3 | ink, page, and the select-text hover fill (`--pie-blue-grey-300`), which the light base chose for black ink |
-| white, with a mid-tone ink | 6 | the ink misses the tinted recessed and raised surfaces |
-| `#000000` | 20 | inverted page; borrow the dark base theme's inks and control family |
-| mid-tone (blue, red, green, dark gray) | 27 in White on Blue | neither light nor dark inks hold throughout, so icons, boundaries and focus rings are re-chosen too |
+| white, with a mid-tone ink | 11 | the ink misses the tinted recessed and raised surfaces and the annotation highlights |
+| `#000000` | 25 | inverted page; borrow the dark base theme's inks, control family and annotation highlights |
+| mid-tone (blue, red, green, dark gray) | 32 in White on Blue | neither light nor dark inks hold throughout, so icons, boundaries and focus rings are re-chosen too |
 
 ```ts
 registerPieColorSchemes([

@@ -79,6 +79,14 @@ const GREEN_ON_WHITE = {
 	// At 4.73:1 the ink leaves the hover fill almost no room: 4.5:1 under the
 	// text holds only 1.03:1 from the page.
 	"--pie-blue-grey-300": "#f0fffb",
+	// The annotation highlights keep the ink too, so they fade the same way:
+	// each light fill mixed towards white until it holds 4.5:1, about 1.05:1
+	// from the page.
+	"--pie-annotation-yellow-highlight": "#fffae5",
+	"--pie-annotation-green-highlight": "#f4fbf7",
+	"--pie-annotation-blue-highlight": "#f2fbfe",
+	"--pie-annotation-pink-highlight": "#fff8f9",
+	"--pie-annotation-orange-highlight": "#fff9ed",
 };
 
 /**
@@ -93,9 +101,16 @@ const DARK_CONTROLS = Object.fromEntries(
 		token.startsWith("--pie-button-"),
 	),
 );
+// Annotation highlights keep the page's ink, so a light ink needs the dark fills.
+const DARK_HIGHLIGHTS = Object.fromEntries(
+	Object.entries(getBaseThemeVariables("dark")).filter(([token]) =>
+		/^--pie-annotation-[a-z]+-highlight$/.test(token),
+	),
+);
 
 const YELLOW_ON_BLACK = {
 	...DARK_CONTROLS,
+	...DARK_HIGHLIGHTS,
 	"--pie-text": SC.yellow,
 	"--pie-background": SC.black,
 	"--pie-background-dark": "#1a1a1a",
@@ -118,6 +133,7 @@ const YELLOW_ON_BLACK = {
  */
 const WHITE_ON_BLUE = {
 	...DARK_CONTROLS,
+	...DARK_HIGHLIGHTS,
 	"--pie-text": SC.white,
 	"--pie-background": SC.blue,
 	"--pie-background-dark": "#001b6d",
@@ -161,9 +177,9 @@ describe("SchoolCity's schemes that PIE already ships", () => {
 describe("registering the rest as host palettes", () => {
 	test.each([
 		["blue-on-white", BLUE_ON_WHITE, 3],
-		["green-on-white", GREEN_ON_WHITE, 6],
-		["yellow-on-black", YELLOW_ON_BLACK, 20],
-		["white-on-blue", WHITE_ON_BLUE, 27],
+		["green-on-white", GREEN_ON_WHITE, 11],
+		["yellow-on-black", YELLOW_ON_BLACK, 25],
+		["white-on-blue", WHITE_ON_BLUE, 32],
 	] as const)(
 		"%s validates with no diagnostics at all, from %#",
 		(id, variables, tokenCount) => {

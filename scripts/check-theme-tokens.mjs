@@ -58,11 +58,6 @@ const SOURCE_USAGE_ROOTS = ["packages"];
  * prose. A bare accent colour does not.
  */
 const PACKAGE_PRIVATE_SOURCE_TOKENS = new Set([
-	"--pie-annotation-blue-highlight",
-	"--pie-annotation-green-highlight",
-	"--pie-annotation-orange-highlight",
-	"--pie-annotation-pink-highlight",
-	"--pie-annotation-yellow-highlight",
 	"--pie-answer-eliminator-image-strike-casing-color",
 	"--pie-answer-eliminator-strike-paint",
 	"--pie-calculator-button-color",

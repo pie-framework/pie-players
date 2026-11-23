@@ -1310,6 +1310,90 @@
 		"fallbackPolicy": "Canonical foreground text token."
 	},
 	{
+		"name": "--pie-annotation-blue-highlight",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "annotation",
+		"status": "active",
+		"schemeParticipation": "required",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts",
+			"packages/theme/src/theme-definitions.ts",
+			"packages/tool-annotation-toolbar/tool-annotation-toolbar.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-annotation-toolbar/README.md"
+		],
+		"fallbackPolicy": "Fill behind text a student highlighted in blue, and the annotation toolbar's blue swatch, so the swatch shows the fill it applies. Opaque, so its contrast is measurable: Base Themes and color schemes set #d3f0fb on a light palette and #003d66 on a dark one, and HighlightCoordinator falls back to #d3f0fb. Hosts overriding it must keep 4.5:1 for --pie-text against it (WCAG 2.2 SC 1.4.3)."
+	},
+	{
+		"name": "--pie-annotation-green-highlight",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "annotation",
+		"status": "active",
+		"schemeParticipation": "required",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts",
+			"packages/theme/src/theme-definitions.ts",
+			"packages/tool-annotation-toolbar/tool-annotation-toolbar.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-annotation-toolbar/README.md"
+		],
+		"fallbackPolicy": "Fill behind text a student highlighted in green, and the annotation toolbar's green swatch, so the swatch shows the fill it applies. Opaque, so its contrast is measurable: Base Themes and color schemes set #d3f0e2 on a light palette and #1b3726 on a dark one, and HighlightCoordinator falls back to #d3f0e2. Hosts overriding it must keep 4.5:1 for --pie-text against it (WCAG 2.2 SC 1.4.3)."
+	},
+	{
+		"name": "--pie-annotation-orange-highlight",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "annotation",
+		"status": "active",
+		"schemeParticipation": "required",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts",
+			"packages/theme/src/theme-definitions.ts"
+		],
+		"documentedIn": [
+			"packages/tool-annotation-toolbar/README.md"
+		],
+		"fallbackPolicy": "Fill behind text a student highlighted in orange. Opaque, so its contrast is measurable: Base Themes and color schemes set #ffd280 on a light palette and #5c3b00 on a dark one, and HighlightCoordinator falls back to #ffd280. Hosts overriding it must keep 4.5:1 for --pie-text against it (WCAG 2.2 SC 1.4.3)."
+	},
+	{
+		"name": "--pie-annotation-pink-highlight",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "annotation",
+		"status": "active",
+		"schemeParticipation": "required",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts",
+			"packages/theme/src/theme-definitions.ts",
+			"packages/tool-annotation-toolbar/tool-annotation-toolbar.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-annotation-toolbar/README.md"
+		],
+		"fallbackPolicy": "Fill behind text a student highlighted in pink, and the annotation toolbar's pink swatch, so the swatch shows the fill it applies. Opaque, so its contrast is measurable: Base Themes and color schemes set #ffcfd7 on a light palette and #531f2c on a dark one, and HighlightCoordinator falls back to #ffcfd7. Hosts overriding it must keep 4.5:1 for --pie-text against it (WCAG 2.2 SC 1.4.3)."
+	},
+	{
+		"name": "--pie-annotation-yellow-highlight",
+		"owner": "@pie-players/pie-assessment-toolkit",
+		"scope": "component-public",
+		"category": "annotation",
+		"status": "active",
+		"schemeParticipation": "required",
+		"definedIn": [
+			"packages/assessment-toolkit/src/services/HighlightCoordinator.ts",
+			"packages/theme/src/theme-definitions.ts",
+			"packages/tool-annotation-toolbar/tool-annotation-toolbar.svelte"
+		],
+		"documentedIn": [
+			"packages/tool-annotation-toolbar/README.md"
+		],
+		"fallbackPolicy": "Fill behind text a student highlighted in yellow, and the annotation toolbar's yellow swatch, so the swatch shows the fill it applies. Opaque, so its contrast is measurable: Base Themes and color schemes set #fef4ca on a light palette and #534600 on a dark one, and HighlightCoordinator falls back to #fef4ca. Hosts overriding it must keep 4.5:1 for --pie-text against it (WCAG 2.2 SC 1.4.3)."
+	},
+	{
 		"name": "--pie-annotation-underline",
 		"owner": "@pie-players/pie-assessment-toolkit",
 		"scope": "component-public",

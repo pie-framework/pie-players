@@ -18,7 +18,7 @@ A text selection toolbar for highlighting and annotating text in PIE assessment 
   - Full ARIA labels and screen reader support
   - Keyboard navigation (Escape to close)
   - Focus-visible outlines
-- **Theme-aware**: the outline follows the declared `color-scheme` through `light-dark()`, and the `data-color-scheme` palettes set all three tokens (see Theming)
+- **Theme-aware**: the outline follows the declared `color-scheme` through `light-dark()`, and the `data-color-scheme` palettes set every token it reads (see Theming)
 
 ## Usage
 
@@ -66,8 +66,13 @@ The toolbar takes its surface and text from the canonical `--pie-background` and
 | `--pie-tool-annotation-toolbar-border` | `light-dark(#5c5c5c, #949494)` | Outline separating the toolbar from content        |
 | `--pie-annotation-underline`           | `#4221d5`                      | Underline mark on a light page                     |
 | `--pie-annotation-underline-dark`      | `#9c89ec`                      | Underline mark on a dark page                      |
+| `--pie-annotation-yellow-highlight`    | `#fef4ca`                      | Yellow highlight fill and its swatch               |
+| `--pie-annotation-pink-highlight`      | `#ffcfd7`                      | Pink highlight fill and its swatch                 |
+| `--pie-annotation-blue-highlight`      | `#d3f0fb`                      | Blue highlight fill and its swatch                 |
+| `--pie-annotation-green-highlight`     | `#d3f0e2`                      | Green highlight fill and its swatch                |
+| `--pie-annotation-orange-highlight`    | `#ffd280`                      | Orange highlight fill, which no swatch offers      |
 
-All three are registered `component-public` tokens.
+All eight are registered `component-public` tokens.
 
 The underline tokens are applied by `HighlightCoordinator` in `@pie-players/pie-assessment-toolkit`, which owns the `::highlight()` rules. They exist as a pair because one value cannot serve both surfaces — `#4221d5` is 2.41:1 on black and `#9c89ec` is 2.85:1 on white — and as two separate tokens so overriding one never silently moves the other. Under `data-theme="light"` and `data-theme="dark"` the underline reads only its own token, because a theme accent is chosen against one background and is illegible on the other. Under any other `data-theme` value, such as a host or DaisyUI palette, it reads `--pie-annotation-underline` and falls back to that palette's `--pie-primary`.
 
@@ -77,11 +82,13 @@ The outline does **not** read `--pie-border`. Under the DaisyUI bridge that toke
 
 The defaults above are measured instead. A boundary on a light surface has to be dark and one on a dark surface has to be light, so the arms are the dark gray first and the light gray second. Both are measured against the surfaces the toolbar is actually drawn on rather than against pure white and pure black — real theme bases are off-white and off-black, and a gray chosen at the edge of passing against an extreme drops under threshold on everything else. Across DaisyUI's 21 light and 14 dark themes plus the PIE light and dark palettes, every light surface needs a gray no lighter than `#828282` and every dark surface one no darker than `#878787`; the ranges are disjoint, so one value cannot serve both. `#5c5c5c` holds 5.22:1 as its worst case on the light surfaces and `#949494` holds 3.56:1 on the dark ones. `light-dark()` follows the declared `color-scheme`, so every dark DaisyUI theme picks the dark value rather than only the theme literally named `dark`.
 
-Palettes that choose their own colors deliberately set all three tokens in `@pie-players/pie-theme`: the ten `data-color-scheme` accessibility schemes point the outline at their own `--pie-border` and both underline states at their own `--pie-primary`, and the PIE dark theme pins the outline to `#949494`. Several of those palettes use mid-tone backgrounds that no single gray clears 3:1 on, which is why they override rather than inherit.
+Palettes that choose their own colors deliberately set the outline and underline tokens in `@pie-players/pie-theme`: the ten `data-color-scheme` accessibility schemes point the outline at their own `--pie-border` and both underline states at their own `--pie-primary`, and the PIE dark theme pins the outline to `#949494`. Several of those palettes use mid-tone backgrounds that no single gray clears 3:1 on, which is why they override rather than inherit.
 
 Those per-scheme values arrive by either delivery route: `<pie-theme scheme="…">` applies them as inline styles with no CSS import needed, and importing `@pie-players/pie-theme/color-schemes.css` plus setting `data-color-scheme` yourself produces the same result. Prefer the element — a host that hand-maintains its own copy of the scheme blocks stops receiving tokens added later.
 
-Hosts may override any of the three, but must keep 3:1 against both the toolbar surface and the content behind it.
+Hosts may override the outline and underline tokens, but must keep 3:1 against both the toolbar surface and the content behind it.
+
+The highlight tokens are applied by `HighlightCoordinator` too, and each swatch paints the same token as the fill it applies. A highlighted run keeps the page's own ink, so the fill carries the contrast: every fill is opaque, and every Base Theme and `data-color-scheme` palette sets the five by its polarity. The defaults above are the light set, which the light Base Theme and light schemes use; the dark Base Theme and the dark schemes use `#534600`, `#1b3726`, `#003d66`, `#531f2c` and `#5c3b00`. The fill therefore follows the active scheme whatever the operating system prefers. A host overriding one keeps 4.5:1 between its `--pie-text` and the fill. A registered color scheme starts from the light set, so a scheme with a light ink sets all five, and its registration receipt reports any fill that misses 4.5:1.
 
 ## Architecture
 

@@ -3,6 +3,7 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { HighlightCoordinator } from "../src/services/HighlightCoordinator";
 
 class MockHighlight {
+	priority = 0;
 	add(_range: Range): void {}
 	clear(): void {}
 	delete(_range: Range): boolean {
@@ -99,6 +100,27 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		expect(styleStore.has("pie-highlight-styles-v2")).toBe(true);
 		expect(highlights.get("pie-tts-word")).toBe(replacementWordHighlight);
 		replacement.destroy();
+	});
+
+	test("paints the read-along highlights over the opaque annotation fills", () => {
+		const { highlights } = setupHighlightDom();
+		// A copy that registered the word highlight first, without a priority.
+		highlights.set("pie-tts-word", new MockHighlight());
+		const coordinator = new HighlightCoordinator();
+		const priority = (name: string) =>
+			(highlights.get(name) as MockHighlight).priority;
+
+		const annotations = [...highlights.keys()]
+			.filter((name) => name.startsWith("pie-annotation-"))
+			.map(priority);
+		expect(annotations).toHaveLength(6);
+		for (const annotation of annotations) {
+			expect(priority("pie-tts-sentence")).toBeGreaterThan(annotation);
+		}
+		expect(priority("pie-tts-word")).toBeGreaterThan(
+			priority("pie-tts-sentence"),
+		);
+		coordinator.destroy();
 	});
 
 	test("registers strong adaptive TTS highlight rules", () => {

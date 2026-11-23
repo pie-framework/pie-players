@@ -185,6 +185,26 @@ const BASE_THEMES = deepFreeze({
 	dark: { ...DARK_BASE_THEME, ...DARK_BASE_ACCESSIBILITY_VARS },
 });
 
+const ANNOTATION_HIGHLIGHT_FILL_TOKENS = [
+	"--pie-annotation-yellow-highlight",
+	"--pie-annotation-green-highlight",
+	"--pie-annotation-blue-highlight",
+	"--pie-annotation-pink-highlight",
+	"--pie-annotation-orange-highlight",
+] as const;
+
+const annotationHighlightFills = (
+	variables: Readonly<ThemeVariables>,
+): ThemeVariables =>
+	Object.fromEntries(
+		ANNOTATION_HIGHLIGHT_FILL_TOKENS.map((token) => [token, variables[token]]),
+	);
+
+const ANNOTATION_HIGHLIGHT_FILLS = deepFreeze({
+	light: annotationHighlightFills(BASE_THEMES.light),
+	dark: annotationHighlightFills(BASE_THEMES.dark),
+});
+
 const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 	deepFreeze([
 		{
@@ -1288,6 +1308,33 @@ export function getBaseThemeVariables(
 	baseTheme: "light" | "dark",
 ): Readonly<ThemeVariables> {
 	return BASE_THEMES[baseTheme];
+}
+
+/** The Base Theme's five annotation highlight fills for one palette polarity. */
+export function getAnnotationHighlightFills(
+	polarity: "light" | "dark",
+): Readonly<ThemeVariables> {
+	return ANNOTATION_HIGHLIGHT_FILLS[polarity];
+}
+
+/**
+ * The annotation highlight fills `variables` takes from its own polarity: each
+ * fill no layer in `declared` set, from the set matching the resolved page. A
+ * highlighted run keeps `--pie-text`, so a dark palette over the light Base
+ * Theme would otherwise paint its light ink on the light fills. Empty when the
+ * page's polarity cannot be decided.
+ */
+export function paletteHighlightFills(
+	variables: Readonly<ThemeVariables>,
+	declared: ReadonlySet<string>,
+): ThemeVariables {
+	const polarity = resolvePaletteColorScheme(variables);
+	if (!polarity) return {};
+	return Object.fromEntries(
+		Object.entries(ANNOTATION_HIGHLIGHT_FILLS[polarity]).filter(
+			([token]) => !declared.has(token),
+		),
+	);
 }
 
 export function listBuiltInColorSchemeDefinitions(): readonly BuiltInColorSchemeDefinition[] {

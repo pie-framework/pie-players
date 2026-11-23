@@ -2104,8 +2104,10 @@ with no edit on its side, and none is in its contrast-pair list. Hosts R and S,
 the two placing `annotationToolbar`, see the fills follow the active scheme: a
 dark scheme paints dark fills whatever the operating system prefers, each swatch
 paints the paler fill it applies, and a learner who asks the system for more
-contrast no longer gets saturated fills. A host-registered dark scheme would
-inherit the light fills and has to set all five; no checkout registers one.
+contrast no longer gets saturated fills. Under Host R's dark DaisyUI themes
+(`dracula`, `synthwave`, `night`) the adapter picks the dark fills from the
+page's polarity. A host-registered scheme that leaves the fills unset gets the
+set matching its page in the same way; no checkout registers one.
 
 Host M sets thirteen, all `canonical-semantic`, through its provider adapter, so
 they land as values on its `<pie-theme>` element rather than through a

@@ -6,6 +6,7 @@ import {
 	registerPieColorSchemes,
 	resolvePieTheme,
 } from "../src/color-schemes.js";
+import { getBaseThemeVariables } from "../src/theme-definitions.js";
 
 const activeReceipts: Array<{ unregister(): void }> = [];
 
@@ -263,6 +264,93 @@ describe("resolved color-scheme polarity", () => {
 		} finally {
 			warn.mockRestore();
 		}
+	});
+});
+
+const HIGHLIGHT_FILLS = [
+	"--pie-annotation-yellow-highlight",
+	"--pie-annotation-green-highlight",
+	"--pie-annotation-blue-highlight",
+	"--pie-annotation-pink-highlight",
+	"--pie-annotation-orange-highlight",
+] as const;
+
+describe("annotation highlight fills", () => {
+	// A highlighted run keeps `--pie-text`, so the fills follow the page.
+	const dark = getBaseThemeVariables("dark");
+	const light = getBaseThemeVariables("light");
+
+	test("follow a dark provider palette over the light Base Theme", () => {
+		const resolved = resolvePieTheme({
+			baseTheme: "light",
+			providerVariables: {
+				"--pie-background": "#282a36",
+				"--pie-text": "#f8f8f2",
+			},
+		});
+		for (const token of HIGHLIGHT_FILLS) {
+			expect(resolved.variables[token], token).toBe(dark[token]);
+		}
+	});
+
+	test("follow a light provider palette over the dark Base Theme", () => {
+		const resolved = resolvePieTheme({
+			baseTheme: "dark",
+			providerVariables: {
+				"--pie-background": "#ffffff",
+				"--pie-text": "#1f1f1f",
+			},
+		});
+		for (const token of HIGHLIGHT_FILLS) {
+			expect(resolved.variables[token], token).toBe(light[token]);
+		}
+	});
+
+	test("give a registered dark scheme the dark set unless it declares one", () => {
+		const receipt = register([
+			{
+				id: "dark-without-fills",
+				variables: {
+					"--pie-background": "#000000",
+					"--pie-text": "#ffff00",
+					"--pie-annotation-pink-highlight": "#400020",
+				},
+			},
+		]);
+		const fillDiagnostics = receipt.diagnostics.filter((item) =>
+			item.message.includes("annotation highlight"),
+		);
+		expect(fillDiagnostics).toEqual([]);
+
+		const resolved = resolvePieTheme({
+			baseTheme: "light",
+			requestedScheme: "dark-without-fills",
+		});
+		for (const token of HIGHLIGHT_FILLS) {
+			expect(resolved.variables[token], token).toBe(
+				token === "--pie-annotation-pink-highlight" ? "#400020" : dark[token],
+			);
+		}
+	});
+
+	test("keep fills an explicit variable or the provider sets", () => {
+		const resolved = resolvePieTheme({
+			baseTheme: "light",
+			providerVariables: {
+				"--pie-background": "#282a36",
+				"--pie-annotation-blue-highlight": "#102040",
+			},
+			variables: { "--pie-annotation-green-highlight": "#103020" },
+		});
+		expect(resolved.variables["--pie-annotation-blue-highlight"]).toBe(
+			"#102040",
+		);
+		expect(resolved.variables["--pie-annotation-green-highlight"]).toBe(
+			"#103020",
+		);
+		expect(resolved.variables["--pie-annotation-yellow-highlight"]).toBe(
+			dark["--pie-annotation-yellow-highlight"],
+		);
 	});
 });
 

@@ -7,6 +7,7 @@ import {
 	type DaisySlot,
 	resolveDaisyPieVariables,
 } from "../src/daisyui-mapping.js";
+import { getBaseThemeVariables } from "../src/theme-definitions.js";
 
 /** DaisyUI's `light` theme, in the shape the mapping reads it. */
 const LIGHT: Partial<Record<DaisySlot, string>> = {
@@ -32,6 +33,23 @@ const VALENTINE: Partial<Record<DaisySlot, string>> = {
 	base300: "#f9cbe5",
 	baseContent: "#c5005a",
 };
+
+/** DaisyUI's `dracula`: a dark palette a host puts over the light Base Theme. */
+const DRACULA: Partial<Record<DaisySlot, string>> = {
+	...LIGHT,
+	base100: "#282a36",
+	base200: "#232530",
+	base300: "#1e2029",
+	baseContent: "#f8f8f2",
+};
+
+const HIGHLIGHT_FILLS = [
+	"--pie-annotation-yellow-highlight",
+	"--pie-annotation-green-highlight",
+	"--pie-annotation-blue-highlight",
+	"--pie-annotation-pink-highlight",
+	"--pie-annotation-orange-highlight",
+] as const;
 
 const HEX = /^#([0-9a-f]{6})$/i;
 const MIX = /^color-mix\(in srgb, (.+) (\d+)%, (.+)\)$/;
@@ -200,6 +218,27 @@ describe("resolveDaisyPieVariables", () => {
 
 	test("leaves the hover fill alone without a measurer", () => {
 		expect(resolve(LIGHT, false)["--pie-blue-grey-300"]).toBe("#f2f2f2");
+	});
+
+	test("takes the annotation highlight fills from the page's polarity", () => {
+		// Under `dracula`'s ink the light set measured 1.04:1 (yellow) to 1.33:1.
+		const dark = resolve(DRACULA);
+		const light = resolve(LIGHT);
+		for (const token of HIGHLIGHT_FILLS) {
+			expect(dark[token], token).toBe(getBaseThemeVariables("dark")[token]);
+			expect(light[token], token).toBe(getBaseThemeVariables("light")[token]);
+			expect(
+				ratio(dark["--pie-text"], dark[token]),
+				token,
+			).toBeGreaterThanOrEqual(4.5);
+		}
+	});
+
+	test("leaves the highlight fills to the resolver without a measurer", () => {
+		const vars = resolve(DRACULA, false);
+		for (const token of HIGHLIGHT_FILLS) {
+			expect(vars[token], token).toBeUndefined();
+		}
 	});
 
 	test("leaves the divider token alone", () => {

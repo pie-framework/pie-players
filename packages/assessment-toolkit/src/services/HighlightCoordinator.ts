@@ -325,15 +325,31 @@ const annotationHighlightName = (color: HighlightColor): string =>
 	`pie-annotation-${color}`;
 
 /**
+ * Paint order where ranges overlap: the read-along word over its sentence, and
+ * both over the annotation fills, which are opaque and would otherwise hide the
+ * read-along band on annotated text. Annotations keep the default 0.
+ */
+const HIGHLIGHT_PRIORITY: Readonly<Record<string, number>> = {
+	[TTS_SENTENCE_HIGHLIGHT]: 1,
+	[TTS_WORD_HIGHLIGHT]: 2,
+};
+
+/**
  * The page's highlight registered under `name`. Every coordinator on a page
  * paints into the same one, because the page-wide `::highlight()` rules select
- * it by that name, and removes only the ranges it added.
+ * it by that name, and removes only the ranges it added. The priority is set on
+ * a highlight another copy registered too, so the paint order holds either way.
  */
 const sharedHighlight = (name: string): Highlight => {
-	const registered = CSS.highlights.get(name);
-	if (registered) return registered;
-	const highlight = new Highlight();
-	CSS.highlights.set(name, highlight);
+	let highlight = CSS.highlights.get(name);
+	if (!highlight) {
+		highlight = new Highlight();
+		CSS.highlights.set(name, highlight);
+	}
+	const priority = HIGHLIGHT_PRIORITY[name];
+	if (priority !== undefined && highlight.priority !== priority) {
+		highlight.priority = priority;
+	}
 	return highlight;
 };
 

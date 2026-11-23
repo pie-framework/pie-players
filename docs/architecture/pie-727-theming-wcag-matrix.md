@@ -133,11 +133,17 @@ threshold rather than inferring a relationship from token names.
 
 ### Shared authored-content stylesheet
 
-- **States:** `default` table, grid, scrim and emphasis classes
-- **Theme/scheme set:** default matrix set plus `dracula` as the divergent-provider case
-- **WCAG criteria:** 1.4.1, 1.4.3, 1.4.11
+- **States:** `default` table, grid, scrim and emphasis classes; the
+  `focus-visible` fallback ring on a control with no focus style of its own
+- **Theme/scheme set:** default matrix set plus `dracula` as the divergent-provider
+  case; the fallback ring under both Base Themes and every built-in scheme
+- **WCAG criteria:** 1.4.1, 1.4.3, 1.4.11, 2.4.7
 - **Coverage:** `packages/theme/tests/content-styles-theming.test.ts`;
   `scripts/tests/check-theme-tokens.test.mjs` guards the pruned rule set.
+  `packages/theme/tests/content-styles-focus-fallback.test.ts` pins the ring's
+  chain to the `--pie-focus-keyboard-outline` relationships;
+  `packages/players-shared/tests/e2e/content-focus-fallback.spec.ts` asserts it
+  by computed style on keyboard focus.
 
 ### UA-painted chrome under a scheme
 

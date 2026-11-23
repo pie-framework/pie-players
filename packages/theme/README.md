@@ -401,6 +401,8 @@ scheme sets it to hold 3:1 against the page and that fill. A provider, a
 registered custom scheme or `variables` that set `--pie-button-focus-outline`
 without it get the same value for it, so a palette written before it existed
 keeps its focus colour. Set both to give them different colours.
+`components.css` draws it, through the same chain, as a 2px fallback ring
+around a control in `[data-pie-content]` that sets no focus style of its own.
 
 The registry is published so a host can show a person what a token is for and
 who owns it. Read the registry rather than deriving grouping from token names or

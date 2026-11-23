@@ -196,6 +196,14 @@ describe("calculator pie-nds-icon-button styling contract", () => {
 		);
 	});
 
+	test("the tool shell resize grip is drawn in the border colour", () => {
+		// A black alpha left the grip invisible on every dark palette.
+		const script = source.slice(0, source.lastIndexOf("<style"));
+		const grip = script.match(/el\.style\.background = `linear-gradient\([^`]*`/)?.[0] ?? "";
+		expect(grip).toContain("var(--pie-border-dark, #646464) 40%");
+		expect(grip).not.toMatch(/rgba\(/);
+	});
+
 	test("calculator button size is settable per toolbar size", () => {
 		expect(stripped).toContain(
 			"--height-32:var(--pie-calculator-button-size,2rem)",

@@ -664,4 +664,61 @@ test.describe("assessment player smoke", () => {
 			)}`,
 		).toEqual([]);
 	});
+
+	test("draws the navigation buttons from the scheme's button palette", async ({
+		page,
+	}) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+		const next = page
+			.locator("pie-assessment-player-default")
+			.getByRole("button", { name: "Next" });
+		await expect(next).toBeEnabled();
+
+		const paint = () =>
+			next.evaluate((button) => {
+				const style = getComputedStyle(button);
+				return {
+					background: style.backgroundColor,
+					color: style.color,
+					border: style.borderTopColor,
+				};
+			});
+
+		for (const { scheme, resting, hover } of [
+			{
+				scheme: "yellow-on-navy",
+				resting: {
+					background: "rgb(51, 80, 138)",
+					color: "rgb(255, 255, 85)",
+					border: "rgb(194, 194, 102)",
+				},
+				hover: {
+					background: "rgb(43, 69, 118)",
+					color: "rgb(255, 255, 85)",
+					border: "rgb(255, 255, 85)",
+				},
+			},
+			{
+				scheme: "white-on-black",
+				resting: {
+					background: "rgb(0, 0, 0)",
+					color: "rgb(255, 255, 255)",
+					border: "rgb(204, 204, 204)",
+				},
+				hover: {
+					background: "rgb(26, 26, 26)",
+					color: "rgb(255, 255, 255)",
+					border: "rgb(255, 255, 255)",
+				},
+			},
+		]) {
+			await page.mouse.move(0, 0);
+			await page
+				.locator('pie-theme[scope="document"]')
+				.evaluate((host, value) => host.setAttribute("scheme", value), scheme);
+			await expect.poll(paint, { message: scheme }).toEqual(resting);
+			await next.hover();
+			await expect.poll(paint, { message: `${scheme} hover` }).toEqual(hover);
+		}
+	});
 });

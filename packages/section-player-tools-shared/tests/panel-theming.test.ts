@@ -13,6 +13,7 @@ import { describe, expect, test } from "bun:test";
  * boundary rather than the individual colours.
  */
 const PANELS = [
+	"../DebugPanelToggles.svelte",
 	"../SharedFloatingPanel.svelte",
 	"../PanelWindowControls.svelte",
 	"../PanelResizeHandle.svelte",
@@ -41,20 +42,6 @@ const COLOUR_PROPERTY =
 const COLOUR_LITERAL =
 	/#[0-9a-fA-F]{3,8}\b|\brgba?\([^)]*\)|\bhsla?\([^)]*\)|\b(?:white|black|red|blue|green|yellow|orange|purple|gray|grey|silver|navy|teal|maroon|olive)\b/;
 
-/**
- * A modal scrim is neither surface, ink nor boundary: it darkens whatever sits
- * behind it, and reads the same on every palette. Tokenizing it would make it
- * worse, since `--pie-text` and `--pie-black` both invert to white under a dark
- * scheme and a white scrim washes the page out instead of receding it. Listed
- * explicitly rather than exempted by pattern, so a new literal still fails.
- */
-const ALLOWED: ReadonlyMap<string, readonly string[]> = new Map([
-	[
-		"section-player-tools-tts-settings/TtsSettingsPanel.svelte",
-		["background: color-mix(in srgb, #000 30%, transparent);"],
-	],
-]);
-
 describe("debug panel theming", () => {
 	for (const [name, source] of sources) {
 		test(`${name} reads no DaisyUI slot`, () => {
@@ -75,10 +62,9 @@ describe("debug panel theming", () => {
 				const value = match[2];
 				if (value.includes("var(--pie-")) return;
 				if (!COLOUR_LITERAL.test(value)) return;
-				// Drop shadows and scrims are not surfaces, inks or boundaries: they
-				// darken whatever is behind them and read the same on any palette.
+				// Drop shadows are not surfaces, inks or boundaries: they darken
+				// whatever is behind them and read the same on any palette.
 				if (/^(box-shadow|filter)/.test(match[1])) return;
-				if (ALLOWED.get(name)?.some((allowed) => trimmed === allowed)) return;
 				offenders.push(`${index + 1}: ${trimmed}`);
 			});
 			expect(offenders, "colour declarations with no --pie-* token").toEqual(
@@ -86,4 +72,21 @@ describe("debug panel theming", () => {
 			);
 		});
 	}
+
+	test("the debug toggles carry no DaisyUI button class", () => {
+		const source = sources.get("DebugPanelToggles.svelte") ?? "";
+		expect(source).not.toMatch(/class(?::|="[^"]*\b)btn\b/);
+		expect(source).toInclude(
+			'.pie-debug-panel-toggles__button[aria-pressed="true"]',
+		);
+	});
+
+	test("the TTS settings backdrop takes the theme's scrim", () => {
+		const source = sources.get(
+			"section-player-tools-tts-settings/TtsSettingsPanel.svelte",
+		);
+		const backdrop =
+			source?.match(/\.pie-tts-dialog-backdrop \{[^}]*\}/)?.[0] ?? "";
+		expect(backdrop).toInclude("background: var(--pie-scrim,");
+	});
 });

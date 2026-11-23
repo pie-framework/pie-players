@@ -964,10 +964,16 @@ export class AssessmentPlayerDefaultElement
 			}
 			.pie-assessment-player-nav-btn {
 				padding: 0.35rem 0.75rem;
-				border: 1px solid var(--pie-border-light, #e5e7eb);
+				border: 1px solid var(--pie-button-border, var(--pie-border, #8f8f8f));
 				border-radius: 0.375rem;
-				background: var(--pie-background, #fff);
+				background: var(--pie-button-bg, var(--pie-white, #fff));
+				color: var(--pie-button-color, var(--pie-text, #374151));
 				cursor: pointer;
+			}
+			.pie-assessment-player-nav-btn:hover:not(:disabled) {
+				background: var(--pie-button-hover-bg, var(--pie-background-dark, #f9fafb));
+				border-color: var(--pie-button-hover-border, var(--pie-border, #8b919c));
+				color: var(--pie-button-hover-color, var(--pie-text, #111827));
 			}
 			.pie-assessment-player-nav-btn:disabled {
 				opacity: 0.5;

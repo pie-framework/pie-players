@@ -282,6 +282,10 @@
 							"description": "Canonical lighter primary action token used for low-emphasis action surfaces."
 						},
 						{
+							"name": "--pie-scrim",
+							"description": "Canonical backdrop a modal dialog lays over the page. Every built-in sets a dark translucent veil, since a scrim that follows the text colour lightens a dark page instead of receding it."
+						},
+						{
 							"name": "--pie-secondary",
 							"description": "Canonical secondary action token."
 						},

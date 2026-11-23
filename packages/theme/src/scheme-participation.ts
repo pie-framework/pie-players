@@ -62,6 +62,7 @@ export const PIE_THEME_SCHEME_PARTICIPATION = {
 	"--pie-primary": "required",
 	"--pie-primary-dark": "required",
 	"--pie-primary-light": "required",
+	"--pie-scrim": "required",
 	"--pie-scrollbar-thumb": "excluded",
 	"--pie-scrollbar-thumb-hover": "excluded",
 	"--pie-scrollbar-track": "excluded",

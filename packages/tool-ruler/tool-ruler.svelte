@@ -39,8 +39,9 @@ without dragging.
 		OverlayRotateHandle,
 	} from '@pie-players/pie-players-shared/components/overlay-placement';
 	import { onMount } from 'svelte';
-	import rulerCm from './ruler-cm.svg';
-	import rulerInches from './ruler-inches.svg';
+	// Inline markup, so the marks draw in the scheme's ink through `currentColor`.
+	import rulerCm from './ruler-cm.svg?raw';
+	import rulerInches from './ruler-inches.svg?raw';
 
 	let { visible = false, toolId = 'ruler' }: RulerProps = $props();
 
@@ -188,14 +189,15 @@ without dragging.
 	>
 		<div class="pie-tool-ruler__frame">
 		<div class="pie-tool-ruler__container">
-			<img
+			<div
 				class="pie-tool-ruler__image"
-				src={currentRuler}
-				alt={interfaceI18n.t('tools.ruler.imageAlt', {
+				role="img"
+				aria-label={interfaceI18n.t('tools.ruler.imageAlt', {
 					unit: interfaceI18n.t(unitNameInSentenceKey(unit)),
 				})}
-				draggable="false"
-			/>
+			>
+				{@html currentRuler}
+			</div>
 
 			<!-- Unit toggle button group -->
 			<div
@@ -301,6 +303,17 @@ without dragging.
 		position: relative;
 		z-index: 2;
 		display: block;
+		color: var(--pie-text, #000);
+	}
+
+	.pie-tool-ruler__image :global(svg) {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+
+	.pie-tool-ruler__image :global(.pie-tool-ruler__plate) {
+		fill: var(--pie-background, #fff);
 	}
 
 	/* Unit toggle button group */

@@ -7,8 +7,14 @@ import {
 import { demos } from "../content";
 import { demoElementOverrides } from "./demo-element-versions";
 
-// A local fixture the demo app serves itself; npm has no such package.
-const UNPINNED_PACKAGES = new Set(["@pie-element/authoring-fixture"]);
+// Packages the demos load at the version their content pins, not the installed one:
+// - authoring-fixture is a local fixture the demo app serves itself; npm has no such package.
+// - venn-classification is pinned to a released version (PIE-1510 touch-drag check). It is not
+//   a demo-ui dependency, because adding one re-resolves every next-tagged package in the lock.
+const UNPINNED_PACKAGES = new Set([
+	"@pie-element/authoring-fixture",
+	"@pie-element/venn-classification",
+]);
 
 function elementSpecsUnder(query: string): Array<[string, string]> {
 	const overrides = demoElementOverrides(new URLSearchParams(query));

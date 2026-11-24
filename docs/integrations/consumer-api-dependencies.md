@@ -2114,6 +2114,19 @@ rows pairing against it report a measured ratio where they previously reported a
 unmeasurable one. Its own comment naming `--pie-background` as the reason for the
 backdrop is stale.
 
+On 2026-11-23 the five annotation highlight fills became registry entries,
+`--pie-annotation-yellow-highlight` and its green, blue, pink and orange
+siblings, set by both base themes and every built-in scheme. No checkout sets or
+reads any of them. Host R's inspector lists them under the `annotation` category
+with no edit on its side, and none is in its contrast-pair list. Hosts R and S,
+the two placing `annotationToolbar`, see the fills follow the active scheme: a
+dark scheme paints dark fills whatever the operating system prefers, each swatch
+paints the paler fill it applies, and a learner who asks the system for more
+contrast no longer gets saturated fills. Under Host R's dark DaisyUI themes
+(`dracula`, `synthwave`, `night`) the adapter picks the dark fills from the
+page's polarity. A host-registered scheme that leaves the fills unset gets the
+set matching its page in the same way; no checkout registers one.
+
 Host M sets thirteen, all `canonical-semantic`, through its provider adapter, so
 they land as values on its `<pie-theme>` element rather than through a
 stylesheet. Eleven are read from the shell's palette properties —

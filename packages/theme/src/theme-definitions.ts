@@ -106,6 +106,11 @@ const LIGHT_BASE_THEME: ThemeVariables = {
 const LIGHT_BASE_ACCESSIBILITY_VARS: ThemeVariables = {
 	"--pie-annotation-underline": "#4221d5",
 	"--pie-annotation-underline-dark": "#9c89ec",
+	"--pie-annotation-yellow-highlight": "#fef4ca",
+	"--pie-annotation-green-highlight": "#d3f0e2",
+	"--pie-annotation-blue-highlight": "#d3f0fb",
+	"--pie-annotation-pink-highlight": "#ffcfd7",
+	"--pie-annotation-orange-highlight": "#ffd280",
 	"--pie-tool-annotation-toolbar-border": "#5c5c5c",
 };
 
@@ -169,12 +174,37 @@ const DARK_BASE_THEME: ThemeVariables = {
 const DARK_BASE_ACCESSIBILITY_VARS: ThemeVariables = {
 	"--pie-annotation-underline": "#9c89ec",
 	"--pie-annotation-underline-dark": "#9c89ec",
+	"--pie-annotation-yellow-highlight": "#534600",
+	"--pie-annotation-green-highlight": "#1b3726",
+	"--pie-annotation-blue-highlight": "#003d66",
+	"--pie-annotation-pink-highlight": "#531f2c",
+	"--pie-annotation-orange-highlight": "#5c3b00",
 	"--pie-tool-annotation-toolbar-border": "#949494",
 };
 
 const BASE_THEMES = deepFreeze({
 	light: { ...LIGHT_BASE_THEME, ...LIGHT_BASE_ACCESSIBILITY_VARS },
 	dark: { ...DARK_BASE_THEME, ...DARK_BASE_ACCESSIBILITY_VARS },
+});
+
+const ANNOTATION_HIGHLIGHT_FILL_TOKENS = [
+	"--pie-annotation-yellow-highlight",
+	"--pie-annotation-green-highlight",
+	"--pie-annotation-blue-highlight",
+	"--pie-annotation-pink-highlight",
+	"--pie-annotation-orange-highlight",
+] as const;
+
+const annotationHighlightFills = (
+	variables: Readonly<ThemeVariables>,
+): ThemeVariables =>
+	Object.fromEntries(
+		ANNOTATION_HIGHLIGHT_FILL_TOKENS.map((token) => [token, variables[token]]),
+	);
+
+const ANNOTATION_HIGHLIGHT_FILLS = deepFreeze({
+	light: annotationHighlightFills(BASE_THEMES.light),
+	dark: annotationHighlightFills(BASE_THEMES.dark),
 });
 
 type ForcedColorsSystemColor = "Highlight" | "CanvasText" | "GrayText";
@@ -268,6 +298,11 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
 				"--pie-annotation-underline": "#4221d5",
 				"--pie-annotation-underline-dark": "#4221d5",
+				"--pie-annotation-yellow-highlight": "#fef4ca",
+				"--pie-annotation-green-highlight": "#d3f0e2",
+				"--pie-annotation-blue-highlight": "#d3f0fb",
+				"--pie-annotation-pink-highlight": "#ffcfd7",
+				"--pie-annotation-orange-highlight": "#ffd280",
 				"--pie-button-bg": "#ffffff",
 				"--pie-button-border": "#666666",
 				"--pie-button-color": "#000000",
@@ -331,6 +366,11 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
 				"--pie-annotation-underline": "#9c89ec",
 				"--pie-annotation-underline-dark": "#9c89ec",
+				"--pie-annotation-yellow-highlight": "#534600",
+				"--pie-annotation-green-highlight": "#1b3726",
+				"--pie-annotation-blue-highlight": "#003d66",
+				"--pie-annotation-pink-highlight": "#531f2c",
+				"--pie-annotation-orange-highlight": "#5c3b00",
 				"--pie-button-bg": "#000000",
 				"--pie-button-border": "#cccccc",
 				"--pie-button-color": "#ffffff",
@@ -394,6 +434,11 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
 				"--pie-annotation-underline": "#4221d5",
 				"--pie-annotation-underline-dark": "#4221d5",
+				"--pie-annotation-yellow-highlight": "#fef4ca",
+				"--pie-annotation-green-highlight": "#d3f0e2",
+				"--pie-annotation-blue-highlight": "#d3f0fb",
+				"--pie-annotation-pink-highlight": "#ffcfd7",
+				"--pie-annotation-orange-highlight": "#ffd280",
 				"--pie-button-bg": "#ccffcc",
 				"--pie-button-border": "#663344",
 				"--pie-button-color": "#3d0022",
@@ -457,6 +502,11 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
 				"--pie-annotation-underline": "#9c89ec",
 				"--pie-annotation-underline-dark": "#9c89ec",
+				"--pie-annotation-yellow-highlight": "#534600",
+				"--pie-annotation-green-highlight": "#1b3726",
+				"--pie-annotation-blue-highlight": "#003d66",
+				"--pie-annotation-pink-highlight": "#531f2c",
+				"--pie-annotation-orange-highlight": "#5c3b00",
 				"--pie-button-bg": "#000066",
 				"--pie-button-border": "#aaaa66",
 				"--pie-button-color": "#ffff00",
@@ -521,6 +571,11 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
 				"--pie-annotation-underline": "#4221d5",
 				"--pie-annotation-underline-dark": "#4221d5",
+				"--pie-annotation-yellow-highlight": "#fef4ca",
+				"--pie-annotation-green-highlight": "#d3f0e2",
+				"--pie-annotation-blue-highlight": "#d3f0fb",
+				"--pie-annotation-pink-highlight": "#ffcfd7",
+				"--pie-annotation-orange-highlight": "#ffd280",
 				"--pie-button-bg": "#ffccdd",
 				"--pie-button-border": "#555555",
 				"--pie-button-color": "#000000",
@@ -584,6 +639,11 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
 				"--pie-annotation-underline": "#9c89ec",
 				"--pie-annotation-underline-dark": "#9c89ec",
+				"--pie-annotation-yellow-highlight": "#534600",
+				"--pie-annotation-green-highlight": "#1b3726",
+				"--pie-annotation-blue-highlight": "#003d66",
+				"--pie-annotation-pink-highlight": "#531f2c",
+				"--pie-annotation-orange-highlight": "#5c3b00",
 				"--pie-button-bg": "#333333",
 				"--pie-button-border": "#cccccc",
 				"--pie-button-color": "#e0e0e0",
@@ -647,6 +707,11 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
 				"--pie-annotation-underline": "#4221d5",
 				"--pie-annotation-underline-dark": "#4221d5",
+				"--pie-annotation-yellow-highlight": "#fef4ca",
+				"--pie-annotation-green-highlight": "#d3f0e2",
+				"--pie-annotation-blue-highlight": "#d3f0fb",
+				"--pie-annotation-pink-highlight": "#ffcfd7",
+				"--pie-annotation-orange-highlight": "#ffd280",
 				"--pie-button-bg": "#ebebeb",
 				"--pie-button-border": "#7a7a7a",
 				"--pie-button-color": "#4a4a4a",
@@ -711,6 +776,11 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
 				"--pie-annotation-underline": "#4221d5",
 				"--pie-annotation-underline-dark": "#4221d5",
+				"--pie-annotation-yellow-highlight": "#fef4ca",
+				"--pie-annotation-green-highlight": "#d3f0e2",
+				"--pie-annotation-blue-highlight": "#d3f0fb",
+				"--pie-annotation-pink-highlight": "#ffcfd7",
+				"--pie-annotation-orange-highlight": "#ffd280",
 				"--pie-button-bg": "#cce8d4",
 				"--pie-button-border": "#a85a86",
 				"--pie-button-color": "#8e2464",
@@ -775,6 +845,11 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
 				"--pie-annotation-underline": "#4221d5",
 				"--pie-annotation-underline-dark": "#4221d5",
+				"--pie-annotation-yellow-highlight": "#fef4ca",
+				"--pie-annotation-green-highlight": "#d3f0e2",
+				"--pie-annotation-blue-highlight": "#d3f0fb",
+				"--pie-annotation-pink-highlight": "#ffcfd7",
+				"--pie-annotation-orange-highlight": "#ffd280",
 				"--pie-button-bg": "#d4a9de",
 				"--pie-button-border": "#4a4a4a",
 				"--pie-button-color": "#000000",
@@ -838,6 +913,11 @@ const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 				"--pie-tool-annotation-toolbar-border": "var(--pie-border)",
 				"--pie-annotation-underline": "var(--pie-primary)",
 				"--pie-annotation-underline-dark": "var(--pie-primary)",
+				"--pie-annotation-yellow-highlight": "#534600",
+				"--pie-annotation-green-highlight": "#1b3726",
+				"--pie-annotation-blue-highlight": "#003d66",
+				"--pie-annotation-pink-highlight": "#531f2c",
+				"--pie-annotation-orange-highlight": "#5c3b00",
 				"--pie-button-bg": "#33508a",
 				"--pie-button-border": "#c2c266",
 				"--pie-button-color": "#ffff55",
@@ -1097,6 +1177,38 @@ export const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationshi
 			role: "annotation underline",
 		},
 		{
+			// A highlighted run keeps the page's own ink, so the fill carries the
+			// contrast.
+			foreground: "--pie-text",
+			background: "--pie-annotation-yellow-highlight",
+			minimum: 4.5,
+			role: "yellow annotation highlight text",
+		},
+		{
+			foreground: "--pie-text",
+			background: "--pie-annotation-green-highlight",
+			minimum: 4.5,
+			role: "green annotation highlight text",
+		},
+		{
+			foreground: "--pie-text",
+			background: "--pie-annotation-blue-highlight",
+			minimum: 4.5,
+			role: "blue annotation highlight text",
+		},
+		{
+			foreground: "--pie-text",
+			background: "--pie-annotation-pink-highlight",
+			minimum: 4.5,
+			role: "pink annotation highlight text",
+		},
+		{
+			foreground: "--pie-text",
+			background: "--pie-annotation-orange-highlight",
+			minimum: 4.5,
+			role: "orange annotation highlight text",
+		},
+		{
 			foreground: "--pie-tool-annotation-toolbar-border",
 			background: "--pie-background",
 			minimum: 3,
@@ -1248,6 +1360,33 @@ export function getBaseThemeVariables(
 	baseTheme: "light" | "dark",
 ): Readonly<ThemeVariables> {
 	return BASE_THEMES[baseTheme];
+}
+
+/** The Base Theme's five annotation highlight fills for one palette polarity. */
+export function getAnnotationHighlightFills(
+	polarity: "light" | "dark",
+): Readonly<ThemeVariables> {
+	return ANNOTATION_HIGHLIGHT_FILLS[polarity];
+}
+
+/**
+ * The annotation highlight fills `variables` takes from its own polarity: each
+ * fill no layer in `declared` set, from the set matching the resolved page. A
+ * highlighted run keeps `--pie-text`, so a dark palette over the light Base
+ * Theme would otherwise paint its light ink on the light fills. Empty when the
+ * page's polarity cannot be decided.
+ */
+export function paletteHighlightFills(
+	variables: Readonly<ThemeVariables>,
+	declared: ReadonlySet<string>,
+): ThemeVariables {
+	const polarity = resolvePaletteColorScheme(variables);
+	if (!polarity) return {};
+	return Object.fromEntries(
+		Object.entries(ANNOTATION_HIGHLIGHT_FILLS[polarity]).filter(
+			([token]) => !declared.has(token),
+		),
+	);
 }
 
 /** The state tokens' system colours while `(forced-colors: active)` matches. */

@@ -8,6 +8,7 @@ import {
 	getRequiredSchemeTokens,
 	listBuiltInColorSchemeDefinitions,
 	PIE_THEME_CONTRAST_RELATIONSHIPS,
+	resolvePaletteColorScheme,
 } from "../src/theme-definitions.js";
 import { renderPieThemeCss } from "../src/theme-css.js";
 import { contrastRatio } from "../src/contrast.js";
@@ -176,6 +177,40 @@ describe("canonical theme definitions", () => {
 		expect(
 			getBaseThemeVariables("dark")["--pie-tool-annotation-toolbar-border"],
 		).toBe("#949494");
+	});
+
+	test("annotation highlight fills follow the palette's polarity", () => {
+		// The coordinator once chose the dark set by the OS preference, so a dark
+		// scheme on a light-preferring machine got the light fills under light ink.
+		const fills = (variables: Readonly<Record<string, string>>) =>
+			Object.fromEntries(
+				["yellow", "green", "blue", "pink", "orange"].map((color) => [
+					color,
+					variables[`--pie-annotation-${color}-highlight`],
+				]),
+			);
+		const light = fills(getBaseThemeVariables("light"));
+		const dark = fills(getBaseThemeVariables("dark"));
+		expect(light).toEqual({
+			yellow: "#fef4ca",
+			green: "#d3f0e2",
+			blue: "#d3f0fb",
+			pink: "#ffcfd7",
+			orange: "#ffd280",
+		});
+		expect(dark).toEqual({
+			yellow: "#534600",
+			green: "#1b3726",
+			blue: "#003d66",
+			pink: "#531f2c",
+			orange: "#5c3b00",
+		});
+		for (const scheme of listBuiltInColorSchemeDefinitions()) {
+			const polarity = resolvePaletteColorScheme(scheme.variables);
+			expect(fills(scheme.variables), scheme.id).toEqual(
+				polarity === "dark" ? dark : light,
+			);
+		}
 	});
 });
 

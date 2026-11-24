@@ -44,9 +44,9 @@ them to registry entries.
 | Class | Tokens | Contract |
 | --- | --- | --- |
 | Canonical semantic | `--pie-text`, `--pie-background`, `--pie-primary`, feedback, border, neutral, focus-checked, `--pie-surface`, and `--pie-button-*` defaults | Owned by `@pie-players/pie-theme`; the active color tokens have Scheme Participation `required`. `--pie-font-scale` is the one active entry `excluded` from it. |
-| Component-public | `--pie-tool-trigger-active-*`, section tab hooks, annotation hooks, and the five TTS reading-highlight tokens | Owned by component packages but discoverable in `packages/theme/src/token-registry.json`; Scheme Participation `optional` unless their normal fallback cannot remain accessible. The annotation outline and two underline tokens are `required`. The five TTS reading-highlight tokens are `excluded`: the highlight coordinator derives them from the resolved theme at runtime, so no scheme value applies. |
+| Component-public | `--pie-tool-trigger-active-*`, section tab hooks, annotation hooks, and the five TTS reading-highlight tokens | Owned by component packages but discoverable in `packages/theme/src/token-registry.json`; Scheme Participation `optional` unless their normal fallback cannot remain accessible. The annotation outline, the two underline tokens and the five annotation highlight fills are `required`. The five TTS reading-highlight tokens are `excluded`: the highlight coordinator derives them from the resolved theme at runtime, so no scheme value applies. |
 | Legacy/component aliases | `--pie-button-background-color`, `--pie-button-hover-background-color`, `--pie-focus-ring-color` | `--pie-button-background-color` is an observed host dependency, recorded in the [consumer API dependencies](../integrations/consumer-api-dependencies.md) record, and remains a compatibility contract; the TTS inline tool reads only this alias. `--pie-button-hover-background-color` remains on the calculator inline tool alone. Both are registered as `component-public` and fall back through the canonical `--pie-button-*` chain. `--pie-focus-ring-color` is the one `legacy` entry: no host is observed using it, and `components.css` routes it through `--pie-focus-outline` and `--pie-button-focus-outline`. None of the three is a reason to add or retain further shims. All are excluded from Scheme Participation. |
-| Package-private or future public hooks | annotation highlight tokens, TTS panel chrome tokens, the three scrollbar hooks `--pie-scrollbar-thumb`, `--pie-scrollbar-thumb-hover` and `--pie-scrollbar-track`, `--pie-section-player-focus-outline`, `--pie-shadow` | Stay package-scoped until a change documents one as public and adds its registry entry, docs and tests. The scrollbar three are registered as `package-private` with `excluded` participation: no theme or scheme sets a value, so each one's fallback chain is the contract rather than its name. |
+| Package-private or future public hooks | TTS panel chrome tokens, the three scrollbar hooks `--pie-scrollbar-thumb`, `--pie-scrollbar-thumb-hover` and `--pie-scrollbar-track`, `--pie-section-player-focus-outline`, `--pie-shadow` | Stay package-scoped until a change documents one as public and adds its registry entry, docs and tests. The scrollbar three are registered as `package-private` with `excluded` participation: no theme or scheme sets a value, so each one's fallback chain is the contract rather than its name. |
 | Package-private layout handoffs | `--pie-section-player-layout-max-width`, `--pie-toolbar-tools-row-height`, `--pie-tts-controls-row-height` | Geometry passed between a component and its own subtree, set from props or measured at runtime, never a palette value and never a host hook. Hosts reach the same behavior through documented max-width attributes and toolbar size inputs; overriding these directly desynchronizes the component from the measurement it made. All are `excluded` from Scheme Participation. |
 
 `--pie-section-player-tab-zoom-comp` stays in the registry as `deprecated` and
@@ -59,7 +59,8 @@ shrank controls below usable sizes.
 Every registry entry declares `required`, `optional`, or `excluded`:
 
 - `required`: active canonical color tokens, plus the annotation toolbar
-  outline and light/dark annotation underline tokens;
+  outline, the light/dark annotation underline tokens and the five annotation
+  highlight fills;
 - `optional`: active component-public color hooks that a palette may override;
 - `excluded`: typography, package-private, legacy, unsupported, planned,
   deprecated, and non-color entries.
@@ -82,7 +83,9 @@ sizing and layout handoffs, one of them retired. Every other name stays in the
 Existing in source is not the test: applied that way, it once published
 seventeen entries covering zoom compensations, panel shadows and button sizing,
 and sixteen were withdrawn the next day. The five TTS reading-highlight tokens
-pass the rule, because a host sets all five. The remaining geometry handoffs
+pass the rule, because a host sets all five. The five annotation highlight
+fills pass it through the annotation toolbar README, which offers them to hosts
+with the 4.5:1 a replacement has to hold. The remaining geometry handoffs
 fail it and stay allowlisted, because registering them would buy symmetry and
 no signal.
 

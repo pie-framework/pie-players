@@ -3,8 +3,13 @@
 :root,
 [data-theme="light"],
 :where(pie-theme[theme="light"]:not([scope="document"])) {
+	--pie-annotation-blue-highlight: #d3f0fb;
+	--pie-annotation-green-highlight: #d3f0e2;
+	--pie-annotation-orange-highlight: #ffd280;
+	--pie-annotation-pink-highlight: #ffcfd7;
 	--pie-annotation-underline: #4221d5;
 	--pie-annotation-underline-dark: #9c89ec;
+	--pie-annotation-yellow-highlight: #fef4ca;
 	--pie-background: #ffffff;
 	--pie-background-dark: #ecedf1;
 	--pie-black: #000000;
@@ -65,8 +70,13 @@
 [data-theme="dark"],
 :where(pie-theme[theme="dark"]:not([scope="document"])) {
 	color-scheme: dark;
+	--pie-annotation-blue-highlight: #003d66;
+	--pie-annotation-green-highlight: #1b3726;
+	--pie-annotation-orange-highlight: #5c3b00;
+	--pie-annotation-pink-highlight: #531f2c;
 	--pie-annotation-underline: #9c89ec;
 	--pie-annotation-underline-dark: #9c89ec;
+	--pie-annotation-yellow-highlight: #534600;
 	--pie-background: #000000;
 	--pie-background-dark: #1a1a1a;
 	--pie-black: #ffffff;

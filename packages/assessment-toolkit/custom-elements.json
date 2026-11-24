@@ -1129,12 +1129,32 @@
 					],
 					"cssProperties": [
 						{
+							"name": "--pie-annotation-blue-highlight",
+							"description": "Fill behind text a student highlighted in blue, and the annotation toolbar's blue swatch, so the swatch shows the fill it applies. Opaque, so its contrast is measurable: Base Themes and color schemes set #d3f0fb on a light palette and #003d66 on a dark one, and HighlightCoordinator falls back to #d3f0fb. Hosts overriding it must keep 4.5:1 for --pie-text against it (WCAG 2.2 SC 1.4.3)."
+						},
+						{
+							"name": "--pie-annotation-green-highlight",
+							"description": "Fill behind text a student highlighted in green, and the annotation toolbar's green swatch, so the swatch shows the fill it applies. Opaque, so its contrast is measurable: Base Themes and color schemes set #d3f0e2 on a light palette and #1b3726 on a dark one, and HighlightCoordinator falls back to #d3f0e2. Hosts overriding it must keep 4.5:1 for --pie-text against it (WCAG 2.2 SC 1.4.3)."
+						},
+						{
+							"name": "--pie-annotation-orange-highlight",
+							"description": "Fill behind text a student highlighted in orange. Opaque, so its contrast is measurable: Base Themes and color schemes set #ffd280 on a light palette and #5c3b00 on a dark one, and HighlightCoordinator falls back to #ffd280. Hosts overriding it must keep 4.5:1 for --pie-text against it (WCAG 2.2 SC 1.4.3)."
+						},
+						{
+							"name": "--pie-annotation-pink-highlight",
+							"description": "Fill behind text a student highlighted in pink, and the annotation toolbar's pink swatch, so the swatch shows the fill it applies. Opaque, so its contrast is measurable: Base Themes and color schemes set #ffcfd7 on a light palette and #531f2c on a dark one, and HighlightCoordinator falls back to #ffcfd7. Hosts overriding it must keep 4.5:1 for --pie-text against it (WCAG 2.2 SC 1.4.3)."
+						},
+						{
 							"name": "--pie-annotation-underline",
 							"description": "Colour of the student annotation underline on a light page, default #4221d5. Deliberately does not fall through --pie-primary: a theme accent is chosen against one background and is illegible on the other, and a var() fallback could never override a host-set --pie-primary anyway. Paired with --pie-annotation-underline-dark, which HighlightCoordinator selects via [data-theme] rather than prefers-color-scheme. The data-color-scheme accessibility palettes set both to their own --pie-primary, because [data-theme] reports what the page declares rather than which scheme is active. Hosts overriding it must keep 3:1 against the content background (WCAG 2.2 SC 1.4.11)."
 						},
 						{
 							"name": "--pie-annotation-underline-dark",
 							"description": "Colour of the student annotation underline on a dark page, default #9c89ec. The dark half of the pair described under --pie-annotation-underline; kept a separate token so overriding one state never silently moves the other. Hosts overriding it must keep 3:1 against the content background (WCAG 2.2 SC 1.4.11)."
+						},
+						{
+							"name": "--pie-annotation-yellow-highlight",
+							"description": "Fill behind text a student highlighted in yellow, and the annotation toolbar's yellow swatch, so the swatch shows the fill it applies. Opaque, so its contrast is measurable: Base Themes and color schemes set #fef4ca on a light palette and #534600 on a dark one, and HighlightCoordinator falls back to #fef4ca. Hosts overriding it must keep 4.5:1 for --pie-text against it (WCAG 2.2 SC 1.4.3)."
 						},
 						{
 							"name": "--pie-tts-line-highlight",

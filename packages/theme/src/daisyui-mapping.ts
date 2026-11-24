@@ -19,7 +19,12 @@ import {
 	type ColorMeasure,
 	legibleColorAgainst,
 	legibleStateFillAgainst,
+	type Srgb,
 } from "./contrast.js";
+import {
+	getAnnotationHighlightFills,
+	resolvePaletteColorScheme,
+} from "./theme-definitions.js";
 
 /** The DaisyUI slots this mapping reads. Not all of DaisyUI's palette. */
 export type DaisySlot =
@@ -80,7 +85,19 @@ export type DaisyMappingEntry =
 	 * until it clears 3:1 against the page, but never so far that the ink on it
 	 * drops under 4.5:1.
 	 */
-	| { token: string; kind: "state-fill"; from: DaisySlot };
+	| { token: string; kind: "state-fill"; from: DaisySlot }
+	/**
+	 * The light or the dark value, by the measured polarity of the slot. For the
+	 * fills PIE ships as a light and a dark set; unmeasured, the entry is left out
+	 * and the resolver picks the set.
+	 */
+	| {
+			token: string;
+			kind: "polarity";
+			from: DaisySlot;
+			light: string;
+			dark: string;
+	  };
 
 const legible = (token: string, from: DaisySlot): DaisyMappingEntry => ({
 	token,
@@ -110,6 +127,22 @@ const mix = (
 	towards: DaisySlot,
 	weight: number,
 ): DaisyMappingEntry => ({ token, kind: "mix", from, towards, weight });
+
+const highlightFill = (token: string): DaisyMappingEntry => ({
+	token,
+	kind: "polarity",
+	from: "base100",
+	light: getAnnotationHighlightFills("light")[token],
+	dark: getAnnotationHighlightFills("dark")[token],
+});
+
+/** The resolver's polarity rule, so the fills and `color-scheme` agree. */
+const polarityOf = (color: Srgb): "light" | "dark" | null =>
+	color.a < 1
+		? null
+		: resolvePaletteColorScheme({
+				"--pie-background": `rgb(${color.r}, ${color.g}, ${color.b})`,
+			});
 
 export const DAISYUI_PIE_TOKEN_MAP: readonly DaisyMappingEntry[] = [
 	direct("--pie-background", "base100"),
@@ -170,6 +203,9 @@ export const DAISYUI_PIE_TOKEN_MAP: readonly DaisyMappingEntry[] = [
 	// after the page, 1.03:1 (`night`) to 1.37:1 (`aqua`) against it, so a hovered
 	// token was indistinguishable from its neighbours.
 	{ token: "--pie-blue-grey-300", kind: "state-fill", from: "base200" },
+	// The annotation highlights keep base-content too. The light Base Theme's
+	// fills under `dracula`'s light ink measured 1.04:1.
+	...Object.keys(getAnnotationHighlightFills("light")).map(highlightFill),
 	direct("--pie-blue-grey-600", "base300"),
 	direct("--pie-blue-grey-900", "baseContent"),
 	direct("--pie-black", "neutralContent"),
@@ -221,6 +257,10 @@ export function resolveDaisyPieVariables(args: {
 			value = towards
 				? `color-mix(in srgb, ${from} ${entry.weight}%, ${towards})`
 				: undefined;
+		} else if (entry.kind === "polarity") {
+			const measured = measure?.(from);
+			const polarity = measured ? polarityOf(measured) : null;
+			value = polarity ? entry[polarity] : undefined;
 		} else if (entry.kind === "state-fill") {
 			value = legibleStateFillAgainst({
 				fill: from,

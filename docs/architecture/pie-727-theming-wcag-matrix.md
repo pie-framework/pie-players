@@ -307,6 +307,7 @@ bun run check:theme-tokens
 bun test packages/theme/tests/token-registry-contract.test.ts
 bun test packages/assessment-player/tests/assessment-player-theme-contract.test.ts
 bun test packages/assessment-toolkit/tests/highlight-coordinator-tts-style.test.ts
+bun test packages/tool-annotation-toolbar/tests/annotation-toolbar-swatches.test.ts
 bun test packages/section-player/tests/section-player-theme-token-docs.test.ts
 bun test packages/section-player/tests/section-player-scrollbar-tokens.test.ts
 bun test packages/section-player-tools-shared/tests/panel-theming.test.ts

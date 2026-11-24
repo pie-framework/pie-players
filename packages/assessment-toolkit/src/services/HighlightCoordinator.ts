@@ -110,28 +110,32 @@ const HIGHLIGHT_STYLES = `
       }
 
       /* Annotation highlights - persistent */
+      /* Each fill is a theme token that every Base Theme and color scheme sets
+         by the palette's polarity, so it follows the active scheme whatever the
+         OS prefers. The fallback is the light value, for a page with no theme;
+         the annotation toolbar's swatches read the same tokens. */
       ::highlight(pie-annotation-yellow) {
-        background-color: var(--pie-annotation-yellow-highlight, rgba(253, 233, 149, 0.5));
+        background-color: var(--pie-annotation-yellow-highlight, #fef4ca);
         color: inherit;
       }
 
       ::highlight(pie-annotation-green) {
-        background-color: var(--pie-annotation-green-highlight, rgba(166, 225, 197, 0.5));
+        background-color: var(--pie-annotation-green-highlight, #d3f0e2);
         color: inherit;
       }
 
       ::highlight(pie-annotation-blue) {
-        background-color: var(--pie-annotation-blue-highlight, rgba(167, 224, 246, 0.5));
+        background-color: var(--pie-annotation-blue-highlight, #d3f0fb);
         color: inherit;
       }
 
       ::highlight(pie-annotation-pink) {
-        background-color: var(--pie-annotation-pink-highlight, rgba(255, 159, 174, 0.5));
+        background-color: var(--pie-annotation-pink-highlight, #ffcfd7);
         color: inherit;
       }
 
       ::highlight(pie-annotation-orange) {
-        background-color: var(--pie-annotation-orange-highlight, rgba(255, 165, 0, 0.5));
+        background-color: var(--pie-annotation-orange-highlight, #ffd280);
         color: inherit;
       }
 
@@ -150,14 +154,12 @@ const HIGHLIGHT_STYLES = `
         color: inherit;
       }
 
-      /* The blocks below cover annotation swatches, print, and reduced motion.
-         They deliberately do NOT retune the TTS layers: applyAdaptiveTTSStyle()
-         writes the pie-tts custom properties inline on documentElement on every
-         paint and on theme change, so a media query that only varies a var()
-         fallback for those can never take effect. Annotation colours have no such
-         adaptive path -- they are fixed swatches a student chose -- so a media
-         query is the only way to adjust them, and each keeps its var() so a host
-         override still wins.
+      /* The blocks below cover the annotation underline, print, and reduced
+         motion. They deliberately do NOT retune the TTS layers:
+         applyAdaptiveTTSStyle() writes the pie-tts custom properties inline on
+         documentElement on every paint and on theme change, so a media query
+         that only varies a var() fallback for those can never take effect. Nor
+         do they retune the annotation fills, which the theme sets per palette.
 
          The names above are spelled without their leading dashes on purpose.
          check-theme-tokens scans comments, and its token pattern stops at the
@@ -166,21 +168,6 @@ const HIGHLIGHT_STYLES = `
          check. Spell property names in full, or omit the dashes. */
 
       @media (prefers-color-scheme: dark) {
-        ::highlight(pie-annotation-yellow) {
-          background-color: var(--pie-annotation-yellow-highlight, rgba(139, 117, 0, 0.6));
-        }
-        ::highlight(pie-annotation-green) {
-          background-color: var(--pie-annotation-green-highlight, rgba(45, 92, 63, 0.6));
-        }
-        ::highlight(pie-annotation-blue) {
-          background-color: var(--pie-annotation-blue-highlight, rgba(0, 102, 170, 0.6));
-        }
-        ::highlight(pie-annotation-pink) {
-          background-color: var(--pie-annotation-pink-highlight, rgba(139, 51, 74, 0.6));
-        }
-        ::highlight(pie-annotation-orange) {
-          background-color: var(--pie-annotation-orange-highlight, rgba(154, 99, 0, 0.6));
-        }
         ::highlight(pie-annotation-underline) {
           text-decoration-color: var(--pie-annotation-underline-dark, #9c89ec);
         }
@@ -211,9 +198,10 @@ const HIGHLIGHT_STYLES = `
         text-decoration-color: var(--pie-annotation-underline, var(--pie-primary, #4221d5));
       }
 
-      /* WCAG 2.2 SC 1.4.11 non-text contrast: a highlight is the only indication
-         that text is annotated, so the swatches saturate and the underline
-         thickens when the user asks for more contrast.
+      /* WCAG 2.2 SC 1.4.11 non-text contrast: an underline annotation is the
+         only mark on its text, so it thickens when the user asks for more
+         contrast. The fills stay with the theme: a learner who needs more
+         contrast gets it from a color scheme, which sets them.
 
          The value is "more", not "high". The stylesheet this was recovered from
          used prefers-contrast: high, which is not a valid value for the feature
@@ -222,21 +210,6 @@ const HIGHLIGHT_STYLES = `
          browser even had the file been loaded. Verified with matchMedia under
          emulation: "high" stays false where "more" flips true. */
       @media (prefers-contrast: more) {
-        ::highlight(pie-annotation-yellow) {
-          background-color: var(--pie-annotation-yellow-highlight, rgba(255, 255, 0, 0.7));
-        }
-        ::highlight(pie-annotation-green) {
-          background-color: var(--pie-annotation-green-highlight, rgba(0, 255, 127, 0.7));
-        }
-        ::highlight(pie-annotation-blue) {
-          background-color: var(--pie-annotation-blue-highlight, rgba(0, 191, 255, 0.7));
-        }
-        ::highlight(pie-annotation-pink) {
-          background-color: var(--pie-annotation-pink-highlight, rgba(255, 105, 180, 0.7));
-        }
-        ::highlight(pie-annotation-orange) {
-          background-color: var(--pie-annotation-orange-highlight, rgba(255, 165, 0, 0.85));
-        }
         ::highlight(pie-annotation-underline) {
           text-decoration-thickness: 3px;
         }
@@ -353,15 +326,31 @@ const annotationHighlightName = (color: HighlightColor): string =>
 	`pie-annotation-${color}`;
 
 /**
+ * Paint order where ranges overlap: the read-along word over its sentence, and
+ * both over the annotation fills, which are opaque and would otherwise hide the
+ * read-along band on annotated text. Annotations keep the default 0.
+ */
+const HIGHLIGHT_PRIORITY: Readonly<Record<string, number>> = {
+	[TTS_SENTENCE_HIGHLIGHT]: 1,
+	[TTS_WORD_HIGHLIGHT]: 2,
+};
+
+/**
  * The page's highlight registered under `name`. Every coordinator on a page
  * paints into the same one, because the page-wide `::highlight()` rules select
- * it by that name, and removes only the ranges it added.
+ * it by that name, and removes only the ranges it added. The priority is set on
+ * a highlight another copy registered too, so the paint order holds either way.
  */
 const sharedHighlight = (name: string): Highlight => {
-	const registered = CSS.highlights.get(name);
-	if (registered) return registered;
-	const highlight = new Highlight();
-	CSS.highlights.set(name, highlight);
+	let highlight = CSS.highlights.get(name);
+	if (!highlight) {
+		highlight = new Highlight();
+		CSS.highlights.set(name, highlight);
+	}
+	const priority = HIGHLIGHT_PRIORITY[name];
+	if (priority !== undefined && highlight.priority !== priority) {
+		highlight.priority = priority;
+	}
 	return highlight;
 };
 

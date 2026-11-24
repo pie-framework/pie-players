@@ -3,6 +3,7 @@ import { GlobalRegistrator } from "@happy-dom/global-registrator";
 import { HighlightCoordinator } from "../src/services/HighlightCoordinator";
 
 class MockHighlight {
+	priority = 0;
 	add(_range: Range): void {}
 	clear(): void {}
 	delete(_range: Range): boolean {
@@ -101,6 +102,27 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		replacement.destroy();
 	});
 
+	test("paints the read-along highlights over the opaque annotation fills", () => {
+		const { highlights } = setupHighlightDom();
+		// A copy that registered the word highlight first, without a priority.
+		highlights.set("pie-tts-word", new MockHighlight());
+		const coordinator = new HighlightCoordinator();
+		const priority = (name: string) =>
+			(highlights.get(name) as MockHighlight).priority;
+
+		const annotations = [...highlights.keys()]
+			.filter((name) => name.startsWith("pie-annotation-"))
+			.map(priority);
+		expect(annotations).toHaveLength(6);
+		for (const annotation of annotations) {
+			expect(priority("pie-tts-sentence")).toBeGreaterThan(annotation);
+		}
+		expect(priority("pie-tts-word")).toBeGreaterThan(
+			priority("pie-tts-sentence"),
+		);
+		coordinator.destroy();
+	});
+
 	test("registers strong adaptive TTS highlight rules", () => {
 		const { styleStore } = setupHighlightDom();
 		new HighlightCoordinator();
@@ -119,7 +141,7 @@ describe("HighlightCoordinator TTS style contrast", () => {
 		);
 	});
 
-	test("keeps annotation palette colors independent from feedback theme tokens", () => {
+	test("fills each annotation colour from its own theme token, apart from the feedback tokens", async () => {
 		const { styleStore } = setupHighlightDom();
 		new HighlightCoordinator();
 
@@ -129,10 +151,29 @@ describe("HighlightCoordinator TTS style contrast", () => {
 			styleEl.textContent.split(
 				"/* Annotation highlights - persistent */",
 			)[1] ?? "";
-		expect(annotationCss).toContain("rgba(253, 233, 149, 0.5)");
-		expect(annotationCss).toContain("rgba(255, 159, 174, 0.5)");
-		expect(annotationCss).toContain("rgba(167, 224, 246, 0.5)");
-		expect(annotationCss).toContain("rgba(166, 225, 197, 0.5)");
+		// The fallback is the light Base Theme's value, for a page with no theme.
+		const tokensCss = await Bun.file(
+			new URL("../../theme/src/tokens.css", import.meta.url),
+		).text();
+		const lightBase = tokensCss.split("}")[0];
+		for (const color of ["yellow", "green", "blue", "pink", "orange"]) {
+			const token = `--pie-annotation-${color}-highlight`;
+			const light = new RegExp(`${token}: (#[0-9a-f]{6});`).exec(
+				lightBase,
+			)?.[1];
+			expect(light, token).toBeTruthy();
+			expect(annotationCss).toContain(
+				`::highlight(pie-annotation-${color}) {\n        background-color: var(${token}, ${light});`,
+			);
+		}
+		// The theme sets the fills by palette, so no media query retunes them.
+		for (const block of styleEl.textContent
+			.split("@media (prefers-")
+			.slice(1)) {
+			expect(block.split("}\n\n")[0]).not.toContain(
+				"background-color: var(--pie-annotation-",
+			);
+		}
 		expect(annotationCss).not.toContain("--pie-missing");
 		expect(annotationCss).not.toContain("--pie-correct");
 		expect(annotationCss).not.toContain("--pie-tertiary");

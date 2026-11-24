@@ -7,6 +7,7 @@ import {
 	getDefaultColorSchemeDescriptor,
 	getSchemeParticipation,
 	listBuiltInColorSchemeDefinitions,
+	paletteHighlightFills,
 	resolvePaletteColorScheme,
 } from "./theme-definitions.js";
 import {
@@ -608,6 +609,13 @@ export function resolvePieTheme(
 	for (const token of Object.keys(explicitVariables)) {
 		contrastRelevantTokens.add(token);
 	}
+	Object.assign(
+		variables,
+		paletteHighlightFills(
+			variables,
+			new Set([...Object.keys(providerVariables), ...contrastRelevantTokens]),
+		),
+	);
 	if (contrastRelevantTokens.size > 0) {
 		diagnostics.push(
 			...diagnoseThemeContrast(
@@ -676,10 +684,12 @@ export function registerPieColorSchemes(
 				...getBaseThemeVariables("light"),
 				...schemeVariables,
 			};
+			const declared = new Set(Object.keys(schemeVariables));
+			Object.assign(resolved, paletteHighlightFills(resolved, declared));
 			for (const item of diagnoseThemeContrast(
 				resolved,
 				validated.record.id,
-				new Set(Object.keys(schemeVariables)),
+				declared,
 			)) {
 				diagnostic({ ...item, index }, diagnostics);
 			}

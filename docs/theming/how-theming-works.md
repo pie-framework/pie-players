@@ -54,6 +54,12 @@ Four overlays merge in order, each overwriting tokens the previous one set.
 4. **`variables`.** A JSON object on the element, for deliberate per-instance
    overrides.
 
+While forced colors are active, a fifth layer maps the state tokens — focus
+outlines, borders and marks, disabled — to system colors above `variables`,
+since the browser forces literal colors anyway and only a system color keeps a
+state visible. See
+[forced colors](../../packages/theme/README.md#forced-colors).
+
 `scope="document"` writes the result onto `<html>`; `scope="self"` writes onto
 the element, which scopes a palette to one subtree.
 

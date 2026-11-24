@@ -20,6 +20,10 @@ import type {
 	CalculatorState,
 	CalculatorType,
 } from "@pie-players/pie-calculator";
+import {
+	observePieThemeChanges,
+	readPieElementTheme,
+} from "@pie-players/pie-theme/theme-observer";
 
 /** Desmos API options accepted through `CalculatorProviderConfig.settings`. */
 export interface DesmosCalculatorSettings extends Record<string, unknown> {
@@ -51,6 +55,10 @@ export interface DesmosCalculatorSettings extends Record<string, unknown> {
 	keypad?: boolean;
 	graphpaper?: boolean;
 	additionalFunctions?: string | string[];
+	/** Set from the active theme unless given here. */
+	invertedColors?: boolean;
+	/** Graphing only. Set from the theme's calculator series colours unless given here. */
+	colors?: Record<string, string>;
 }
 
 /**
@@ -298,6 +306,21 @@ function stripCredentialKeys(config: Record<string, unknown>): void {
 	for (const key of CREDENTIAL_KEYS) delete config[key];
 }
 
+/** Desmos's palette order, one token per slot. */
+const SERIES_TOKENS = [
+	"--pie-calculator-series-1",
+	"--pie-calculator-series-2",
+	"--pie-calculator-series-3",
+	"--pie-calculator-series-4",
+	"--pie-calculator-series-5",
+	"--pie-calculator-series-6",
+] as const;
+
+type ThemeSettings = Pick<
+	DesmosCalculatorSettings,
+	"invertedColors" | "colors"
+>;
+
 /**
  * Desmos Calculator Instance
  */
@@ -310,6 +333,9 @@ class DesmosCalculator implements Calculator {
 	private container: HTMLElement;
 
 	private destroyed = false;
+	/** The theme-derived options last handed to Desmos, to skip a no-op update. */
+	private appliedTheme: ThemeSettings = {};
+	private stopObservingTheme: (() => void) | null = null;
 
 	constructor(
 		provider: CalculatorProvider,
@@ -343,6 +369,9 @@ class DesmosCalculator implements Calculator {
 			...(config?.settings || {}),
 		};
 		stripCredentialKeys(desmosConfig);
+		const hostSettings = config?.settings || {};
+		this.appliedTheme = this.themeSettings(hostSettings) ?? {};
+		Object.assign(desmosConfig, this.appliedTheme);
 
 		/*
 		 * Restricted mode is monotonic: it lands after the host's own `settings` and a
@@ -390,6 +419,72 @@ class DesmosCalculator implements Calculator {
 				break;
 			default:
 				throw new Error(`Unsupported calculator type: ${this.type}`);
+		}
+
+		this.stopObservingTheme = observePieThemeChanges(() =>
+			this.reapplyTheme(hostSettings),
+		);
+	}
+
+	/**
+	 * The options this adapter derives from the theme computed on the container,
+	 * minus any the host set itself, which keep precedence. `null` where the
+	 * theme cannot be measured, so Desmos keeps its own defaults.
+	 *
+	 * Desmos inverts `colors` along with everything else under `invertedColors`,
+	 * so the series palette goes to an uninverted calculator only; an inverted
+	 * one keeps Desmos's own palette. A slot whose token is unset keeps Desmos's
+	 * colour for that slot.
+	 */
+	private themeSettings(host: DesmosCalculatorSettings): ThemeSettings | null {
+		const theme = readPieElementTheme(this.container, SERIES_TOKENS);
+		if (!theme) return null;
+		const settings: ThemeSettings = {};
+		if (!("invertedColors" in host)) {
+			settings.invertedColors = theme.colorScheme === "dark";
+		}
+		const inverted = settings.invertedColors ?? host.invertedColors === true;
+		if (
+			this.type === "graphing" &&
+			!("colors" in host) &&
+			!inverted &&
+			SERIES_TOKENS.some((token) => theme.colors[token])
+		) {
+			const defaults: unknown[] = Object.values(this.Desmos.Colors ?? {});
+			const colors: Record<string, string> = {};
+			SERIES_TOKENS.forEach((token, index) => {
+				const color = theme.colors[token] ?? defaults[index];
+				if (typeof color === "string") colors[`SERIES_${index + 1}`] = color;
+			});
+			settings.colors = colors;
+		}
+		return settings;
+	}
+
+	private reapplyTheme(host: DesmosCalculatorSettings): void {
+		if (this.destroyed) return;
+		const next = this.themeSettings(host);
+		if (!next) return;
+		const changed: ThemeSettings = {};
+		if (
+			next.invertedColors !== undefined &&
+			next.invertedColors !== this.appliedTheme.invertedColors
+		) {
+			changed.invertedColors = next.invertedColors;
+		}
+		if (
+			JSON.stringify(next.colors) !== JSON.stringify(this.appliedTheme.colors)
+		) {
+			// No token palette any more: back to Desmos's own.
+			const colors = next.colors ?? this.Desmos.Colors;
+			if (colors) changed.colors = { ...colors };
+		}
+		this.appliedTheme = next;
+		if (Object.keys(changed).length === 0) return;
+		try {
+			this.calculator?.updateSettings?.(changed);
+		} catch (error) {
+			console.warn("[DesmosCalculator] theme update failed:", error);
 		}
 	}
 
@@ -497,6 +592,8 @@ class DesmosCalculator implements Calculator {
 	destroy(): void {
 		if (this.destroyed) return;
 		this.destroyed = true;
+		this.stopObservingTheme?.();
+		this.stopObservingTheme = null;
 		if (this.calculator && this.calculator.destroy) {
 			this.calculator.destroy();
 		}

@@ -7,7 +7,7 @@
 			"declarations": [
 				{
 					"kind": "class",
-					"description": "Themes PIE content by resolving the `--pie-*` tokens and writing them inline, with `data-theme`, `data-color-scheme` and `color-scheme`, on its target: itself under `scope=\"self\"`, `documentElement` under `scope=\"document\"`. Layers apply in order base theme, provider adapter output, registered color scheme, then `variables`, and the element re-resolves when the OS color scheme (under `theme=\"auto\"`), the provider registry or the scheme catalog changes. It renders nothing of its own and defaults to `display: contents`.",
+					"description": "Themes PIE content by resolving the `--pie-*` tokens and writing them inline, with `data-theme`, `data-color-scheme` and `color-scheme`, on its target: itself under `scope=\"self\"`, `documentElement` under `scope=\"document\"`. Layers apply in order base theme, provider adapter output, registered color scheme, `variables`, then, while forced colours are active, the state tokens' system colours. The element re-resolves when forced colours turn on or off, when the OS color scheme changes under `theme=\"auto\"`, and when the provider registry or the scheme catalog changes. It renders nothing of its own and defaults to `display: contents`.",
 					"name": "PieThemeElement",
 					"tagName": "pie-theme",
 					"customElement": true,
@@ -280,6 +280,10 @@
 						{
 							"name": "--pie-primary-light",
 							"description": "Canonical lighter primary action token used for low-emphasis action surfaces."
+						},
+						{
+							"name": "--pie-scrim",
+							"description": "Canonical backdrop a modal dialog lays over the page. Every built-in sets a dark translucent veil, since a scrim that follows the text colour lightens a dark page instead of receding it."
 						},
 						{
 							"name": "--pie-secondary",

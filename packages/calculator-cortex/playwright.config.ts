@@ -1,4 +1,5 @@
 import { defineConfig } from "@playwright/test";
+import { a11yMediaProjects } from "../../scripts/lib/playwright-media-projects.mjs";
 import { viteListeningOn } from "../../scripts/lib/playwright-web-server.mjs";
 
 const port = process.env.CALCULATOR_CORTEX_DEMO_PORT || "5617";
@@ -21,4 +22,8 @@ export default defineConfig({
 		wait: viteListeningOn(baseURL),
 		timeout: 30_000,
 	},
+	projects: [
+		{ name: "chromium" },
+		...a11yMediaProjects(/calculator-cortex\.spec\.ts/),
+	],
 });

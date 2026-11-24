@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { checkMedia, mediaDisabledAxeRules } from "../../../test-support/a11y-media";
 import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
+import {
+	FOCUS_RING_SCHEMES,
+	setDocumentScheme,
+} from "../../../test-support/focus-ring";
 
 const DEMO_PATH = "/three-section-assessment";
 const KNOWN_A11Y_BASELINE_DEBT = new Set<string>(["aria-allowed-attr"]);
@@ -157,6 +162,29 @@ test.describe("assessment player smoke", () => {
 				: (active.getAttribute("role") ?? active.tagName.toLowerCase());
 		});
 		expect(focusLanded).not.toBe("BODY");
+	});
+
+	test("draws the navigation focus ring from the scheme", async ({ page }) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+
+		const host = page.locator("pie-assessment-player-default");
+		const position = host.locator(".pie-assessment-player-current-position");
+		const backButton = host.getByRole("button", { name: "Back" });
+		const nextButton = host.getByRole("button", { name: "Next" });
+
+		// The second section, where Back and Next are both enabled.
+		await nextButton.focus();
+		await nextButton.press("Enter");
+		await expect(position).toHaveText("Section 2 of 3");
+
+		for (const { scheme, outline } of FOCUS_RING_SCHEMES) {
+			await setDocumentScheme(page, scheme);
+			for (const control of [backButton, nextButton]) {
+				await control.focus();
+				await expect(control, scheme).toBeFocused();
+				await expect(control, scheme).toHaveCSS("outline-color", outline);
+			}
+		}
 	});
 
 	test("announces the new position in a live region", async ({ page }) => {
@@ -636,14 +664,15 @@ test.describe("assessment player smoke", () => {
 			.toBeGreaterThan(rowsBeforeEmit);
 	});
 
-	test("keeps baseline a11y regressions in check", async ({ page }) => {
+	test("keeps baseline a11y regressions in check", { tag: "@axe" }, async ({ page }) => {
 		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
 		await expect(page.locator("pie-assessment-player-default")).toBeVisible();
 
 		const axeResults = await new AxeBuilder({ page })
 			.include("pie-assessment-player-default")
-			.disableRules(["region"])
+			.disableRules(["region", ...mediaDisabledAxeRules()])
 			.analyze();
+		await checkMedia(page, "pie-assessment-player-default");
 		const seriousOrCritical = axeResults.violations.filter((violation) =>
 			["serious", "critical"].includes(violation.impact || ""),
 		);
@@ -663,5 +692,62 @@ test.describe("assessment player smoke", () => {
 				2,
 			)}`,
 		).toEqual([]);
+	});
+
+	test("draws the navigation buttons from the scheme's button palette", async ({
+		page,
+	}) => {
+		await page.goto(DEMO_PATH, { waitUntil: "networkidle" });
+		const next = page
+			.locator("pie-assessment-player-default")
+			.getByRole("button", { name: "Next" });
+		await expect(next).toBeEnabled();
+
+		const paint = () =>
+			next.evaluate((button) => {
+				const style = getComputedStyle(button);
+				return {
+					background: style.backgroundColor,
+					color: style.color,
+					border: style.borderTopColor,
+				};
+			});
+
+		for (const { scheme, resting, hover } of [
+			{
+				scheme: "yellow-on-navy",
+				resting: {
+					background: "rgb(51, 80, 138)",
+					color: "rgb(255, 255, 85)",
+					border: "rgb(194, 194, 102)",
+				},
+				hover: {
+					background: "rgb(43, 69, 118)",
+					color: "rgb(255, 255, 85)",
+					border: "rgb(255, 255, 85)",
+				},
+			},
+			{
+				scheme: "white-on-black",
+				resting: {
+					background: "rgb(0, 0, 0)",
+					color: "rgb(255, 255, 255)",
+					border: "rgb(204, 204, 204)",
+				},
+				hover: {
+					background: "rgb(26, 26, 26)",
+					color: "rgb(255, 255, 255)",
+					border: "rgb(255, 255, 255)",
+				},
+			},
+		]) {
+			await page.mouse.move(0, 0);
+			await page
+				.locator('pie-theme[scope="document"]')
+				.evaluate((host, value) => host.setAttribute("scheme", value), scheme);
+			await expect.poll(paint, { message: scheme }).toEqual(resting);
+			await next.hover();
+			await expect.poll(paint, { message: `${scheme} hover` }).toEqual(hover);
+		}
 	});
 });

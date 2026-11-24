@@ -876,6 +876,21 @@
 		"fallbackPolicy": "Canonical lighter primary action token used for low-emphasis action surfaces."
 	},
 	{
+		"name": "--pie-scrim",
+		"owner": "@pie-players/pie-theme",
+		"scope": "canonical-semantic",
+		"category": "surface",
+		"status": "active",
+		"schemeParticipation": "required",
+		"definedIn": [
+			"packages/theme/src/theme-definitions.ts"
+		],
+		"documentedIn": [
+			"packages/theme/README.md"
+		],
+		"fallbackPolicy": "Canonical backdrop a modal dialog lays over the page. Every built-in sets a dark translucent veil, since a scrim that follows the text colour lightens a dark page instead of receding it."
+	},
+	{
 		"name": "--pie-scrollbar-thumb",
 		"owner": "@pie-players/pie-section-player",
 		"scope": "package-private",

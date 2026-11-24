@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { checkMedia, mediaDisabledAxeRules } from "../../../test-support/a11y-media";
 import type { ToolkitCoordinator } from "@pie-players/pie-assessment-toolkit";
 import type {
 	AssessmentControllerHandle,
@@ -228,7 +229,7 @@ test("a superseded load cannot publish after the newer assessment", async ({ pag
 });
 
 for (const failure of ["plan", "load"] as const) {
-	test(`${failure} failure stays unavailable and can be retried accessibly`, async ({ page }) => {
+	test(`${failure} failure stays unavailable and can be retried accessibly`, { tag: "@axe" }, async ({ page }) => {
 		if (failure === "load") await page.setViewportSize({ width: 320, height: 640 });
 		const host = await mountHost(page, { beforeConnect: true, failure });
 		await expect(host.getByRole("alert")).toContainText("could not be loaded");
@@ -245,7 +246,8 @@ for (const failure of ["plan", "load"] as const) {
 			controller: null, waited: null, phase: "error", ready: [], hooks: [], errors: 1,
 			errorHooks: [failure === "plan" ? "delivery-plan-create" : "session-load"],
 		});
-		const axe = await new AxeBuilder({ page }).include("[data-pie-assessment-fixture]").analyze();
+		const axe = await new AxeBuilder({ page }).include("[data-pie-assessment-fixture]").disableRules(mediaDisabledAxeRules()).analyze();
+		await checkMedia(page, "[data-pie-assessment-fixture]");
 		expect(axe.violations).toEqual([]);
 		await host.screenshot({ path: test.info().outputPath(`${failure}-error.png`) });
 		await host.getByRole("button", { name: "Retry", exact: true }).focus();

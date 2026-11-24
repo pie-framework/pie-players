@@ -52,6 +52,7 @@
 	--pie-primary: #0000cc;
 	--pie-primary-dark: #000088;
 	--pie-primary-light: #6666ff;
+	--pie-scrim: rgba(0, 0, 0, 0.3);
 	--pie-secondary: #cc0066;
 	--pie-secondary-background: #eeeeee;
 	--pie-secondary-dark: #990044;
@@ -116,6 +117,7 @@
 	--pie-primary: #ffff00;
 	--pie-primary-dark: #cccc00;
 	--pie-primary-light: #ffff99;
+	--pie-scrim: rgba(0, 0, 0, 0.3);
 	--pie-secondary: #ff00ff;
 	--pie-secondary-background: #222222;
 	--pie-secondary-dark: #cc00cc;
@@ -180,6 +182,7 @@
 	--pie-primary: #660044;
 	--pie-primary-dark: #440033;
 	--pie-primary-light: #cc6699;
+	--pie-scrim: rgba(0, 0, 0, 0.3);
 	--pie-secondary: #880055;
 	--pie-secondary-background: #99ddbb;
 	--pie-secondary-dark: #550033;
@@ -244,6 +247,7 @@
 	--pie-primary: #ffff66;
 	--pie-primary-dark: #cccc00;
 	--pie-primary-light: #ffffaa;
+	--pie-scrim: rgba(0, 0, 0, 0.3);
 	--pie-secondary: #ffaa00;
 	--pie-secondary-background: #000044;
 	--pie-secondary-dark: #cc8800;
@@ -308,6 +312,7 @@
 	--pie-primary: #880044;
 	--pie-primary-dark: #550033;
 	--pie-primary-light: #dd6699;
+	--pie-scrim: rgba(0, 0, 0, 0.3);
 	--pie-secondary: #aa0055;
 	--pie-secondary-background: #ff99bb;
 	--pie-secondary-dark: #770033;
@@ -372,6 +377,7 @@
 	--pie-primary: #aaaaaa;
 	--pie-primary-dark: #888888;
 	--pie-primary-light: #cccccc;
+	--pie-scrim: rgba(0, 0, 0, 0.3);
 	--pie-secondary: #bbbbbb;
 	--pie-secondary-background: #222222;
 	--pie-secondary-dark: #999999;
@@ -436,6 +442,7 @@
 	--pie-primary: #3d3d3d;
 	--pie-primary-dark: #2b2b2b;
 	--pie-primary-light: #6f6f6f;
+	--pie-scrim: rgba(0, 0, 0, 0.3);
 	--pie-secondary: #4a4a4a;
 	--pie-secondary-background: #d0d0d0;
 	--pie-secondary-dark: #2b2b2b;
@@ -500,6 +507,7 @@
 	--pie-primary: #6d1a4c;
 	--pie-primary-dark: #4f1237;
 	--pie-primary-light: #b3608e;
+	--pie-scrim: rgba(0, 0, 0, 0.3);
 	--pie-secondary: #a02b72;
 	--pie-secondary-background: #a6d0b2;
 	--pie-secondary-dark: #6d1a4c;
@@ -564,6 +572,7 @@
 	--pie-primary: #4a1259;
 	--pie-primary-dark: #330d3f;
 	--pie-primary-light: #8e4fa1;
+	--pie-scrim: rgba(0, 0, 0, 0.3);
 	--pie-secondary: #6d1a7d;
 	--pie-secondary-background: #b982c8;
 	--pie-secondary-dark: #4a1259;
@@ -628,6 +637,7 @@
 	--pie-primary: #ffff99;
 	--pie-primary-dark: #e0e04a;
 	--pie-primary-light: #ffffc2;
+	--pie-scrim: rgba(0, 0, 0, 0.3);
 	--pie-secondary: #ffd95c;
 	--pie-secondary-background: #243a63;
 	--pie-secondary-dark: #e0bb3d;

@@ -164,7 +164,7 @@
 	}
 
 	.pie-section-player-card-split-divider:focus-visible {
-		outline: 3px solid var(--pie-section-player-focus-outline, var(--pie-focus-outline, #146eb3));
+		outline: 3px solid var(--pie-section-player-focus-outline, var(--pie-focus-keyboard-outline, var(--pie-focus-outline, var(--pie-button-focus-outline, var(--pie-focus-checked-border, #1565c0)))));
 		outline-offset: -2px;
 		border-radius: 999px;
 	}
@@ -182,7 +182,7 @@
 	.pie-section-player-card-split-divider:hover .pie-section-player-card-split-divider__handle,
 	.pie-section-player-card-split-divider:focus-visible .pie-section-player-card-split-divider__handle,
 	.pie-section-player-card-split-divider--dragging .pie-section-player-card-split-divider__handle {
-		background: var(--pie-section-player-focus-outline, var(--pie-focus-outline, #146eb3));
+		background: var(--pie-section-player-focus-outline, var(--pie-focus-keyboard-outline, var(--pie-focus-outline, var(--pie-button-focus-outline, var(--pie-focus-checked-border, #1565c0)))));
 	}
 
 	@media (prefers-reduced-motion: reduce) {

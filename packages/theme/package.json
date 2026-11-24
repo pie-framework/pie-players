@@ -25,6 +25,11 @@
 			"import": "./dist/theme-element.js",
 			"default": "./dist/theme-element.js"
 		},
+		"./theme-observer": {
+			"types": "./dist/theme-observer.d.ts",
+			"import": "./dist/theme-observer.js",
+			"default": "./dist/theme-observer.js"
+		},
 		"./token-registry.json": "./dist/token-registry.json",
 		"./tokens.css": "./dist/tokens.css",
 		"./color-schemes.css": "./dist/color-schemes.css",

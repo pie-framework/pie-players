@@ -184,6 +184,23 @@
 		background: var(--pie-button-bg, var(--cortex-button-bg));
 		color: var(--pie-button-color, var(--cortex-button-color));
 		font-size: 1.375rem;
+		/*
+		 * MathLive's caret, selection and placeholder colours, which otherwise follow
+		 * its blue `--hue` and the OS preference instead of the scheme. MathLive
+		 * 0.111 draws placeholders in the field's own ink; the placeholder properties
+		 * hold that ink at full opacity for a release that styles them apart, since
+		 * `--pie-button-color` on `--pie-button-bg` is a certified 4.5:1 pair and
+		 * `--pie-disabled-text` is 3.72:1 on the dark base theme's field.
+		 */
+		--caret-color: var(--pie-text, var(--cortex-text));
+		--selection-background-color: var(--pie-faded-primary, var(--cortex-selection));
+		--selection-color: var(--pie-text, var(--cortex-text));
+		--contains-highlight-background-color: var(
+			--pie-surface,
+			var(--cortex-button-hover-bg)
+		);
+		--placeholder-color: var(--pie-button-color, var(--cortex-button-color));
+		--placeholder-opacity: 1;
 	}
 
 	/*

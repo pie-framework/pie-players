@@ -7,6 +7,10 @@ import type {
 	CalculatorState,
 	CalculatorType,
 } from "@pie-players/pie-calculator";
+import {
+	observePieThemeChanges,
+	readPieElementTheme,
+} from "@pie-players/pie-theme/theme-observer";
 
 const DEFAULT_SCRIPT_URL = "https://www.geogebra.org/apps/deployggb.js";
 const DEFAULT_APPLET_TIMEOUT_MS = 20_000;
@@ -23,8 +27,25 @@ interface GeoGebraAppletApi {
 	newConstruction?(): void;
 	setSize?(width: number, height: number): void;
 	recalculateEnvironments?(): void;
+	setGraphicsOptions?(viewId: number, options: GeoGebraGraphicsOptions): void;
 	remove?(): void;
 }
+
+interface GeoGebraGraphicsOptions {
+	bgColor?: string;
+	gridColor?: string;
+	axesColor?: string;
+}
+
+/** The graphing app's main graphics view. */
+const GRAPHICS_VIEW = 1;
+
+const THEME_TOKENS = [
+	"--pie-border",
+	"--pie-background",
+	"--pie-blue-grey-300",
+	"--pie-text",
+] as const;
 
 interface GeoGebraAppletParameters extends Record<string, unknown> {
 	appName: "graphing" | "scientific";
@@ -259,6 +280,9 @@ class GeoGebraCalculator implements Calculator {
 	private api: GeoGebraAppletApi | null = null;
 	private applet: GeoGebraAppletEmbed | null = null;
 	private generatedContainerId: string | null = null;
+	/** The graphics colours last handed to GeoGebra, to skip a no-op update. */
+	private appliedGraphics = "";
+	private stopObservingTheme: (() => void) | null = null;
 
 	private destroyed = false;
 
@@ -309,6 +333,10 @@ class GeoGebraCalculator implements Calculator {
 
 		const isRestricted = config?.restrictedMode === true;
 		const appName = type === "graphing" ? "graphing" : "scientific";
+		// A parameter only: GeoGebra has no call that changes the border after load.
+		const themeBorder = readPieElementTheme(container, THEME_TOKENS)?.colors[
+			"--pie-border"
+		];
 		const appletId = `pie-geogebra-${Date.now()}-${++nextAppletId}`;
 		if (!container.id) {
 			calculator.generatedContainerId = `${appletId}-container`;
@@ -342,6 +370,7 @@ class GeoGebraCalculator implements Calculator {
 				// the input row is the calculator's primary interaction surface.
 				showAlgebraInput: true,
 				showZoomButtons: appName === "graphing",
+				...(themeBorder ? { borderColor: themeBorder } : {}),
 				...settings,
 				enable3d: false,
 				preventFocus: true,
@@ -366,6 +395,12 @@ class GeoGebraCalculator implements Calculator {
 					}
 					settled = true;
 					calculator.api = api;
+					if (appName === "graphing") {
+						calculator.applyGraphicsTheme();
+						calculator.stopObservingTheme = observePieThemeChanges(() =>
+							calculator.applyGraphicsTheme(),
+						);
+					}
 					resolve();
 				},
 			};
@@ -403,8 +438,37 @@ class GeoGebraCalculator implements Calculator {
 		}
 	}
 
+	/**
+	 * Paints the graphing view from the theme computed on the container. Only
+	 * the graphics view has a colour API: the algebra view and keyboard keep
+	 * GeoGebra's own light chrome.
+	 */
+	private applyGraphicsTheme(force = false): void {
+		if (this.destroyed || this.type !== "graphing") return;
+		const api = this.api;
+		if (!api?.setGraphicsOptions) return;
+		const colors = readPieElementTheme(this.container, THEME_TOKENS)?.colors;
+		if (!colors) return;
+		const options: GeoGebraGraphicsOptions = {};
+		if (colors["--pie-background"])
+			options.bgColor = colors["--pie-background"];
+		if (colors["--pie-blue-grey-300"]) {
+			options.gridColor = colors["--pie-blue-grey-300"];
+		}
+		if (colors["--pie-text"]) options.axesColor = colors["--pie-text"];
+		const key = JSON.stringify(options);
+		if (key === "{}" || (!force && key === this.appliedGraphics)) return;
+		try {
+			api.setGraphicsOptions(GRAPHICS_VIEW, options);
+			this.appliedGraphics = key;
+		} catch (error) {
+			console.warn("[GeoGebraCalculator] theme update failed:", error);
+		}
+	}
+
 	clear(): void {
 		this.api?.newConstruction?.();
+		this.applyGraphicsTheme(true);
 	}
 
 	async evaluate(expression: string): Promise<string> {
@@ -444,7 +508,10 @@ class GeoGebraCalculator implements Calculator {
 			throw new Error(`Cannot import state from provider: ${state.provider}`);
 		}
 		if (typeof state.providerState === "string" && state.providerState) {
-			this.api?.setBase64?.(state.providerState);
+			// A saved construction carries its own view colours.
+			this.api?.setBase64?.(state.providerState, () =>
+				this.applyGraphicsTheme(true),
+			);
 		} else if (state.value) {
 			this.setValue(state.value);
 		}
@@ -453,6 +520,8 @@ class GeoGebraCalculator implements Calculator {
 	destroy(): void {
 		if (this.destroyed) return;
 		this.destroyed = true;
+		this.stopObservingTheme?.();
+		this.stopObservingTheme = null;
 		this.api?.remove?.();
 		this.api = null;
 		this.applet = null;

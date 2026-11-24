@@ -39,7 +39,8 @@ shown while it has focus move and turn it without dragging.
 		OverlayRotateHandle,
 	} from '@pie-players/pie-players-shared/components/overlay-placement';
 	import { onMount } from 'svelte';
-	import protractorSvg from './protractor.svg';
+	// Inline markup, so the marks draw in the scheme's ink through `currentColor`.
+	import protractorSvg from './protractor.svg?raw';
 
 	let { visible = false, toolId = 'protractor' }: ProtractorProps = $props();
 
@@ -163,12 +164,13 @@ shown while it has focus move and turn it without dragging.
 	>
 		<div class="pie-tool-protractor__frame">
 			<div class="pie-tool-protractor__container">
-				<img
+				<div
 					class="pie-tool-protractor__image"
-					src={protractorSvg}
-					alt={interfaceI18n.t('tools.protractor.imageAlt')}
-					draggable="false"
-				/>
+					role="img"
+					aria-label={interfaceI18n.t('tools.protractor.imageAlt')}
+				>
+					{@html protractorSvg}
+				</div>
 			</div>
 		</div>
 
@@ -262,6 +264,17 @@ shown while it has focus move and turn it without dragging.
 		position: relative;
 		z-index: 2;
 		display: block;
+		color: var(--pie-text, #000);
+	}
+
+	.pie-tool-protractor__image :global(svg) {
+		display: block;
+		width: 100%;
+		height: 100%;
+	}
+
+	.pie-tool-protractor__image :global(.pie-tool-protractor__plate) {
+		fill: var(--pie-background, #fff);
 	}
 </style>
 

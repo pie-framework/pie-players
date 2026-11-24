@@ -54,6 +54,7 @@
 	--pie-primary: #3f51b5;
 	--pie-primary-dark: #283593;
 	--pie-primary-light: #9fa8da;
+	--pie-scrim: rgba(0, 0, 0, 0.3);
 	--pie-secondary: #f50057;
 	--pie-secondary-background: rgba(241, 241, 241, 1);
 	--pie-secondary-dark: #880e4f;
@@ -120,6 +121,7 @@
 	--pie-primary: #ffff00;
 	--pie-primary-dark: #cccc00;
 	--pie-primary-light: #ffff99;
+	--pie-scrim: rgba(0, 0, 0, 0.3);
 	--pie-secondary: #ff00ff;
 	--pie-secondary-background: #222222;
 	--pie-secondary-dark: #cc00cc;
@@ -130,4 +132,28 @@
 	--pie-text: #ffffff;
 	--pie-tool-annotation-toolbar-border: #949494;
 	--pie-white: #000000;
+}
+
+@media (forced-colors: active) {
+	:root,
+	[data-theme],
+	[data-color-scheme][data-color-scheme],
+	:where(pie-theme[theme]:not([scope="document"])) {
+		--pie-annotation-underline: CanvasText;
+		--pie-annotation-underline-dark: CanvasText;
+		--pie-border: CanvasText;
+		--pie-border-dark: CanvasText;
+		--pie-border-gray: CanvasText;
+		--pie-border-light: CanvasText;
+		--pie-button-border: CanvasText;
+		--pie-button-focus-outline: Highlight;
+		--pie-button-hover-border: CanvasText;
+		--pie-disabled: GrayText;
+		--pie-disabled-secondary: GrayText;
+		--pie-disabled-text: GrayText;
+		--pie-focus-checked-border: Highlight;
+		--pie-focus-keyboard-outline: Highlight;
+		--pie-focus-unchecked-border: CanvasText;
+		--pie-tool-annotation-toolbar-border: CanvasText;
+	}
 }

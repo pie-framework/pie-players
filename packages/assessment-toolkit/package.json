@@ -78,6 +78,7 @@
 		"@pie-players/pie-calculator": "workspace:*",
 		"@pie-players/pie-context": "workspace:*",
 		"@pie-players/pie-players-shared": "workspace:*",
+		"@pie-players/pie-theme": "workspace:*",
 		"@pie-players/pie-tts": "workspace:*",
 		"speech-rule-engine": "5.0.0-rc.4"
 	},

@@ -1,4 +1,8 @@
 import { expect, test } from "@playwright/test";
+import {
+	FOCUS_RING_SCHEMES,
+	setDocumentScheme,
+} from "../../../test-support/focus-ring";
 
 test.describe("section player tabbed layout", () => {
 	test("renders tabbed layout element with passage/items tab semantics", async ({
@@ -140,5 +144,23 @@ test.describe("section player tabbed layout", () => {
 		await expect(page.getByRole("tab", { name: "Passage" })).toBeVisible();
 		await expect(page.getByRole("tab", { name: "Questions" })).toBeVisible();
 		await expect(page.getByText("Urban Trees and Heat")).toBeVisible();
+	});
+
+	test("draws the tab focus ring from the scheme", async ({ page }) => {
+		await page.setViewportSize({ width: 900, height: 900 });
+		await page.goto("/question-passage?mode=candidate&layout=splitpane", {
+			waitUntil: "networkidle",
+		});
+		const passageTab = page.getByRole("tab", { name: "Passage" });
+		const itemsTab = page.getByRole("tab", { name: "Questions" });
+		await expect(passageTab).toBeVisible();
+
+		for (const { scheme, outline } of FOCUS_RING_SCHEMES) {
+			await setDocumentScheme(page, scheme);
+			await passageTab.focus();
+			await page.keyboard.press("ArrowRight");
+			await expect(itemsTab, scheme).toBeFocused();
+			await expect(itemsTab, scheme).toHaveCSS("outline-color", outline);
+		}
 	});
 });

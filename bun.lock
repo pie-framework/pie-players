@@ -305,6 +305,7 @@
         "@pie-players/pie-calculator": "workspace:*",
         "@pie-players/pie-context": "workspace:*",
         "@pie-players/pie-players-shared": "workspace:*",
+        "@pie-players/pie-theme": "workspace:*",
         "@pie-players/pie-tts": "workspace:*",
         "speech-rule-engine": "5.0.0-rc.4",
       },
@@ -332,6 +333,7 @@
       "devDependencies": {
         "@axe-core/playwright": "^4.14.0",
         "@cortex-js/compute-engine": "0.154.0",
+        "@pie-players/pie-theme": "workspace:*",
         "@playwright/test": "^1.65.1",
         "@sveltejs/vite-plugin-svelte": "^7.3.1",
         "jsxgraph": "1.14.3",
@@ -348,6 +350,7 @@
       "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-calculator": "workspace:*",
+        "@pie-players/pie-theme": "workspace:*",
       },
       "devDependencies": {
         "typescript": "^5.9.3",
@@ -358,6 +361,7 @@
       "version": "1.0.0-beta.11",
       "dependencies": {
         "@pie-players/pie-calculator": "workspace:*",
+        "@pie-players/pie-theme": "workspace:*",
       },
       "devDependencies": {
         "typescript": "^5.9.3",

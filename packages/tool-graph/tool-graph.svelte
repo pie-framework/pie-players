@@ -715,6 +715,7 @@ cursor along the minor grid and Enter or Space applies the current mode at it.
 	.pie-tool-graph__transparency-control input[type='range'] {
 		width: 100px;
 		cursor: pointer;
+		accent-color: var(--pie-primary, #3f51b5);
 	}
 
 	/* Canvas wrapper */

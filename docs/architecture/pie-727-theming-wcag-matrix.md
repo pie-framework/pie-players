@@ -28,9 +28,9 @@ themselves prove contrast or focus appearance.
 - UI component, graphic, and focus indication contrast must be at least `3:1`.
 - Focus-visible states must be keyboard reachable, visible, and not obscured.
 - Target size checks apply to interactive controls where WCAG 2.5.8 is in scope.
-- Forced-colors checks must preserve browser participation. Do not use
-  `forced-color-adjust: none` to make authored palettes win over the user's
-  system colors.
+- Forced-colors checks must preserve browser participation.
+  `forced-color-adjust: none` is allowed only on a rule whose every color is a
+  system color, so an authored palette never wins over the user's system colors.
 - Manual review is allowed only when the row explains why automation cannot prove
   the requirement.
 
@@ -55,7 +55,7 @@ threshold rather than inferring a relationship from token names.
 | Surface | Owner | DOM mode | Status |
 | --- | --- | --- | --- |
 | [Section tabs](#section-tabs) | `@pie-players/pie-section-player` | Light DOM | Partial |
-| [Split divider](#split-divider) | `@pie-players/pie-section-player` | Light DOM | Planned |
+| [Split divider](#split-divider) | `@pie-players/pie-section-player` | Light DOM | Partial |
 | [Section item scroll fade](#section-item-scroll-fade) | `@pie-players/pie-section-player` | Light DOM | Planned |
 | [Section scrollbar chrome](#section-scrollbar-chrome) | `@pie-players/pie-section-player` | Light DOM | Partial |
 | [Player error banners](#player-error-banners) | `@pie-players/pie-item-player`, `@pie-players/pie-players-shared` | Light DOM and custom element surface | Covered |
@@ -69,6 +69,7 @@ threshold rather than inferring a relationship from token names.
 | [TTS inline speed controls](#tts-inline-speed-controls) | `@pie-players/pie-tool-tts-inline` | Shadow DOM | Planned |
 | [Floating graph, ruler and periodic table controls](#floating-graph-ruler-and-periodic-table-controls) | Tool packages | Shadow DOM | Partial |
 | [Canonical built-in palettes](#canonical-built-in-palettes) | `@pie-players/pie-theme` | Runtime and generated light-DOM CSS adapter | Covered |
+| [Forced-colors token map](#forced-colors-token-map) | `@pie-players/pie-theme` | `<pie-theme>` self or document scope and generated `tokens.css` | Covered |
 | [Requested unavailable scheme](#requested-unavailable-scheme) | `@pie-players/pie-theme` | `<pie-theme>` self or document scope | Covered |
 | [Color-scheme tool (`theme`)](#color-scheme-tool-theme) | `@pie-players/pie-tool-theme` | Shadow DOM | Partial |
 
@@ -82,16 +83,24 @@ threshold rather than inferring a relationship from token names.
 - **Coverage:** `packages/section-player/tests/section-player-theme-token-docs.test.ts`
   covers the docs/code token contract;
   `packages/section-player/tests/section-theme-color-scheme.spec.ts` asserts
-  selected and unselected toggle legibility across every built-in scheme. Hover,
-  disabled, focus-visible and a host override are not asserted.
+  selected and unselected toggle legibility across every built-in scheme;
+  `packages/section-player/tests/section-player-tabbed-layout.spec.ts` asserts the
+  focus-visible ring under three dark schemes, one high-contrast. Hover, disabled and
+  a host override are not asserted.
 
 ### Split divider
 
 - **States:** `default`, `hover`, `focus-visible`, `dragging`
 - **Theme/scheme set:** default matrix set plus `--pie-section-player-focus-outline` override
 - **WCAG criteria:** 1.4.11, 2.4.7, 2.4.11, 2.4.13
-- **Coverage:** extend the computed-style focus coverage in
-  `packages/section-player/tests/section-toolbar-tools.spec.ts`.
+- **Coverage:** `packages/section-player/tests/section-toolbar-tools.spec.ts`
+  asserts the focus ring and handle of the section split divider, and the passage
+  card and media-gated item card rings, under three dark schemes, one high-contrast
+  and under the `--pie-section-player-focus-outline` override.
+  `packages/section-player/tests/section-player-sign-language-region.spec.ts`
+  covers the card split divider and
+  `packages/item-player/tests/item-player-passage-split.spec.ts` the shared
+  passage divider. Hover and dragging are not asserted.
 
 ### Section item scroll fade
 
@@ -128,16 +137,23 @@ threshold rather than inferring a relationship from token names.
 - **States:** `default`, `hover`, `focus-visible`, `resizing`, `collapsed`
 - **Theme/scheme set:** default matrix set
 - **WCAG criteria:** 1.4.1, 1.4.3, 1.4.11, 2.4.7
-- **Coverage:** `packages/section-player-tools-shared/tests/panel-theming.test.ts`
-  and `packages/section-player/tests/section-debug-panels-scheme.spec.ts`.
+- **Coverage:** `packages/section-player-tools-shared/tests/panel-theming.test.ts`,
+  which also keeps the panel toggles off DaisyUI's button classes, and
+  `packages/section-player/tests/section-debug-panels-scheme.spec.ts`.
 
 ### Shared authored-content stylesheet
 
-- **States:** `default` table, grid, scrim and emphasis classes
-- **Theme/scheme set:** default matrix set plus `dracula` as the divergent-provider case
-- **WCAG criteria:** 1.4.1, 1.4.3, 1.4.11
+- **States:** `default` table, grid, scrim and emphasis classes; the
+  `focus-visible` fallback ring on a control with no focus style of its own
+- **Theme/scheme set:** default matrix set plus `dracula` as the divergent-provider
+  case; the fallback ring under both Base Themes and every built-in scheme
+- **WCAG criteria:** 1.4.1, 1.4.3, 1.4.11, 2.4.7
 - **Coverage:** `packages/theme/tests/content-styles-theming.test.ts`;
   `scripts/tests/check-theme-tokens.test.mjs` guards the pruned rule set.
+  `packages/theme/tests/content-styles-focus-fallback.test.ts` pins the ring's
+  chain to the `--pie-focus-keyboard-outline` relationships;
+  `packages/players-shared/tests/e2e/content-focus-fallback.spec.ts` asserts it
+  by computed style on keyboard focus.
 
 ### UA-painted chrome under a scheme
 
@@ -162,9 +178,10 @@ threshold rather than inferring a relationship from token names.
 - **Theme/scheme set:** default matrix set plus host-overridden nav and background tokens
 - **WCAG criteria:** 1.4.3, 1.4.11, 2.4.7, 2.4.11, 2.4.13, 2.5.8
 - **Coverage:** `packages/assessment-player/tests/assessment-player-theme-contract.test.ts`
-  covers the `--pie-background` read; extend
-  `packages/assessment-player/tests/assessment-player-smoke.spec.ts` with
-  computed-style and axe coverage before visual nav changes.
+  covers the `--pie-background` read;
+  `packages/assessment-player/tests/assessment-player-smoke.spec.ts` asserts the
+  Back and Next focus ring under three dark schemes, one high-contrast. Extend it with
+  computed-style coverage of the other states before visual nav changes.
 
 ### Item toolbar buttons
 
@@ -172,8 +189,11 @@ threshold rather than inferring a relationship from token names.
 - **Theme/scheme set:** default matrix set plus host-overridden `--pie-button-*` and toolbar tokens
 - **WCAG criteria:** 1.4.3, 1.4.11, 2.4.7, 2.4.11, 2.4.13, 2.5.8
 - **Coverage:** `packages/assessment-toolkit/tests/toolbar-items.test.ts` covers
-  token usage for chrome and glyphs. Browser coverage through the section-player
-  toolbar specs is still needed for rendered contrast and target size.
+  token usage for chrome and glyphs.
+  `packages/section-player/tests/section-toolbar-tools.spec.ts` asserts the hosted
+  tool shell's header, move and close focus rings under three dark
+  schemes, one high-contrast, and no ring on pointer focus. Browser coverage of
+  rendered contrast and target size is still needed.
 
 ### TTS inline trigger
 
@@ -218,9 +238,12 @@ threshold rather than inferring a relationship from token names.
   through `var(--pie-*)` chains, and the periodic table's category fills are
   fixed hues folded through `--pie-fixed-hue-collapse`.
   `packages/tool-periodic-table/tests/tool-periodic-table-style-contract.test.ts`
-  covers its cells. Graph, ruler, protractor and line-reader have no
-  style-contract test — `tool-graph.contract.test.ts` covers runtime context, not
-  tokens — and no package has rendered-state coverage.
+  covers its cells. The graph, ruler and protractor contract tests pin the grid
+  slider's accent and the inline graphics' ink and plate, and
+  `packages/section-player/tests/section-tool-graphics-scheme.spec.ts` asserts
+  them, with the tool window's resize grip, under a dark and a high-contrast
+  scheme. Line-reader has no style-contract test, and the tools' controls have no
+  rendered-state coverage.
 
 ### Canonical built-in palettes
 
@@ -231,6 +254,19 @@ threshold rather than inferring a relationship from token names.
   `theme-definition-contract.test.ts` assert complete participating token sets,
   opaque required contrast-role values, named 4.5:1 text and 3:1 UI/focus
   relationships, and generated/runtime parity.
+
+### Forced-colors token map
+
+- **States:** forced colors on, off, and toggled under a mounted element
+- **Theme/scheme set:** light and dark bases, every built-in, explicit
+  `variables`, self and document scope, stylesheet-only delivery
+- **WCAG criteria:** 1.4.1, 1.4.11, 2.4.7
+- **Coverage:** `packages/theme/tests/forced-colors.test.ts` asserts every mapped
+  token resolves to its system color through `<pie-theme>` and through
+  `tokens.css` under every built-in, that toggling forced colors updates a
+  mounted element, and that no token changes outside forced colors;
+  `section-theme-color-scheme.spec.ts` asserts one token per role in Chromium on
+  both paths, and the restore when forced colors turn off.
 
 ### Requested unavailable scheme
 

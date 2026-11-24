@@ -1952,7 +1952,7 @@ Developer dialog for the section player demos that configures the toolkit's text
 	.pie-tts-dialog-backdrop {
 		position: fixed;
 		inset: 0;
-		background: color-mix(in srgb, #000 30%, transparent);
+		background: var(--pie-scrim, rgba(0, 0, 0, 0.3));
 		display: flex;
 		align-items: center;
 		justify-content: center;

@@ -11,6 +11,8 @@ chrome.
 set: the base theme, provider adapter output, the resolved color scheme and
 explicit `variables`
 ([resolution order](../../docs/theming/how-theming-works.md#resolution-order)).
+While forced colors are active, a fifth layer above `variables` maps the state
+tokens to system colors ([forced colors](#forced-colors)).
 
 Base themes and built-in color schemes are authored once in TypeScript. The
 runtime resolver and the checked-in CSS adapters use those same definitions, so
@@ -24,6 +26,13 @@ DaisyUI adapter. It is distinct from the page role `--pie-background`, and text,
 links (`--pie-tertiary`) and controls on it must keep their contrast. Hosts override it through
 `variables`, or through the normal cascade in stylesheet-only delivery.
 
+`--pie-scrim` is a registered, public `canonical-semantic` token for the backdrop
+a modal dialog lays over the page, such as the TTS settings dialog's. Its scheme
+participation is `required`: both base themes and every built-in scheme set it
+to `rgba(0, 0, 0, 0.3)`. It stays a dark translucent veil on dark palettes too,
+because a scrim that follows `--pie-text` or `--pie-black` lightens a dark page
+instead of receding it. Hosts override it the same way as `--pie-surface`.
+
 Contents:
 
 - Integration: [entrypoints and styles](#entrypoints-and-styles),
@@ -34,7 +43,7 @@ Contents:
   [registered custom schemes](#registered-custom-schemes),
   [font size scaling](#font-size-scaling), [token registry](#token-registry)
 - Palettes: [SC scheme parity](#sc-scheme-parity),
-  [fixed hues](#fixed-hues)
+  [fixed hues](#fixed-hues), [forced colors](#forced-colors)
 - Component authors: [light DOM and shadow DOM](#light-dom-and-shadow-dom),
   [style ownership](#style-ownership), [generated CSS](#generated-css)
 
@@ -67,6 +76,28 @@ definePieTheme();
 Both behaviors are part of the package contract: the root entrypoint registers
 the element on import, and `theme-element` registers nothing until
 `definePieTheme()` runs.
+
+`theme-observer` is side-effect-free too, for a component that paints outside
+the token cascade, such as a vendor embed configured through a script API:
+
+```ts
+import {
+  observePieThemeChanges,
+  readPieElementTheme,
+} from "@pie-players/pie-theme/theme-observer";
+
+const apply = () => {
+  const theme = readPieElementTheme(container, ["--pie-border"]);
+  // theme.colorScheme: "light" | "dark" | null, from --pie-background
+  // theme.colors["--pie-border"]: "#rrggbb" when it computes to an opaque colour
+};
+apply();
+const stop = observePieThemeChanges(apply);
+```
+
+`observePieThemeChanges` fires on an attribute change to the document element
+or a `<pie-theme>` host and when a `<pie-theme>` mounts. `readPieElementTheme`
+returns `null` where no canvas is available to resolve a colour.
 
 The four stylesheet artifacts are available at both their package export and
 literal `dist` paths:
@@ -319,6 +350,38 @@ it costs under a scheme is the encoding: a component collapsing hues has to
 carry category, state or series somewhere else — a label, a filter, or the
 accessible name.
 
+## Forced colors
+
+Forced colors (Windows contrast themes) replace author colors with the user's
+system palette and drop box shadows, so a state drawn only by color is lost. A
+system-color keyword survives, including one a component reads through a
+`--pie-*` token. While `(forced-colors: active)` matches, the state tokens
+resolve to system colors by role:
+
+| Role | System color | Tokens |
+| --- | --- | --- |
+| Selection and focus outlines and borders | `Highlight` | `--pie-button-focus-outline`, `--pie-focus-keyboard-outline`, `--pie-focus-checked-border` |
+| Borders and marks | `CanvasText` | `--pie-border`, `--pie-border-light`, `--pie-border-dark`, `--pie-border-gray`, `--pie-button-border`, `--pie-button-hover-border`, `--pie-focus-unchecked-border`, `--pie-tool-annotation-toolbar-border`, `--pie-annotation-underline`, `--pie-annotation-underline-dark` |
+| Disabled | `GrayText` | `--pie-disabled`, `--pie-disabled-secondary`, `--pie-disabled-text` |
+
+The map is authored once in `theme-definitions.ts`, and only a token both Base
+Themes set can join it. `<pie-theme>` applies it above `variables`, because the
+browser forces a host's literal colors anyway and only a system color keeps a
+state visible; the element re-resolves when forced colors turn on or off, so
+existing nodes update without a remount. `tokens.css` carries the same map in an
+`@media (forced-colors: active)` block that outranks its Base Theme rules and the
+`color-schemes.css` rules. A host declaration still competes with either path as
+it does with any other token: `!important` beats the inline map, a declaration
+on a descendant of `<pie-theme>` wins inside that subtree, and a host stylesheet
+rule meets the `@media` block in the normal cascade. Outside forced
+colors no token changes.
+
+Fill tokens stay with the browser, `--pie-primary` among them because it paints
+ink as well as fills. Chromium puts a `Canvas` backplate behind text on a
+`Highlight` fill, so a component whose filled state carries meaning restates
+that state under `forced-color-adjust: none`
+([light DOM and shadow DOM](#light-dom-and-shadow-dom)).
+
 ## Font size scaling
 
 `font-sizes.css` carries four presets on `--pie-font-scale` — `normal` (1),
@@ -401,6 +464,9 @@ scheme sets it to hold 3:1 against the page and that fill. A provider, a
 registered custom scheme or `variables` that set `--pie-button-focus-outline`
 without it get the same value for it, so a palette written before it existed
 keeps its focus colour. Set both to give them different colours.
+`components.css` draws it, through the same chain, as a 2px fallback ring
+around a control in `[data-pie-content]` that sets no unlayered focus style of
+its own; the ring is unlayered, so it beats a focus style set in a cascade layer.
 
 The registry is published so a host can show a person what a token is for and
 who owns it. Read the registry rather than deriving grouping from token names or
@@ -422,8 +488,10 @@ them from the document or the scoped host as normal. For component authors:
   (`--pie-focus-*`, `--pie-button-*`), not from hardcoded color literals.
 - A theme switch, or a scheme or provider registration, updates existing nodes,
   light and shadow, without a remount.
-- Cover forced-colors behavior without `forced-color-adjust: none`; system color
-  replacement is an accessibility feature.
+- Leave forced-colors repainting to the browser; system color replacement is an
+  accessibility feature. `forced-color-adjust: none` is allowed only on a rule
+  whose every color is a system color, such as a pressed state restated as
+  `HighlightText` on `Highlight` to avoid the text backplate.
 
 ## Style Ownership
 
@@ -441,6 +509,10 @@ renders content into, except rules keyed on `kds-*` or MathJax (`mjx-*`) class
 names or the legacy `.frac` fraction, which stay document-wide so authored markup an element portals
 to `<body>` keeps them. The other legacy content classes (`.variable`, `.whole`,
 `.noprint` and the rest) apply inside `[data-pie-content]` only.
+Under `prefers-reduced-motion: reduce` the stylesheet also ends every transition
+and animation inside `[data-pie-content]`, pseudo-elements included. Motion an
+element plays through the Web Animations API or inside a shadow root is the
+element's to gate.
 
 Players adding this import the text with `?raw` and hand it to
 `installContentStyles` from `@pie-players/pie-players-shared`. In these packages'
@@ -473,7 +545,8 @@ stale generated CSS, and the theme package build runs the stale check before it
 copies the existing files to `dist`.
 
 The package-internal `renderPieThemeCss()` implementation lives in
-`src/theme-css.ts`; it is not a public export. Generated `color-schemes.css`
-contains one unlayered `[data-color-scheme="..."]` rule per built-in scheme,
+`src/theme-css.ts`; it is not a public export. Generated `tokens.css` contains
+the light and dark Base Theme rules and the forced-colors block. Generated
+`color-schemes.css` contains one unlayered `[data-color-scheme="..."]` rule per built-in scheme,
 each opening with the scheme's `color-scheme` keyword, and no base-theme or
 grouped exception rules.

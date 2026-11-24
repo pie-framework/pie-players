@@ -451,7 +451,16 @@ describe("pie-theme DOM contract", () => {
 		} as MutableMediaQueryList;
 		Object.defineProperty(window, "matchMedia", {
 			configurable: true,
-			value: () => media,
+			value: (query: string) =>
+				query === media.media
+					? media
+					: {
+							...media,
+							matches: false,
+							media: query,
+							addEventListener() {},
+							removeEventListener() {},
+						},
 		});
 
 		try {

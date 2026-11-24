@@ -236,9 +236,10 @@
 		 * colour, which is the one pairing that holds on every scheme: 5.44:1 or
 		 * better for the text, and the same ratio separating the pill from the
 		 * track it sits on, since the track paints --pie-background. Mixing rather
-		 * than substituting is what keeps the ink out of the light Base Theme's
-		 * transparent --pie-background, where it would render invisible: that end
-		 * of the mix is the pinned white, exact at 0%.
+		 * than substituting keeps the ink white while no scheme collapses the hue:
+		 * the dark Base Theme's --pie-background is #000000, 3.76:1 on #1D7375
+		 * against white's 5.58:1. That end of the mix is the pinned white, exact
+		 * at 0%.
 		 */
 		background: var(
 			--pie-section-player-tab-active-background,

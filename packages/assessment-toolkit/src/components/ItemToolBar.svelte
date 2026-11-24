@@ -2350,7 +2350,7 @@ The toolbar for an item, passage or section, rendering a button for each tool th
 					if (left !== null) el.style.left = left;
 
 					if (gradientAngle !== null) {
-						el.style.background = `linear-gradient(${gradientAngle}, transparent 0%, transparent 40%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.35) 60%, transparent 60%, transparent 100%)`;
+						el.style.background = `linear-gradient(${gradientAngle}, transparent 0%, transparent 40%, var(--pie-border-dark, #646464) 40%, var(--pie-border-dark, #646464) 60%, transparent 60%, transparent 100%)`;
 					}
 
 					const handler = createResizePointerDownHandler(corner);

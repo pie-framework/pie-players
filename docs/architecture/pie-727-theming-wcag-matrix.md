@@ -129,8 +129,9 @@ threshold rather than inferring a relationship from token names.
 - **States:** `default`, `hover`, `focus-visible`, `resizing`, `collapsed`
 - **Theme/scheme set:** default matrix set
 - **WCAG criteria:** 1.4.1, 1.4.3, 1.4.11, 2.4.7
-- **Coverage:** `packages/section-player-tools-shared/tests/panel-theming.test.ts`
-  and `packages/section-player/tests/section-debug-panels-scheme.spec.ts`.
+- **Coverage:** `packages/section-player-tools-shared/tests/panel-theming.test.ts`,
+  which also keeps the panel toggles off DaisyUI's button classes, and
+  `packages/section-player/tests/section-debug-panels-scheme.spec.ts`.
 
 ### Shared authored-content stylesheet
 
@@ -225,9 +226,12 @@ threshold rather than inferring a relationship from token names.
   through `var(--pie-*)` chains, and the periodic table's category fills are
   fixed hues folded through `--pie-fixed-hue-collapse`.
   `packages/tool-periodic-table/tests/tool-periodic-table-style-contract.test.ts`
-  covers its cells. Graph, ruler, protractor and line-reader have no
-  style-contract test — `tool-graph.contract.test.ts` covers runtime context, not
-  tokens — and no package has rendered-state coverage.
+  covers its cells. The graph, ruler and protractor contract tests pin the grid
+  slider's accent and the inline graphics' ink and plate, and
+  `packages/section-player/tests/section-tool-graphics-scheme.spec.ts` asserts
+  them, with the tool window's resize grip, under a dark and a high-contrast
+  scheme. Line-reader has no style-contract test, and the tools' controls have no
+  rendered-state coverage.
 
 ### Canonical built-in palettes
 

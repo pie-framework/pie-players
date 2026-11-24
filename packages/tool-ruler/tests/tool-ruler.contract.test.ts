@@ -47,3 +47,20 @@ test("a frameless surface drops the frame line", () => {
 		":host([data-pie-tool-surface='frameless']) .pie-tool-ruler__frame",
 	);
 });
+
+test("the marks draw in the scheme's ink on its surface", async () => {
+	// As an <img>, the SVG drew black marks under every scheme, unreadable on a
+	// dark one, so it renders inline where `currentColor` reaches it.
+	expect(source).toInclude("import rulerCm from './ruler-cm.svg?raw';");
+	expect(source).toInclude("import rulerInches from './ruler-inches.svg?raw';");
+	expect(source).toInclude("{@html currentRuler}");
+	expect(source).toMatch(/\.pie-tool-ruler__image \{[^}]*color: var\(--pie-text, #000\);/);
+	expect(source).toInclude(
+		".pie-tool-ruler__image :global(.pie-tool-ruler__plate) {\n\t\tfill: var(--pie-background, #fff);",
+	);
+	for (const name of ["ruler-cm.svg", "ruler-inches.svg"]) {
+		const svg = await Bun.file(new URL(`../${name}`, import.meta.url)).text();
+		expect(svg).not.toMatch(/(?:fill|stroke)="black"/);
+		expect(svg).toInclude('class="pie-tool-ruler__plate"');
+	}
+});

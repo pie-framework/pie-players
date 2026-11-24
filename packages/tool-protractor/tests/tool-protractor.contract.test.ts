@@ -51,3 +51,19 @@ test("revealing the tool cannot scroll its pane", () => {
 		expect(call).toInclude("preventScroll");
 	}
 });
+
+test("the marks draw in the scheme's ink on its surface", async () => {
+	// As an <img>, the SVG drew black marks under every scheme, unreadable on a
+	// dark one, so it renders inline where `currentColor` reaches it.
+	expect(source).toInclude("import protractorSvg from './protractor.svg?raw';");
+	expect(source).toInclude("{@html protractorSvg}");
+	expect(ruleFor(".pie-tool-protractor__image")).toInclude(
+		"color: var(--pie-text, #000);",
+	);
+	expect(source).toInclude(
+		".pie-tool-protractor__image :global(.pie-tool-protractor__plate) {\n\t\tfill: var(--pie-background, #fff);",
+	);
+	const svg = await Bun.file(new URL("../protractor.svg", import.meta.url)).text();
+	expect(svg).not.toMatch(/(?:fill|stroke)="black"/);
+	expect(svg).toInclude('class="pie-tool-protractor__plate"');
+});

@@ -26,6 +26,13 @@ DaisyUI adapter. It is distinct from the page role `--pie-background`, and text,
 links (`--pie-tertiary`) and controls on it must keep their contrast. Hosts override it through
 `variables`, or through the normal cascade in stylesheet-only delivery.
 
+`--pie-scrim` is a registered, public `canonical-semantic` token for the backdrop
+a modal dialog lays over the page, such as the TTS settings dialog's. Its scheme
+participation is `required`: both base themes and every built-in scheme set it
+to `rgba(0, 0, 0, 0.3)`. It stays a dark translucent veil on dark palettes too,
+because a scrim that follows `--pie-text` or `--pie-black` lightens a dark page
+instead of receding it. Hosts override it the same way as `--pie-surface`.
+
 Contents:
 
 - Integration: [entrypoints and styles](#entrypoints-and-styles),

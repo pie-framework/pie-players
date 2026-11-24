@@ -1509,6 +1509,24 @@ Its stylesheet keys its scheme overrides on `data-color-scheme` on the root
 element, which `<pie-theme>` writes there, so that attribute name and its
 placement on `<html>` are API to it; see theme tokens below.
 
+On 2026-11-23 `<pie-theme>` gained a forced-colors layer above `variables`:
+while `(forced-colors: active)` matches it writes `Highlight`, `CanvasText` or
+`GrayText` for the focus-outline, border and disabled tokens listed in the theme
+README, and `tokens.css` carries the same map in an `@media` block. Outside
+forced colors no host sees a difference. Under forced colors the browser already
+repaints these properties, so the visible change is focus and selection drawn in
+`Highlight`, disabled controls in `GrayText`, and system colors inside any
+`forced-color-adjust: none` block. Host A declares `--pie-border` and
+`--pie-button-border` as `transparent` on `pie-section-player-splitpane`, a
+descendant of `<pie-theme>`, so inside the splitpane its values beat the
+inherited map. Host M's provider supplies four border tokens, which the map replaces. Host S's
+`inherit` on `--pie-border` and `--pie-button-border` now inherits the mapped
+value. Host R's chrome aliases `--pie-border` under a scheme and so takes
+`CanvasText`, and its contrast inspector reads system-color keywords for `--pie-border`,
+`--pie-border-dark`, `--pie-button-border` and `--pie-button-focus-outline`.
+Hosts V and C set none of the mapped tokens. Row verification dates are
+unchanged.
+
 ### Internal layout CEs as style selectors (Hosts A, S)
 
 The host reaches into the player's light DOM with Angular `::ng-deep` rules

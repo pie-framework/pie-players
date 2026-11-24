@@ -11,6 +11,8 @@ chrome.
 set: the base theme, provider adapter output, the resolved color scheme and
 explicit `variables`
 ([resolution order](../../docs/theming/how-theming-works.md#resolution-order)).
+While forced colors are active, a fifth layer above `variables` maps the state
+tokens to system colors ([forced colors](#forced-colors)).
 
 Base themes and built-in color schemes are authored once in TypeScript. The
 runtime resolver and the checked-in CSS adapters use those same definitions, so
@@ -34,7 +36,7 @@ Contents:
   [registered custom schemes](#registered-custom-schemes),
   [font size scaling](#font-size-scaling), [token registry](#token-registry)
 - Palettes: [SC scheme parity](#sc-scheme-parity),
-  [fixed hues](#fixed-hues)
+  [fixed hues](#fixed-hues), [forced colors](#forced-colors)
 - Component authors: [light DOM and shadow DOM](#light-dom-and-shadow-dom),
   [style ownership](#style-ownership), [generated CSS](#generated-css)
 
@@ -319,6 +321,38 @@ it costs under a scheme is the encoding: a component collapsing hues has to
 carry category, state or series somewhere else — a label, a filter, or the
 accessible name.
 
+## Forced colors
+
+Forced colors (Windows contrast themes) replace author colors with the user's
+system palette and drop box shadows, so a state drawn only by color is lost. A
+system-color keyword survives, including one a component reads through a
+`--pie-*` token. While `(forced-colors: active)` matches, the state tokens
+resolve to system colors by role:
+
+| Role | System color | Tokens |
+| --- | --- | --- |
+| Selection and focus outlines and borders | `Highlight` | `--pie-button-focus-outline`, `--pie-focus-keyboard-outline`, `--pie-focus-checked-border` |
+| Borders and marks | `CanvasText` | `--pie-border`, `--pie-border-light`, `--pie-border-dark`, `--pie-border-gray`, `--pie-button-border`, `--pie-button-hover-border`, `--pie-focus-unchecked-border`, `--pie-tool-annotation-toolbar-border`, `--pie-annotation-underline`, `--pie-annotation-underline-dark` |
+| Disabled | `GrayText` | `--pie-disabled`, `--pie-disabled-secondary`, `--pie-disabled-text` |
+
+The map is authored once in `theme-definitions.ts`, and only a token both Base
+Themes set can join it. `<pie-theme>` applies it above `variables`, because the
+browser forces a host's literal colors anyway and only a system color keeps a
+state visible; the element re-resolves when forced colors turn on or off, so
+existing nodes update without a remount. `tokens.css` carries the same map in an
+`@media (forced-colors: active)` block that outranks its Base Theme rules and the
+`color-schemes.css` rules. A host declaration still competes with either path as
+it does with any other token: `!important` beats the inline map, a declaration
+on a descendant of `<pie-theme>` wins inside that subtree, and a host stylesheet
+rule meets the `@media` block in the normal cascade. Outside forced
+colors no token changes.
+
+Fill tokens stay with the browser, `--pie-primary` among them because it paints
+ink as well as fills. Chromium puts a `Canvas` backplate behind text on a
+`Highlight` fill, so a component whose filled state carries meaning restates
+that state under `forced-color-adjust: none`
+([light DOM and shadow DOM](#light-dom-and-shadow-dom)).
+
 ## Font size scaling
 
 `font-sizes.css` carries four presets on `--pie-font-scale` — `normal` (1),
@@ -425,8 +459,10 @@ them from the document or the scoped host as normal. For component authors:
   (`--pie-focus-*`, `--pie-button-*`), not from hardcoded color literals.
 - A theme switch, or a scheme or provider registration, updates existing nodes,
   light and shadow, without a remount.
-- Cover forced-colors behavior without `forced-color-adjust: none`; system color
-  replacement is an accessibility feature.
+- Leave forced-colors repainting to the browser; system color replacement is an
+  accessibility feature. `forced-color-adjust: none` is allowed only on a rule
+  whose every color is a system color, such as a pressed state restated as
+  `HighlightText` on `Highlight` to avoid the text backplate.
 
 ## Style Ownership
 
@@ -480,7 +516,8 @@ stale generated CSS, and the theme package build runs the stale check before it
 copies the existing files to `dist`.
 
 The package-internal `renderPieThemeCss()` implementation lives in
-`src/theme-css.ts`; it is not a public export. Generated `color-schemes.css`
-contains one unlayered `[data-color-scheme="..."]` rule per built-in scheme,
+`src/theme-css.ts`; it is not a public export. Generated `tokens.css` contains
+the light and dark Base Theme rules and the forced-colors block. Generated
+`color-schemes.css` contains one unlayered `[data-color-scheme="..."]` rule per built-in scheme,
 each opening with the scheme's `color-scheme` keyword, and no base-theme or
 grouped exception rules.

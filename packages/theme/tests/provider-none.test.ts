@@ -10,7 +10,7 @@
  * the target or `document`, so a stub target is the honest way to exercise it.
  */
 
-import { beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 
 import {
 	PIE_THEME_PROVIDER_NONE,
@@ -40,10 +40,34 @@ const stubComputedStyle = () => {
 		({ getPropertyValue: () => "" }) as unknown as CSSStyleDeclaration;
 };
 
+// Files share one global scope, so the stub and the probe come off after each
+// test: a later file that reads computed styles through an already registered
+// DOM would otherwise get the empty stub.
+const originalComputedStyle = Object.getOwnPropertyDescriptor(
+	globalThis,
+	"getComputedStyle",
+);
+const restoreComputedStyle = () => {
+	if (originalComputedStyle) {
+		Object.defineProperty(
+			globalThis,
+			"getComputedStyle",
+			originalComputedStyle,
+		);
+	} else {
+		Reflect.deleteProperty(globalThis, "getComputedStyle");
+	}
+};
+
 describe("resolveProviderVariables with the none mode", () => {
 	beforeEach(() => {
 		stubComputedStyle();
 		registerPieThemeProvider(probeAdapter);
+	});
+
+	afterEach(() => {
+		unregisterPieThemeProvider(probeAdapter.id);
+		restoreComputedStyle();
 	});
 
 	test("resolves nothing even though a provider can read the target", () => {

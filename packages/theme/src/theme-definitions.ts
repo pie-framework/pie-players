@@ -175,6 +175,44 @@ const BASE_THEMES = deepFreeze({
 	dark: { ...DARK_BASE_THEME, ...DARK_BASE_ACCESSIBILITY_VARS },
 });
 
+type ForcedColorsSystemColor = "Highlight" | "CanvasText" | "GrayText";
+
+/**
+ * Forced colours replace every author colour with a system colour and drop box
+ * shadows, so a state drawn only by colour is lost; a system-colour keyword
+ * survives, through `var()` too. While `(forced-colors: active)` matches, these
+ * state tokens take one by role: `<pie-theme>` applies the map above
+ * `variables`, and `tokens.css` carries it in an `@media` block.
+ *
+ * Fill tokens stay with the browser. Chromium puts a Canvas backplate behind
+ * text on a `Highlight` fill, so a component restates a filled state itself,
+ * under `forced-color-adjust: none` on a rule whose every colour is a system
+ * colour.
+ */
+const FORCED_COLORS_THEME: Readonly<
+	Record<ThemeTokenName, ForcedColorsSystemColor>
+> = deepFreeze({
+	// Selection and focus outlines and borders.
+	"--pie-button-focus-outline": "Highlight",
+	"--pie-focus-keyboard-outline": "Highlight",
+	"--pie-focus-checked-border": "Highlight",
+	// Borders and marks.
+	"--pie-border": "CanvasText",
+	"--pie-border-light": "CanvasText",
+	"--pie-border-dark": "CanvasText",
+	"--pie-border-gray": "CanvasText",
+	"--pie-button-border": "CanvasText",
+	"--pie-button-hover-border": "CanvasText",
+	"--pie-focus-unchecked-border": "CanvasText",
+	"--pie-tool-annotation-toolbar-border": "CanvasText",
+	"--pie-annotation-underline": "CanvasText",
+	"--pie-annotation-underline-dark": "CanvasText",
+	// Disabled.
+	"--pie-disabled": "GrayText",
+	"--pie-disabled-secondary": "GrayText",
+	"--pie-disabled-text": "GrayText",
+});
+
 const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =
 	deepFreeze([
 		{
@@ -1200,6 +1238,11 @@ export function getBaseThemeVariables(
 	return BASE_THEMES[baseTheme];
 }
 
+/** The state tokens' system colours while `(forced-colors: active)` matches. */
+export function getForcedColorsVariables(): Readonly<ThemeVariables> {
+	return FORCED_COLORS_THEME;
+}
+
 export function listBuiltInColorSchemeDefinitions(): readonly BuiltInColorSchemeDefinition[] {
 	return BUILT_IN_COLOR_SCHEMES;
 }
@@ -1296,9 +1339,23 @@ function validateBaseThemes(): string[] {
 	return failures;
 }
 
+// The map replaces values the Base Themes set; a token they do not set would
+// appear only under forced colours.
+function validateForcedColorsTheme(): string[] {
+	return Object.keys(FORCED_COLORS_THEME)
+		.filter(
+			(token) => !(token in BASE_THEMES.light && token in BASE_THEMES.dark),
+		)
+		.map((token) => `forced colours: ${token} is not a Base Theme token`);
+}
+
 /** Build-time invariant check; browser entries only read the frozen definitions. */
 export function assertCanonicalThemeDefinitions(): void {
-	const failures = [...validateBaseThemes(), ...validateBuiltInDefinitions()];
+	const failures = [
+		...validateBaseThemes(),
+		...validateBuiltInDefinitions(),
+		...validateForcedColorsTheme(),
+	];
 	if (failures.length > 0) {
 		throw new Error(
 			`Invalid canonical PIE theme definitions:\n- ${failures.join("\n- ")}`,

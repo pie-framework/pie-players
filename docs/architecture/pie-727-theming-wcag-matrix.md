@@ -28,9 +28,9 @@ themselves prove contrast or focus appearance.
 - UI component, graphic, and focus indication contrast must be at least `3:1`.
 - Focus-visible states must be keyboard reachable, visible, and not obscured.
 - Target size checks apply to interactive controls where WCAG 2.5.8 is in scope.
-- Forced-colors checks must preserve browser participation. Do not use
-  `forced-color-adjust: none` to make authored palettes win over the user's
-  system colors.
+- Forced-colors checks must preserve browser participation.
+  `forced-color-adjust: none` is allowed only on a rule whose every color is a
+  system color, so an authored palette never wins over the user's system colors.
 - Manual review is allowed only when the row explains why automation cannot prove
   the requirement.
 
@@ -69,6 +69,7 @@ threshold rather than inferring a relationship from token names.
 | [TTS inline speed controls](#tts-inline-speed-controls) | `@pie-players/pie-tool-tts-inline` | Shadow DOM | Planned |
 | [Floating graph, ruler and periodic table controls](#floating-graph-ruler-and-periodic-table-controls) | Tool packages | Shadow DOM | Partial |
 | [Canonical built-in palettes](#canonical-built-in-palettes) | `@pie-players/pie-theme` | Runtime and generated light-DOM CSS adapter | Covered |
+| [Forced-colors token map](#forced-colors-token-map) | `@pie-players/pie-theme` | `<pie-theme>` self or document scope and generated `tokens.css` | Covered |
 | [Requested unavailable scheme](#requested-unavailable-scheme) | `@pie-players/pie-theme` | `<pie-theme>` self or document scope | Covered |
 | [Color-scheme tool (`theme`)](#color-scheme-tool-theme) | `@pie-players/pie-tool-theme` | Shadow DOM | Partial |
 
@@ -237,6 +238,19 @@ threshold rather than inferring a relationship from token names.
   `theme-definition-contract.test.ts` assert complete participating token sets,
   opaque required contrast-role values, named 4.5:1 text and 3:1 UI/focus
   relationships, and generated/runtime parity.
+
+### Forced-colors token map
+
+- **States:** forced colors on, off, and toggled under a mounted element
+- **Theme/scheme set:** light and dark bases, every built-in, explicit
+  `variables`, self and document scope, stylesheet-only delivery
+- **WCAG criteria:** 1.4.1, 1.4.11, 2.4.7
+- **Coverage:** `packages/theme/tests/forced-colors.test.ts` asserts every mapped
+  token resolves to its system color through `<pie-theme>` and through
+  `tokens.css` under every built-in, that toggling forced colors updates a
+  mounted element, and that no token changes outside forced colors;
+  `section-theme-color-scheme.spec.ts` asserts one token per role in Chromium on
+  both paths, and the restore when forced colors turn off.
 
 ### Requested unavailable scheme
 

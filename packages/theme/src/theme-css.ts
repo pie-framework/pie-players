@@ -1,6 +1,7 @@
 import {
 	assertCanonicalThemeDefinitions,
 	getBaseThemeVariables,
+	getForcedColorsVariables,
 	listBuiltInColorSchemeDefinitions,
 	resolvePaletteColorScheme,
 } from "./theme-definitions.js";
@@ -34,6 +35,25 @@ function renderRule(
 const selfScopedThemeElement = (theme: "light" | "dark") =>
 	`:where(pie-theme[theme="${theme}"]:not([scope="document"]))`;
 
+/*
+ * The map has to win on every element a generated rule declares tokens on. It
+ * follows the Base Theme rules in this file, and its scheme selector is doubled
+ * to outrank the `[data-color-scheme]` rules in `color-schemes.css`, which load
+ * after this file. A host rule still competes through the normal cascade.
+ */
+function renderForcedColorsRule(): string {
+	const rule = renderRule(
+		[
+			":root",
+			"[data-theme]",
+			"[data-color-scheme][data-color-scheme]",
+			':where(pie-theme[theme]:not([scope="document"]))',
+		],
+		getForcedColorsVariables(),
+	);
+	return `@media (forced-colors: active) {\n${rule.replace(/^/gm, "\t")}\n}`;
+}
+
 function renderTokensCss(): string {
 	return `${GENERATED_HEADER}\n\n${renderRule(
 		[":root", '[data-theme="light"]', selfScopedThemeElement("light")],
@@ -45,7 +65,7 @@ function renderTokensCss(): string {
 		// rule does not: it matches `:root`, and a keyword there would override a
 		// host's own `color-scheme`.
 		resolvePaletteColorScheme(getBaseThemeVariables("dark")),
-	)}\n`;
+	)}\n\n${renderForcedColorsRule()}\n`;
 }
 
 /*

@@ -13,6 +13,7 @@ import {
 	observePieThemeProviders,
 	resolveProviderVariables,
 } from "./providers.js";
+import { getForcedColorsVariables } from "./theme-definitions.js";
 import {
 	isThemeMode,
 	isThemeScope,
@@ -22,6 +23,7 @@ import {
 } from "./theme-types.js";
 
 const DARK_SCHEME_QUERY = "(prefers-color-scheme: dark)";
+const FORCED_COLORS_QUERY = "(forced-colors: active)";
 
 const HTMLElementBase =
 	typeof HTMLElement === "undefined"
@@ -218,9 +220,11 @@ function restoreDocumentThemeBaseline(target: HTMLElement): void {
  * with `data-theme`, `data-color-scheme` and `color-scheme`, on its target:
  * itself under `scope="self"`, `documentElement` under `scope="document"`.
  * Layers apply in order base theme, provider adapter output, registered color
- * scheme, then `variables`, and the element re-resolves when the OS color
- * scheme (under `theme="auto"`), the provider registry or the scheme catalog
- * changes. It renders nothing of its own and defaults to `display: contents`.
+ * scheme, `variables`, then, while forced colours are active, the state tokens'
+ * system colours. The element re-resolves when forced colours turn on or off,
+ * when the OS color scheme changes under `theme="auto"`, and when the provider
+ * registry or the scheme catalog changes. It renders nothing of its own and
+ * defaults to `display: contents`.
  */
 export class PieThemeElement extends HTMLElementBase {
 	static get observedAttributes() {
@@ -228,6 +232,7 @@ export class PieThemeElement extends HTMLElementBase {
 	}
 
 	private mediaQuery: MediaQueryList | null = null;
+	private forcedColorsQuery: MediaQueryList | null = null;
 	private readonly onMediaChange = () => this.applyTheme();
 	private previousKeys = new Set<string>();
 	private previousTarget: HTMLElement | null = null;
@@ -307,6 +312,7 @@ export class PieThemeElement extends HTMLElementBase {
 			this.style.display = "contents";
 		}
 		this.setupAutoThemeListener();
+		this.setupForcedColorsListener();
 		this.stopObservingProviders ??= observePieThemeProviders(() =>
 			this.applyTheme(),
 		);
@@ -320,6 +326,8 @@ export class PieThemeElement extends HTMLElementBase {
 			this.mediaQuery.removeEventListener("change", this.onMediaChange);
 		}
 		this.mediaQuery = null;
+		this.forcedColorsQuery?.removeEventListener("change", this.onMediaChange);
+		this.forcedColorsQuery = null;
 		this.stopObservingSchemes?.();
 		this.stopObservingSchemes = null;
 		this.stopObservingProviders?.();
@@ -382,12 +390,20 @@ export class PieThemeElement extends HTMLElementBase {
 			requestedScheme: this.scheme,
 			variables: this.variablesOverride,
 		});
+		// Above `variables`: the browser forces a host's literal colours anyway,
+		// and only a system colour keeps a state visible.
+		const variables = this.forcedColorsActive()
+			? Object.freeze({
+					...resolution.variables,
+					...getForcedColorsVariables(),
+				})
+			: resolution.variables;
 
 		const state: DocumentThemeState = Object.freeze({
 			dataTheme,
 			dataColorScheme,
 			colorScheme: resolution.colorScheme,
-			variables: resolution.variables,
+			variables,
 		});
 		if (this.scope === "document") {
 			if (this.promoteDocumentOwnership && documentThemeOwners.has(this)) {
@@ -410,12 +426,12 @@ export class PieThemeElement extends HTMLElementBase {
 			}
 			applyColorScheme(target, state.colorScheme, null);
 			this.clearPreviousKeys(target);
-			for (const [key, value] of Object.entries(resolution.variables)) {
+			for (const [key, value] of Object.entries(variables)) {
 				target.style.setProperty(key, value);
 			}
 		}
 		this.previousTarget = target;
-		this.previousKeys = new Set(Object.keys(resolution.variables));
+		this.previousKeys = new Set(Object.keys(variables));
 	}
 
 	/**
@@ -475,6 +491,14 @@ export class PieThemeElement extends HTMLElementBase {
 		return { effectiveTheme: "light", dataTheme: "light" };
 	}
 
+	private forcedColorsActive(): boolean {
+		return (
+			typeof window !== "undefined" &&
+			typeof window.matchMedia === "function" &&
+			window.matchMedia(FORCED_COLORS_QUERY).matches
+		);
+	}
+
 	private clearPreviousTarget() {
 		if (!this.previousTarget) return;
 		const target = this.previousTarget;
@@ -518,6 +542,18 @@ export class PieThemeElement extends HTMLElementBase {
 			this.mediaQuery = window.matchMedia(DARK_SCHEME_QUERY);
 			this.mediaQuery.addEventListener("change", this.onMediaChange);
 		}
+	}
+
+	private setupForcedColorsListener() {
+		if (
+			this.forcedColorsQuery ||
+			typeof window === "undefined" ||
+			typeof window.matchMedia !== "function"
+		) {
+			return;
+		}
+		this.forcedColorsQuery = window.matchMedia(FORCED_COLORS_QUERY);
+		this.forcedColorsQuery.addEventListener("change", this.onMediaChange);
 	}
 }
 

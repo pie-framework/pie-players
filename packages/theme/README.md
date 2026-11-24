@@ -77,6 +77,28 @@ Both behaviors are part of the package contract: the root entrypoint registers
 the element on import, and `theme-element` registers nothing until
 `definePieTheme()` runs.
 
+`theme-observer` is side-effect-free too, for a component that paints outside
+the token cascade, such as a vendor embed configured through a script API:
+
+```ts
+import {
+  observePieThemeChanges,
+  readPieElementTheme,
+} from "@pie-players/pie-theme/theme-observer";
+
+const apply = () => {
+  const theme = readPieElementTheme(container, ["--pie-border"]);
+  // theme.colorScheme: "light" | "dark" | null, from --pie-background
+  // theme.colors["--pie-border"]: "#rrggbb" when it computes to an opaque colour
+};
+apply();
+const stop = observePieThemeChanges(apply);
+```
+
+`observePieThemeChanges` fires on an attribute change to the document element
+or a `<pie-theme>` host and when a `<pie-theme>` mounts. `readPieElementTheme`
+returns `null` where no canvas is available to resolve a colour.
+
 The four stylesheet artifacts are available at both their package export and
 literal `dist` paths:
 

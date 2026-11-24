@@ -391,10 +391,7 @@
 		 * shell's own `overflow-y: auto` never sees anything to scroll.
 		 */
 		overflow-y: auto;
-		background: var(
-			--pie-calculator-surface,
-			var(--pie-white, var(--cortex-surface))
-		);
+		background: var(--pie-background, var(--cortex-surface));
 		color: var(--pie-text, var(--cortex-text));
 		font-family: var(--pie-font-family, system-ui, sans-serif);
 	}
@@ -405,11 +402,10 @@
 	 * declaration here overrides whatever an ancestor set, which defeats the ten
 	 * `[data-color-scheme]` PNP palettes `@pie-players/pie-theme` publishes.
 	 *
-	 * Surfaces resolve through `--pie-white` and `--pie-background-dark`, surface
-	 * roles that are opaque in the base themes and in all ten schemes, so those
-	 * carry the card and the recessed plane. `--pie-background` is the page token,
-	 * which a host may set to its own backdrop or to a translucent value, and a
-	 * fill resolved through it loses every contrast guarantee the package makes.
+	 * The card and the screen resolve through `--pie-background`, the surface
+	 * `--pie-text` is certified against, so the calculator's ink keeps the 4.5:1
+	 * every base theme and scheme is checked for. The recessed plane resolves
+	 * through `--pie-background-dark`, certified against the same text.
 	 */
 	/*
 	 * `auto` is listed alongside `light` because the dark values below live in a
@@ -430,6 +426,7 @@
 		--cortex-button-color: #0f172a;
 		--cortex-button-hover-bg: #f3f5f7;
 		--cortex-button-active-bg: #e4e7ec;
+		--cortex-selection: #dcdafb;
 		--cortex-primary: #3f51b5;
 		--cortex-on-primary: #fff;
 		--cortex-focus-outline: #2563eb;
@@ -457,6 +454,7 @@
 		--cortex-button-color: #f8fafc;
 		--cortex-button-hover-bg: #374151;
 		--cortex-button-active-bg: #4b5563;
+		--cortex-selection: #666600;
 		--cortex-primary: #ffff00;
 		--cortex-on-primary: #000;
 		--cortex-focus-outline: #93c5fd;
@@ -484,6 +482,7 @@
 			--cortex-button-color: #f8fafc;
 			--cortex-button-hover-bg: #374151;
 			--cortex-button-active-bg: #4b5563;
+			--cortex-selection: #666600;
 			--cortex-primary: #ffff00;
 			--cortex-on-primary: #000;
 			--cortex-focus-outline: #93c5fd;
@@ -650,7 +649,7 @@
 		 * absorbs was bare card around a lone bordered mathfield, which is what made a
 		 * 380x500 panel look like it had a hole in it.
 		 */
-		background: var(--pie-calculator-surface, var(--pie-white, var(--cortex-surface)));
+		background: var(--pie-background, var(--cortex-surface));
 	}
 
 	/*

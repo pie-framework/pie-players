@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { observePieThemeChanges } from '@pie-players/pie-theme/theme-observer';
 	import { onMount, untrack } from 'svelte';
 	import type { Snippet } from 'svelte';
 	import Icon from './Icon.svelte';
@@ -401,6 +402,7 @@
 	onMount(() => {
 		let cancelled = false;
 		let schemeQuery: MediaQueryList | null = null;
+		let stopObservingTheme: (() => void) | null = null;
 		const onSchemeChange = () => applyBoardTheme();
 		void import('jsxgraph').then((module) => {
 			if (cancelled || !graphElement || !graph) return;
@@ -444,8 +446,9 @@
 			resizeObserver.observe(graphElement);
 			updateCurves(snapshot.series);
 			requestSample(0);
-			// `theme: 'auto'` follows the OS, which can flip while the tool is open, and
-			// the board's colours are baked in at init. Nothing else re-applies them.
+			// The board's colours are baked in at init, so a scheme switch on the page
+			// and, under `theme: 'auto'`, an OS flip both re-apply them.
+			stopObservingTheme = observePieThemeChanges(onSchemeChange);
 			if (controller.settings.theme === 'auto' && typeof window !== 'undefined') {
 				schemeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 				schemeQuery.addEventListener('change', onSchemeChange);
@@ -456,6 +459,8 @@
 			cancelled = true;
 			schemeQuery?.removeEventListener('change', onSchemeChange);
 			schemeQuery = null;
+			stopObservingTheme?.();
+			stopObservingTheme = null;
 			if (sampleTimer) clearTimeout(sampleTimer);
 			sampleTimer = null;
 			if (resizeFrame) cancelAnimationFrame(resizeFrame);

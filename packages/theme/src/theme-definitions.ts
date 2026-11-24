@@ -242,7 +242,6 @@ const FORCED_COLORS_THEME: Readonly<
 	// Disabled.
 	"--pie-disabled": "GrayText",
 	"--pie-disabled-secondary": "GrayText",
-	"--pie-disabled-text": "GrayText",
 });
 
 const BUILT_IN_COLOR_SCHEMES: readonly BuiltInColorSchemeDefinition[] =

@@ -362,7 +362,7 @@ resolve to system colors by role:
 | --- | --- | --- |
 | Selection and focus outlines and borders | `Highlight` | `--pie-button-focus-outline`, `--pie-focus-keyboard-outline`, `--pie-focus-checked-border` |
 | Borders and marks | `CanvasText` | `--pie-border`, `--pie-border-light`, `--pie-border-dark`, `--pie-border-gray`, `--pie-button-border`, `--pie-button-hover-border`, `--pie-focus-unchecked-border`, `--pie-tool-annotation-toolbar-border`, `--pie-annotation-underline`, `--pie-annotation-underline-dark` |
-| Disabled | `GrayText` | `--pie-disabled`, `--pie-disabled-secondary`, `--pie-disabled-text` |
+| Disabled | `GrayText` | `--pie-disabled`, `--pie-disabled-secondary` |
 
 The map is authored once in `theme-definitions.ts`, and only a token both Base
 Themes set can join it. `<pie-theme>` applies it above `variables`, because the
@@ -377,7 +377,8 @@ rule meets the `@media` block in the normal cascade. Outside forced
 colors no token changes.
 
 Fill tokens stay with the browser, `--pie-primary` among them because it paints
-ink as well as fills. Chromium puts a `Canvas` backplate behind text on a
+ink as well as fills. So does `--pie-disabled-text`: elements also read it for
+muted text that is not disabled, which the browser already repaints as text. Chromium puts a `Canvas` backplate behind text on a
 `Highlight` fill, so a component whose filled state carries meaning restates
 that state under `forced-color-adjust: none`
 ([light DOM and shadow DOM](#light-dom-and-shadow-dom)).

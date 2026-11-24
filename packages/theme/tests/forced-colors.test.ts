@@ -42,7 +42,6 @@ const EXPECTED_MAP = {
 	"--pie-annotation-underline-dark": "CanvasText",
 	"--pie-disabled": "GrayText",
 	"--pie-disabled-secondary": "GrayText",
-	"--pie-disabled-text": "GrayText",
 };
 const MAPPED = Object.entries(EXPECTED_MAP);
 

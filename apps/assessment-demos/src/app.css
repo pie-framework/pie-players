@@ -51,7 +51,8 @@
 		*::after {
 			animation-duration: 0.01ms !important;
 			animation-iteration-count: 1 !important;
-			transition-duration: 0.01ms !important;
+			/* 0s, as components.css sets: this layered `!important` rule outranks its reduced-motion rule inside item content. */
+			transition-duration: 0s !important;
 			scroll-behavior: auto !important;
 		}
 	}

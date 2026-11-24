@@ -117,6 +117,31 @@
 	}
 }
 
+/*
+ * Reduced motion. Most element packages animate and transition without
+ * checking the setting, so under `reduce` every transition in item content
+ * completes at once and every animation runs a single 0.01ms iteration, which
+ * leaves the element's static style: the loader above stays a still ring.
+ * Transitions take 0s, because a non-zero duration would make every style
+ * change a transition: `transition-property` defaults to `all`. `!important`
+ * outranks the inline transitions elements set. Motion played through the Web
+ * Animations API, or inside a shadow root, is the element's to gate.
+ */
+@media (prefers-reduced-motion: reduce) {
+	:where([data-pie-content]),
+	:where([data-pie-content])::before,
+	:where([data-pie-content])::after,
+	:where([data-pie-content]) *,
+	:where([data-pie-content]) *::before,
+	:where([data-pie-content]) *::after {
+		transition-duration: 0s !important;
+		transition-delay: 0s !important;
+		animation-duration: 0.01ms !important;
+		animation-delay: 0s !important;
+		animation-iteration-count: 1 !important;
+	}
+}
+
 :where([data-pie-content]) .pie-api-player img {
 	max-width: inherit !important;
 	max-height: inherit !important;

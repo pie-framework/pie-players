@@ -9,6 +9,9 @@ const source = readFileSync(
 
 const CONTENT_ROOT = ":where([data-pie-content]) ";
 
+/** The content root itself, or one of its pseudo-elements. */
+const CONTENT_ROOT_ITSELF = /^:where\(\[data-pie-content\]\)(?:::[\w-]+)?$/;
+
 /**
  * The one unprefixed legacy content class that stays document-wide. A stacked
  * fraction is rendered in menus portaled to `<body>`, outside every content
@@ -93,7 +96,9 @@ describe("components.css confinement", () => {
 	test("confines every rule that does not require an authored-content name", () => {
 		const unconfined = selectors.filter(
 			(selector) =>
-				!selector.startsWith(CONTENT_ROOT) && !requiresAuthoredName(selector),
+				!selector.startsWith(CONTENT_ROOT) &&
+				!CONTENT_ROOT_ITSELF.test(selector) &&
+				!requiresAuthoredName(selector),
 		);
 		expect(unconfined).toEqual([]);
 	});

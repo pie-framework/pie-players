@@ -72,4 +72,42 @@ test.describe("item demos chrome accessibility", () => {
 			.press("Escape");
 		await expect(menuButton).toBeFocused();
 	});
+
+	// The demo stylesheet's reduced-motion rule is layered, and a layered
+	// `!important` outranks the unlayered rule components.css sets inside item
+	// content, so any duration it gives a transition is what content gets.
+	test("leaves item content still under reduced motion", async ({ page }) => {
+		await page.emulateMedia({ reducedMotion: "reduce" });
+		await page.goto(DELIVERY_PATH, { waitUntil: "networkidle" });
+		const content = page.locator("[data-pie-content]").first();
+		await expect(content).toBeVisible();
+
+		const { checked, moving } = await content.evaluate((root) => {
+			const elements = [root, ...root.querySelectorAll("*")];
+			const moving: string[] = [];
+			for (const element of elements) {
+				for (const pseudo of [null, "::before", "::after"]) {
+					const style = getComputedStyle(element, pseudo);
+					const still = [
+						style.transitionDuration,
+						style.transitionDelay,
+						style.animationDelay,
+					]
+						.flatMap((list) => list.split(","))
+						.every((time) => Number.parseFloat(time) === 0);
+					const brief = style.animationDuration
+						.split(",")
+						.every((time) => Number.parseFloat(time) <= 0.00001);
+					if (!still || !brief) {
+						moving.push(
+							`${element.tagName.toLowerCase()}${pseudo ?? ""}: transition ${style.transitionDuration} after ${style.transitionDelay}, animation ${style.animationDuration} after ${style.animationDelay}`,
+						);
+					}
+				}
+			}
+			return { checked: elements.length, moving };
+		});
+		expect(checked).toBeGreaterThan(5);
+		expect(moving.slice(0, 10), `${moving.length} still moving`).toEqual([]);
+	});
 });

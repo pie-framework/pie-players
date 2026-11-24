@@ -441,6 +441,10 @@ renders content into, except rules keyed on `kds-*` or MathJax (`mjx-*`) class
 names or the legacy `.frac` fraction, which stay document-wide so authored markup an element portals
 to `<body>` keeps them. The other legacy content classes (`.variable`, `.whole`,
 `.noprint` and the rest) apply inside `[data-pie-content]` only.
+Under `prefers-reduced-motion: reduce` the stylesheet also ends every transition
+and animation inside `[data-pie-content]`, pseudo-elements included. Motion an
+element plays through the Web Animations API or inside a shadow root is the
+element's to gate.
 
 Players adding this import the text with `?raw` and hand it to
 `installContentStyles` from `@pie-players/pie-players-shared`. In these packages'

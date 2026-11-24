@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { checkMedia, mediaDisabledAxeRules } from "../../../test-support/a11y-media";
 import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
 const DEMO_ID = "multiple-choice-radio-simple";
@@ -692,7 +693,7 @@ test.describe("item-player demo multiple-choice", () => {
 		);
 	});
 
-	test("keeps baseline a11y regressions in check", async ({ page }) => {
+	test("keeps baseline a11y regressions in check", { tag: "@axe" }, async ({ page }) => {
 		await gotoRoute(page, DELIVERY_PATH);
 
 		// Scope the automated check to the rendered player surface so the baseline
@@ -700,8 +701,9 @@ test.describe("item-player demo multiple-choice", () => {
 		// with delivery-item accessibility debt.
 		const axeResults = await new AxeBuilder({ page })
 			.include("pie-item-player")
-			.disableRules(["region"])
+			.disableRules(["region", ...mediaDisabledAxeRules()])
 			.analyze();
+		await checkMedia(page, "pie-item-player");
 		const seriousOrCritical = axeResults.violations.filter((violation) =>
 			["serious", "critical"].includes(violation.impact || ""),
 		);

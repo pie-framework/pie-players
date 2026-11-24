@@ -1,0 +1,94 @@
+name: A11y Media
+
+# The player axe tests under forced colours, light and dark, and under reduced motion:
+# the `a11y-*` projects from scripts/lib/playwright-media-projects.mjs. Manual dispatch
+# only, and no branch protection requires it, so a finding here never blocks a merge.
+# The artifacts hold each test's forced-colours screenshots and reduced-motion report.
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: a11y-media-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TURBO_CACHE_DIR: .turbo/cache
+
+jobs:
+  # The Playwright image pinned to bun.lock, as CI's Change Scope job publishes it. A
+  # dispatch is not a pull request, so the script classifies nothing and every output
+  # reads "run".
+  playwright-image:
+    name: Playwright Image
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.scope.outputs.playwright_image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Resolve Playwright Image
+        id: scope
+        run: bun ./scripts/ci-change-scope.mjs
+
+  a11y-media:
+    name: A11y Media (${{ matrix.suite }})
+    needs: playwright-image
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ needs.playwright-image.outputs.image }}
+      options: --init --ipc=host
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [item-player, section-player, assessment-player, calculator-cortex]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+
+      # Bun needs unzip; Firefox requires the mounted home to belong to its user.
+      - name: Prepare Container Environment
+        run: |
+          apt-get update -qq && apt-get install -y --no-install-recommends unzip
+          chown "$(id -u):$(id -g)" "$HOME"
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install Dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Restore Turbo Cache
+        uses: actions/cache/restore@v6
+        with:
+          path: .turbo/cache
+          key: turbo-${{ runner.os }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-
+
+      - name: Run A11y Media Projects
+        run: bun run test:e2e:a11y-media:${{ matrix.suite }}
+
+      # On success too: the forced-colours screenshots are the audit input.
+      - name: Upload Test Results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: a11y-media-${{ matrix.suite }}
+          path: packages/${{ matrix.suite }}/test-results
+          retention-days: 7
+          if-no-files-found: ignore

@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { checkMedia, mediaDisabledAxeRules } from "../../../test-support/a11y-media";
 import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
 const DELIVERY_PATH =
@@ -93,7 +94,7 @@ test.describe("pie-item-player passage layout", () => {
 		await expect(page.getByRole("separator")).toHaveCount(0);
 	});
 
-	test("allowed-resize makes the split a keyboard-operable divider", async ({ page }) => {
+	test("allowed-resize makes the split a keyboard-operable divider", { tag: "@axe" }, async ({ page }) => {
 		await gotoDelivery(page);
 		await renderWithPassage(page, {
 			passageLayout: "splitpane",
@@ -125,7 +126,9 @@ test.describe("pie-item-player passage layout", () => {
 
 		const results = await new AxeBuilder({ page })
 			.include("pie-item-player .pie-item-player-split-divider")
+			.disableRules(mediaDisabledAxeRules())
 			.analyze();
+		await checkMedia(page, "pie-item-player .pie-item-player-split-divider");
 		expect(results.violations).toEqual([]);
 	});
 

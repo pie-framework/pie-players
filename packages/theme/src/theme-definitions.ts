@@ -1015,6 +1015,8 @@ export const PIE_THEME_CONTRAST_RELATIONSHIPS: readonly ThemeContrastRelationshi
 			role: "button focus indicator",
 		},
 		{
+			// Also the fallback ring components.css draws around a control in item
+			// content, whose chain leads with this token.
 			foreground: "--pie-focus-keyboard-outline",
 			background: "--pie-background",
 			minimum: 3,

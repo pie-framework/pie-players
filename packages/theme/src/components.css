@@ -232,6 +232,31 @@
 	outline-offset: 2px;
 }
 
+/*
+ * Fallback keyboard focus ring for a control in item content that draws none of
+ * its own, in place of the browser's ring, which ignores the scheme. Zero
+ * specificity, so any unlayered focus style an element sets wins, an outline
+ * removal included; this rule is unlayered, so it beats a focus style set in a
+ * cascade layer. The chain is the one render-ui's `color.keyboardFocusOutline()`
+ * reads, so CSS and React rings agree. `--pie-focus-keyboard-outline` leads
+ * because every scheme holds it at 3:1 against the page and against a
+ * control's own fill. The scroll wrappers above keep their registered chain.
+ */
+:where([data-pie-content]) :where(:focus-visible) {
+	outline: 2px solid
+		var(
+			--pie-focus-keyboard-outline,
+			var(
+				--pie-focus-outline,
+				var(
+					--pie-button-focus-outline,
+					var(--pie-focus-checked-border, #1565c0)
+				)
+			)
+		);
+	outline-offset: 2px;
+}
+
 /* These styles are used in the body content of an item -- they also appear in the item body editor. */
 
 :where([data-pie-content]) .book-title-k5 {

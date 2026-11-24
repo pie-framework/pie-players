@@ -1,7 +1,15 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { expectDemoChromeReady } from "../../../test-support/demo-menu";
+import {
+	FOCUS_RING_SCHEMES,
+	setDocumentScheme,
+} from "../../../test-support/focus-ring";
 
 const DEMO_PATH = "/tts-ssml?mode=candidate&layout=splitpane";
+// The section player's package-private focus override, in a colour no scheme or
+// fallback uses, so a ring in it can only have come from the override.
+const SECTION_FOCUS_OVERRIDE = "#7b1fa2";
+const SECTION_FOCUS_OVERRIDE_RGB = "rgb(123, 31, 162)";
 
 type ToolSpec = {
 	id: string;
@@ -158,6 +166,30 @@ async function getComputedFocusStyle(locator: Locator): Promise<{
 			borderRadius: style.borderRadius,
 		};
 	});
+}
+
+/** Move keyboard focus onto a button inside the first passage's content. */
+async function tabIntoPassageContent(page: Page): Promise<void> {
+	await page
+		.locator(".pie-section-player-passage-content")
+		.first()
+		.evaluate((content) => {
+			if (content.querySelector("#passage-focus-probe")) return;
+			const before = document.createElement("button");
+			before.type = "button";
+			before.id = "before-passage-focus-probe";
+			before.textContent = "Before passage focus probe";
+			const target = document.createElement("button");
+			target.type = "button";
+			target.id = "passage-focus-probe";
+			target.textContent = "Passage focus probe";
+			content.prepend(target);
+			content.prepend(before);
+		});
+
+	await page.locator("#before-passage-focus-probe").focus();
+	await page.keyboard.press("Tab");
+	await expect(page.locator("#passage-focus-probe")).toBeFocused();
 }
 
 async function getRect(locator: Locator): Promise<{
@@ -912,12 +944,12 @@ test.describe("section toolbar tools", () => {
 		await page
 			.locator("pie-section-player-splitpane")
 			.first()
-			.evaluate((element) => {
+			.evaluate((element, color) => {
 				(element as HTMLElement).style.setProperty(
 					"--pie-section-player-focus-outline",
-					"#146eb3",
+					color,
 				);
-			});
+			}, SECTION_FOCUS_OVERRIDE);
 		await divider.focus();
 		await expect(divider).toBeFocused();
 		await expect(divider).toHaveAttribute("aria-valuenow", "50");
@@ -925,7 +957,7 @@ test.describe("section toolbar tools", () => {
 		const focusStyle = await getComputedFocusStyle(divider);
 		expect(focusStyle.outlineStyle).toBe("solid");
 		expect(focusStyle.outlineWidth).toBe("3px");
-		expect(focusStyle.outlineColor).toBe("rgb(20, 110, 179)");
+		expect(focusStyle.outlineColor).toBe(SECTION_FOCUS_OVERRIDE_RGB);
 		expect(Number.parseFloat(focusStyle.borderRadius)).toBeGreaterThan(0);
 		await expect(divider).toHaveAttribute("aria-valuenow", "55");
 		await page.keyboard.press("End");
@@ -1002,12 +1034,12 @@ test.describe("section toolbar tools", () => {
 		await page
 			.locator("pie-section-player-splitpane")
 			.first()
-			.evaluate((element) => {
+			.evaluate((element, color) => {
 				(element as HTMLElement).style.setProperty(
 					"--pie-section-player-focus-outline",
-					"#146eb3",
+					color,
 				);
-			});
+			}, SECTION_FOCUS_OVERRIDE);
 
 		const passageCard = page
 			.locator(
@@ -1016,30 +1048,101 @@ test.describe("section toolbar tools", () => {
 			.first();
 		await expect(passageCard).toBeVisible();
 
-		await page
-			.locator(".pie-section-player-passage-content")
-			.first()
-			.evaluate((content) => {
-				const before = document.createElement("button");
-				before.type = "button";
-				before.id = "before-passage-focus-probe";
-				before.textContent = "Before passage focus probe";
-				const target = document.createElement("button");
-				target.type = "button";
-				target.id = "passage-focus-probe";
-				target.textContent = "Passage focus probe";
-				content.prepend(target);
-				content.prepend(before);
-			});
-
-		await page.locator("#before-passage-focus-probe").focus();
-		await page.keyboard.press("Tab");
-		await expect(page.locator("#passage-focus-probe")).toBeFocused();
+		await tabIntoPassageContent(page);
 
 		const focusStyle = await getComputedFocusStyle(passageCard);
 		expect(focusStyle.outlineStyle).toBe("solid");
 		expect(focusStyle.outlineWidth).toBe("3px");
-		expect(focusStyle.outlineColor).toBe("rgb(20, 110, 179)");
+		expect(focusStyle.outlineColor).toBe(SECTION_FOCUS_OVERRIDE_RGB);
+	});
+
+	test("draws the split divider and passage card focus from the scheme", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await gotoDemo(page);
+
+		const divider = page.getByRole("separator", {
+			name: "Resize passages and items panels",
+		});
+		const handle = divider.locator(".pie-section-player-split-divider-handle");
+		const passageCard = page
+			.locator(
+				"pie-section-player-passage-card .pie-section-player-content-card",
+			)
+			.first();
+		await expect(divider).toBeVisible();
+		await expect(passageCard).toBeVisible();
+
+		for (const { scheme, outline } of FOCUS_RING_SCHEMES) {
+			await setDocumentScheme(page, scheme);
+
+			await divider.focus();
+			await page.keyboard.press("ArrowRight");
+			await expect(divider, scheme).toHaveCSS("outline-color", outline);
+			await expect(handle, scheme).toHaveCSS("background-color", outline);
+
+			await tabIntoPassageContent(page);
+			await expect(passageCard, scheme).toHaveCSS("outline-color", outline);
+		}
+	});
+
+	test("draws the media-gated item card focus from the scheme", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1280, height: 900 });
+		await gotoDemo(page);
+
+		// The gate state a timed-media cue sets, which takes focus to the card.
+		const card = page
+			.locator("pie-section-player-item-card [data-section-item-card]")
+			.first();
+		await expect(card).toBeVisible();
+		await card.evaluate((element) => {
+			element.setAttribute("data-pie-timed-media-gate", "holding");
+			element.setAttribute("tabindex", "-1");
+		});
+
+		for (const { scheme, outline } of FOCUS_RING_SCHEMES) {
+			await setDocumentScheme(page, scheme);
+			await tabIntoPassageContent(page);
+			await card.focus();
+			await expect(card).toBeFocused();
+			await expect(card, scheme).toHaveCSS("outline-color", outline);
+		}
+	});
+
+	test("draws the hosted shell header and control focus from the scheme", async ({
+		page,
+	}) => {
+		await gotoDemo(page);
+		const graphButton = sectionToolbar(page).getByRole("button", {
+			name: "Graph, coordinate plane",
+		});
+		await graphButton.focus();
+		await page.keyboard.press("Enter");
+
+		const graphShell = page.locator('[data-pie-tool-shell="graph"]').first();
+		await expect(graphShell).toBeVisible();
+		const header = graphShell.locator(".pie-tool-shell__header");
+		const moveRight = graphShell.getByRole("button", { name: "Move tool right" });
+		const closeButton = graphShell.getByRole("button", { name: "Close tool" });
+		await expect(closeButton).toBeFocused();
+
+		for (const { scheme, outline } of FOCUS_RING_SCHEMES) {
+			await setDocumentScheme(page, scheme);
+			for (const control of [closeButton, moveRight, header]) {
+				await control.focus();
+				await expect(control, scheme).toBeFocused();
+				await expect(control, scheme).toHaveCSS("outline-style", "solid");
+				await expect(control, scheme).toHaveCSS("outline-color", outline);
+			}
+		}
+
+		// A pointer press focuses a control without drawing the ring.
+		await moveRight.click();
+		await expect(moveRight).toBeFocused();
+		await expect(moveRight).toHaveCSS("outline-style", "none");
 	});
 
 	test("honors configured split-pane minimum region width", async ({

@@ -252,7 +252,7 @@
 	}
 
 	.pie-section-player-tab:focus-visible {
-		outline: 2px solid var(--pie-focus-outline, #1d4ed8);
+		outline: 2px solid var(--pie-focus-keyboard-outline, var(--pie-focus-outline, var(--pie-button-focus-outline, var(--pie-focus-checked-border, #1565c0))));
 		outline-offset: 2px;
 	}
 

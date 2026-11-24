@@ -156,7 +156,7 @@
 	}
 
 	.pie-item-player-split-divider:focus-visible {
-		outline: 3px solid var(--pie-focus-outline, #146eb3);
+		outline: 3px solid var(--pie-focus-keyboard-outline, var(--pie-focus-outline, var(--pie-button-focus-outline, var(--pie-focus-checked-border, #1565c0))));
 		outline-offset: -2px;
 		border-radius: 999px;
 	}
@@ -178,7 +178,7 @@
 	.pie-item-player-split-divider:hover .pie-item-player-split-divider-handle,
 	.pie-item-player-split-divider:focus-visible .pie-item-player-split-divider-handle,
 	.pie-item-player-split-divider--dragging .pie-item-player-split-divider-handle {
-		background: var(--pie-focus-outline, #146eb3);
+		background: var(--pie-focus-keyboard-outline, var(--pie-focus-outline, var(--pie-button-focus-outline, var(--pie-focus-checked-border, #1565c0))));
 	}
 
 	@media (prefers-reduced-motion: reduce) {

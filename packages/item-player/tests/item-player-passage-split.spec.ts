@@ -2,6 +2,10 @@ import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { checkMedia, mediaDisabledAxeRules } from "../../../test-support/a11y-media";
 import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
+import {
+	FOCUS_RING_SCHEMES,
+	setDocumentScheme,
+} from "../../../test-support/focus-ring";
 
 const DELIVERY_PATH =
 	"/demo/multiple-choice-radio-simple/delivery?mode=gather&role=student";
@@ -130,6 +134,27 @@ test.describe("pie-item-player passage layout", () => {
 			.analyze();
 		await checkMedia(page, "pie-item-player .pie-item-player-split-divider");
 		expect(results.violations).toEqual([]);
+	});
+
+	test("the divider draws its focus ring from the scheme", async ({ page }) => {
+		await gotoDelivery(page);
+		await renderWithPassage(page, {
+			passageLayout: "splitpane",
+			allowedResize: true,
+			widthPx: 1200,
+		});
+		const divider = page.getByRole("separator", {
+			name: "Resize passage and question panels",
+		});
+		const handle = divider.locator(".pie-item-player-split-divider-handle");
+
+		for (const { scheme, outline } of FOCUS_RING_SCHEMES) {
+			await setDocumentScheme(page, scheme);
+			await divider.focus();
+			await page.keyboard.press("ArrowRight");
+			await expect(divider, scheme).toHaveCSS("outline-color", outline);
+			await expect(handle, scheme).toHaveCSS("background-color", outline);
+		}
 	});
 
 	test("a pointer drag resizes the split relative to the player width", async ({

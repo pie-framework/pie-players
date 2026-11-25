@@ -54,7 +54,7 @@ const PASSAGE_PACKAGE = "@pie-element/passage@latest";
 const MISSING_TAGS_PATTERN =
 	/missing tags|preloaded strategy requires pre-registered/i;
 
-test.describe("section swap across changed element set", () => {
+test.describe("section swap across changed element set", { tag: "@iife" }, () => {
 	test("does not surface missing-tags when swapping to a section with new elements", async ({
 		page,
 	}) => {

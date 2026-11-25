@@ -30,9 +30,12 @@
 		PersonalNeedsProfile
 	} from '@pie-players/pie-players-shared/types';
 	import { demoSignLanguageProfiles } from '#lib/content/demo-sign-language.js';
+	import { DEFAULT_PLAYER, getUrlEnumParam, PLAYER_OPTIONS } from '#lib/demo-runtime/demo-page-helpers.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const playerType = getUrlEnumParam('player', PLAYER_OPTIONS, DEFAULT_PLAYER);
 
 	// The deployment's capability set, plus the one this host chose to add.
 	const toolRegistry = createPackagedToolRegistry();
@@ -126,7 +129,7 @@
 		</div>
 
 		<pie-section-player-splitpane
-			runtime={{ assessmentId: assessmentEntity.id, tools: toolkitToolsConfig }}
+			runtime={{ assessmentId: assessmentEntity.id, playerType, tools: toolkitToolsConfig }}
 			{toolRegistry}
 			{sectionId}
 			{attemptId}

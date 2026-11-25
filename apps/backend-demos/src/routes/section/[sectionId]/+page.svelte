@@ -70,7 +70,7 @@
 	const safeModelsById = $derived(createSafeModelsById(demoSection));
 	const runtime = $derived({
 		assessmentId,
-		playerType: "iife",
+		playerType: "esm",
 		env,
 		player: {
 			hosted: true,

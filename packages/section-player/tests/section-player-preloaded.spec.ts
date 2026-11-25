@@ -237,7 +237,7 @@ test.describe("section player preloaded strategy", () => {
 	test("forwards runtime.player.loaderConfig to embedded item players", async ({
 		page,
 	}) => {
-		await page.goto("/tts-ssml?mode=candidate&layout=splitpane&player=iife", {
+		await page.goto("/tts-ssml?mode=candidate&layout=splitpane", {
 			waitUntil: "networkidle",
 		});
 		await expect(page.getByRole("main", { name: "Items" })).toBeVisible();
@@ -282,7 +282,7 @@ test.describe("section player preloaded strategy", () => {
 	test("reconfigures runtime loaderConfig and updates embedded item players", async ({
 		page,
 	}) => {
-		await page.goto("/tts-ssml?mode=candidate&layout=splitpane&player=iife", {
+		await page.goto("/tts-ssml?mode=candidate&layout=splitpane", {
 			waitUntil: "networkidle",
 		});
 		await expect(page.locator("pie-item-player").first()).toBeVisible({
@@ -364,7 +364,7 @@ test.describe("section player preloaded strategy", () => {
 		});
 	});
 
-	test("iife section strategy propagates verbatim to embedded item-players", async ({
+	test("iife section strategy propagates verbatim to embedded item-players", { tag: "@iife" }, async ({
 		page,
 	}) => {
 		// The section-player no longer substitutes `iife` → `preloaded` on
@@ -426,7 +426,7 @@ test.describe("section player preloaded strategy", () => {
 				}),
 			});
 		});
-		await page.goto("/tts-ssml?mode=candidate&layout=splitpane&player=iife", {
+		await page.goto("/tts-ssml?mode=candidate&layout=splitpane", {
 			waitUntil: "networkidle",
 		});
 		await expect(page.getByRole("main", { name: "Items" })).toBeVisible();

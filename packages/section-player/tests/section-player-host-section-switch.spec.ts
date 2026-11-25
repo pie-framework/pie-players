@@ -157,7 +157,7 @@ test.describe("host section navigation renders the new section", () => {
 	);
 
 	for (const { player, order } of cases) {
-		test(`${player}, ${order}: next, then previous`, async ({ page }) => {
+		test(`${player}, ${order}: next, then previous`, { tag: player === "iife" ? "@iife" : [] }, async ({ page }) => {
 			await page.goto(`${DEMO}?player=${player}&order=${order}`, {
 				waitUntil: "domcontentloaded",
 			});

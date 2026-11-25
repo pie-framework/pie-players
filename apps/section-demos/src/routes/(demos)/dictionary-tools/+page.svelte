@@ -20,14 +20,18 @@
 	import { createUniversalPersonalNeedsProfile } from '@pie-players/pie-default-tool-loaders';
 	import type { ToolkitCoordinatorApi } from '@pie-players/pie-assessment-toolkit';
 	import type { AssessmentEntity } from '@pie-players/pie-players-shared/types';
+	import { DEFAULT_PLAYER, getUrlEnumParam, PLAYER_OPTIONS } from '#lib/demo-runtime/demo-page-helpers.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const playerType = getUrlEnumParam('player', PLAYER_OPTIONS, DEFAULT_PLAYER);
 
 	const DICTIONARY_ENDPOINT = '/api/tools/dictionary';
 	const PICTURE_DICTIONARY_ENDPOINT = '/api/tools/picture-dictionary';
 
 	const runtime = {
+		playerType,
 		tools: {
 			placement: {
 				section: ['dictionary', 'pictureDictionary'],

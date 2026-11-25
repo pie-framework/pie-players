@@ -28,6 +28,7 @@
 		getUrlEnumParam,
 		LAYOUT_OPTIONS,
 		MODE_OPTIONS,
+		DEFAULT_PLAYER,
 		PLAYER_OPTIONS
 	} from '#lib/demo-runtime/demo-page-helpers.js';
 	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
@@ -86,7 +87,7 @@
 		tools: toolkitToolsConfig
 	});
 
-	let selectedPlayerType = $state(getUrlEnumParam('player', PLAYER_OPTIONS, 'iife'));
+	let selectedPlayerType = $state(getUrlEnumParam('player', PLAYER_OPTIONS, DEFAULT_PLAYER));
 	let roleType = $state<'candidate' | 'scorer'>(getUrlEnumParam('mode', MODE_OPTIONS, 'candidate'));
 	let layoutType = $state<'splitpane' | 'vertical'>(
 		getUrlEnumParam('layout', LAYOUT_OPTIONS, 'splitpane')

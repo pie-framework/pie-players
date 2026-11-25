@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { untrack } from 'svelte';
+	import {
+		DEFAULT_DEMO_STRATEGY,
+		demoStrategy,
+		type DemoStrategy
+	} from '@pie-players/demo-ui/element-versions';
 	import '@pie-players/pie-item-player';
 	import { registerPreloadedElements } from '@pie-players/pie-item-player/preloaded';
 	import { DEFAULT_BUNDLE_HOST } from '@pie-players/pie-players-shared/loaders';
@@ -78,7 +83,7 @@
 	let playerEl: any = $state(null);
 	let lastConfig: any = null;
 	let lastPlayerSetupSignature: string | null = null;
-	let selectedLoaderStrategy = $state<'iife' | 'esm' | 'preloaded'>('iife');
+	let selectedLoaderStrategy = $state<DemoStrategy>(DEFAULT_DEMO_STRATEGY);
 	let authoringContractMode = $state(false);
 	let missingAuthoringBackend = $state(false);
 	let validationResult = $state('');
@@ -89,11 +94,12 @@
 		authoringContractMode =
 			data.demo?.id === 'authoring-contract-fixture' ||
 			page.url.searchParams.get('authoring-contract') === '1';
+		// Preloading is a delivery option; the menu bar shows it as ESM here.
 		selectedLoaderStrategy = authoringContractMode
 			? 'preloaded'
-			: page.url.searchParams.get('player') === 'esm'
-				? 'esm'
-				: 'iife';
+			: demoStrategy(page.url.searchParams.get('player')) === 'iife'
+				? 'iife'
+				: 'esm';
 		missingAuthoringBackend = page.url.searchParams.get('missingBackend') === '1';
 	});
 

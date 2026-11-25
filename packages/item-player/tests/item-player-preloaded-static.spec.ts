@@ -167,7 +167,7 @@ test.describe("item-player strategy regressions", () => {
 		});
 	}
 
-	test("ignores stale iife failures after newer iife config succeeds", async ({
+	test("ignores stale iife failures after newer iife config succeeds", { tag: "@iife" }, async ({
 		page,
 	}) => {
 		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
@@ -400,7 +400,7 @@ test.describe("item-player strategy regressions", () => {
 		page,
 	}) => {
 		// The page supplies the player elements; the test registers its own tags.
-		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await page.goto(ESM_DELIVERY_PATH, { waitUntil: "networkidle" });
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
 			timeout: 20_000,
 		});
@@ -621,7 +621,7 @@ test.describe("item-player strategy regressions", () => {
 		page,
 	}) => {
 		// The page supplies the player elements; the test registers its own tags.
-		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await page.goto(ESM_DELIVERY_PATH, { waitUntil: "networkidle" });
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
 			timeout: 20_000,
 		});
@@ -695,7 +695,7 @@ test.describe("item-player strategy regressions", () => {
 		page,
 	}) => {
 		// The page supplies the player elements; the test registers its own tags.
-		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await page.goto(ESM_DELIVERY_PATH, { waitUntil: "networkidle" });
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
 			timeout: 20_000,
 		});
@@ -1875,13 +1875,13 @@ test.describe("item-player strategy regressions", () => {
 		});
 	});
 
-	test("iife emits media-retry-ready after first audio load failure", async ({
+	test("iife emits media-retry-ready after first audio load failure", { tag: "@iife" }, async ({
 		page,
 	}) => {
 		await assertMediaRetryBridge(page, IIFE_DELIVERY_PATH);
 	});
 
-	test("iife uses client-player for standalone and player bundle for hosted mode", async ({
+	test("iife uses client-player for standalone and player bundle for hosted mode", { tag: "@iife" }, async ({
 		page,
 	}) => {
 		const bundleRequests: string[] = [];
@@ -1951,7 +1951,7 @@ test.describe("item-player strategy regressions", () => {
 		await assertMediaRetryBridge(page, ESM_DELIVERY_PATH);
 	});
 
-	test("on runtime support check does not probe metadata for iife", async ({
+	test("on runtime support check does not probe metadata for iife", { tag: "@iife" }, async ({
 		page,
 	}) => {
 		let runtimeSupportRequests = 0;
@@ -2013,7 +2013,7 @@ test.describe("item-player strategy regressions", () => {
 		expect(runtimeSupportRequests).toBe(0);
 	});
 
-	test("off runtime support check does not request metadata", async ({
+	test("off runtime support check does not request metadata", { tag: "@iife" }, async ({
 		page,
 	}) => {
 		let runtimeSupportRequests = 0;
@@ -2073,7 +2073,7 @@ test.describe("item-player strategy regressions", () => {
 		page,
 	}) => {
 		// The page supplies the player elements; the test registers its own tags.
-		await page.goto(IIFE_DELIVERY_PATH, { waitUntil: "networkidle" });
+		await page.goto(ESM_DELIVERY_PATH, { waitUntil: "networkidle" });
 		await expect(page.getByText(DELIVERY_PROMPT)).toBeVisible({
 			timeout: 20_000,
 		});

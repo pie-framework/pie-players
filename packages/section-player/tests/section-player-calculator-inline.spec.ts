@@ -13,7 +13,7 @@ test("inline calculator button inside an item shell opens the item's calculator"
 }) => {
 	test.setTimeout(120_000);
 	await page.goto(
-		"/calculator-cortex?mode=candidate&layout=splitpane&player=iife",
+		"/calculator-cortex?mode=candidate&layout=splitpane",
 		{ waitUntil: "networkidle" },
 	);
 	await expectDemoChromeReady(page);

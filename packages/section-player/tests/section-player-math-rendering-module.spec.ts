@@ -20,7 +20,7 @@ function collectMathJaxChunkRequests(page: Page): string[] {
 }
 
 test.describe("section player math rendering module", () => {
-	test("an IIFE section fetches the item player's MathJax module once", async ({
+	test("an IIFE section fetches the item player's MathJax module once", { tag: "@iife" }, async ({
 		page,
 	}) => {
 		const requests = collectMathJaxChunkRequests(page);

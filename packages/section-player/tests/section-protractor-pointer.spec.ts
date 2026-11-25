@@ -216,6 +216,7 @@ test.describe("protractor tap controls", () => {
 		page,
 	}) => {
 		await openProtractor(page, SECTION_DEMO);
+		await expect(page.locator(CONTROLS)).toBeVisible();
 		const upright = await boxOf(page, CONTROLS);
 		expect(upright.top).toBeGreaterThan((await boxOf(page, PROTRACTOR)).bottom);
 		for (let step = 0; step < 18; step++)

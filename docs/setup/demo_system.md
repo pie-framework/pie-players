@@ -71,6 +71,7 @@ bun run dev:section
 | `bun run build:watch:section-tools` | Turbo watch over the section player, the toolkit, every tool package and the section-player debug tools |
 | `bun run test` | Every package's unit tests through Turbo (apps and `tools/` excluded), then every app's |
 | `bun run test:e2e:item-player`, `test:e2e:section-player`, `test:e2e:assessment-player` | One Playwright suite; each builds what it needs and serves its app on a free port |
+| `bun run test:e2e:iife:item-player`, `test:e2e:iife:section-player` | The specs tagged `@iife`, which load elements from the production bundle host; every other run leaves them out |
 | `bun run typecheck` | `turbo typecheck` |
 | `bun run lint` | Biome lint, then each workspace's `check` script (`svelte-check` in most) through Turbo |
 | `bun run format` | `biome format --write .` over the repository; the gates run Biome lint only |

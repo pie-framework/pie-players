@@ -1,6 +1,7 @@
 <script lang="ts">
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import '@pie-players/pie-section-player';
+	import { DEFAULT_PLAYER, getUrlEnumParam, PLAYER_OPTIONS } from '#lib/demo-runtime/demo-page-helpers.js';
 
 	type DemoData = {
 		demo?: {
@@ -20,6 +21,7 @@
 
 	const sectionId = $derived(String((data.section as any)?.identifier || 'tabbed-layout-section'));
 	const attemptId = 'tabbed-layout-attempt';
+	const playerType = getUrlEnumParam('player', PLAYER_OPTIONS, DEFAULT_PLAYER);
 	const pieEnv = {
 		mode: 'gather' as const,
 		role: 'student' as const
@@ -64,6 +66,7 @@
 				<pie-section-player-splitpane
 					runtime={ {
 						assessmentId: "section-demos.tabbed-layout",
+						playerType,
 						env: pieEnv
 					} }
 					{sectionId}
@@ -77,6 +80,7 @@
 				<pie-section-player-tabbed
 					runtime={ {
 						assessmentId: "section-demos.tabbed-layout",
+						playerType,
 						env: pieEnv
 					} }
 					{sectionId}

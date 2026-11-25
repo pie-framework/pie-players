@@ -21,11 +21,15 @@
 		applyDaisyTheme,
 		DAISY_THEME_STORAGE_KEY,
 		DEFAULT_DAISY_THEME,
-		getUrlEnumParam
+		DEFAULT_PLAYER,
+		getUrlEnumParam,
+		PLAYER_OPTIONS
 	} from '#lib/demo-runtime/demo-page-helpers.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const playerType = getUrlEnumParam('player', PLAYER_OPTIONS, DEFAULT_PLAYER);
 
 	const STRATEGIES = [
 		{ value: 'strikethrough', label: 'Strike through' },
@@ -152,6 +156,7 @@
 								{env}
 								session={sessionFor(item)}
 								loaderOptions={playerConfig.loaderOptions}
+								strategy={playerType}
 							></pie-item-player>
 						</div>
 					</article>

@@ -15,7 +15,7 @@ function demoPath(player: "iife" | "esm" | "preloaded"): string {
 // The keys are pressed while the tool shell is still resizing the calculator it
 // just opened, and the first evaluation waits on the worker's cold start.
 for (const player of ["iife", "esm", "preloaded"] as const) {
-	test(`Cortex calculator evaluates in its worker under the ${player} player`, async ({
+	test(`Cortex calculator evaluates in its worker under the ${player} player`, { tag: player === "iife" ? "@iife" : [] }, async ({
 		page,
 	}) => {
 		test.setTimeout(180_000);

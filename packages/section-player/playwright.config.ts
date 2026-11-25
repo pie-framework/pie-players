@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { iifeGrepInvert } from "../../scripts/lib/playwright-iife.mjs";
 import { a11yMediaProjects } from "../../scripts/lib/playwright-media-projects.mjs";
 import { viteListeningOn } from "../../scripts/lib/playwright-web-server.mjs";
 
@@ -18,6 +19,7 @@ export default defineConfig({
 	testMatch: /.*\.spec\.ts/,
 	// Needs a pie-elements-ng checkout: `playwright.local-esm-cdn.config.ts`.
 	testIgnore: /local-esm-cdn\//,
+	grepInvert: iifeGrepInvert(),
 	fullyParallel: false,
 	forbidOnly: false,
 	// One retry in CI, none locally. develop requires these suites, so a single

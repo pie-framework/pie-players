@@ -22,7 +22,7 @@ async function gotoDemo(page: Page, player: "iife" | "esm"): Promise<void> {
 }
 
 test.describe("section player math control names", () => {
-	test("names the math in a choice with its speech (iife)", async ({
+	test("names the math in a choice with its speech (iife)", { tag: "@iife" }, async ({
 		page,
 	}) => {
 		await gotoDemo(page, "iife");
@@ -65,7 +65,7 @@ test.describe("section player math control names", () => {
 		await expect.poll(misnamed, { timeout: 30_000 }).toBe(0);
 	});
 
-	test("names the math again when MathJax replaces it", async ({ page }) => {
+	test("names the math again when MathJax replaces it", { tag: "@iife" }, async ({ page }) => {
 		await gotoDemo(page, "iife");
 		const choice = page.getByRole("radio", { name: CHOICE_NAME });
 		await expect(choice).toBeAttached({ timeout: 30_000 });

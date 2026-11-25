@@ -74,6 +74,22 @@ export const ESM_DEMO_ELEMENT_VERSIONS: Readonly<Record<string, string>> =
 		Object.fromEntries(MANIFESTS.map(({ name, version }) => [name, version])),
 	);
 
+/** The element loading strategies a demo's `?player` param selects. */
+export const DEMO_STRATEGIES = ["iife", "esm", "preloaded"] as const;
+export type DemoStrategy = (typeof DEMO_STRATEGIES)[number];
+
+/**
+ * The strategy a demo loads elements with when `?player` names none. `iife`
+ * builds its bundles on the production bundle service, so a demo asks for it
+ * only to exercise that strategy.
+ */
+export const DEFAULT_DEMO_STRATEGY: DemoStrategy = "esm";
+
+export function demoStrategy(value: string | null | undefined): DemoStrategy {
+	return DEMO_STRATEGIES.find((strategy) => strategy === value) ??
+		DEFAULT_DEMO_STRATEGY;
+}
+
 /**
  * The element version overrides demo content takes for a player strategy: the
  * installed versions under `esm`, none otherwise. The `preloaded` strategy
@@ -83,5 +99,5 @@ export const ESM_DEMO_ELEMENT_VERSIONS: Readonly<Record<string, string>> =
 export function strategyElementVersions(
 	strategy: string | null | undefined,
 ): Record<string, string> {
-	return strategy === "esm" ? { ...ESM_DEMO_ELEMENT_VERSIONS } : {};
+	return demoStrategy(strategy) === "esm" ? { ...ESM_DEMO_ELEMENT_VERSIONS } : {};
 }

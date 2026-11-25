@@ -17,9 +17,12 @@
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
 	import type { ToolkitCoordinatorApi } from '@pie-players/pie-assessment-toolkit';
 	import type { AssessmentEntity } from '@pie-players/pie-players-shared/types';
+	import { DEFAULT_PLAYER, getUrlEnumParam, PLAYER_OPTIONS } from '#lib/demo-runtime/demo-page-helpers.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const playerType = getUrlEnumParam('player', PLAYER_OPTIONS, DEFAULT_PLAYER);
 
 	const toolkitToolsConfig = {
 		placement: {
@@ -113,6 +116,7 @@
 		<pie-section-player-splitpane
 			runtime={ {
 				assessmentId: assessmentEntity.id,
+				playerType,
 				tools: toolkitToolsConfig
 			} }
 			{sectionId}

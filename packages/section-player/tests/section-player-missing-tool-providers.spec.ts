@@ -133,7 +133,7 @@ function calculatorButton(page: Page) {
 }
 
 for (const player of ["iife", "esm"]) {
-	test.describe(`missing tool providers under the ${player} player`, () => {
+	test.describe(`missing tool providers under the ${player} player`, { tag: player === "iife" ? "@iife" : [] }, () => {
 		test("a host coordinator whose registry lacks the calculator reports its provider once", async ({
 			page,
 		}) => {

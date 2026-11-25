@@ -17,6 +17,11 @@
 		GENERATED_LOCALES,
 		loadGeneratedCatalog
 	} from '@pie-players/pie-i18n-generated';
+	import {
+		DEFAULT_DEMO_STRATEGY,
+		demoStrategy,
+		type DemoStrategy
+	} from '@pie-players/demo-ui/element-versions';
 	import { preloadDemoElements } from '@pie-players/demo-ui/preloaded';
 	import ScoringPanel from '#lib/components/ScoringPanel.svelte';
 	import { demoHeadingName } from '#lib/utils/demo-heading-name.js';
@@ -56,7 +61,7 @@
 				})
 			: null
 	);
-	let selectedPlayerType = $state<'iife' | 'esm' | 'preloaded'>('iife');
+	let selectedPlayerType = $state<DemoStrategy>(DEFAULT_DEMO_STRATEGY);
 	let preloadedReady = $state(false);
 	let preloadedError = $state<string | null>(null);
 	let preloadAttempt = 0;
@@ -80,12 +85,7 @@
 		.catch(() => {});
 
 	$effect(() => {
-		const queryPlayer = page.url.searchParams.get('player');
-		if (queryPlayer === 'iife' || queryPlayer === 'esm' || queryPlayer === 'preloaded') {
-			selectedPlayerType = queryPlayer;
-		} else {
-			selectedPlayerType = 'iife';
-		}
+		selectedPlayerType = demoStrategy(page.url.searchParams.get('player'));
 	});
 
 	function clearEsmLoadTimer() {

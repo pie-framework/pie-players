@@ -134,7 +134,7 @@ async function expectMarkupTypeset(demo: Locator, player: Locator) {
 	).toHaveCount(0);
 }
 
-test("iife typesets math in the item's own markup", async ({ page }) => {
+test("iife typesets math in the item's own markup", { tag: "@iife" }, async ({ page }) => {
 	const errors: string[] = [];
 	page.on("pageerror", (error) => errors.push(error.message));
 	const demo = await openDemo(page, "iife");
@@ -218,7 +218,7 @@ for (const strategy of ["esm", "preloaded"] as const) {
 // Hosts reveal the item on `load-complete`, so the markup's math is typeset by
 // then, as the elements' math is.
 for (const strategy of ["iife", "esm", "preloaded"] as const) {
-	test(`${strategy} emits load-complete once the item's own markup is typeset`, async ({
+	test(`${strategy} emits load-complete once the item's own markup is typeset`, { tag: strategy === "iife" ? "@iife" : [] }, async ({
 		page,
 	}) => {
 		const errors: string[] = [];

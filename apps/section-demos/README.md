@@ -55,8 +55,8 @@ To modify content, edit the files in `src/lib/content/`. Each file exports an `A
 ### Configuring Player Runtime
 The per-demo routes (`/single-question`, `/session-hydrate-db`, etc.) render the section player host. To switch strategies, use query params:
 
-- `?player=iife` (default)
-- `?player=esm`
+- `?player=iife`
+- `?player=esm` (default)
 - `?player=preloaded`
 
 Use `?mode=candidate` or `?mode=scorer` to switch environment role/mode. The host translates these to item-compatible env values (`{ mode, role }`) and sets them as `runtime.env` on the layout element.

@@ -124,7 +124,7 @@ test.describe("item-player model images", () => {
 		page,
 	}) => {
 		await page.goto(
-			"/demo/image-cloze-association-default/delivery?mode=gather&role=student&player=iife",
+			"/demo/image-cloze-association-default/delivery?mode=gather&role=student",
 			{ waitUntil: "domcontentloaded" },
 		);
 		await expect(
@@ -179,7 +179,7 @@ test.describe("item-player model images", () => {
 		}) => {
 			await serveImages(page);
 			await page.goto(
-				"/demo/select-text-default/delivery?mode=gather&role=student&player=iife",
+				"/demo/select-text-default/delivery?mode=gather&role=student",
 				{ waitUntil: "domcontentloaded" },
 			);
 			await expect(page.locator(`pie-item-player [id="1"] ${TOKEN}`).first()).toBeVisible({
@@ -208,8 +208,7 @@ test.describe("item-player model images", () => {
 					const player = document.createElement("pie-item-player") as any;
 					player.id = id;
 					document.body.appendChild(player);
-					player.strategy = "iife";
-					player.loaderOptions = { bundleHost: "https://proxy.pie-api.com/bundles/" };
+					player.strategy = "esm";
 					player.env = { mode: "gather", role: "student" };
 					player.session = { id: `${id}-session`, data: [] };
 					player.config = config;

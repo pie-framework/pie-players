@@ -381,6 +381,7 @@
 				{#key `${launchContext.attemptId}:${playerKey}`}
 					<pie-assessment-player-default
 						bind:this={playerRef}
+						player-type="esm"
 						assessment-id={launchContext.assessmentId}
 						attempt-id={launchContext.attemptId}
 						section-player-layout="splitpane"

@@ -8,6 +8,7 @@
 	import {
 		DEMO_ASSESSMENT_ID,
 		getUrlEnumParam,
+		DEFAULT_PLAYER,
 		PLAYER_OPTIONS
 	} from '#lib/demo-runtime/demo-page-helpers.js';
 	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
@@ -38,7 +39,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	const playerType = getUrlEnumParam('player', PLAYER_OPTIONS, 'iife');
+	const playerType = getUrlEnumParam('player', PLAYER_OPTIONS, DEFAULT_PLAYER);
 	// Which of `section-id` and `section` the host sets first. Angular applies
 	// property bindings before attribute bindings, so `[section]` with
 	// `[attr.section-id]` lands as `section` first.

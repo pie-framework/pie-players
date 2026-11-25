@@ -1,10 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { openDemoMenuIfCollapsed } from "../../../test-support/demo-menu";
 
-// Pinned: the bundle host caches `@latest` per encoding, so unpinned runs
-// mix releases whose load-time session events differ.
-const EBSR_DELIVERY_PATH =
-	"/demo/ebsr-default/delivery?player=iife&pie-overrides%5Bpie-element%2Febsr%5D=15.0.3";
+const EBSR_DELIVERY_PATH = "/demo/ebsr-default/delivery";
 const EBSR_SESSION_STORAGE_KEY = "item-demos:session:ebsr-default";
 
 async function gotoEbsrDelivery(page: Page) {
@@ -109,8 +106,8 @@ test.describe("item-player demo EBSR", () => {
 
 		await gotoEbsrDelivery(page);
 
-		await expect(page.getByText("Part A")).toBeVisible();
-		await expect(page.getByText("Part B")).toBeVisible();
+		await expect(page.getByRole("heading", { name: "Part A" })).toBeVisible();
+		await expect(page.getByRole("heading", { name: "Part B" })).toBeVisible();
 		await expect(page.locator('label[for^="choice-"]')).toHaveCount(7);
 		await expect
 			.poll(async () => await hasShuffledEbsrSession(page), {

@@ -21,7 +21,7 @@
 	}));
 
 	function hrefForDemo(demo: (typeof demos)[number]) {
-		return `/demo/${demo.id}/delivery?player=iife`;
+		return `/demo/${demo.id}/delivery`;
 	}
 </script>
 
@@ -34,7 +34,7 @@
 <div class="container mx-auto px-4 py-12 max-w-7xl">
 	<header class="mb-12 space-y-3">
 		<p class="text-xs font-bold uppercase tracking-[0.08em] text-primary">
-			Item Player &middot; IIFE
+			Item Player
 		</p>
 		<h1 class="text-5xl font-bold tracking-tight text-secondary">PIE Item Player Demos</h1>
 		<p class="text-base-content/70">

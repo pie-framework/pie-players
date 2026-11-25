@@ -4,10 +4,11 @@
  * browser's own enforcement runs in `tests/e2e/bundle-integrity.spec.ts`.
  */
 
-import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 
 import {
 	BUNDLE_INTEGRITY_FAILED_EVENT,
+	BUNDLE_INTEGRITY_UNCHECKED_EVENT,
 	BundleIntegrityError,
 	type BundleIntegrityFailure,
 	diagnoseIntegrity,
@@ -16,6 +17,7 @@ import {
 	isEnforceableIntegrity,
 	lookupIntegrity,
 	reportBundleIntegrityFailure,
+	reportBundleIntegrityUnchecked,
 } from "../src/loaders/bundle-integrity.js";
 import {
 	__testing as elementLoaderTesting,
@@ -209,6 +211,53 @@ describe("reportBundleIntegrityFailure", () => {
 	});
 });
 
+describe("reportBundleIntegrityUnchecked", () => {
+	function provider(tracked: Array<[string, unknown]>) {
+		return {
+			providerId: "p",
+			providerName: "p",
+			async initialize() {},
+			trackEvent: (name: string, attributes: unknown) => tracked.push([name, attributes]),
+			trackError() {
+				throw new Error("an unchecked load is not an error");
+			},
+			destroy() {},
+			isReady: () => true,
+		};
+	}
+
+	test("reports each URL once per window: a warning, the event and a trackEvent", () => {
+		const warn = spyOn(console, "warn").mockImplementation(() => {});
+		try {
+			const target = new EventTarget();
+			const urls: string[] = [];
+			target.addEventListener(BUNDLE_INTEGRITY_UNCHECKED_EVENT, (event) =>
+				urls.push((event as CustomEvent).detail.url),
+			);
+			const tracked: Array<[string, unknown]> = [];
+			const options = { target, component: "iife-adapter", provider: provider(tracked) };
+			reportBundleIntegrityUnchecked("https://bundles.test/a.js", options);
+			reportBundleIntegrityUnchecked("https://bundles.test/a.js", options);
+			reportBundleIntegrityUnchecked("https://bundles.test/b.js", options);
+			reportBundleIntegrityUnchecked("https://bundles.test/a.js", {
+				...options,
+				target: new EventTarget(),
+			});
+
+			expect(urls).toEqual(["https://bundles.test/a.js", "https://bundles.test/b.js"]);
+			expect(tracked).toEqual([
+				[BUNDLE_INTEGRITY_UNCHECKED_EVENT, { url: "https://bundles.test/a.js", component: "iife-adapter" }],
+				[BUNDLE_INTEGRITY_UNCHECKED_EVENT, { url: "https://bundles.test/b.js", component: "iife-adapter" }],
+				[BUNDLE_INTEGRITY_UNCHECKED_EVENT, { url: "https://bundles.test/a.js", component: "iife-adapter" }],
+			]);
+			expect(warn).toHaveBeenCalledTimes(3);
+			expect(String(warn.mock.calls[0][0])).toContain("https://bundles.test/a.js");
+		} finally {
+			warn.mockRestore();
+		}
+	});
+});
+
 // ─── Adapters ────────────────────────────────────────────────────────────────
 
 const g = globalThis as unknown as Record<string, unknown>;
@@ -243,6 +292,10 @@ function mockDocument(fetch?: unknown) {
 	view.addEventListener(BUNDLE_INTEGRITY_FAILED_EVENT, (event) =>
 		events.push((event as CustomEvent).detail),
 	);
+	const unchecked: string[] = [];
+	view.addEventListener(BUNDLE_INTEGRITY_UNCHECKED_EVENT, (event) =>
+		unchecked.push((event as CustomEvent).detail.url),
+	);
 	const doc = {
 		defaultView: view,
 		head: {
@@ -263,7 +316,7 @@ function mockDocument(fetch?: unknown) {
 		querySelector: () => null,
 		querySelectorAll: () => [],
 	} as unknown as Document;
-	return { doc, events, scripts };
+	return { doc, events, scripts, unchecked };
 }
 
 function context(doc: Document) {
@@ -280,7 +333,10 @@ async function reasonsOf(promise: Promise<unknown>): Promise<RegistrationFailure
 	throw new Error("expected the load to fail");
 }
 
+let silencedWarn: ReturnType<typeof spyOn> | undefined;
+
 beforeEach(() => {
+	silencedWarn = spyOn(console, "warn").mockImplementation(() => {});
 	installRegistry();
 	g.HTMLElement = FakeElement;
 	g.HTMLScriptElement = { supports: (type: string) => type === "importmap" };
@@ -289,6 +345,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	silencedWarn?.mockRestore();
 	elementLoaderTesting.resetDedupState();
 	for (const [key, value] of Object.entries(saved)) {
 		if (value === undefined) delete g[key];
@@ -324,6 +381,35 @@ describe("IIFE adapter integrity", () => {
 		});
 		await backend.load(IIFE_ELEMENTS, context(mockDocument().doc));
 		expect(loads).toEqual([{ url: `${BUNDLE}?elements=pie-passage`, integrity: expected }]);
+	});
+
+	test("loads a bundle the host's hashes leave out, and reports it unchecked", async () => {
+		const { backend, seams, loads } = iifeBackend({
+			integrity: { "https://builder.test/api/v1/bundles/abc/player.js": await sri("bundle") },
+		});
+		seams.replaceLoadBundleScript(async (url, _doc, integrity) => {
+			loads.push({ url, integrity });
+			(g.window as { pie?: unknown }).pie = {
+				default: { "@pie-element/passage": { Element: elementClass() } },
+			};
+		});
+		const { doc, events, unchecked } = mockDocument();
+		await backend.load(IIFE_ELEMENTS, context(doc));
+		expect(loads).toEqual([{ url: `${BUNDLE}?elements=pie-passage`, integrity: undefined }]);
+		expect(unchecked).toEqual([`${BUNDLE}?elements=pie-passage`]);
+		expect(events).toEqual([]);
+	});
+
+	test("reports nothing unchecked when the host supplies no hashes", async () => {
+		const { backend, seams } = iifeBackend({});
+		seams.replaceLoadBundleScript(async () => {
+			(g.window as { pie?: unknown }).pie = {
+				default: { "@pie-element/passage": { Element: elementClass() } },
+			};
+		});
+		const { doc, unchecked } = mockDocument();
+		await backend.load(IIFE_ELEMENTS, context(doc));
+		expect(unchecked).toEqual([]);
 	});
 
 	test("requireIntegrity refuses a bundle without a hash before loading it", async () => {
@@ -441,6 +527,28 @@ describe("ESM adapter integrity", () => {
 			{ url: MC_PACKAGE_JSON, integrity: integrity[MC_PACKAGE_JSON] },
 		]);
 		expect(injectedMaps[0].integrity).toEqual(integrity);
+	});
+
+	test("reports each module the host's hashes leave out unchecked, once", async () => {
+		const integrity = {
+			[MC_PACKAGE_JSON]: await sri("package.json"),
+			[MC_DELIVERY]: await sri("delivery"),
+			[MC_CONTROLLER]: await sri("controller"),
+		};
+		const { backend } = esmBackend({ integrity });
+		const { doc, unchecked } = mockDocument();
+		await backend.load({ [MC_TAG]: MC }, context(doc));
+
+		expect(unchecked.length).toBeGreaterThan(0);
+		expect(new Set(unchecked).size).toBe(unchecked.length);
+		expect(unchecked.every((url) => url.includes("react"))).toBe(true);
+	});
+
+	test("reports nothing unchecked when the host supplies no hashes", async () => {
+		const { backend } = esmBackend({});
+		const { doc, unchecked } = mockDocument();
+		await backend.load({ [MC_TAG]: MC }, context(doc));
+		expect(unchecked).toEqual([]);
 	});
 
 	test("requireIntegrity refuses a package whose package.json has no hash", async () => {

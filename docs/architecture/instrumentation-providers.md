@@ -273,7 +273,8 @@ resource monitor's `pie-resource-load`, `pie-resource-retry` and
 `pie-resource-load-error`; the IIFE loader's `pie-iife-bundle-retry`,
 `pie-iife-bundle-retry-success` and `pie-iife-bundle-retry-timeout`; the ESM
 loader's `pie-esm-shared-dependency-conflict`; both loaders'
-`pie-bundle-integrity-failed`, with `url`, `cause`, `expected` and `actual`
+`pie-bundle-integrity-failed`, with `url`, `cause`, `expected` and `actual`,
+and `pie-bundle-integrity-unchecked`, with `url`
 ([Bundle integrity](../security/readme.md#bundle-integrity)); and
 `pie-mathjax-version-conflict` and `pie-mathjax-no-asset-root`. The monitor and
 both loaders also send a `trackError` per failure.

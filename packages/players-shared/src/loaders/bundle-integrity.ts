@@ -287,6 +287,68 @@ export function reportBundleIntegrityFailure(
 	}
 }
 
+/**
+ * Dispatched on `window` once per URL a loader runs without a hash although
+ * the host supplied `integrity`.
+ */
+export const BUNDLE_INTEGRITY_UNCHECKED_EVENT = "pie-bundle-integrity-unchecked";
+
+/** The detail of `pie-bundle-integrity-unchecked`. */
+export type BundleIntegrityUnchecked = {
+	/** The bundle, module or package.json URL that loads without a check. */
+	url: string;
+};
+
+const NO_TARGET = {};
+const uncheckedUrls = new WeakMap<object, Set<string>>();
+
+/**
+ * Report code that loads without a hash where the host supplied hashes: an
+ * entry keyed by another URL, or a bundle with no recorded hash. Once per URL
+ * and window, as a console warning, the event and a `trackEvent`. The load
+ * goes ahead; refusing it is `requireIntegrity`'s.
+ */
+export function reportBundleIntegrityUnchecked(
+	url: string,
+	options: {
+		target?: EventTarget | null;
+		provider?: InstrumentationProvider;
+		component: string;
+	},
+): void {
+	const key = options.target ?? NO_TARGET;
+	let seen = uncheckedUrls.get(key);
+	if (!seen) {
+		seen = new Set();
+		uncheckedUrls.set(key, seen);
+	}
+	if (seen.has(url)) return;
+	seen.add(url);
+	if (typeof console !== "undefined" && console.warn) {
+		console.warn(
+			`[${options.component}] ${url} loads without an integrity check: integrity has no entry for it`,
+		);
+	}
+	try {
+		options.target?.dispatchEvent(
+			new CustomEvent<BundleIntegrityUnchecked>(
+				BUNDLE_INTEGRITY_UNCHECKED_EVENT,
+				{ detail: { url } },
+			),
+		);
+	} catch {
+		// A listener's error, or no CustomEvent: reporting must not change the load.
+	}
+	try {
+		options.provider?.trackEvent(BUNDLE_INTEGRITY_UNCHECKED_EVENT, {
+			url,
+			component: options.component,
+		});
+	} catch {
+		// Swallow: instrumentation must never break loading.
+	}
+}
+
 /** The window a document's loads report on. */
 export function integrityEventTarget(doc: Document): EventTarget | null {
 	const view = (doc as { defaultView?: unknown }).defaultView;

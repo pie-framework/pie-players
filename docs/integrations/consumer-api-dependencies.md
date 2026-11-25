@@ -1057,9 +1057,9 @@ version unless the host passes its own `elementPackagePolicy`: every `esm` loade
 config, the item player's `esm`
 strategy, `<pie-print>` and the item list's pinned summaries. The same change gave
 both players `loaderOptions.integrity` and `requireIntegrity` and added the
-`pie-bundle-integrity-failed` event. A targeted lookup of the eight checkouts the
+`pie-bundle-integrity-failed` and `pie-bundle-integrity-unchecked` events. A targeted lookup of the eight checkouts the
 same day found Host R the only host on the `esm` strategy or `<pie-print>`, and no
-host setting `elementPackagePolicy`, the integrity options or the event. Host M's
+host setting `elementPackagePolicy`, the integrity options or the events. Host M's
 checkout holds only a build, so its row's `preloaded` strategy stands. Host R pins
 each tagged spec to the version its tag names before a player sees the config, but
 keeps the tag when that lookup fails or times out, and its print routes set no

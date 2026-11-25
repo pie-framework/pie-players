@@ -48,6 +48,7 @@ import {
 	type IntegrityMap,
 	lookupIntegrity,
 	reportBundleIntegrityFailure,
+	reportBundleIntegrityUnchecked,
 } from "./bundle-integrity.js";
 import type { ElementMap } from "./ElementLoader.js";
 import {
@@ -87,7 +88,9 @@ export type IifeBackendConfig = {
 	 * SRI metadata by bundle URL. The adapter looks its bundle URL up as built,
 	 * then without the `elements` query it appends. A matching entry goes on
 	 * the bundle's `<script>` with `crossorigin="anonymous"`, so the bundle
-	 * host must answer with `Access-Control-Allow-Origin`.
+	 * host must answer with `Access-Control-Allow-Origin`. Once it holds an
+	 * entry, a bundle it has no hash for loads and reports
+	 * `pie-bundle-integrity-unchecked`.
 	 */
 	integrity?: IntegrityMap;
 	/**
@@ -410,6 +413,13 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 				tag,
 				...refusal,
 			}));
+		}
+		if (lookup.status === "missing" && integrityIndex.size > 0) {
+			reportBundleIntegrityUnchecked(bundleUrl, {
+				target: integrityEventTarget(context.doc),
+				provider: getInstrumentationProvider(),
+				component: "iife-adapter",
+			});
 		}
 		try {
 			await ensureBundleLoaded(

@@ -298,7 +298,8 @@ These are set from JavaScript; they have no attribute.
   only exact versions without one
   ([escape hatches](../../docs/security/readme.md#escape-hatches)).
   `integrity` maps bundle and module URLs to SRI metadata the browser checks
-  before running them, and `requireIntegrity` refuses any it leaves out
+  before running them; a URL it leaves out loads and reports
+  `pie-bundle-integrity-unchecked`, and `requireIntegrity` refuses it instead
   ([bundle integrity](../../docs/security/readme.md#bundle-integrity)).
 - `sanitizeMarkup`: `(markup: string) => string`. Replaces the built-in
   sanitizer ([custom sanitizer](#provide-a-custom-sanitizer)). Ignored when

@@ -42,6 +42,7 @@ import {
 	isEnforceableIntegrity,
 	lookupIntegrity,
 	reportBundleIntegrityFailure,
+	reportBundleIntegrityUnchecked,
 } from "./bundle-integrity.js";
 import type { ElementMap } from "./ElementLoader.js";
 import { DEFAULT_ESM_CDN_URL } from "./defaults.js";
@@ -117,7 +118,9 @@ export type EsmBackendConfig = {
 	 * SRI metadata by module or package.json URL. Entries go into the import
 	 * map the backend adds, where the browser checks every module fetched from
 	 * a listed URL, including the chunks an element imports when the host
-	 * lists them; package.json reads pass theirs to `fetch`.
+	 * lists them; package.json reads pass theirs to `fetch`. Once it holds an
+	 * entry, a URL neither it nor the page's import maps hash loads and
+	 * reports `pie-bundle-integrity-unchecked`.
 	 */
 	integrity?: IntegrityMap;
 	/**
@@ -671,6 +674,13 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		if (refusal) {
 			reportIntegrityFailure(refusal, doc);
 			throw new BundleIntegrityError(refusal);
+		}
+		if (lookup.status === "missing" && integrityIndex.size > 0) {
+			reportBundleIntegrityUnchecked(url, {
+				target: integrityEventTarget(doc),
+				provider: getInstrumentationProvider(),
+				component: "esm-adapter",
+			});
 		}
 		return lookup.status === "found" ? lookup.integrity : undefined;
 	}

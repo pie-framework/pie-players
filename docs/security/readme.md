@@ -31,7 +31,7 @@ produced an item belong to the host.
    on `.pie-item-player` for the partial mitigation
    ([Accepted residual](#accepted-residual-absolute-positioned-overlays)).
 7. Supply `loaderOptions.integrity` for the bundles and modules the page runs,
-   and `requireIntegrity` once it covers them all
+   and `requireIntegrity` once `pie-bundle-integrity-unchecked` stops firing
    ([Bundle integrity](#bundle-integrity)).
 8. Keep tokens out of page URLs
    ([Containing a tampered bundle](#containing-a-tampered-bundle)).
@@ -285,6 +285,14 @@ A refusal fails each affected tag with reason `integrity-failed` and dispatches
 `trackEvent` and a `trackError` carrying the same fields
 ([Instrumentation providers](../architecture/instrumentation-providers.md)). A
 refused element module does not fall back to another view.
+
+Once `integrity` holds an entry, a bundle, module or `package.json` it has no
+hash for still loads, and the loader reports it once per URL and window: a
+console warning, `pie-bundle-integrity-unchecked` on the window with detail
+`{ url }`, and with `trackPageActions` a `trackEvent` of that name. An entry
+keyed by another URL than the one the player requests shows up there, as does
+a bundle with no recorded hash, and the count is what `requireIntegrity: true`
+would refuse.
 
 The browser reports a failed check as a failed load. So after a load that
 carried a hash fails, the loader fetches the URL once more and digests it: a

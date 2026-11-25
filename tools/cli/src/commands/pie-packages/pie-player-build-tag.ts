@@ -4,6 +4,8 @@ import { join } from "node:path";
 
 import { Command, Flags } from "@oclif/core";
 
+import { resolveMonorepoDir } from "../../utils/monorepo-root.js";
+
 const TAGS = ["pie-item-player"] as const;
 type TagName = (typeof TAGS)[number];
 
@@ -39,14 +41,7 @@ export default class PiePlayerBuildTag extends Command {
 
 	public async run(): Promise<void> {
 		const { flags } = await this.parse(PiePlayerBuildTag);
-		const monorepoDir = process.cwd();
-
-		const packagesDir = join(monorepoDir, "packages");
-		if (!existsSync(packagesDir)) {
-			this.error(
-				`Expected to be run from pie-players repo root. Missing: ${packagesDir}`,
-			);
-		}
+		const monorepoDir = resolveMonorepoDir();
 
 		const tag = flags.tag as TagName | "all";
 		const tags: TagName[] = tag === "all" ? [...TAGS] : [tag];

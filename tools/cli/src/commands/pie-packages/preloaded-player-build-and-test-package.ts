@@ -12,6 +12,7 @@ import {
 	readSpeechLocales,
 } from "../../utils/pie-packages/preloaded-static.js";
 import { createNpmAuthEnvironment } from "@pie-players/pie-players-cli/npm-auth-env";
+import { resolveInputPath, resolveMonorepoDir } from "../../utils/monorepo-root.js";
 import { generatePreloadedStaticTestProject } from "../../utils/pie-packages/test-project.js";
 
 export default class PreloadedPlayerBuildAndTestPackage extends Command {
@@ -19,8 +20,8 @@ export default class PreloadedPlayerBuildAndTestPackage extends Command {
 		"Build a preloaded static package (optionally publish) and optionally generate a browser test project";
 
 	static override examples = [
-		"$ bun run cli pie-packages:preloaded-player-build-and-test-package -f configs/preloaded-player/example.json --generateTestProject",
-		"$ bun run cli pie-packages:preloaded-player-build-and-test-package -f configs/preloaded-player/example.json --publish --dryRun",
+		"$ bun run cli pie-packages:preloaded-player-build-and-test-package -f configs/preloaded-player/star-0326-ng.json --generateTestProject",
+		"$ bun run cli pie-packages:preloaded-player-build-and-test-package -f configs/preloaded-player/star-0326-ng.json --publish --dryRun",
 	];
 
 	static override flags = {
@@ -150,17 +151,14 @@ export default class PreloadedPlayerBuildAndTestPackage extends Command {
 			this.error("--publish needs -f/--elementsFile: a published build is named after its config file");
 		}
 
-		const monorepoDir = process.cwd();
-
-		const elements = await this.parseElements(
-			flags.elementsFile,
-			flags.elements,
-		);
+		const monorepoDir = resolveMonorepoDir(flags.elementsFile);
+		const elementsFile = flags.elementsFile
+			? resolveInputPath(flags.elementsFile, monorepoDir)
+			: undefined;
+		const elements = await this.parseElements(elementsFile, flags.elements);
 		const elementsArray = elements.map((e: any) => `${e.package}@${e.version}`);
 		const elementSet =
-			flags.publish && flags.elementsFile
-				? await this.resolveElementSet(flags.elementsFile)
-				: undefined;
+			flags.publish && elementsFile ? await this.resolveElementSet(elementsFile) : undefined;
 
 		if (flags.publish && !flags.iteration) {
 			process.env.PIE_PRELOADED_PLAYER_AUTO_ITERATION = "true";
@@ -178,7 +176,7 @@ export default class PreloadedPlayerBuildAndTestPackage extends Command {
 			setName: elementSet?.name,
 			monorepoDir,
 			publish: flags.publish,
-			speechLocales: await this.resolveSpeechLocales(flags.elementsFile, flags.speechLocales),
+			speechLocales: await this.resolveSpeechLocales(elementsFile, flags.speechLocales),
 		});
 
 		this.log(`\n✅ Built: @pie-players/pie-preloaded-player@${version}`);

@@ -164,7 +164,7 @@ export function validateLatestConfig(configs) {
 function publishConfig(elementsFile, { dryRun }) {
 	const rel = path.relative(ROOT, elementsFile);
 	const abs = path.resolve(elementsFile);
-	const cmd = `bun run --cwd tools/cli build && bun run cli pie-packages:preloaded-player-build-package -f "${abs}" --publish`;
+	const cmd = `bun run cli pie-packages:preloaded-player-build-package -f "${abs}" --publish`;
 	if (dryRun) {
 		console.log(`[DRY RUN] ${cmd} # from ${rel}`);
 		return;

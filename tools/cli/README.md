@@ -10,6 +10,12 @@ From the repository root:
 bun run cli --help
 ```
 
+`bun run cli` first builds the CLI and the workspace packages it imports
+(through turbo, so an unchanged build is a cache hit), then runs it from the
+repository root, where the relative paths a command takes are read from. A
+command finds the repository root on its own, so the built
+`tools/cli/bin/run.js` also runs from any other directory.
+
 Common command families:
 
 - `pie-packages:*` for preloaded-player package generation and local test

@@ -8,6 +8,7 @@
  * mode runs no pass; delivery leaves editing-host content alone.
  */
 
+import { createRequire } from "node:module";
 import { expect, test, type Page } from "@playwright/test";
 import eteDemo from "../../../apps/item-demos/src/lib/content/extended-text-entry-default";
 import mcDemo from "../../../apps/item-demos/src/lib/content/multiple-choice-radio-simple";
@@ -33,6 +34,28 @@ async function serveImages(page: Page) {
 	);
 }
 
+const demoRequire = createRequire(
+	new URL("../../../apps/demo-ui/package.json", import.meta.url),
+);
+
+/**
+ * `elements` at the versions demo-ui installs, which the demo pages load under
+ * esm: the content names `@latest`, which the ESM loader refuses.
+ */
+function installedElements(
+	elements: Record<string, string>,
+): Record<string, string> {
+	return Object.fromEntries(
+		Object.entries(elements).map(([tag, spec]) => {
+			const name = spec.slice(0, spec.lastIndexOf("@"));
+			const { version } = demoRequire(`${name}/package.json`) as {
+				version: string;
+			};
+			return [tag, `${name}@${version}`];
+		}),
+	);
+}
+
 async function mountPlayer(
 	page: Page,
 	props: {
@@ -43,6 +66,15 @@ async function mountPlayer(
 		config: Record<string, unknown>;
 	},
 ) {
+	props = {
+		...props,
+		config: {
+			...props.config,
+			elements: installedElements(
+				props.config.elements as Record<string, string>,
+			),
+		},
+	};
 	await page.evaluate(({ id, mode, env, data, config }) => {
 		const player = document.createElement("pie-item-player") as any;
 		player.id = id;

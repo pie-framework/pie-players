@@ -2,6 +2,8 @@
 	import { goto } from "$app/navigation";
 	import { page } from "$app/state";
 	import { tick, untrack } from "svelte";
+	import { strategyElementVersions } from "@pie-players/demo-ui/element-versions";
+	import { applyElementVersionOverridesPreserveTags } from "@pie-players/pie-players-shared/pie";
 	import "@pie-players/pie-section-player/components/section-player-splitpane-element";
 	import type { PieSectionPlayerElement } from "@pie-players/pie-section-player";
 	import BackendToolBar from "#lib/components/BackendToolBar.svelte";
@@ -99,7 +101,19 @@
 		};
 	}
 
+	// The demo loads elements with ESM, at the versions it installs.
 	function createDemoItem(itemId: DemoItemId) {
+		const item = createAuthoredItem(itemId);
+		return {
+			...item,
+			config: applyElementVersionOverridesPreserveTags(
+				item.config,
+				strategyElementVersions("esm"),
+			) as typeof item.config,
+		};
+	}
+
+	function createAuthoredItem(itemId: DemoItemId) {
 		if (itemId === "backend-delivery-arithmetic") {
 			return {
 				id: itemId,

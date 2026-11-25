@@ -47,7 +47,9 @@ type DemoSessionRow = {
 
 const DEFAULT_ITEM_ID = "backend-delivery-planets";
 const MULTIPLE_CHOICE_ELEMENT = "multiple-choice";
-const MULTIPLE_CHOICE_PACKAGE = "@pie-element/multiple-choice@latest";
+// An exact version, which the ESM loader requires. The server runs this
+// version's controller from the builder, so it names a release the builder has built.
+const MULTIPLE_CHOICE_PACKAGE = "@pie-element/multiple-choice@14.0.9";
 
 const seededItems: Array<{
 	id: string;

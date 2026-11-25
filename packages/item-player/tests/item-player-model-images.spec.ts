@@ -9,10 +9,17 @@
  * `pie-table-scroll` reflow wrappers, in the rendered DOM.
  */
 
+import { createRequire } from "node:module";
 import { expect, test, type Page } from "@playwright/test";
 import icaDemo from "../../../apps/item-demos/src/lib/content/image-cloze-association-default";
 import selectTextDemo from "../../../apps/item-demos/src/lib/content/select-text-default";
 
+// The version demo-ui installs, which the demo pages load under esm: the ESM
+// loader refuses `@latest`.
+const { version: SELECT_TEXT_VERSION } = createRequire(
+	new URL("../../../apps/demo-ui/package.json", import.meta.url),
+)("@pie-element/select-text/package.json") as { version: string };
+const SELECT_TEXT = `@pie-element/select-text@${SELECT_TEXT_VERSION}`;
 const ICA_MODEL = icaDemo.item.config.models[0] as Record<string, any>;
 const ICA_ELEMENT = 'pie-item-player [id="1"]';
 const RESPONSE_AREAS = ICA_MODEL.response_containers as Array<{
@@ -218,7 +225,7 @@ test.describe("item-player model images", () => {
 					config: {
 						id: PROBE_ID,
 						markup: `<select-text id="${PROBE_MODEL_ID}"></select-text>`,
-						elements: { "select-text": "@pie-element/select-text@latest" },
+						elements: { "select-text": SELECT_TEXT },
 						models: [model],
 					},
 				},

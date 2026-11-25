@@ -368,7 +368,7 @@ test.describe("section player response cardinality", () => {
 		expect((await recording(page)).writeBacks).toBe(2);
 	});
 
-	test("an element from an IIFE bundle: it loads once, and one response reaches each channel once", async ({
+	test("an element from an IIFE bundle: it loads once, and one response reaches each channel once", { tag: "@iife" }, async ({
 		page,
 	}) => {
 		await page.goto("/single-question?mode=candidate&layout=splitpane&player=iife", {

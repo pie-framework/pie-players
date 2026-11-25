@@ -126,7 +126,7 @@ async function mount(page: Page, strategy: string) {
 
 for (const strategy of STRATEGIES) {
 	for (const demoId of ["multiple-choice-radio-simple", "ebsr-default"]) {
-		test(`${strategy} emits load-complete once the elements of ${demoId} have rendered`, async ({
+		test(`${strategy} emits load-complete once the elements of ${demoId} have rendered`, { tag: strategy === "iife" ? "@iife" : [] }, async ({
 			page,
 		}) => {
 			const errors: string[] = [];
@@ -147,7 +147,7 @@ for (const strategy of STRATEGIES) {
 
 	// A rubric renders nothing for a student, which holds `load-complete` for
 	// the quiet window and not for the bound.
-	test(`${strategy} does not hold load-complete for an element that renders nothing`, async ({
+	test(`${strategy} does not hold load-complete for an element that renders nothing`, { tag: strategy === "iife" ? "@iife" : [] }, async ({
 		page,
 	}) => {
 		await openDemo(page, "rubric-default", strategy);

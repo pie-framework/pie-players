@@ -121,14 +121,12 @@ test.describe("item-player correct-response tamper signal", () => {
 		expect(first.bundleType).toBe("client-player.js");
 		expect(first.populatedCount).toBeGreaterThan(0);
 		expect(first.elements?.length).toBeGreaterThan(0);
-		for (const name of first.elements ?? []) {
-			// `config.models[].element`, so the authored versioned element name
-			// (`multiple-choice--version-latest`) rather than the rendered
-			// `pie-`-prefixed tag that `makeUniqueTags` produces.
-			expect(name).toBeTruthy();
-			expect(typeof name).toBe("string");
-		}
-		expect(first.elements).toContain("multiple-choice--version-latest");
+		// `config.models[].element`, so the versioned element name
+		// (`multiple-choice--version-<version>`) rather than the rendered
+		// `pie-`-prefixed tag that `makeUniqueTags` produces.
+		expect(first.elements).toEqual([
+			expect.stringMatching(/^multiple-choice--version-/),
+		]);
 	});
 
 	test("the payload carries no session data", async ({ page }) => {

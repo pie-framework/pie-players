@@ -2,10 +2,7 @@
 	import { goto } from "$app/navigation";
 	import { page } from "$app/state";
 	import { onMount, tick } from "svelte";
-	import {
-		DEFAULT_BUNDLE_HOST,
-		pieElementContextsWithin,
-	} from "@pie-players/pie-players-shared";
+	import { pieElementContextsWithin } from "@pie-players/pie-players-shared";
 	import "@pie-players/pie-item-player";
 	import BackendStatePanel from "#lib/components/BackendStatePanel.svelte";
 	import BackendToolBar from "#lib/components/BackendToolBar.svelte";
@@ -564,12 +561,9 @@
 	$effect(() => {
 		if (!playerEl) return;
 		playerEl.env = env;
-		playerEl.strategy = "iife";
+		playerEl.strategy = "esm";
 		playerEl.hosted = true;
-		playerEl.loaderOptions = {
-			bundleHost: DEFAULT_BUNDLE_HOST,
-			runtimeSupportCheck: "on",
-		};
+		playerEl.loaderOptions = { runtimeSupportCheck: "on" };
 		playerEl.backend = backendConfig();
 	});
 

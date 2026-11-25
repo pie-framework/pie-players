@@ -1,13 +1,17 @@
 <script lang="ts">
 	import '@pie-players/pie-section-player';
+	import { DEFAULT_PLAYER, getUrlEnumParam, PLAYER_OPTIONS } from '#lib/demo-runtime/demo-page-helpers.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const playerType = getUrlEnumParam('player', PLAYER_OPTIONS, DEFAULT_PLAYER);
 
 	const sectionId = $derived(String(data.section?.identifier || 'custom-layout-section'));
 	const attemptId = 'custom-layout-attempt';
 	const runtime = {
 		assessmentId: 'section-demos.custom-layout',
+		playerType,
 		env: { mode: 'gather' as const, role: 'student' as const },
 	};
 </script>

@@ -27,10 +27,14 @@ async function mountTrackedPlayer(page: Page, config: unknown) {
 		const player = document.createElement("pie-item-player") as HTMLElement & {
 			config: unknown;
 			loaderConfig: unknown;
+			strategy?: string;
 		};
 		for (const { name, value } of source?.attributes ?? []) {
 			if (name !== "id" && name !== "config") player.setAttribute(name, value);
 		}
+		// The demo sets the strategy as a property, and its config carries that
+		// strategy's element versions.
+		player.strategy = (source as typeof player | null)?.strategy;
 		player.id = "tracked-player";
 		player.loaderConfig = { instrumentationProvider };
 		player.config = nextConfig;

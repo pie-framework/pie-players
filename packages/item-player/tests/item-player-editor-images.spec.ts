@@ -47,9 +47,8 @@ async function mountPlayer(
 		const player = document.createElement("pie-item-player") as any;
 		player.id = id;
 		document.body.appendChild(player);
-		player.strategy = "iife";
+		player.strategy = "esm";
 		if (mode) player.mode = mode;
-		player.loaderOptions = { bundleHost: "https://proxy.pie-api.com/bundles/" };
 		player.env = env;
 		player.session = { id: `${id}-session`, data };
 		player.config = config;
@@ -93,7 +92,7 @@ test.describe("item-player editor images", () => {
 		const id = "author-editor-images-probe";
 		const modelId = "mc-probe";
 		await serveImages(page);
-		await page.goto(`/demo/${mcDemo.id}/author?player=iife`, {
+		await page.goto(`/demo/${mcDemo.id}/author`, {
 			waitUntil: "domcontentloaded",
 		});
 		await mountPlayer(page, {
@@ -145,7 +144,7 @@ test.describe("item-player editor images", () => {
 		const modelId = "ete-probe";
 		await serveImages(page);
 		await page.goto(
-			`/demo/${eteDemo.id}/delivery?mode=gather&role=student&player=iife`,
+			`/demo/${eteDemo.id}/delivery?mode=gather&role=student`,
 			{ waitUntil: "domcontentloaded" },
 		);
 		await mountPlayer(page, {

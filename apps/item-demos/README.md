@@ -36,15 +36,17 @@ Use root scripts rather than running `bun run dev` directly inside
 
 - **Framework:** SvelteKit with `@sveltejs/adapter-node`
 - **Styling:** Tailwind CSS v4 + DaisyUI v5
-- **Player:** PIE Item Player, `iife` strategy by default
-- **Elements:** Loaded from the PIE bundle host (`https://proxy.pie-api.com/bundles/`)
+- **Player:** PIE Item Player, `esm` strategy by default
+- **Elements:** jsDelivr (`https://cdn.jsdelivr.net/npm`) under `esm`, the PIE bundle host (`https://proxy.pie-api.com/bundles/`) under `iife`
 
 ### Element Loading
 
-The demos default to `strategy="iife"`, which loads each element's complete
-bundle from the PIE bundle host and works with `@latest` element versions.
-The delivery and author views switch to `esm`, and the delivery view can then
-register the installed ESM builds before the player mounts (`preloaded`).
+The demos default to `strategy="esm"`, which loads the browser builds of the
+pie-elements-ng versions [`demo-ui`](../demo-ui/package.json) installs from
+jsDelivr. `?player=iife` loads each element's bundle from the PIE bundle host,
+which builds an element set the first time a page asks for it. In the delivery
+view, `?player=preloaded` registers the installed ESM builds before the player
+mounts.
 
 ### Element Version Overrides
 

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { strategyElementVersions } from '@pie-players/demo-ui/element-versions';
+	import { demoStrategy, strategyElementVersions } from '@pie-players/demo-ui/element-versions';
 	import type { PieItemSessionDebuggerElement } from '@pie-players/pie-item-player/components/item-session-debugger-element';
 	import {
 		applyElementVersionOverridesPreserveTags,
@@ -120,13 +120,7 @@
 		return `/demo/${data.demoId}/${view}?${page.url.searchParams}`;
 	}
 
-	function coerceLoaderStrategy(value: string | null): 'iife' | 'esm' | 'preloaded' {
-		return value === 'esm' || value === 'preloaded' ? value : 'iife';
-	}
-
-	const loaderStrategy = $derived(
-		coerceLoaderStrategy(page.url.searchParams.get('player')),
-	);
+	const loaderStrategy = $derived(demoStrategy(page.url.searchParams.get('player')));
 
 	function modeHref(viewMode: 'student' | 'scorer') {
 		const url = new URL(page.url.href);

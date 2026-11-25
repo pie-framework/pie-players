@@ -89,7 +89,7 @@ async function dispatchFromAuthoringRoot(
 }
 
 test.describe("item-player authoring contract", () => {
-	test("loads versioned IIFE authoring config tags exactly once", async ({
+	test("loads versioned IIFE authoring config tags exactly once", { tag: "@iife" }, async ({
 		page,
 	}) => {
 		await page.goto(

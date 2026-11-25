@@ -314,6 +314,7 @@ let instrumentationDebuggerElement = $state<any>(null);
 	<section class="demo-player">
 		<pie-assessment-player-default
 			bind:this={playerRef}
+			player-type="esm"
 			assessment-id={data.demo.assessment.identifier}
 			attempt-id={attemptId}
 			section-player-layout={sectionLayout}

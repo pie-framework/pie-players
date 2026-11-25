@@ -16,9 +16,12 @@
 	import type { AssessmentEntity, ItemEntity } from '@pie-players/pie-players-shared/types';
 	import { createSectionDemoToolRegistry } from '#lib/demo-runtime/default-tool-registry.js';
 	import { withDemoLoaderOptions } from '#lib/demo-runtime/demo-player-config.js';
+	import { DEFAULT_PLAYER, getUrlEnumParam, PLAYER_OPTIONS } from '#lib/demo-runtime/demo-page-helpers.js';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	const playerType = getUrlEnumParam('player', PLAYER_OPTIONS, DEFAULT_PLAYER);
 
 	type ProfileOption = 'none' | 'calculator' | 'graphing';
 	const PROFILE_OPTIONS: {
@@ -130,6 +133,7 @@
 						{env}
 						{session}
 						loaderOptions={playerConfig.loaderOptions}
+						strategy={playerType}
 					></pie-item-player>
 				</div>
 			</article>

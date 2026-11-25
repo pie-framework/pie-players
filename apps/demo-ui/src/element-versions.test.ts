@@ -1,6 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import manifest from "../package.json";
-import { ESM_DEMO_ELEMENT_VERSIONS } from "./element-versions";
+import {
+	ESM_DEMO_ELEMENT_VERSIONS,
+	demoStrategy,
+	strategyElementVersions,
+} from "./element-versions";
 import { ESM_DEMO_BROWSER_BUILDS } from "./preloaded-elements";
 
 const installed = Object.entries(manifest.dependencies)
@@ -22,5 +26,17 @@ describe("the demos' pie-elements-ng packages", () => {
 		for (const version of Object.values(ESM_DEMO_ELEMENT_VERSIONS)) {
 			expect(version).toMatch(/^\d+\.\d+\.\d+-next\.\d+$/);
 		}
+	});
+});
+
+describe("demoStrategy", () => {
+	test("loads esm unless ?player names a strategy", () => {
+		expect(demoStrategy(null)).toBe("esm");
+		expect(demoStrategy("unknown")).toBe("esm");
+		expect(demoStrategy("iife")).toBe("iife");
+		expect(demoStrategy("preloaded")).toBe("preloaded");
+		expect(strategyElementVersions(null)).toEqual({
+			...ESM_DEMO_ELEMENT_VERSIONS,
+		});
 	});
 });

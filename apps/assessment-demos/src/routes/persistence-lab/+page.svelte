@@ -105,7 +105,7 @@
 		};
 		Object.assign(host, {
 			assessmentId: assessment.identifier, attemptId: data.attemptId,
-			assessment, hooks, showNavigation: false, sectionPlayerLayout: "vertical",
+			assessment, hooks, playerType: "esm", showNavigation: false, sectionPlayerLayout: "vertical",
 			env: { mode: "gather", role: "student", partialScoring: false },
 		});
 		target.append(host);

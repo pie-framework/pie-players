@@ -1,3 +1,7 @@
+import {
+	DEFAULT_DEMO_STRATEGY,
+	DEMO_STRATEGIES,
+} from "@pie-players/demo-ui/element-versions";
 import { createUniversalPersonalNeedsProfile } from "@pie-players/pie-default-tool-loaders";
 import { applyPieColorScheme, DAISYUI_THEME_CATALOG } from "@pie-players/pie-theme";
 import type {
@@ -5,7 +9,8 @@ import type {
 	PersonalNeedsProfile,
 } from "@pie-players/pie-players-shared/types";
 
-export const PLAYER_OPTIONS = ["iife", "esm", "preloaded"] as const;
+export const PLAYER_OPTIONS = DEMO_STRATEGIES;
+export const DEFAULT_PLAYER = DEFAULT_DEMO_STRATEGY;
 export const MODE_OPTIONS = ["candidate", "scorer"] as const;
 export const LAYOUT_OPTIONS = ["splitpane", "vertical"] as const;
 export const DEMO_ASSESSMENT_ID = "section-demos-assessment";

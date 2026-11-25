@@ -544,7 +544,7 @@ accepts a `player-type` attribute and maps it onto the section player's
 `runtime.playerType`.
 
 The demo apps switch strategy with a query parameter: `?player=iife`,
-`?player=esm` or `?player=preloaded`.
+`?player=esm` or `?player=preloaded`, and load with `esm` when it names none.
 
 ## Invalid strategy fallback
 

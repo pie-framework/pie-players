@@ -57,7 +57,9 @@ player.loaderOptions = {
 | `view` | `esm` | `"author"` when `mode="author"`, otherwise `"delivery"` | ESM view: `"delivery"`, `"author"`, or `"print"` |
 | `loadControllers` | `esm` | `true`; `false` for a hosted player outside author mode | Whether to load PIE controllers alongside elements. A player is hosted when `hosted` is set or `backend.delivery` is enabled, and a hosted player resolves no controller. The section pre-warm resolves the default the same way |
 | `runtimeSupportCheck` | `esm` | `"off"` | `"on"` reads each package's optional `./runtime-support` module before loading; a failed load's error then names the packages that declare the view unsupported |
-| `elementPackagePolicy` | all | unset | `{ allowedPackages, requireExactVersions? }`. Limits the `config.elements` packages that may load to exact names or `name@version` specs, and with `requireExactVersions` (default `true`) rejects ranges, tags and build metadata. For `config.elements` that is not fully trusted host input; see [Escape hatches](../security/readme.md#escape-hatches) |
+| `elementPackagePolicy` | all | `esm`: exact versions of any package; otherwise unset | `{ allowedPackages?, requireExactVersions? }`. Limits the `config.elements` packages that may load to exact names, `name@version` specs or `@scope/*`, any package when `allowedPackages` is absent, and with `requireExactVersions` (default `true`) rejects ranges, tags and build metadata. A supplied policy replaces the `esm` default. For `config.elements` that is not fully trusted host input; see [Escape hatches](../security/readme.md#escape-hatches) |
+| `integrity` | `iife`, `esm` | unset | SRI metadata (`sha384-<base64>`) by absolute URL. `iife` sets it on the bundle's `<script>`, looking the bundle URL up as built and then without its `elements` query; `esm` writes it into the import map and onto each `package.json` fetch ([Bundle integrity](../security/readme.md#bundle-integrity)) |
+| `requireIntegrity` | `iife`, `esm` | `false` | `true` refuses every bundle, module and `package.json` that `integrity` leaves out, before requesting it |
 
 ## Strategy details
 

@@ -14,6 +14,10 @@ export {
 	type StyleUrlValidationResult,
 } from "./validate-style-url.js";
 export { sanitizeSvgIcon } from "./sanitize-svg-icon.js";
+export {
+	installTrustedTypesDefaultPolicy,
+	type TrustedTypesDefaultPolicyOptions,
+} from "./trusted-types-policy.js";
 export { sanitizeStyleAttribute } from "./sanitize-style-attribute.js";
 export {
 	isOverwideImageWrapMutation,

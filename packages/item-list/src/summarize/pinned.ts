@@ -11,7 +11,10 @@ export interface PinnedSummariesOptions {
 	esmCdnUrl?: string;
 	/** Inferred from `esmCdnUrl` when absent. */
 	esmCdnProvider?: EsmCdnProviderOption;
-	/** A package the policy refuses takes the prompt rung; its summarizer never loads. */
+	/**
+	 * A package the policy refuses takes the prompt rung; its summarizer never loads. Defaults to
+	 * exact versions of any package, as ESM element loads do.
+	 */
 	elementPackagePolicy?: ElementPackagePolicy;
 }
 
@@ -38,10 +41,18 @@ export function pinnedSummaries(loaderOptions: PinnedSummariesOptions = {}): Sum
 			cdn = undefined;
 			throw error;
 		});
-		const { assertElementPackagesAllowed, isScopedPackageSpec, resolveEsmPackageFileUrl } = await cdn;
+		const {
+			assertElementPackagesAllowed,
+			DEFAULT_ESM_ELEMENT_PACKAGE_POLICY,
+			isScopedPackageSpec,
+			resolveEsmPackageFileUrl,
+		} = await cdn;
 		if (!isScopedPackageSpec(spec)) return null;
 		try {
-			assertElementPackagesAllowed({ [tagName]: spec }, loaderOptions.elementPackagePolicy);
+			assertElementPackagesAllowed(
+				{ [tagName]: spec },
+				loaderOptions.elementPackagePolicy ?? DEFAULT_ESM_ELEMENT_PACKAGE_POLICY,
+			);
 		} catch {
 			return null;
 		}

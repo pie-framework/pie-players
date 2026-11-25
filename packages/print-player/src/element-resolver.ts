@@ -55,6 +55,11 @@ export const defaultResolve: ResolverFn = (
 		loader: "browser-esm",
 		cdnBaseUrl,
 		...(cdnProvider ? { cdnProvider } : {}),
+		...(loaderOptions?.integrity ? { integrity: loaderOptions.integrity } : {}),
+		...(loaderOptions?.requireIntegrity ? { requireIntegrity: true } : {}),
+		...(loaderOptions?.elementPackagePolicy
+			? { elementPackagePolicy: loaderOptions.elementPackagePolicy }
+			: {}),
 	});
 };
 
@@ -125,7 +130,10 @@ export const defaultLoadResolution = async (
 						view: "print",
 						viewConfig: BROWSER_PRINT_VIEW_CONFIG,
 						loadControllers: false,
+						integrity: r.integrity,
+						requireIntegrity: r.requireIntegrity,
 					},
+					elementPackagePolicy: r.elementPackagePolicy,
 					doc: document,
 				},
 			);

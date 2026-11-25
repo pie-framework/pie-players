@@ -6,6 +6,7 @@
  * the adapters (which implement the backend interface).
  */
 
+import type { BundleIntegrityFailure } from "./bundle-integrity.js";
 import type { ElementMap } from "./ElementLoader.js";
 
 export type ElementTag = string;
@@ -39,6 +40,7 @@ export type RegistrationFailureReason =
 			url: string;
 			cause: string;
 	  }
+	| ({ kind: "integrity-failed"; tag: ElementTag } & BundleIntegrityFailure)
 	| { kind: "define-failed"; tag: ElementTag; cause: string }
 	| { kind: "backend-rejected"; tag: ElementTag; cause: string }
 	| { kind: "no-element-class"; tag: ElementTag; packageName: string };

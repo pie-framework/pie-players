@@ -16,11 +16,14 @@
   type AuthoringValidationResult
   BUILDER_BUNDLE_URL
   BUILT_IN_VIEWS
+  BUNDLE_INTEGRITY_FAILED_EVENT
   type BackendContext
   type BackendOption
   BaseInstrumentationProvider
   type BindPageLifecycleCommitOptions
   type BuiltInEsmCdnProviderName
+  type BundleIntegrityCause
+  type BundleIntegrityFailure
   BundleType
   type CanonicalItemSessionContainer
   type CommitPendingSessionsOptions
@@ -33,6 +36,7 @@
   DEFAULT_BUNDLE_HOST
   DEFAULT_CONTAINMENT_GUTTER
   DEFAULT_ESM_CDN_URL
+  DEFAULT_ESM_ELEMENT_PACKAGE_POLICY
   DEFAULT_IIFE_BUNDLE_RETRY_CONFIG
   DEFAULT_LOADER_CONFIG
   DebugPanelInstrumentationProvider
@@ -68,6 +72,7 @@
   type InstrumentationDebugRecord
   type InstrumentationEventMapping
   type InstrumentationProvider
+  type IntegrityMap
   type ItemConfig
   ItemController
   type ItemControllerOptions
@@ -415,11 +420,15 @@
 ./loaders
   AdapterFailure
   BUILT_IN_VIEWS
+  BUNDLE_INTEGRITY_FAILED_EVENT
   type BackendContext
   type BackendOption
   type BuiltInEsmCdnProviderName
+  type BundleIntegrityCause
+  type BundleIntegrityFailure
   DEFAULT_BUNDLE_HOST
   DEFAULT_ESM_CDN_URL
+  DEFAULT_ESM_ELEMENT_PACKAGE_POLICY
   ElementAssertionError
   type ElementLoaderBackend
   ElementLoaderError
@@ -436,6 +445,7 @@
   type IifeBackend
   type IifeBackendConfig
   type IifeBundleRetryStatus
+  type IntegrityMap
   MATHJAX_NO_ASSET_ROOT_EVENT
   MATHJAX_VERSION_CONFLICT_EVENT
   type MathAssetOptions
@@ -625,8 +635,10 @@
   type StyleUrlValidationOk
   type StyleUrlValidationOptions
   type StyleUrlValidationResult
+  type TrustedTypesDefaultPolicyOptions
   buildAuthoringAllowList
   createDefaultItemMarkupSanitizer
+  installTrustedTypesDefaultPolicy
   isOverwideImageWrapMutation
   isOverwideTableWrapMutation
   parseAllowedStyleOrigins

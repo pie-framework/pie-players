@@ -17,6 +17,7 @@ import type {
 import type {
 	AuthoringValidationResult,
 	ElementPackagePolicy,
+	IntegrityMap,
 } from "@pie-players/pie-players-shared";
 
 export type AuthoringBackendMode = "demo" | "required";
@@ -32,8 +33,15 @@ export type { AuthoringValidationResult };
 
 /** Optional loader settings; unknown host extensions remain supported. */
 export interface PieItemPlayerLoaderOptions extends Record<string, unknown> {
-	/** Apply when `config.elements` is not fully trusted host input. */
+	/**
+	 * Apply when `config.elements` is not fully trusted host input. The `esm`
+	 * strategy defaults to exact versions of any package.
+	 */
 	elementPackagePolicy?: ElementPackagePolicy;
+	/** SRI metadata (`sha384-<base64>`) by bundle or module URL. */
+	integrity?: IntegrityMap;
+	/** Refuse element code `integrity` holds no hash for. */
+	requireIntegrity?: boolean;
 }
 
 export interface PieItemPlayerElement extends HTMLElement {

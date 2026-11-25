@@ -91,8 +91,10 @@ On each `config` assignment the player:
 4. Renders the markup, then the floaters, and mounts the
    [accessibility alternates](#accessibility-alternates) above the markup.
 5. Checks each module `url` with a HEAD request and registers the module under
-   its print tag. A missing or failing module registers the `missingElement`
-   placeholder instead.
+   its print tag. A browser ESM resolution, which the default resolver returns,
+   loads through the ESM loader, so without `elementPackagePolicy` its spec needs
+   an exact version. A missing, failing or refused module registers the
+   `missingElement` placeholder instead.
 6. Sets `options` and `model` on each element. Print elements receive no
    session.
 
@@ -103,7 +105,7 @@ On each `config` assignment the player:
 | Property | Type | Description |
 |---|---|---|
 | `config` | `Config` | The item (markup, elements map, models), rendering options, and the accessibility inputs |
-| `loaderOptions` | `PrintLoaderOptions` | `{ esmCdnUrl?, esmCdnProvider?, elementPackagePolicy? }`, the ESM CDN and optional package allowlist, named as on `<pie-item-player>`'s `loaderOptions`; jsDelivr when unset. Read when `config` is set, so set it first |
+| `loaderOptions` | `PrintLoaderOptions` | `{ esmCdnUrl?, esmCdnProvider?, elementPackagePolicy?, integrity?, requireIntegrity? }`, the ESM CDN, the package allowlist and the SRI hashes the default resolver checks, named as on `<pie-item-player>`'s `loaderOptions`; jsDelivr when unset. Read when `config` is set, so set it first |
 | `resolve` | `ResolverFn` | Maps each element to its print module ([Custom Resolution](#custom-resolution)); the default resolves the browser print build on `loaderOptions`' ESM CDN |
 | `missingElement` | `MissingElFn` | `(pkg, message) => CustomElementConstructor`, the placeholder registered for a module that failed to load. The default shows the tag and the message in the theme's `--pie-incorrect` color |
 | `trustMarkup` (attr `trust-markup`) | `boolean` | Render authored markup without sanitizing it. Defaults to `false` |

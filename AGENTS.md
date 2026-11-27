@@ -171,6 +171,52 @@ build.
   relies on that. The rule is in
   [`docs/architecture/internationalization.md`](docs/architecture/internationalization.md#interface-locale).
 
+### Serious Findings Are Never Out Of Scope
+
+Report a potentially serious finding whenever you see it, whatever the task and
+whoever wrote the code. "This change did not touch it" is never a reason to stay
+silent. Serious means:
+
+- Security: script injection through item, passage or rubric content, attributes or
+  messages (unsanitised `innerHTML` or `{@html}`, a `postMessage` handler that does
+  not check the origin); a secret or credential in the tree, a build output or a log;
+  an exploitable or compromised dependency, or a published package carrying code its
+  source does not; a TTS server route that is unauthenticated or forwards requests it
+  should not.
+- Data integrity: a wrong score, or session data lost or attached to the wrong item.
+- Production stability: a change that breaks a published custom-element contract or
+  the lockstep release for hosts already running it.
+
+The source does not matter: Upwind, Dependabot, `bun audit`, a failing test, a log
+line, reading code in passing.
+
+- Report it in the reply, right after the answer: the location (`file:line`, package
+  and version), the evidence, and an honest severity estimate. A suspicion stays a
+  finding; say what would confirm or clear it.
+- Check `docs/adr/` first and cite the record when the behaviour is a recorded
+  decision. A decision you cannot find is no reason to drop the finding.
+- Propose the fix: a small one with the current change, after asking; one that is
+  work of its own as a follow-up session with a brief (finding, evidence, what done
+  looks like).
+- This repository is public, so everything pushed to it is published. Describe an
+  unfixed vulnerability only in the session, never in an issue, pull request, commit
+  message, changeset or document here. The fix lands under a neutral description,
+  and disclosure is the user's decision.
+- Never file a ticket, post outward, or rotate, revoke or delete a credential without
+  the user's explicit yes for that action.
+
+**Upwind.** As of 2026-11-26 Upwind does not scan this repository. When the
+`upwind-server` MCP tools are available and a task touches dependencies, the TTS
+servers, content rendering, secrets handling or security review, run
+`code_scans_search` with `repository_name = pie-players`, newest first. Once scans
+exist, search the newest `default_branch` scan's SCA, SAST, IaC and secret domains
+for critical and high findings, and medium where `is_exploitable` is true. Secret
+findings carry no severity: read every `category: secret` finding, and treat `pii`,
+`pci` and `phi` as serious outright. Fetch details with the `*_get_by_id` tools,
+verify them against the code, and report them as above with the Upwind finding id.
+The Upwind tools that create or update scan schedules, scopes, threat policies or
+rules write to a shared security platform: use them only on an explicit request.
+
 ### Decision Records
 
 `docs/adr/` holds one file per decision that is hard to reverse or surprising without

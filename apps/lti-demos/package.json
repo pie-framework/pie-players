@@ -11,6 +11,7 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@pie-players/demo-ui": "workspace:*",
 		"@pie-players/pie-assessment-player": "workspace:*",
 		"@pie-players/pie-assessment-toolkit": "workspace:*",
 		"@pie-players/pie-default-tool-loaders": "workspace:*",

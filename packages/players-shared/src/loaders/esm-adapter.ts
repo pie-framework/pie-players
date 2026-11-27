@@ -434,11 +434,22 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 				const variant = editorRuntimeVariants.get(packageVersion);
 				let ElementClass: unknown;
 				if (variant) {
-					ElementClass = await importVariantElementClass(
-						packageVersion,
-						variant,
-						context.doc,
-					);
+					try {
+						ElementClass = await importVariantElementClass(
+							packageVersion,
+							variant,
+							context.doc,
+						);
+					} catch (err) {
+						if (!(err instanceof BundleIntegrityError)) throw err;
+						// Refused code is not retried from another view.
+						reasons.set(tag, {
+							kind: "integrity-failed",
+							tag,
+							...err.failure,
+						});
+						return;
+					}
 				}
 
 				if (!ElementClass) {
@@ -557,6 +568,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 	/**
 	 * The element class of a package's editor-runtime variant, or `undefined`
 	 * after reporting why it cannot load, so the caller loads `./browser/*`.
+	 * A `BundleIntegrityError` is thrown instead: the caller fails the tag, as
+	 * it does for the `./browser/*` view.
 	 */
 	async function importVariantElementClass(
 		packageVersion: string,
@@ -575,6 +588,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 			if (isCustomElementConstructor(ElementClass)) return ElementClass;
 			throw new Error(`${specifier} exports no custom element class`);
 		} catch (err) {
+			// Kept in `editorRuntimeVariants`, so a retry is refused again too.
+			if (err instanceof BundleIntegrityError) throw err;
 			editorRuntimeVariants.delete(packageVersion);
 			reportEditorRuntimeFallback(
 				packageVersion,

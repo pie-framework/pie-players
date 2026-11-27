@@ -601,6 +601,67 @@ describe("ESM adapter integrity", () => {
 		expect(imported).not.toContain(MC_DELIVERY);
 		expect(events).toEqual([failure]);
 	});
+
+	const EDITOR_RUNTIME = "@pie-element/shared-editor-runtime";
+	const MC_VARIANT = `${CDN}/${MC}/dist/browser/editor-runtime/delivery/index.js`;
+
+	/** MC declares an editor-runtime variant, which the backend serves. */
+	function declareEditorRuntime(seams: EsmBackendTestSeams) {
+		seams.replacePackageMetadataLoader(
+			async (pkg) =>
+				(pkg === `${EDITOR_RUNTIME}@0.1.5`
+					? { pie: { browserModules: { "@tiptap/core": "tiptap-core" } } }
+					: {
+							pie: {
+								...SHARED_METADATA.pie,
+								browserEditorRuntime: {
+									name: EDITOR_RUNTIME,
+									version: "0.1.5",
+									views: {
+										delivery: "editor-runtime/delivery",
+										controller: "editor-runtime/controller",
+									},
+								},
+							},
+						}) as never,
+		);
+	}
+
+	test.each([
+		["bytes do not match", "original", "mismatch"],
+		["hash is malformed", "sha384-typo", "malformed"],
+	] as const)(
+		"an editor-runtime variant whose %s fails its tag without loading ./browser/*",
+		async (_label, hashOf, cause) => {
+			const expected = cause === "malformed" ? hashOf : await sri(hashOf);
+			const { backend, seams, imported } = esmBackend({
+				integrity: { [MC_VARIANT]: expected },
+			});
+			declareEditorRuntime(seams);
+			seams.replaceImporter(async (specifier) => {
+				imported.push(specifier);
+				if (specifier === MC_VARIANT) throw new TypeError("Failed to fetch module");
+				return { default: elementClass(), Element: elementClass() };
+			});
+			const { doc, events } = mockDocument(serving("tampered").fetch);
+			const reasons = await reasonsOf(backend.load({ [MC_TAG]: MC }, context(doc)));
+
+			const failure: BundleIntegrityFailure =
+				cause === "mismatch"
+					? { url: MC_VARIANT, cause, expected, actual: await sri("tampered") }
+					: { url: MC_VARIANT, cause, expected };
+			expect(reasons).toEqual([{ kind: "integrity-failed", tag: MC_TAG, ...failure }]);
+			expect(imported.filter((specifier) => specifier.startsWith(`${CDN}/${MC}/`))).toEqual(
+				cause === "mismatch" ? [MC_VARIANT] : [],
+			);
+			expect(events).toEqual([failure]);
+			expect((g.customElements as CustomElementRegistry).get(MC_TAG)).toBeUndefined();
+
+			// A retry is refused the same way, not served from ./browser/*.
+			expect(await reasonsOf(backend.load({ [MC_TAG]: MC }, context(doc)))).toEqual(reasons);
+			expect(imported).not.toContain(MC_DELIVERY);
+		},
+	);
 });
 
 describe("ESM default element package policy", () => {

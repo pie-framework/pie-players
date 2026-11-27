@@ -1,5 +1,6 @@
 import { Command, Flags } from "@oclif/core";
 
+import { resolveMonorepoDir } from "../../utils/monorepo-root.js";
 import { generatePreloadedStaticTestProject } from "../../utils/pie-packages/test-project.js";
 
 export default class PreloadedPlayerGenerateTestProject extends Command {
@@ -7,8 +8,8 @@ export default class PreloadedPlayerGenerateTestProject extends Command {
 		"Generate a simple browser test project for a preloaded static pie-item-player build";
 
 	static override examples = [
-		"$ bun run cli pie-packages:preloaded-player-generate-test-project --package-path ./local-builds/local",
-		"$ bun run cli pie-packages:preloaded-player-generate-test-project --published-version latest",
+		"$ bun run cli pie-packages:preloaded-player-generate-test-project --packagePath ./local-builds/local",
+		"$ bun run cli pie-packages:preloaded-player-generate-test-project --publishedVersion latest",
 	];
 
 	static override flags = {
@@ -55,7 +56,7 @@ export default class PreloadedPlayerGenerateTestProject extends Command {
 	public async run(): Promise<void> {
 		const { flags } = await this.parse(PreloadedPlayerGenerateTestProject);
 
-		const monorepoDir = process.cwd();
+		const monorepoDir = resolveMonorepoDir();
 
 		const projectDir = await this.generateTestProject({
 			monorepoDir,

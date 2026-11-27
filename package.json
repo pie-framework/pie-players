@@ -53,7 +53,7 @@
 		"test:e2e:a11y-media:assessment-player": "export ASSESSMENT_DEMOS_PORT=${ASSESSMENT_DEMOS_PORT:-$(bun ./scripts/get-free-port.mjs)}; bun run build:e2e:assessment-player && PIE_E2E_A11Y_MEDIA=1 bunx playwright test --project 'a11y-*' --config packages/assessment-player/playwright.config.ts",
 		"test:e2e:a11y-media:calculator-cortex": "export CALCULATOR_CORTEX_DEMO_PORT=${CALCULATOR_CORTEX_DEMO_PORT:-$(bun ./scripts/get-free-port.mjs)}; turbo build --filter=@pie-players/pie-calculator-cortex... && PIE_E2E_A11Y_MEDIA=1 bunx playwright test --project 'a11y-*' --config packages/calculator-cortex/playwright.config.ts",
 		"test:e2e:local-gate": "bun ./scripts/run-local-e2e.mjs",
-		"cli": "bun --cwd tools/cli ./bin/run.js",
+		"cli": "turbo build --filter=@pie-players/pie-players-cli --output-logs=errors-only && bun tools/cli/bin/run.js",
 		"local-esm-cdn": "bun run --cwd apps/local-esm-cdn dev",
 		"lint": "bun run lint:biome && bun run check",
 		"lint:biome": "biome lint .",

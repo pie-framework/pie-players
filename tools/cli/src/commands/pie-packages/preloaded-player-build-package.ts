@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { join } from "node:path";
 
 import { Command, Flags } from "@oclif/core";
 
@@ -13,14 +13,15 @@ import {
 	readSpeechLocales,
 } from "../../utils/pie-packages/preloaded-static.js";
 import { createNpmAuthEnvironment } from "@pie-players/pie-players-cli/npm-auth-env";
+import { resolveInputPath, resolveMonorepoDir } from "../../utils/monorepo-root.js";
 
 export default class PreloadedPlayerBuildPackage extends Command {
 	static override description =
 		"Build (and optionally publish) PIE preloaded static package for pie-item-player";
 
 	static override examples = [
-		"$ bun run cli pie-packages:preloaded-player-build-package -f elements.json",
-		'$ bun run cli pie-packages:preloaded-player-build-package -e "@pie-element/calculator@1.0.0,@pie-element/ruler@2.0.0"',
+		"$ bun run cli pie-packages:preloaded-player-build-package -f configs/preloaded-player/star-0326-ng.json",
+		'$ bun run cli pie-packages:preloaded-player-build-package -e "@pie-element/multiple-choice@14.0.8,@pie-element/hotspot@12.1.0"',
 	];
 
 	static override flags = {
@@ -103,54 +104,6 @@ export default class PreloadedPlayerBuildPackage extends Command {
 		return `npm publish --access public --registry https://registry.npmjs.org/ --tag ${distTag}`;
 	}
 
-	private findMonorepoRoot(startDir: string): string | undefined {
-		let dir = resolve(startDir);
-		while (true) {
-			const hasRootPackage = existsSync(join(dir, "package.json"));
-			const hasItemPlayer = existsSync(
-				join(dir, "packages", "item-player", "package.json"),
-			);
-			if (hasRootPackage && hasItemPlayer) return dir;
-			const parent = dirname(dir);
-			if (parent === dir) return undefined;
-			dir = parent;
-		}
-	}
-
-	private resolveMonorepoDir(elementsFile?: string): string {
-		const cwd = process.cwd();
-		const candidates: string[] = [cwd];
-		if (process.env.GITHUB_WORKSPACE) {
-			candidates.push(process.env.GITHUB_WORKSPACE);
-		}
-		if (elementsFile) {
-			const start = isAbsolute(elementsFile)
-				? dirname(elementsFile)
-				: resolve(cwd, dirname(elementsFile));
-			candidates.push(start);
-		}
-		try {
-			const gitRoot = execSync("git rev-parse --show-toplevel", {
-				cwd,
-				stdio: ["ignore", "pipe", "ignore"],
-			})
-				.toString("utf8")
-				.trim();
-			if (gitRoot) candidates.push(gitRoot);
-		} catch {
-			// ignore
-		}
-
-		for (const candidate of candidates) {
-			const root = this.findMonorepoRoot(candidate);
-			if (root) return root;
-		}
-
-		this.error(
-			`Unable to resolve monorepo root from cwd=${cwd}${elementsFile ? ` elementsFile=${elementsFile}` : ""}`,
-		);
-	}
-
 	public async run(): Promise<void> {
 		const { flags } = await this.parse(PreloadedPlayerBuildPackage);
 
@@ -164,13 +117,9 @@ export default class PreloadedPlayerBuildPackage extends Command {
 			this.error("--publish needs -f/--elementsFile: a published build is named after its config file");
 		}
 
-		const monorepoDir = this.resolveMonorepoDir(flags.elementsFile);
+		const monorepoDir = resolveMonorepoDir(flags.elementsFile);
 		const elementsFile = flags.elementsFile
-			? isAbsolute(flags.elementsFile)
-				? flags.elementsFile
-				: existsSync(resolve(process.cwd(), flags.elementsFile))
-					? resolve(process.cwd(), flags.elementsFile)
-					: resolve(monorepoDir, flags.elementsFile)
+			? resolveInputPath(flags.elementsFile, monorepoDir)
 			: undefined;
 		const elements = await this.parseElements(elementsFile, flags.elements);
 		const elementsArray = elements.map((e: any) => `${e.package}@${e.version}`);

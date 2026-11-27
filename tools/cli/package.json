@@ -33,10 +33,10 @@
 		"oclif.manifest.json"
 	],
 	"scripts": {
-		"build": "tsc && oclif manifest",
+		"build": "rm -rf dist tsconfig.tsbuildinfo && tsc && oclif manifest",
 		"check": "tsc -p tsconfig.json --noEmit",
 		"dev": "node --loader ts-node/esm --no-warnings=ExperimentalWarning ./bin/dev.js",
-		"clean": "rm -rf dist",
+		"clean": "rm -rf dist tsconfig.tsbuildinfo",
 		"prepack": "bun run build"
 	},
 	"dependencies": {

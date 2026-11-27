@@ -267,6 +267,11 @@ Section player core that renders `<pie-assessment-toolkit>` for its `runtime`, `
 	// effect runs, and the toolkit has usually built the first section's
 	// controller by then: registering on that one as well is what makes the
 	// first section's navigation commit at all.
+	//
+	// Keyed on the toolkit element and the host's factory alone. The section,
+	// attempt and coordinator are read untracked, so a section swap leaves the
+	// factory and the listener in place: every later controller is registered
+	// by the factory or at its section's `toolkit-ready`.
 	$effect(() => {
 		if (!toolkitElement) return;
 		const root = toolkitElement;
@@ -292,29 +297,27 @@ Section player core that renders `<pie-assessment-toolkit>` for its `runtime`, `
 			register(controller);
 			return controller;
 		};
-		// Untracked: an effect that reads the prop it writes invalidates itself.
-		const previousFactory = untrack(() => root.createSectionController);
 		root.createSectionController = installedFactory;
 
 		// The controller the toolkit has already built, if any, and otherwise
 		// the one it has once it emits `toolkit-ready`, which follows the
 		// section's controller resolving.
-		register(resolveSectionController());
+		register(untrack(() => resolveSectionController()));
 		const onToolkitReady = (event: Event) => {
 			register(resolveSectionController(toolkitReadyCoordinator(event)));
 		};
 		root.addEventListener("toolkit-ready", onToolkitReady);
 
-		// This effect reads the section, attempt and coordinator, so it re-runs on
-		// a section swap or a cohort flip. A listener left attached across that
-		// would register a commit closure over the previous root onto the next
-		// controller, and one outliving the component would sweep a detached
-		// subtree.
+		// The teardown only detaches the listener, so none outlives the component,
+		// and writes nothing on the toolkit. Its properties are Svelte
+		// custom-element accessors that flush synchronously, and a flush from a
+		// teardown runs the toolkit's pending effects with the values from before
+		// the change that caused it: from Svelte 5.58.1 a section swap left the
+		// toolkit initializing the previous section. The toolkit lives in this
+		// element's shadow root, so the factory goes with it, and a new host
+		// factory replaces it on the next run.
 		return () => {
 			root.removeEventListener("toolkit-ready", onToolkitReady);
-			if (untrack(() => root.createSectionController) === installedFactory) {
-				root.createSectionController = previousFactory;
-			}
 		};
 	});
 

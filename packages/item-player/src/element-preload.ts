@@ -3,11 +3,14 @@ import {
 	BundleType,
 	DEFAULT_BUNDLE_HOST,
 	DEFAULT_ESM_CDN_URL,
+	DEFAULT_ESM_ELEMENT_PACKAGE_POLICY,
 	type ElementMap,
+	type ElementPackagePolicy,
 	ensureRegistered,
 	type EsmBackendConfig,
 	type IifeBackendConfig,
 	type IifeBundleRetryStatus,
+	type IntegrityMap,
 	type ItemEntity,
 	mapEsmViewElements,
 	resolveEsmAssetRoot,
@@ -38,6 +41,8 @@ interface BackendLoaderOptions {
 	moduleResolution?: string;
 	view?: string;
 	loadControllers?: boolean;
+	integrity?: IntegrityMap;
+	requireIntegrity?: boolean;
 }
 
 function backendOptions(loaderOptions: PieItemPlayerLoaderOptions | undefined): BackendLoaderOptions {
@@ -71,6 +76,8 @@ export function itemPlayerIifeBackend(
 		bundleType,
 		// A hosted player's server runs the controllers.
 		needsControllers: bundleType !== BundleType.player,
+		integrity: backendOptions(inputs.loaderOptions).integrity,
+		requireIntegrity: backendOptions(inputs.loaderOptions).requireIntegrity,
 		debugEnabled: extra.debugEnabled,
 		bundleRetry: inputs.loaderConfig?.iifeBundleRetry,
 		trackPageActions: inputs.loaderConfig?.trackPageActions,
@@ -99,9 +106,19 @@ export function itemPlayerEsmBackend(
 			author: inputs.mode === "author",
 			hosted: inputs.hosted === true,
 		}),
+		integrity: options.integrity,
+		requireIntegrity: options.requireIntegrity,
 		trackPageActions: inputs.loaderConfig?.trackPageActions,
 		instrumentationProvider: extra.instrumentationProvider ?? defaultInstrumentation(inputs),
 	};
+}
+
+/** The package policy loads with `inputs` apply: the host's, else the `esm` default. */
+export function itemPlayerElementPackagePolicy(inputs: ItemPlayerLoadInputs): ElementPackagePolicy | undefined {
+	return (
+		inputs.loaderOptions?.elementPackagePolicy ??
+		((inputs.strategy ?? "iife") === "esm" ? DEFAULT_ESM_ELEMENT_PACKAGE_POLICY : undefined)
+	);
 }
 
 function defaultInstrumentation(inputs: ItemPlayerLoadInputs) {
@@ -184,6 +201,6 @@ export async function preloadItemElements(
 	}
 	await ensureRegistered(itemPlayerElementTags(elements, inputs), {
 		backend,
-		elementPackagePolicy: inputs.loaderOptions?.elementPackagePolicy,
+		elementPackagePolicy: itemPlayerElementPackagePolicy(inputs),
 	});
 }

@@ -42,7 +42,7 @@ export interface SanitizeItemMarkupOptions {
 }
 
 // Attributes every PIE element / wrapper is allowed to carry.
-const BASE_ALLOWED_ATTRS = [
+export const BASE_ALLOWED_ATTRS = [
 	"slot",
 	"role",
 	"tabindex",
@@ -63,7 +63,7 @@ const BASE_ALLOWED_ATTRS = [
 // `@pie-element/shared-math-rendering-mathjax` rewrites as a table before
 // MathJax reads it, and `semantics`, `annotation` and `none`.
 // `annotation-xml` stays out because it is an HTML integration point.
-const MATHML_TAGS = new Set([
+export const MATHML_TAGS = new Set([
 	"mstack",
 	"mlongdiv",
 	"msgroup",
@@ -76,7 +76,7 @@ const MATHML_TAGS = new Set([
 	"none",
 ]);
 
-const MATHML_ATTRS = [
+export const MATHML_ATTRS = [
 	"stackalign",
 	"charalign",
 	"charspacing",
@@ -93,9 +93,9 @@ const MATHML_ATTRS = [
 
 // Prefixed MathML such as `<m:math>`, which the HTML parser reads as unknown
 // HTML elements and the math adapter re-creates as MathML.
-const PREFIXED_TAG = /^[a-z_][\w.-]*:[a-z][\w.-]*$/;
+export const PREFIXED_TAG = /^[a-z_][\w.-]*:[a-z][\w.-]*$/;
 
-const BASE_URI_SAFE_ATTRS = ["pie-id"];
+export const BASE_URI_SAFE_ATTRS = ["pie-id"];
 
 const FORBIDDEN_TAGS = SANITIZER_FORBIDDEN_TAGS;
 

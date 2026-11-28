@@ -1,3 +1,7 @@
+import {
+	applyOverridesToSection,
+	strategyElementVersions,
+} from "@pie-players/demo-ui/element-versions";
 import type {
 	AssessmentSection,
 	TestPart,
@@ -122,7 +126,14 @@ const testPart: TestPart = {
 	identifier: "lti-demo-test-part",
 	navigationMode: "linear",
 	submissionMode: "individual",
-	sections: [launchAndPersistenceSection],
+	// The player loads with `esm`, which refuses the content's `@latest`, so
+	// every element loads at the version the demos install.
+	sections: [
+		applyOverridesToSection(
+			launchAndPersistenceSection,
+			strategyElementVersions("esm"),
+		) ?? launchAndPersistenceSection,
+	],
 };
 
 export const ltiDemoAssessment = {

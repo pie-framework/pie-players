@@ -25,10 +25,16 @@ produced an item belong to the host.
 4. Keep `trust-markup` unreachable from page script wherever content is not
    host-trusted ([Escape hatches](#escape-hatches)).
 5. Supply an `ElementPackagePolicy` where authored configs are less trusted than
-   the delivery tier ([Escape hatches](#escape-hatches)).
+   the delivery tier; `esm` loads apply a default when none is supplied
+   ([Escape hatches](#escape-hatches)).
 6. Accept the absolute-positioned overlay residual, or set `position: relative`
    on `.pie-item-player` for the partial mitigation
    ([Accepted residual](#accepted-residual-absolute-positioned-overlays)).
+7. Supply `loaderOptions.integrity` for the bundles and modules the page runs,
+   and `requireIntegrity` once `pie-bundle-integrity-unchecked` stops firing
+   ([Bundle integrity](#bundle-integrity)).
+8. Keep tokens out of page URLs
+   ([Containing a tampered bundle](#containing-a-tampered-bundle)).
 
 ## Trust boundary
 
@@ -51,12 +57,15 @@ model's rich-content fields. Stylesheet URLs cross
 SVG cross
 [`sanitizeSvgIcon`](../../packages/players-shared/src/security/sanitize-svg-icon.ts).
 
-**Element packages are trusted by default.** `config.elements` names executable
-code, fetched by package and version from a bundle host or CDN and registered as
-custom elements. The default path constrains nothing about which package a
-config may name, so authored data selects the code that renders it.
-[`ElementPackagePolicy`](../../packages/players-shared/src/loaders/element-package-policy.ts)
-closes that when a host opts in. The ESM loader and the print player's default
+**Element packages are trusted.** `config.elements` names executable code,
+fetched by package and version from a bundle host or CDN and registered as
+custom elements. Under `iife` nothing constrains which package a config may
+name, so authored data selects the code that renders it, until the host supplies
+an
+[`ElementPackagePolicy`](../../packages/players-shared/src/loaders/element-package-policy.ts).
+`esm` loads admit exact versions only unless the host supplies its own, and
+which scopes may run is the host's to list. The bytes behind a package are the bundle host's: without hashes a
+player runs whatever it serves ([Bundle integrity](#bundle-integrity)). The ESM loader and the print player's default
 resolver build CDN URLs only from a spec that
 [`isScopedPackageSpec`](../../packages/players-shared/src/loaders/element-package-spec.ts)
 accepts, a scoped npm name with an optional semver version or dist-tag, so a
@@ -239,6 +248,66 @@ Try, and it is independent of the delivery case above: a host that cannot
 afford client-side keys configures the policy accordingly and never relies on
 `env` to withhold them.
 
+## Bundle integrity
+
+A player runs whatever the bundle host or CDN serves at an element URL, so a
+write to that host reaches every page that loads the URL. Subresource Integrity
+moves the check into the browser: `loaderOptions.integrity` maps each URL to
+SRI metadata (`sha384-<base64>`), the shape of an import map's `integrity`
+section, and the browser refuses bytes that hash to anything else.
+
+- **`iife`** sets the hash on the bundle's `<script>` with
+  `crossorigin="anonymous"`. The adapter looks its bundle URL up as built, then
+  without the `elements` query it appends. The bundle host answers the CORS
+  request; `proxy.pie-api.com` sends `Access-Control-Allow-Origin: *`. A section
+  player aggregates its items' elements into one bundle URL, and the hash covers
+  that URL.
+- **`esm`** writes the entries into the import map it injects and passes the
+  hash to `fetch` for each `package.json` it reads. Chrome 127, Safari 18 and
+  Firefox 138 enforce import-map integrity; earlier versions ignore the section
+  and load unchecked. A module an element imports statically is checked only
+  through its own entry. es-module-shims, where the browser rejects the map,
+  passes the hash to its own fetch.
+- **`<pie-print>`** passes both options to its default resolver. A module a
+  custom resolver names by `url` loads unchecked.
+- **`preloaded`** runs the host's bundle, which the host's own SRI covers.
+
+A value that is not sha256, sha384 or sha512 metadata of the right length fails
+its load: the browser would skip it and check nothing. `requireIntegrity: true`
+refuses every bundle, module and `package.json` without an entry before
+requesting it. The hashes are the host's to supply, from bundles it has
+verified or from the bundle host's record of what it built.
+
+A refusal fails each affected tag with reason `integrity-failed` and dispatches
+`pie-bundle-integrity-failed` on the window, detail
+`{ url, cause, expected, actual }`, `cause` one of `mismatch`, `missing` and
+`malformed`. With `trackPageActions` the instrumentation provider receives a
+`trackEvent` and a `trackError` carrying the same fields
+([Instrumentation providers](../architecture/instrumentation-providers.md)). A
+refused element module does not fall back to another view.
+
+Once `integrity` holds an entry, a bundle, module or `package.json` it has no
+hash for still loads, and the loader reports it once per URL and window: a
+console warning, `pie-bundle-integrity-unchecked` on the window with detail
+`{ url }`, and with `trackPageActions` a `trackEvent` of that name. An entry
+keyed by another URL than the one the player requests shows up there, as does
+a bundle with no recorded hash, and the count is what `requireIntegrity: true`
+would refuse.
+
+The browser reports a failed check as a failed load. So after a load that
+carried a hash fails, the loader fetches the URL once more and digests it: a
+mismatch reports `actual` and ends the IIFE retries, since an immutable bundle
+does not change, while a 404 or a bundle still building stays an ordinary load
+failure. The diagnosis needs `connect-src` to admit the bundle host and a
+secure context for SubtleCrypto; without either, a mismatch also reports as an
+ordinary load failure. Delivery stays on `<script src>` and `import()`. Running
+the fetched bytes from a `blob:` URL would tell the two apart in one request, at
+the cost of `blob:` in every host's `script-src` and of bundles that resolve
+their chunks from `document.currentScript`.
+
+Measured in Chromium
+([`bundle-integrity.spec.ts`](../../packages/players-shared/tests/e2e/bundle-integrity.spec.ts)).
+
 ## External stylesheets
 
 [`validateExternalStyleUrl`](../../packages/players-shared/src/security/validate-style-url.ts)
@@ -414,6 +483,80 @@ or `child-src` lists `blob:` there.
   another `scriptUrl`, `https://www.geogebra.org/apps/deployggb.js`, which
   `'strict-dynamic'` admits.
 
+### Containing a tampered bundle
+
+Integrity keeps a tampered bundle from running. The policy bounds what one that
+runs reaches.
+
+- `'strict-dynamic'` admits every script a trusted script creates, from any
+  origin, so a tampered bundle loads whatever it injects next. A host-source
+  list stops neither: the bundle is on the listed host. `iife` works without
+  `'strict-dynamic'`
+  ([Policies without `'strict-dynamic'`](#policies-without-strict-dynamic)),
+  where each injected script needs a listed origin.
+- `script-src` without `'unsafe-inline'` refuses inline event handlers and
+  `javascript:` URLs, so markup that reaches the DOM unsanitized runs no script
+  through them. A nonce disables `'unsafe-inline'` where both appear; the
+  table's last row, with no nonce, admits them.
+- `connect-src` bounds where `fetch`, XHR, WebSocket and `sendBeacon` send data.
+  List the deployment's endpoints and the strategy's origins. The base policy's
+  `img-src https:` lets an image request carry data to any origin; a deployment
+  that knows where its media lives lists those origins instead.
+- Navigation and `window.open` are outside CSP, so the policy bounds a tampered
+  bundle without isolating it.
+
+A tampered bundle runs with the page's privileges and reads `location`, so a
+token in the page URL goes wherever the bundle sends it, besides the history and
+server logs a URL reaches. Keep tokens out of page URLs: in an HttpOnly cookie,
+or handed to script by the host.
+
+### Trusted Types
+
+`installTrustedTypesDefaultPolicy({ scriptUrlPrefixes })`, from
+`@pie-players/pie-players-shared/security`
+([`trusted-types-policy.ts`](../../packages/players-shared/src/security/trusted-types-policy.ts)),
+installs a default policy for a page that enforces Trusted Types:
+
+```
+require-trusted-types-for 'script';
+trusted-types default svelte-trusted-html dompurify 'allow-duplicates';
+```
+
+The browser passes every plain string bound for an HTML, script or script-URL
+sink through the default policy.
+
+- **HTML.** Legacy elements set `innerHTML` from model HTML that nothing
+  sanitizes. The policy runs DOMPurify over it: DOMPurify's defaults, plus any
+  custom element with any attribute but an event handler (legacy elements
+  re-render MathJax's `mjx-*` output), plus the MathML and prefixed tags item
+  markup carries. It covers every raw HTML string on the page, the host's own
+  included.
+- **Script text** passes as JSON only, which the ESM loader's import map is, so
+  `eval`, `new Function` and inline script text fail.
+- **Script URLs**, for `<script src>` and workers, pass under
+  `scriptUrlPrefixes`: an entry matches the URL it names and every URL that
+  continues it after `/`, `?` or `#`. The host lists every origin it loads
+  script from, as it does for `script-src`: its bundle host, the Desmos and
+  GeoGebra scripts it loads, and `blob:<origin>/` where MathJax speech or a
+  cross-origin Cortex calculator starts a `blob:` worker. An empty list refuses
+  every script URL.
+
+Call it before any player or element loads. It returns `false` and installs
+nothing when the browser has no Trusted Types, the page already has a default
+policy, or the CSP leaves `default` out.
+
+The directive names three policies. Svelte creates `svelte-trusted-html` as its
+runtime loads, with no fallback, so a page that leaves it out fails every
+Svelte bundle as it evaluates; each bundle carries its own Svelte, hence
+`'allow-duplicates'`. The players' sanitizers create `dompurify`; without it
+they log a warning and parse through the default policy as well. Measured in
+Chromium
+([`trusted-types-policy.spec.ts`](../../packages/players-shared/tests/e2e/trusted-types-policy.spec.ts)).
+
+Trusted Types closes the sinks content reaches through code already on the
+page. A tampered bundle creates policies under the same names, so stopping one
+is integrity's job.
+
 ### Policies without `'strict-dynamic'`
 
 Without `'strict-dynamic'`, a host-source entry covers the IIFE bundle URL but
@@ -454,9 +597,15 @@ attribute binding, so only host script sets it. A custom sanitizer owns
 everything on this page: the forbid-lists, the custom-element contract, and the
 `id` preservation that model lookup depends on.
 
-**`ElementPackagePolicy`** is off by default, and omitting it keeps
-trusted-application behavior: authored `config.elements` decides which
-executable packages load. Supplying it restricts execution to exact package
-names or `name@version` specs, with exact-semver enforcement on by default.
-Hosts pass it as `loaderOptions.elementPackagePolicy`. A deployment whose
-authoring tier is less trusted than its delivery tier owes this policy.
+**`ElementPackagePolicy`** restricts the executable packages authored
+`config.elements` may load to exact package names, `name@version` specs or
+`@scope/*`, with exact-semver enforcement on by default. Hosts pass it as
+`loaderOptions.elementPackagePolicy`. Under `iife` it is off unless supplied,
+and omitting it keeps trusted-application behavior. `esm` loads, the item
+player's `esm` strategy, `<pie-print>` and the item list's pinned summaries
+apply `DEFAULT_ESM_ELEMENT_PACKAGE_POLICY`, exact versions of any package, when
+the host supplies none, because a hash pinned for a published version stays
+valid and a tag or range moves; a supplied policy replaces it. Without
+`allowedPackages` any package may run. A deployment whose
+authoring tier is less trusted than its delivery tier owes a policy on every
+strategy.

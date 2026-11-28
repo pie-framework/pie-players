@@ -30,6 +30,20 @@ import {
 	Status,
 } from "../pie/types.js";
 import { parsePackageName } from "../pie/utils.js";
+import {
+	BundleIntegrityError,
+	type BundleIntegrityFailure,
+	diagnoseIntegrity,
+	type IntegrityIndex,
+	type IntegrityMap,
+	indexIntegrity,
+	integrityEventTarget,
+	integrityRefusal,
+	isEnforceableIntegrity,
+	lookupIntegrity,
+	reportBundleIntegrityFailure,
+	reportBundleIntegrityUnchecked,
+} from "./bundle-integrity.js";
 import type { ElementMap } from "./ElementLoader.js";
 import { DEFAULT_ESM_CDN_URL } from "./defaults.js";
 import {
@@ -100,6 +114,21 @@ export type EsmBackendConfig = {
 	viewConfig?: ViewConfig;
 	/** Whether to also load controller modules. */
 	loadControllers?: boolean;
+	/**
+	 * SRI metadata by module or package.json URL. Entries go into the import
+	 * map the backend adds, where the browser checks every module fetched from
+	 * a listed URL, including the chunks an element imports when the host
+	 * lists them; package.json reads pass theirs to `fetch`. Once it holds an
+	 * entry, a URL neither it nor the page's import maps hash loads and
+	 * reports `pie-bundle-integrity-unchecked`.
+	 */
+	integrity?: IntegrityMap;
+	/**
+	 * Refuse, before requesting it, any element, controller, shared-dependency
+	 * module or package.json URL the backend names that neither `integrity`
+	 * nor the page's import maps hash. Defaults to false.
+	 */
+	requireIntegrity?: boolean;
 	/** Debug flag hook. */
 	debugEnabled?: () => boolean;
 	/** Whether ESM dependency conflict/failure events should be instrumented. */
@@ -138,6 +167,7 @@ export type EsmImportShim = ((specifier: string) => Promise<unknown>) & {
 export type ImportMap = {
 	imports: Record<string, string>;
 	scopes?: Record<string, Record<string, string>>;
+	integrity?: Record<string, string>;
 };
 /** @internal */
 export type EsmImportShimLoader = () => Promise<EsmImportShim>;
@@ -145,6 +175,7 @@ export type EsmImportShimLoader = () => Promise<EsmImportShim>;
 export type EsmPackageMetadataLoader = (
 	packageVersion: string,
 	packageJsonUrl: string,
+	integrity?: string,
 ) => Promise<PackageMetadata | null>;
 
 /**
@@ -192,6 +223,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 	let importMapObserver: EsmImportMapObserver | undefined;
 	let importShimLoader: EsmImportShimLoader = defaultImportShimLoader;
 	let importShimRequest: Promise<EsmImportShim> | undefined;
+	const integrityIndex = indexIntegrity(config.integrity);
+	const requireIntegrity = config.requireIntegrity ?? false;
 
 	const __seams: EsmBackendTestSeams = {
 		replaceImporter(fn) {
@@ -274,11 +307,14 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 					cdnProvider,
 					loadControllers,
 					moduleResolution === "import-map",
-					packageMetadataLoader,
+					(pkg, url) => loadPackageMetadata(pkg, url, context.doc),
 					sharedDependencyVersions,
 					reportSharedDependencyConflict,
 				);
 			} catch (err) {
+				if (err instanceof BundleIntegrityError) {
+					throw integrityFailureForEveryTag(loadable, reasons, err);
+				}
 				reportSharedDependencyError(err);
 				throw err;
 			}
@@ -297,18 +333,37 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 			const runtimePlan = editorRuntime
 				? planEditorRuntime(editorRuntime, context.doc)
 				: undefined;
-			const imports = withoutMappedSpecifiers(
-				{ ...importMapResult.imports, ...runtimePlan?.imports },
-				context.doc,
-			);
+			const plannedImports = {
+				...importMapResult.imports,
+				...runtimePlan?.imports,
+			};
+			// Every module these specifiers resolve to loads by static import,
+			// so its hash has to be known before the map goes in.
+			try {
+				const mapped = documentImports(context.doc);
+				for (const [specifier, url] of Object.entries(plannedImports)) {
+					integrityFor(mapped[specifier] ?? url, context.doc, true);
+				}
+			} catch (err) {
+				if (err instanceof BundleIntegrityError) {
+					throw integrityFailureForEveryTag(loadable, reasons, err);
+				}
+				throw err;
+			}
+			const imports = withoutMappedSpecifiers(plannedImports, context.doc);
+			const integrity = unmappedIntegrity(context.doc);
 			let injectedMap: HTMLScriptElement | undefined;
 			let map: ImportMap | undefined;
-			if (Object.keys(imports).length > 0) {
+			if (Object.keys(imports).length > 0 || integrity) {
 				const scopes = withoutMappedScopes(
 					jsDelivrRootPathScopes(cdnProvider, cdnBaseUrl, context.doc),
 					context.doc,
 				);
-				map = scopes ? { imports, scopes } : { imports };
+				map = {
+					imports,
+					...(scopes ? { scopes } : {}),
+					...(integrity ? { integrity } : {}),
+				};
 				const json = JSON.stringify(map, null, 2);
 				// URL resolution maps the shared dependencies and the editor
 				// runtime, so it needs import maps too.
@@ -379,11 +434,22 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 				const variant = editorRuntimeVariants.get(packageVersion);
 				let ElementClass: unknown;
 				if (variant) {
-					ElementClass = await importVariantElementClass(
-						packageVersion,
-						variant,
-						context.doc,
-					);
+					try {
+						ElementClass = await importVariantElementClass(
+							packageVersion,
+							variant,
+							context.doc,
+						);
+					} catch (err) {
+						if (!(err instanceof BundleIntegrityError)) throw err;
+						// Refused code is not retried from another view.
+						reasons.set(tag, {
+							kind: "integrity-failed",
+							tag,
+							...err.failure,
+						});
+						return;
+					}
 				}
 
 				if (!ElementClass) {
@@ -391,6 +457,15 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 					try {
 						module = await importModule(specifier, context.doc);
 					} catch (err) {
+						if (err instanceof BundleIntegrityError) {
+							// Refused code is not retried from another view.
+							reasons.set(tag, {
+								kind: "integrity-failed",
+								tag,
+								...err.failure,
+							});
+							return;
+						}
 						if (viewConfig.fallback) {
 							const fallbackConfig =
 								BUILT_IN_VIEWS[viewConfig.fallback] ?? BUILT_IN_VIEWS.delivery;
@@ -405,6 +480,14 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 							try {
 								module = await importModule(fallbackSpecifier, context.doc);
 							} catch (fallbackErr) {
+								if (fallbackErr instanceof BundleIntegrityError) {
+									reasons.set(tag, {
+										kind: "integrity-failed",
+										tag,
+										...fallbackErr.failure,
+									});
+									return;
+								}
 								reasons.set(tag, {
 									kind: "module-load-failed",
 									tag,
@@ -485,6 +568,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 	/**
 	 * The element class of a package's editor-runtime variant, or `undefined`
 	 * after reporting why it cannot load, so the caller loads `./browser/*`.
+	 * A `BundleIntegrityError` is thrown instead: the caller fails the tag, as
+	 * it does for the `./browser/*` view.
 	 */
 	async function importVariantElementClass(
 		packageVersion: string,
@@ -503,6 +588,8 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 			if (isCustomElementConstructor(ElementClass)) return ElementClass;
 			throw new Error(`${specifier} exports no custom element class`);
 		} catch (err) {
+			// Kept in `editorRuntimeVariants`, so a retry is refused again too.
+			if (err instanceof BundleIntegrityError) throw err;
 			editorRuntimeVariants.delete(packageVersion);
 			reportEditorRuntimeFallback(
 				packageVersion,
@@ -570,8 +657,118 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		doc: Document,
 	): Promise<unknown> {
 		await importMapsSettled(doc);
-		if (!documentUsesImportShim(doc)) return importer(specifier);
-		return (await importShim(doc))(specifier);
+		const url = ABSOLUTE_URL.test(specifier)
+			? specifier
+			: documentImports(doc)[specifier];
+		const integrity = url ? integrityFor(url, doc, true) : undefined;
+		try {
+			if (!documentUsesImportShim(doc)) return await importer(specifier);
+			return await (await importShim(doc))(specifier);
+		} catch (error) {
+			if (!url) throw error;
+			return rethrowLoadFailure(error, url, integrity, doc);
+		}
+	}
+
+	/**
+	 * The hash a request for `url` carries: from `config.integrity`, or for a
+	 * module (`fromImportMaps`) from the page's import maps too. Throws, once
+	 * reported, the failure a malformed hash amounts to, or a missing one under
+	 * `requireIntegrity`.
+	 */
+	function integrityFor(
+		url: string,
+		doc: Document,
+		fromImportMaps: boolean,
+	): string | undefined {
+		let lookup = lookupIntegrity(integrityIndex, [url]);
+		if (lookup.status === "missing" && fromImportMaps) {
+			lookup = lookupIntegrity(documentIntegrity(doc), [url]);
+		}
+		const refusal = integrityRefusal(lookup, url, requireIntegrity);
+		if (refusal) {
+			reportIntegrityFailure(refusal, doc);
+			throw new BundleIntegrityError(refusal);
+		}
+		if (lookup.status === "missing" && integrityIndex.size > 0) {
+			reportBundleIntegrityUnchecked(url, {
+				target: integrityEventTarget(doc),
+				provider: getInstrumentationProvider(),
+				component: "esm-adapter",
+			});
+		}
+		return lookup.status === "found" ? lookup.integrity : undefined;
+	}
+
+	/**
+	 * A request that carried a hash and failed is fetched again and digested:
+	 * a mismatch is thrown as one, anything else as the original error.
+	 */
+	async function rethrowLoadFailure(
+		error: unknown,
+		url: string,
+		integrity: string | undefined,
+		doc: Document,
+	): Promise<never> {
+		if (integrity && !(error instanceof BundleIntegrityError)) {
+			const diagnosis = await diagnoseIntegrity(
+				url,
+				integrity,
+				doc.defaultView as Window | null,
+			);
+			if (diagnosis.verdict === "mismatch") {
+				const failure: BundleIntegrityFailure = {
+					url,
+					cause: "mismatch",
+					expected: integrity,
+					actual: diagnosis.actual,
+				};
+				reportIntegrityFailure(failure, doc);
+				throw new BundleIntegrityError(failure);
+			}
+		}
+		throw error;
+	}
+
+	async function loadPackageMetadata(
+		packageVersion: string,
+		packageJsonUrl: string,
+		doc: Document,
+	): Promise<PackageMetadata | null> {
+		const integrity = integrityFor(packageJsonUrl, doc, false);
+		try {
+			return await packageMetadataLoader(
+				packageVersion,
+				packageJsonUrl,
+				integrity,
+			);
+		} catch (error) {
+			return rethrowLoadFailure(error, packageJsonUrl, integrity, doc);
+		}
+	}
+
+	/**
+	 * The enforceable `config.integrity` entries no import map in `doc` holds
+	 * yet; `undefined` when none remain. A malformed entry stays out, since the
+	 * browser would enforce nothing for it.
+	 */
+	function unmappedIntegrity(doc: Document): Record<string, string> | undefined {
+		const mapped = documentIntegrity(doc);
+		const entries = [...integrityIndex].filter(
+			([url, metadata]) => isEnforceableIntegrity(metadata) && !mapped.has(url),
+		);
+		return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+	}
+
+	function reportIntegrityFailure(
+		failure: BundleIntegrityFailure,
+		doc: Document,
+	): void {
+		reportBundleIntegrityFailure(failure, {
+			target: integrityEventTarget(doc),
+			provider: getInstrumentationProvider(),
+			component: "esm-adapter",
+		});
 	}
 
 	/**
@@ -588,7 +785,10 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		try {
 			if (script.type === SHIM_IMPORT_MAP_TYPE) {
 				(await importShim(doc)).addImportMap(map);
-			} else if (await importMapRejected(map.imports)) {
+			} else if (
+				Object.keys(map.imports).length > 0 &&
+				(await importMapRejected(map.imports))
+			) {
 				state = "rejected";
 				await importShim(doc);
 			}
@@ -681,19 +881,21 @@ export function createEsmBackend(config: EsmBackendConfig): EsmBackend {
 		const runtime = highestDeclaredEditorRuntime(candidates);
 		return {
 			candidates,
-			target: { runtime, ...(await loadEditorRuntimeModules(runtime)) },
+			target: { runtime, ...(await loadEditorRuntimeModules(runtime, doc)) },
 		};
 	}
 
 	async function loadEditorRuntimeModules(
 		runtime: EditorRuntimeRef,
+		doc: Document,
 	): Promise<{ modules?: Record<string, string>; failure?: string }> {
 		const runtimeVersion = `${runtime.name}@${runtime.version}`;
 		let metadata: PackageMetadata | null;
 		try {
-			metadata = await packageMetadataLoader(
+			metadata = await loadPackageMetadata(
 				runtimeVersion,
 				cdnProvider.packageJsonUrl(runtimeVersion),
+				doc,
 			);
 		} catch (err) {
 			return {
@@ -902,14 +1104,17 @@ export function clearPackageMetadataRequests(): void {
 function defaultPackageMetadataLoader(
 	packageVersion: string,
 	packageJsonUrl: string,
+	integrity?: string,
 ): Promise<PackageMetadata | null> {
-	const pending = packageMetadataRequests.get(packageJsonUrl);
+	// A request with a hash never shares a response read without one.
+	const key = integrity ? `${packageJsonUrl}#${integrity}` : packageJsonUrl;
+	const pending = packageMetadataRequests.get(key);
 	if (pending) return pending;
-	const request = fetchPackageMetadata(packageJsonUrl);
-	packageMetadataRequests.set(packageJsonUrl, request);
+	const request = fetchPackageMetadata(packageJsonUrl, integrity);
+	packageMetadataRequests.set(key, request);
 	const forget = () => {
-		if (packageMetadataRequests.get(packageJsonUrl) === request) {
-			packageMetadataRequests.delete(packageJsonUrl);
+		if (packageMetadataRequests.get(key) === request) {
+			packageMetadataRequests.delete(key);
 		}
 	};
 	request.then((metadata) => {
@@ -920,6 +1125,7 @@ function defaultPackageMetadataLoader(
 
 async function fetchPackageMetadata(
 	packageJsonUrl: string,
+	integrity?: string,
 ): Promise<PackageMetadata | null> {
 	const browserFetch =
 		typeof window !== "undefined" &&
@@ -930,7 +1136,9 @@ async function fetchPackageMetadata(
 		return null;
 	}
 
-	const response = await browserFetch(packageJsonUrl);
+	const response = integrity
+		? await browserFetch(packageJsonUrl, { integrity })
+		: await browserFetch(packageJsonUrl);
 	if (!response.ok) {
 		return null;
 	}
@@ -1631,6 +1839,18 @@ function readMappedEditorRuntime(doc: Document): EditorRuntimeRef | null {
 	return null;
 }
 
+/** A refused hash fails every tag of the load, beside the reasons it holds. */
+function integrityFailureForEveryTag(
+	elements: ElementMap,
+	reasons: Map<ElementTag, RegistrationFailureReason>,
+	error: BundleIntegrityError,
+): AdapterFailure {
+	for (const tag of Object.keys(elements)) {
+		reasons.set(tag, { kind: "integrity-failed", tag, ...error.failure });
+	}
+	return new AdapterFailure(reasons);
+}
+
 function errorMessage(err: unknown): string {
 	return err instanceof Error ? err.message : String(err);
 }
@@ -1717,14 +1937,16 @@ function documentImports(doc: Document): Record<string, string> {
 	return documentImportMap(doc).imports;
 }
 
-/** {@link documentImports}, with the scopes the maps define. */
+/** {@link documentImports}, with the scopes and integrity the maps define. */
 function documentImportMap(doc: Document): Required<ImportMap> {
 	const imports: Record<string, string> = Object.create(null);
 	const scopes: Record<string, Record<string, string>> = Object.create(null);
+	const integrity: Record<string, string> = Object.create(null);
 	for (const script of importMapScripts(doc)) {
 		try {
 			const map = JSON.parse(script.textContent || "{}");
 			addFirstRules(imports, map?.imports);
+			addFirstRules(integrity, map?.integrity);
 			if (!map?.scopes || typeof map.scopes !== "object") continue;
 			for (const [scope, rules] of Object.entries(map.scopes)) {
 				scopes[scope] ??= Object.create(null);
@@ -1734,8 +1956,15 @@ function documentImportMap(doc: Document): Required<ImportMap> {
 			// The browser rejects a map it cannot parse, so it maps nothing.
 		}
 	}
-	return { imports, scopes };
+	return { imports, scopes, integrity };
 }
+
+/** The integrity the import maps in `doc` define, by resolved URL. */
+function documentIntegrity(doc: Document): IntegrityIndex {
+	return indexIntegrity(documentImportMap(doc).integrity, doc.baseURI);
+}
+
+const ABSOLUTE_URL = /^[a-z][a-z0-9+.-]*:/i;
 
 function addFirstRules(target: Record<string, string>, rules: unknown): void {
 	if (!rules || typeof rules !== "object") return;

@@ -18,8 +18,11 @@ export type PrintMarkupSanitizer = (markup: string) => string;
 
 /** Host policy for the packages `config.elements` may execute. */
 export interface PrintElementPackagePolicy {
-	/** Exact package names, or exact `name@version` specs, that may execute. */
-	allowedPackages: readonly string[];
+	/**
+	 * Package names, exact `name@version` specs, or `@scope/*` for every
+	 * package in a scope, that may execute. Absent, any package may.
+	 */
+	allowedPackages?: readonly string[];
 	/** Require exact semver without build metadata. Defaults to true. */
 	requireExactVersions?: boolean;
 }

@@ -1,4 +1,7 @@
-import { strategyElementVersions } from "@pie-players/demo-ui/element-versions";
+import {
+	applyOverridesToSection,
+	strategyElementVersions,
+} from "@pie-players/demo-ui/element-versions";
 import { error } from "@sveltejs/kit";
 import {
 	parseElementOverridesFromUrl,
@@ -6,10 +9,7 @@ import {
 } from "@pie-players/pie-players-shared/pie";
 import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
 import { getSectionDemoById, type SectionDemoInfo } from "./sections";
-import {
-	aggregateElementsAcrossPages,
-	applyOverridesToSection,
-} from "./apply-overrides";
+import { aggregateElementsAcrossPages } from "./apply-overrides";
 
 export type DemoPageEntry = {
 	id: string;

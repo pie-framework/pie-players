@@ -36,8 +36,19 @@ export { aggregateElements } from "./ElementLoader.js";
 export type { ElementPackagePolicy } from "./element-package-policy.js";
 export {
 	assertElementPackagesAllowed,
+	DEFAULT_ESM_ELEMENT_PACKAGE_POLICY,
 	ElementPackagePolicyError,
 } from "./element-package-policy.js";
+export type {
+	BundleIntegrityCause,
+	BundleIntegrityFailure,
+	BundleIntegrityUnchecked,
+	IntegrityMap,
+} from "./bundle-integrity.js";
+export {
+	BUNDLE_INTEGRITY_FAILED_EVENT,
+	BUNDLE_INTEGRITY_UNCHECKED_EVENT,
+} from "./bundle-integrity.js";
 export { isScopedPackageSpec } from "./element-package-spec.js";
 
 // ElementLoader primitive — truthful-promise loader. The public entry point

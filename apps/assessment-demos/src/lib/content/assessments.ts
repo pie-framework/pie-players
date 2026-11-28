@@ -1,3 +1,7 @@
+import {
+	applyOverridesToSection,
+	strategyElementVersions,
+} from "@pie-players/demo-ui/element-versions";
 import type {
 	AssessmentSection,
 	TestPart,
@@ -656,6 +660,20 @@ const sessionDbTestParts: TestPart[] = [
 	},
 ];
 
+/**
+ * The test parts with every element at the version the demos' `esm` strategy
+ * loads: the content names `@latest`, which the ESM loader refuses.
+ */
+function withEsmElementVersions(testParts: TestPart[]): TestPart[] {
+	const versions = strategyElementVersions("esm");
+	return testParts.map((part) => ({
+		...part,
+		sections: part.sections.map(
+			(section) => applyOverridesToSection(section, versions) ?? section,
+		),
+	}));
+}
+
 const assessmentDemos: Record<string, AssessmentDemoInfo> = {
 	"three-section-assessment": {
 		id: "three-section-assessment",
@@ -665,7 +683,7 @@ const assessmentDemos: Record<string, AssessmentDemoInfo> = {
 		assessment: {
 			identifier: "assessment-demo-001",
 			title: "Grade 12 History Assessment: Colonial Southeast Asia",
-			testParts: baseTestParts,
+			testParts: withEsmElementVersions(baseTestParts),
 		},
 	},
 	"session-hydrate-db": {
@@ -676,7 +694,7 @@ const assessmentDemos: Record<string, AssessmentDemoInfo> = {
 		assessment: {
 			identifier: "assessment-session-db-demo-001",
 			title: "Assessment Session DB Demo",
-			testParts: sessionDbTestParts,
+			testParts: withEsmElementVersions(sessionDbTestParts),
 		},
 	},
 };

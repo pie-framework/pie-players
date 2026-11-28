@@ -1,9 +1,11 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
-	import { strategyElementVersions } from '@pie-players/demo-ui/element-versions';
+	import {
+		applyOverridesToSection,
+		strategyElementVersions,
+	} from '@pie-players/demo-ui/element-versions';
 	import { ToolkitCoordinator } from '@pie-players/pie-assessment-toolkit';
 	import '@pie-players/pie-section-player/components/section-player-splitpane-element';
-	import { applyOverridesToSection } from '#lib/content/apply-overrides.js';
 	import { createSectionDemoToolRegistry } from '#lib/demo-runtime/default-tool-registry.js';
 	import {
 		DEMO_ASSESSMENT_ID,

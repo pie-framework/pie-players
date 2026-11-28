@@ -88,6 +88,12 @@ export interface PkgResolution {
 	cdnBaseUrl?: string;
 	/** CDN provider used by the browser ESM loader; inferred from `cdnBaseUrl` when absent */
 	cdnProvider?: PrintEsmCdnProviderOption;
+	/** SRI metadata by module or package.json URL, for the browser ESM loader */
+	integrity?: Readonly<Record<string, string>>;
+	/** Whether the browser ESM loader refuses a URL `integrity` holds no hash for */
+	requireIntegrity?: boolean;
+	/** Package policy for the browser ESM loader; exact versions only when absent */
+	elementPackagePolicy?: PrintElementPackagePolicy;
 }
 
 /**
@@ -99,8 +105,15 @@ export interface PrintLoaderOptions {
 	esmCdnUrl?: string;
 	/** CDN URL strategy; inferred from `esmCdnUrl` when absent */
 	esmCdnProvider?: PrintEsmCdnProviderOption;
-	/** Optional host-controlled package allowlist, checked before any resolver. */
+	/**
+	 * Host-controlled package allowlist, checked before any resolver. Without
+	 * one, browser ESM loads admit exact versions only.
+	 */
 	elementPackagePolicy?: PrintElementPackagePolicy;
+	/** SRI metadata (`sha384-<base64>`) by module or package.json URL */
+	integrity?: Readonly<Record<string, string>>;
+	/** Refuse print module code `integrity` holds no hash for */
+	requireIntegrity?: boolean;
 }
 
 /**

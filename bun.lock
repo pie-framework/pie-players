@@ -208,6 +208,7 @@
       "name": "@pie-players/lti-demos",
       "version": "0.1.38-beta.11",
       "dependencies": {
+        "@pie-players/demo-ui": "workspace:*",
         "@pie-players/pie-assessment-player": "workspace:*",
         "@pie-players/pie-assessment-toolkit": "workspace:*",
         "@pie-players/pie-default-tool-loaders": "workspace:*",

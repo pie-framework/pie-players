@@ -27,6 +27,12 @@ import placementOrdering from "@pie-element/placement-ordering/package.json";
 import rubric from "@pie-element/rubric/package.json";
 import selectText from "@pie-element/select-text/package.json";
 
+import {
+	applyElementVersionOverridesPreserveTags,
+	type ElementOverrides,
+} from "@pie-players/pie-players-shared/pie";
+import type { AssessmentSection } from "@pie-players/pie-players-shared/types";
+
 /**
  * The pie-elements-ng packages the demos install, and the versions they load
  * under the `esm` and `preloaded` strategies.
@@ -100,4 +106,75 @@ export function strategyElementVersions(
 	strategy: string | null | undefined,
 ): Record<string, string> {
 	return demoStrategy(strategy) === "esm" ? { ...ESM_DEMO_ELEMENT_VERSIONS } : {};
+}
+
+/**
+ * Deep-clone a section and apply element version overrides to every nested
+ * item and passage config via `applyElementVersionOverridesPreserveTags`.
+ *
+ * Custom-element tag names are preserved intact (required by the PIE element
+ * versioning contract); only the `config.elements[*]` package spec values are
+ * bumped to the override version.
+ *
+ * When no overrides are set the original section reference is returned.
+ */
+export function applyOverridesToSection(
+	section: AssessmentSection | null | undefined,
+	overrides: ElementOverrides,
+): AssessmentSection | null {
+	if (!section) return null;
+	if (!overrides || Object.keys(overrides).length === 0) {
+		return section;
+	}
+
+	const walk = (current: AssessmentSection): AssessmentSection => {
+		const next: AssessmentSection = { ...current };
+
+		if (Array.isArray(current.assessmentItemRefs)) {
+			next.assessmentItemRefs = current.assessmentItemRefs.map((ref) => {
+				const itemConfig = (ref?.item as any)?.config;
+				if (!itemConfig) return ref;
+				const overriddenConfig = applyElementVersionOverridesPreserveTags(
+					itemConfig,
+					overrides,
+				);
+				if (overriddenConfig === itemConfig) return ref;
+				return {
+					...ref,
+					item: {
+						...(ref.item as any),
+						config: overriddenConfig,
+					},
+				};
+			});
+		}
+
+		if (Array.isArray(current.rubricBlocks)) {
+			next.rubricBlocks = current.rubricBlocks.map((rb) => {
+				const passage = (rb as any)?.passage;
+				const passageConfig = passage?.config;
+				if (!passage || !passageConfig) return rb;
+				const overriddenConfig = applyElementVersionOverridesPreserveTags(
+					passageConfig,
+					overrides,
+				);
+				if (overriddenConfig === passageConfig) return rb;
+				return {
+					...rb,
+					passage: {
+						...passage,
+						config: overriddenConfig,
+					},
+				};
+			});
+		}
+
+		if (Array.isArray(current.sections)) {
+			next.sections = current.sections.map(walk);
+		}
+
+		return next;
+	};
+
+	return walk(section);
 }

@@ -38,6 +38,18 @@ import {
 	getPackageWithoutVersion,
 	parsePackageName,
 } from "../pie/utils.js";
+import {
+	BundleIntegrityError,
+	type BundleIntegrityFailure,
+	diagnoseIntegrity,
+	indexIntegrity,
+	integrityEventTarget,
+	integrityRefusal,
+	type IntegrityMap,
+	lookupIntegrity,
+	reportBundleIntegrityFailure,
+	reportBundleIntegrityUnchecked,
+} from "./bundle-integrity.js";
 import type { ElementMap } from "./ElementLoader.js";
 import {
 	AdapterFailure,
@@ -72,6 +84,20 @@ export type IifeBackendConfig = {
 	needsControllers?: boolean;
 	/** Explicit bundle override (hash + optional URL) supplied by the host. */
 	bundleInfo?: { hash?: string; url?: string };
+	/**
+	 * SRI metadata by bundle URL. The adapter looks its bundle URL up as built,
+	 * then without the `elements` query it appends. A matching entry goes on
+	 * the bundle's `<script>` with `crossorigin="anonymous"`, so the bundle
+	 * host must answer with `Access-Control-Allow-Origin`. Once it holds an
+	 * entry, a bundle it has no hash for loads and reports
+	 * `pie-bundle-integrity-unchecked`.
+	 */
+	integrity?: IntegrityMap;
+	/**
+	 * Refuse, before requesting it, a bundle `integrity` has no hash for.
+	 * Defaults to false.
+	 */
+	requireIntegrity?: boolean;
 	/** Debug flag hook. */
 	debugEnabled?: () => boolean;
 	/**
@@ -110,6 +136,7 @@ export type IifeBackendConfig = {
 export type IifeBundleScriptLoader = (
 	url: string,
 	doc: Document,
+	integrity?: string,
 ) => Promise<void>;
 
 /**
@@ -162,6 +189,7 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 
 	let loadBundleScript: IifeBundleScriptLoader = defaultLoadBundleScript;
 	const inFlightBundleLoads = new Map<string, Promise<void>>();
+	const integrityIndex = indexIntegrity(config.integrity);
 
 	const __seams: IifeBackendTestSeams = {
 		replaceLoadBundleScript(fn) {
@@ -174,10 +202,14 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 		},
 	};
 
-	async function ensureBundleLoaded(url: string, doc: Document): Promise<void> {
+	async function ensureBundleLoaded(
+		url: string,
+		doc: Document,
+		integrity: string | undefined,
+	): Promise<void> {
 		const existing = inFlightBundleLoads.get(url);
 		if (existing) return existing;
-		const promise = loadBundleScriptWithRetry(url, doc).finally(() => {
+		const promise = loadBundleScriptWithRetry(url, doc, integrity).finally(() => {
 			inFlightBundleLoads.delete(url);
 		});
 		inFlightBundleLoads.set(url, promise);
@@ -192,10 +224,14 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 	 * the bundle is ready or the cumulative deadline elapses. Emits
 	 * retry lifecycle events to the host via `onBundleRetryStatus` and to
 	 * the instrumentation provider (if configured and ready).
+	 *
+	 * A failed load with a hash is digested once more: bytes that do not
+	 * match end the retries, since an immutable bundle will not change.
 	 */
 	async function loadBundleScriptWithRetry(
 		url: string,
 		doc: Document,
+		integrity: string | undefined,
 	): Promise<void> {
 		const { retryDelayMs, timeoutMs } = resolveBundleRetryConfig(
 			config.bundleRetry,
@@ -205,7 +241,7 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 		while (true) {
 			attempt += 1;
 			try {
-				await loadBundleScript(url, doc);
+				await loadBundleScript(url, doc, integrity);
 				const elapsedMs = Date.now() - startedAt;
 				if (attempt > 1) {
 					config.onBundleRetryStatus?.({
@@ -224,6 +260,23 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 				}
 				return;
 			} catch (error) {
+				if (integrity) {
+					const diagnosis = await diagnoseIntegrity(
+						url,
+						integrity,
+						doc.defaultView as Window | null,
+					);
+					if (diagnosis.verdict === "mismatch") {
+						const failure: BundleIntegrityFailure = {
+							url,
+							cause: "mismatch",
+							expected: integrity,
+							actual: diagnosis.actual,
+						};
+						reportIntegrityFailure(failure, doc);
+						throw new BundleIntegrityError(failure);
+					}
+				}
 				const elapsedMs = Date.now() - startedAt;
 				const remainingMs = timeoutMs - elapsedMs;
 				const reason = errorMessage(error);
@@ -286,6 +339,17 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 		return provider;
 	}
 
+	function reportIntegrityFailure(
+		failure: BundleIntegrityFailure,
+		doc: Document,
+	): void {
+		reportBundleIntegrityFailure(failure, {
+			target: integrityEventTarget(doc),
+			provider: getInstrumentationProvider(),
+			component: "iife-adapter",
+		});
+	}
+
 	function trackRetryEvent(
 		eventName: string,
 		attributes: Record<string, unknown>,
@@ -331,10 +395,46 @@ export function createIifeBackend(config: IifeBackendConfig): IifeBackend {
 			}));
 		}
 
-		const bundleUrl = buildBundleUrl(elements, bundleType, config);
+		const { url: bundleUrl, baseUrl } = buildBundleUrl(
+			elements,
+			bundleType,
+			config,
+		);
+		const lookup = lookupIntegrity(integrityIndex, [bundleUrl, baseUrl]);
+		const refusal = integrityRefusal(
+			lookup,
+			bundleUrl,
+			config.requireIntegrity ?? false,
+		);
+		if (refusal) {
+			reportIntegrityFailure(refusal, context.doc);
+			throw failureForEveryTag(elements, (tag) => ({
+				kind: "integrity-failed",
+				tag,
+				...refusal,
+			}));
+		}
+		if (lookup.status === "missing" && integrityIndex.size > 0) {
+			reportBundleIntegrityUnchecked(bundleUrl, {
+				target: integrityEventTarget(context.doc),
+				provider: getInstrumentationProvider(),
+				component: "iife-adapter",
+			});
+		}
 		try {
-			await ensureBundleLoaded(bundleUrl, context.doc);
+			await ensureBundleLoaded(
+				bundleUrl,
+				context.doc,
+				lookup.status === "found" ? lookup.integrity : undefined,
+			);
 		} catch (err) {
+			if (err instanceof BundleIntegrityError) {
+				throw failureForEveryTag(elements, (tag) => ({
+					kind: "integrity-failed",
+					tag,
+					...err.failure,
+				}));
+			}
 			const cause = errorMessage(err);
 			throw failureForEveryTag(elements, (tag) => ({
 				kind: "bundle-load-failed",
@@ -466,9 +566,18 @@ function errorMessage(err: unknown): string {
 	return err instanceof Error ? err.message : String(err);
 }
 
-function defaultLoadBundleScript(url: string, doc: Document): Promise<void> {
+function defaultLoadBundleScript(
+	url: string,
+	doc: Document,
+	integrity?: string,
+): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const script = doc.createElement("script");
+		if (integrity) {
+			// SRI on a cross-origin script needs a CORS request.
+			script.integrity = integrity;
+			script.crossOrigin = "anonymous";
+		}
 		script.src = url;
 		script.defer = true;
 		script.setAttribute("data-pie-bundle", "true");
@@ -488,18 +597,26 @@ function readPieModule(): Record<string, any> | undefined {
 	return pieDefault as Record<string, any>;
 }
 
+/**
+ * The bundle URL the adapter loads, and the URL it builds that on before
+ * appending the `elements` query, which the bundle host ignores for the bytes
+ * it serves and which integrity entries may leave out.
+ */
 function buildBundleUrl(
 	elements: ElementMap,
 	bundleType: BundleType,
 	config: IifeBackendConfig,
-): string {
+): { url: string; baseUrl: string } {
 	const elementTags = Object.keys(elements).sort().join(",");
 
 	if (config.bundleInfo?.url) {
 		const separator = config.bundleInfo.url.includes("?") ? "&" : "?";
-		return elementTags
-			? `${config.bundleInfo.url}${separator}elements=${encodeURIComponent(elementTags)}`
-			: config.bundleInfo.url;
+		return {
+			url: elementTags
+				? `${config.bundleInfo.url}${separator}elements=${encodeURIComponent(elementTags)}`
+				: config.bundleInfo.url,
+			baseUrl: config.bundleInfo.url,
+		};
 	}
 
 	// The two encoders here are deliberately different: the path takes
@@ -509,9 +626,10 @@ function buildBundleUrl(
 	const packageVersions = encodeElementPackageSpecs(Object.values(elements));
 	const host = normalizeBundleHost(config.bundleHost);
 	const base = `${host}${packageVersions}/${bundleType}`;
-	return elementTags
-		? `${base}?elements=${encodeURIComponent(elementTags)}`
-		: base;
+	return {
+		url: elementTags ? `${base}?elements=${encodeURIComponent(elementTags)}` : base,
+		baseUrl: base,
+	};
 }
 
 function normalizeBundleHost(host: string): string {

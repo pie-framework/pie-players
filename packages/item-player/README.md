@@ -290,12 +290,17 @@ reads as `false`.
 
 These are set from JavaScript; they have no attribute.
 
-- `loaderOptions`: `{ bundleHost?: string, esmCdnUrl?: string, esmCdnProvider?: string | object, moduleResolution?: "url" | "import-map", view?: string, loadControllers?: boolean, runtimeSupportCheck?: "off" | "on", elementPackagePolicy?: { allowedPackages: string[], requireExactVersions?: boolean } }`.
+- `loaderOptions`: `{ bundleHost?: string, esmCdnUrl?: string, esmCdnProvider?: string | object, moduleResolution?: "url" | "import-map", view?: string, loadControllers?: boolean, runtimeSupportCheck?: "off" | "on", elementPackagePolicy?: { allowedPackages: string[], requireExactVersions?: boolean }, integrity?: Record<string, string>, requireIntegrity?: boolean }`.
   Strategy-specific loader settings, with their defaults and the ESM CDN
   providers, in [`loaderOptions`](../../docs/item-player/loading-strategies.md#loaderoptions).
   `elementPackagePolicy` limits the `config.elements` packages that may execute
-  to exact names or `name@version` specs
+  to exact names, `name@version` specs or `@scope/*`; the `esm` strategy admits
+  only exact versions without one
   ([escape hatches](../../docs/security/readme.md#escape-hatches)).
+  `integrity` maps bundle and module URLs to SRI metadata the browser checks
+  before running them; a URL it leaves out loads and reports
+  `pie-bundle-integrity-unchecked`, and `requireIntegrity` refuses it instead
+  ([bundle integrity](../../docs/security/readme.md#bundle-integrity)).
 - `sanitizeMarkup`: `(markup: string) => string`. Replaces the built-in
   sanitizer ([custom sanitizer](#provide-a-custom-sanitizer)). Ignored when
   `trust-markup` is set.

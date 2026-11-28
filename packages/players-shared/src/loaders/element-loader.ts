@@ -25,6 +25,7 @@ import { pieRegistry } from "../pie/registry.js";
 import { Status } from "../pie/types.js";
 import { parsePackageName } from "../pie/utils.js";
 import { parseVersionedTagName } from "../pie/versioned-tag.js";
+import { describeBundleIntegrityFailure } from "./bundle-integrity.js";
 import type { ElementMap } from "./ElementLoader.js";
 import {
 	AdapterFailure,
@@ -45,6 +46,7 @@ import {
 } from "./iife-adapter.js";
 import {
 	assertElementPackagesAllowed,
+	DEFAULT_ESM_ELEMENT_PACKAGE_POLICY,
 	type ElementPackagePolicy,
 } from "./element-package-policy.js";
 
@@ -89,6 +91,8 @@ const describeRegistrationFailure = (
 			return `${reason.specifier} failed to load: ${reason.cause}`;
 		case "bundle-load-failed":
 			return `${reason.url} failed to load: ${reason.cause}`;
+		case "integrity-failed":
+			return describeBundleIntegrityFailure(reason);
 		case "define-failed":
 		case "backend-rejected":
 			return reason.cause;
@@ -196,8 +200,9 @@ export type BackendOption =
 export type EnsureRegisteredOptions = {
 	backend: BackendOption;
 	/**
-	 * Optional host-controlled allow-list for executable `config.elements`
-	 * packages. Omit to preserve the trusted-application behavior.
+	 * Host-controlled allow-list for executable `config.elements` packages.
+	 * An ESM backend config defaults to `DEFAULT_ESM_ELEMENT_PACKAGE_POLICY`;
+	 * IIFE and direct backends check nothing without one.
 	 */
 	elementPackagePolicy?: ElementPackagePolicy;
 	doc?: Document;
@@ -255,7 +260,13 @@ export async function ensureRegistered(
 	if (!elements || Object.keys(elements).length === 0) return;
 	// Enforce policy before the already-registered fast path: a matching tag in
 	// the registry must not turn a disallowed authored package into valid input.
-	assertElementPackagesAllowed(elements, options.elementPackagePolicy);
+	assertElementPackagesAllowed(
+		elements,
+		options.elementPackagePolicy ??
+			(isEsmConfig(options.backend)
+				? DEFAULT_ESM_ELEMENT_PACKAGE_POLICY
+				: undefined),
+	);
 
 	// Preserve the original request identity while tags register mid-flight.
 	const originalDedupKey = buildDedupKey(options.backend, elements);
@@ -504,6 +515,8 @@ function backendKeyOf(backend: BackendOption): string {
 				bundleType: backend.bundleType ?? "",
 				needsControllers: backend.needsControllers ?? true,
 				bundleInfo: backend.bundleInfo ?? null,
+				integrity: backend.integrity ?? null,
+				requireIntegrity: backend.requireIntegrity ?? false,
 				debugEnabled: backend.debugEnabled ?? null,
 				bundleRetry: backend.bundleRetry ?? null,
 				onBundleRetryStatus: backend.onBundleRetryStatus ?? null,
@@ -520,6 +533,8 @@ function backendKeyOf(backend: BackendOption): string {
 				view: backend.view ?? "delivery",
 				viewConfig: backend.viewConfig ?? null,
 				loadControllers: backend.loadControllers ?? true,
+				integrity: backend.integrity ?? null,
+				requireIntegrity: backend.requireIntegrity ?? false,
 				debugEnabled: backend.debugEnabled ?? null,
 				trackPageActions: backend.trackPageActions ?? false,
 				instrumentationProvider: backend.instrumentationProvider ?? null,
@@ -607,6 +622,10 @@ function getOpaqueObjectRefId(value: object): string {
 
 function isIifeConfig(backend: BackendOption): backend is IifeBackendConfig {
 	return !isDirectBackend(backend) && "kind" in backend && backend.kind === "iife";
+}
+
+function isEsmConfig(backend: BackendOption): backend is EsmBackendConfig {
+	return !isDirectBackend(backend) && "kind" in backend && backend.kind === "esm";
 }
 
 /**

@@ -3,13 +3,27 @@ import { valid as validSemver } from "semver";
 import { parsePackageName } from "../pie/utils.js";
 import type { ElementMap } from "./ElementLoader.js";
 
-/** Optional host policy for executable packages named by `config.elements`. */
+/** Host policy for executable packages named by `config.elements`. */
 export type ElementPackagePolicy = {
-	/** Exact package names, or exact `name@version` specs, that may execute. */
-	allowedPackages: readonly string[];
+	/**
+	 * Package names, exact `name@version` specs, or `@scope/*` for every
+	 * package in a scope, that may execute. Absent, any package may.
+	 */
+	allowedPackages?: readonly string[];
 	/** Require exact semver without build metadata. Defaults to true. */
 	requireExactVersions?: boolean;
 };
+
+/**
+ * The policy ESM loads apply when the host supplies none: any package, at an
+ * exact version. A published version's bytes never change, so the hash a host
+ * pins for it stays valid; a tag or range resolves to whatever was published
+ * last.
+ */
+export const DEFAULT_ESM_ELEMENT_PACKAGE_POLICY: ElementPackagePolicy =
+	Object.freeze({ requireExactVersions: true });
+
+const SCOPE_WILDCARD = /^(@[a-z0-9][a-z0-9._~-]*)\/\*$/;
 
 export class ElementPackagePolicyError extends Error {
 	override readonly name = "ElementPackagePolicyError";
@@ -42,8 +56,8 @@ function parsePolicyPackageSpec(spec: string): {
 }
 
 /**
- * Validate an element map only when a host explicitly supplies a policy.
- * Omitting the policy preserves the existing trusted-application behavior.
+ * Validate an element map against `policy`; without one, nothing is checked.
+ * `ensureRegistered` supplies `DEFAULT_ESM_ELEMENT_PACKAGE_POLICY` for ESM.
  */
 export function assertElementPackagesAllowed(
 	elements: ElementMap,
@@ -51,7 +65,7 @@ export function assertElementPackagesAllowed(
 ): void {
 	if (!policy) return;
 	const allowed = policy.allowedPackages
-		.filter((entry): entry is string => typeof entry === "string")
+		?.filter((entry): entry is string => typeof entry === "string")
 		.map((entry) => entry.trim())
 		.filter(Boolean);
 
@@ -82,8 +96,10 @@ export function assertElementPackagesAllowed(
 			);
 		}
 
-		const permitted = allowed.some((entry) => {
+		const permitted = !allowed || allowed.some((entry) => {
 			if (entry === packageSpec) return true;
+			const scope = SCOPE_WILDCARD.exec(entry)?.[1];
+			if (scope) return parsed.packageName.startsWith(`${scope}/`);
 			try {
 				const allowedSpec = parsePolicyPackageSpec(entry);
 				return (

@@ -185,6 +185,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	import {
 		type ItemPlayerLoadInputs,
 		itemPlayerBundleType,
+		itemPlayerElementPackagePolicy,
 		itemPlayerEsmBackend,
 		itemPlayerEsmView,
 		itemPlayerIifeBackend,
@@ -232,6 +233,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 	} from "@pie-players/pie-players-shared";
 	import type {
 		ElementPackagePolicy,
+		IntegrityMap,
 		EsmBackendConfig,
 		CanonicalItemSessionContainer,
 		EsmCdnProviderOption,
@@ -295,6 +297,10 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 		runtimeSupportCheck?: "off" | "on";
 		/** Apply when config.elements is not fully trusted host input. */
 		elementPackagePolicy?: ElementPackagePolicy;
+		/** SRI metadata by bundle or module URL. */
+		integrity?: IntegrityMap;
+		/** Refuse element code `integrity` holds no hash for. */
+		requireIntegrity?: boolean;
 	};
 
 	let {
@@ -1274,6 +1280,8 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			runtimeSupportCheck: loaderOptions?.runtimeSupportCheck ?? "off",
 			view: loaderOptions?.view ?? null,
 			elementPackagePolicy: loaderOptions?.elementPackagePolicy ?? null,
+			integrity: loaderOptions?.integrity ?? null,
+			requireIntegrity: loaderOptions?.requireIntegrity ?? false,
 		});
 		const featuresSignature = itemFeaturesSignature(
 			itemFeatureInputs,
@@ -1389,7 +1397,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 			]);
 			assertElementPackagesAllowed(
 				elementMap,
-				loaderOptions?.elementPackagePolicy,
+				itemPlayerElementPackagePolicy(loadInputs),
 			);
 			const runtimeSupportHints = await collectRuntimeSupportHints(
 				elementMap,
@@ -1436,7 +1444,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 				);
 				await ensureRegistered(expectedElements, {
 					backend: buildIifeBackendConfig(bundleType, requestToken),
-					elementPackagePolicy: loaderOptions?.elementPackagePolicy,
+					elementPackagePolicy: itemPlayerElementPackagePolicy(loadInputs),
 				});
 			} else {
 				stage = "esm-load";
@@ -1447,7 +1455,7 @@ The PIE item player: it loads an item's PIE elements under the `iife`, `esm` or 
 				);
 				await ensureRegistered(expectedElements, {
 					backend: buildEsmBackendConfig(view),
-					elementPackagePolicy: loaderOptions?.elementPackagePolicy,
+					elementPackagePolicy: itemPlayerElementPackagePolicy(loadInputs),
 				});
 			}
 			if (!isCurrentLoadRequest(requestToken)) return false;

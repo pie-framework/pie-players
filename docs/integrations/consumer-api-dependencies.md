@@ -1061,11 +1061,11 @@ both players `loaderOptions.integrity` and `requireIntegrity` and added the
 same day found Host R the only host on the `esm` strategy or `<pie-print>`, and no
 host setting `elementPackagePolicy`, the integrity options or the events. Host M's
 checkout holds only a build, so its row's `preloaded` strategy stands. Host R pins
-each tagged spec to the version its tag names before a player sees the config, but
-keeps the tag when that lookup fails or times out, and its print routes set no
-`loaderOptions`; such a load now fails with `ElementPackagePolicyError` where it
-loaded the tag before, and so does a range spec. Row verification dates are
-unchanged.
+each tagged or range spec to the version it names before a player or `<pie-print>`
+sees the config, and passes no `elementPackagePolicy`; when that lookup fails or
+times out it keeps the spec as stored, and such a load now fails with
+`ElementPackagePolicyError` where it loaded before. Its range specs and authoring
+pages went unpinned until 2026-11-28. Row verification dates are unchanged.
 
 ## Consumer profiles
 
@@ -2689,8 +2689,8 @@ its entries are re-derived rather than remembered. Host C's are from 2026-10-13.
   for a plain module import are API there; `dist/print-player.js` as a CDN
   filename too
 - The element specs browser ESM loads admit without a host policy: Host R's
-  print routes and `esm` strategy load a tagged spec only once its pin makes it
-  exact
+  print routes and `esm` strategy load a tagged or range spec only once its pin
+  makes it exact
 - The dictionary lookup wire contract. It breaks a host-served *endpoint*, so no
   typecheck spans the boundary; the shape is now importable, though —
   `DictionaryLookupRequest` / `DictionaryLookupResult` reach consumers from
